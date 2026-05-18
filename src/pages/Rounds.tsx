@@ -5,6 +5,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { RoundCardSkeleton } from '../components/ui/Skeleton';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
@@ -265,7 +266,9 @@ export const Rounds = () => {
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--color-text-muted)', padding: '2rem' }}>Đang tải...</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.25rem' }}>
+          {[1,2,3].map(i => <RoundCardSkeleton key={i} />)}
+        </div>
       ) : (
         <div style={{ 
           display: viewMode === 'grid' ? 'grid' : 'flex', 

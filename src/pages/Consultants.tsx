@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, UserX, Clock, X, Mail, User, Shield, Users } from 
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 interface User {
   id: number;
@@ -162,7 +163,7 @@ export const Consultants = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải...</td></tr>
+                <TableSkeleton rows={5} cols={4} />
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={4}>

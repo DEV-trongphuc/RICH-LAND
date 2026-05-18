@@ -111,55 +111,118 @@ export const Tickets = () => {
       </div>
 
       {/* ── Filter bar: Sale + Date ── */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
-        <Filter size={15} color="var(--color-text-muted)" />
-        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', marginRight: 4 }}>Lọc:</span>
+      <div style={{
+        display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
+        padding: '14px 18px',
+        background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
+        border: '1px solid rgba(124,58,237,0.15)',
+        borderRadius: 16,
+        backdropFilter: 'blur(8px)',
+        boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
+          <Filter size={14} />
+          <span>Bộ lọc</span>
+        </div>
+
+        <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
 
         {/* Sale filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Users size={14} color="var(--color-text-muted)" />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <Users size={13} style={{ position: 'absolute', left: 10, color: saleFilter ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
           <select
             value={saleFilter}
             onChange={e => setSaleFilter(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: saleFilter ? 'rgba(124,58,237,0.08)' : 'var(--color-bg)', color: saleFilter ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: saleFilter ? 700 : 400, outline: 'none', cursor: 'pointer' }}
+            style={{
+              fontSize: '0.8rem', padding: '7px 32px 7px 30px',
+              borderRadius: 10,
+              border: '1.5px solid',
+              borderColor: saleFilter ? '#7c3aed' : 'rgba(124,58,237,0.2)',
+              background: saleFilter ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
+              color: saleFilter ? '#5b21b6' : '#64748b',
+              fontWeight: saleFilter ? 700 : 500,
+              outline: 'none', cursor: 'pointer',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              boxShadow: saleFilter ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+              transition: 'all 0.2s',
+              minWidth: 140,
+            }}
           >
             <option value="">Tất cả Sale</option>
             {consultantOptions.map(name => (
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
+          <svg style={{ position: 'absolute', right: 8, pointerEvents: 'none', color: saleFilter ? '#7c3aed' : '#94a3b8' }} width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
 
         {/* Date from */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Calendar size={14} color="var(--color-text-muted)" />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '5px 8px', borderRadius: 8, border: '1px solid var(--color-border)', background: dateFrom ? 'rgba(124,58,237,0.08)' : 'var(--color-bg)', color: dateFrom ? 'var(--color-primary)' : 'var(--color-text-muted)', outline: 'none', fontWeight: dateFrom ? 700 : 400 }}
-            placeholder="Từ ngày"
-          />
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>→</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '5px 8px', borderRadius: 8, border: '1px solid var(--color-border)', background: dateTo ? 'rgba(124,58,237,0.08)' : 'var(--color-bg)', color: dateTo ? 'var(--color-primary)' : 'var(--color-text-muted)', outline: 'none', fontWeight: dateTo ? 700 : 400 }}
-            placeholder="Đến ngày"
-          />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateFrom ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              style={{
+                fontSize: '0.8rem', padding: '7px 10px 7px 28px',
+                borderRadius: 10,
+                border: '1.5px solid',
+                borderColor: dateFrom ? '#7c3aed' : 'rgba(124,58,237,0.2)',
+                background: dateFrom ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
+                color: dateFrom ? '#5b21b6' : '#64748b',
+                outline: 'none',
+                fontWeight: dateFrom ? 700 : 400,
+                boxShadow: dateFrom ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+              }}
+            />
+          </div>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>→</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateTo ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              style={{
+                fontSize: '0.8rem', padding: '7px 10px 7px 28px',
+                borderRadius: 10,
+                border: '1.5px solid',
+                borderColor: dateTo ? '#7c3aed' : 'rgba(124,58,237,0.2)',
+                background: dateTo ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
+                color: dateTo ? '#5b21b6' : '#64748b',
+                outline: 'none',
+                fontWeight: dateTo ? 700 : 400,
+                boxShadow: dateTo ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+              }}
+            />
+          </div>
         </div>
 
         {/* Clear filters */}
         {hasActiveFilters && (
           <button onClick={() => { setSaleFilter(''); setDateFrom(''); setDateTo(''); }}
-            style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontWeight: 700, cursor: 'pointer' }}>
+            style={{
+              fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
+              border: '1.5px solid #fca5a5', background: 'linear-gradient(135deg,#fff5f5,#fee2e2)',
+              color: '#dc2626', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4,
+              boxShadow: '0 1px 4px rgba(220,38,38,0.12)',
+              transition: 'all 0.15s'
+            }}>
             ✕ Xóa lọc
           </button>
         )}
 
-        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-          Hiển thị {filteredReports.length}/{reports.length} tickets
+        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+          {filteredReports.length}/{reports.length} tickets
         </span>
       </div>
 

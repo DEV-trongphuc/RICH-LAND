@@ -3,6 +3,7 @@ import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, C
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { CardSkeleton } from '../components/ui/Skeleton';
 
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -112,12 +113,20 @@ export const Settings = () => {
           </h1>
           <p className="page-subtitle">Cấu hình Email, Webhooks và các tích hợp nâng cao.</p>
         </div>
-        <button className="btn primary" onClick={handleSave} disabled={saving}>
+        <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
           {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
           Lưu cấu hình
         </button>
       </div>
 
+      {loading ? (
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <CardSkeleton height={220} /><CardSkeleton height={160} />
+          </div>
+          <div style={{ flex: 1 }}><CardSkeleton height={200} /></div>
+        </div>
+      ) : (
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
         {/* Left Column */}
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -322,6 +331,7 @@ function sendToDataFlow(e) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

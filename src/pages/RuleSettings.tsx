@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Activity, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -15,6 +15,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
+import { CardSkeleton } from '../components/ui/Skeleton';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
@@ -445,9 +446,8 @@ export const RuleSettings = () => {
 
       <div className="card" style={{ overflow: 'visible', paddingBottom: '2rem' }}>
         {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            <Activity size={32} className="spin" style={{ margin: '0 auto', marginBottom: 16 }} />
-            Đang tải dữ liệu Rule Engine...
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1,2,3].map(i => <CardSkeleton key={i} height={90} />)}
           </div>
         ) : rules.length === 0 ? (
           <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
