@@ -14,7 +14,21 @@ function logSync($msg) {
 logSync("Starting Google Sheets Sync Cronjob...");
 
 // Get active connections
-$stmt = $conn->prepare("SELECT * FROM sheet_connections WHERE is_active = 1");
+$sql = "SELECT * FROM sheet_connections WHERE is_active = 1";
+$params = [];
+$types = "";
+
+// Check if a specific connection ID was passed via CLI argument
+if (isset($argv[1]) && is_numeric($argv[1])) {
+    $sql .= " AND id = ?";
+    $params[] = (int)$argv[1];
+    $types .= "i";
+}
+
+$stmt = $conn->prepare($sql);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $connections = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 

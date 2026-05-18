@@ -282,7 +282,7 @@ function sendToDataFlow(e) {
                 className="form-input" 
                 value={testType} 
                 onChange={e => setTestType(e.target.value)}
-                style={{ padding: '0.75rem', appearance: 'auto', background: 'white' }}
+                style={{ padding: '0 1rem', background: 'white' }}
               >
                 <option value="system">Test Hệ Thống (SMTP / AppScript)</option>
                 <option value="assignment">Test Template Giao Data</option>

@@ -211,7 +211,6 @@ export const Accounts = () => {
               className="form-input" 
               value={formData.role}
               onChange={e => setFormData({ ...formData, role: e.target.value })}
-              style={{ padding: '0.75rem', appearance: 'auto' }}
             >
               <option value="admin">Admin (Toàn quyền)</option>
               <option value="assistant">Assistant (Trợ lý / Phân bổ Data)</option>

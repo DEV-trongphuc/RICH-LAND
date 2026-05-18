@@ -55,6 +55,7 @@ export const Integrations = () => {
     { sheet_col: 'Họ và Tên', sys_field: 'name' }
   ]);
   const [emailTemplate, setEmailTemplate] = useState('Thông tin Khách hàng:\n- Tên KH: {name}\n- SĐT: {phone}\n- Bằng cấp: {degree}\n- Tiếng Anh: {english}');
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -310,6 +311,25 @@ export const Integrations = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    className="btn outline"
+                    style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
+                    disabled={isSyncing}
+                    onClick={async () => {
+                      setIsSyncing(true);
+                      try {
+                        const res = await fetchAPI(`force_sync&id=${selected.id}`);
+                        if (res.success) toast.success('Đã đồng bộ dữ liệu thủ công!');
+                        else toast.error('Đồng bộ thất bại: ' + (res.message || ''));
+                      } catch (e: any) {
+                        toast.error('Lỗi kết nối: ' + e.message);
+                      }
+                      setIsSyncing(false);
+                    }}
+                  >
+                    <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+                  </button>
+
                   <ToggleSwitch 
                     checked={selected.is_active} 
                     onChange={() => handleToggleActive(null as any, selected)}

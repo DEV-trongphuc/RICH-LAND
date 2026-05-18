@@ -575,6 +575,19 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
+    case 'force_sync':
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id) {
+            // Using shell_exec to run PHP script synchronously
+            $phpPath = PHP_BINARY ?: 'php';
+            $scriptPath = __DIR__ . '/cron_sync.php';
+            $output = shell_exec(escapeshellarg($phpPath) . " " . escapeshellarg($scriptPath) . " " . escapeshellarg($id) . " 2>&1");
+            echo json_encode(['success' => true, 'output' => $output]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+        }
+        break;
+
     case 'get_dashboard_stats':
         $date = $_GET['date'] ?? 'Hôm nay';
         
