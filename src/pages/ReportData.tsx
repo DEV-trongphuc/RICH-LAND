@@ -70,6 +70,15 @@ export const ReportData = () => {
       .finally(() => setLoadingCtx(false));
   }, []);
 
+  // Allow native scrolling for this full-page component
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (root) root.style.overflow = 'auto';
+    return () => {
+      if (root) root.style.overflow = 'hidden';
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (params.isTest) { setSubmitError('Đây là link thử nghiệm — không thể gửi báo cáo thật.'); setSubmitStatus('error'); return; }
@@ -90,7 +99,7 @@ export const ReportData = () => {
   // ── Full-screen wrapper ──────────────────────────────────────────────────────
   return (
     <div style={{
-      width: '100%', height: '100%', overflowY: 'auto',
+      width: '100%', minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
       display: 'flex', flexDirection: 'column', position: 'relative'
     }}>
