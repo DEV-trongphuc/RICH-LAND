@@ -57,6 +57,8 @@ export const Integrations = () => {
   ]);
   const [emailTemplate, setEmailTemplate] = useState('Thông tin Khách hàng:\n- Tên KH: {name}\n- SĐT: {phone}\n- Bằng cấp: {degree}\n- Tiếng Anh: {english}');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [fetchedSheets, setFetchedSheets] = useState<string[]>([]);
+  const [isFetchingSheets, setIsFetchingSheets] = useState(false);
   
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -102,12 +104,39 @@ export const Integrations = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const fetchSheetNames = async (id: string) => {
+    setIsFetchingSheets(true);
+    try {
+      const json = await fetchAPI(`fetch_sheets&id=${id}`);
+      if (json.success && json.sheets && json.sheets.length > 0) {
+        setFetchedSheets(json.sheets);
+        // Automatically select the first sheet if the current one isn't in the list
+        if (!json.sheets.includes(newConnName)) {
+          setNewConnName(json.sheets[0]);
+        }
+      } else {
+        setFetchedSheets([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setFetchedSheets([]);
+    } finally {
+      setIsFetchingSheets(false);
+    }
+  };
+
   const handleUrlChange = (val: string) => {
     setNewSpreadsheetId(val);
     const match = val.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    let extractedId = val;
     if (match && match[1]) {
-      // automatically extract
+      extractedId = match[1];
       setNewSpreadsheetId(match[1]);
+    }
+    if (extractedId.length >= 40) {
+      fetchSheetNames(extractedId);
+    } else {
+      setFetchedSheets([]);
     }
   };
 
@@ -544,12 +573,32 @@ export const Integrations = () => {
 
               <div>
                 <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Tên trang tính (Sheet Name)</label>
-                <input
-                  className="form-input"
-                  style={{ background: '#f8fafc', border: 'none', fontWeight: 600, color: '#0f172a' }}
-                  value={newConnName}
-                  onChange={e => setNewConnName(e.target.value)}
-                />
+                {isFetchingSheets ? (
+                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: 8, fontSize: '0.875rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <RefreshCw size={16} className="spin" /> Đang quét danh sách các Sheet...
+                  </div>
+                ) : fetchedSheets.length > 0 ? (
+                  <CustomSelect
+                    options={fetchedSheets.map(s => ({ value: s, label: s }))}
+                    value={newConnName}
+                    onChange={v => setNewConnName(String(v))}
+                  />
+                ) : (
+                  <div>
+                    <input
+                      className="form-input"
+                      style={{ background: '#f8fafc', border: 'none', fontWeight: 600, color: '#0f172a' }}
+                      placeholder="VD: Sheet1"
+                      value={newConnName}
+                      onChange={e => setNewConnName(e.target.value)}
+                    />
+                    {newSpreadsheetId.length >= 40 && (
+                      <p style={{ fontSize: '0.75rem', color: '#eab308', marginTop: 4 }}>
+                        💡 Không quét được tự động. Vui lòng chia sẻ quyền "Người xem" cho Sheet để quét được danh sách trang tính.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

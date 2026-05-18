@@ -375,6 +375,36 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
+    case 'fetch_sheets':
+        $sheetId = $_GET['id'] ?? '';
+        if (empty($sheetId)) {
+            echo json_encode(['success' => false, 'message' => 'Missing ID']);
+            break;
+        }
+        $url = "https://docs.google.com/spreadsheets/d/" . trim($sheetId) . "/htmlview";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        $html = curl_exec($ch);
+        curl_close($ch);
+
+        $sheets = [];
+        if (preg_match_all('/<li\s+id="sheet-button-.*?"><a\s+href=".*?">(.*?)<\/a><\/li>/i', $html, $matches)) {
+            $sheets = $matches[1];
+        } else if (preg_match_all('/"name":"(.*?)"/i', $html, $matches)) {
+            // Very naive json parsing from the inline javascript
+            // It might match other things, let's just collect them and take unique
+            $sheets = array_values(array_unique($matches[1]));
+            // remove some common false positives
+            $sheets = array_filter($sheets, function($v) {
+                return !in_array($v, ['Arial', 'Verdana', 'Helvetica', 'Times New Roman']);
+            });
+            $sheets = array_values($sheets);
+        }
+        
+        echo json_encode(['success' => true, 'sheets' => $sheets]);
+        break;
+
     case 'toggle_connection':
         $id = (int)($_GET['id'] ?? 0);
         $active = (int)($_GET['active'] ?? 0);
