@@ -25,12 +25,14 @@
   position: relative;
   width: 100%;
   max-width: 500px;
+  max-height: calc(100vh - 3rem);
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   z-index: 101;
+  overflow: hidden;
 }
 
 .header {
@@ -39,6 +41,7 @@
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .title {
@@ -69,8 +72,11 @@
   position: absolute;
   top: 1rem;
   right: 1rem;
+  z-index: 102;
 }
 
 .content {
   padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
 }
