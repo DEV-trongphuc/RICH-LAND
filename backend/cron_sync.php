@@ -215,6 +215,12 @@ foreach ($connections as $connItem) {
                     $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
                 }
                 logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
+                
+                // Record hash so we don't process this row again on next cron run
+                $recordStmt = $conn->prepare("INSERT INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
+                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                $recordStmt->execute();
+                
                 $conn->commit();
             } catch (Exception $txE) {
                 $conn->rollback();
@@ -222,7 +228,7 @@ foreach ($connections as $connItem) {
                 continue;
             }
 
-            // Only notify sale and record hash when successfully assigned
+            // Only notify sale when successfully assigned
             if ($cronStatus === 'assigned' && !empty($leadId)) {
                 // Notify Sale
                 require_once __DIR__ . '/mailer.php';

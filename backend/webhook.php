@@ -155,7 +155,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         $conn->commit();
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: " . $e->getMessage()]);
+        echo json_encode(["success" => false, "message" => "Lỗi Database: " . "H? th?ng dang b?n, vui l�ng th? l?i sau."]);
         exit();
     }
     echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < 6 months."]);
@@ -194,7 +194,7 @@ try {
     $conn->commit();
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Lỗi Database: " . $e->getMessage()]);
+    echo json_encode(["success" => false, "message" => "Lỗi Database: " . "H? th?ng dang b?n, vui l�ng th? l?i sau."]);
     exit();
 }
 

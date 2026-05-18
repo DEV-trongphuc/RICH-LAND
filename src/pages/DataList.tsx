@@ -296,24 +296,46 @@ export const DataList = () => {
       {/* Table */}
       <div className="card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, overflow: 'auto' }} className="table-wrap custom-scrollbar">
-          {loading ? (
-            <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              Đang tải dữ liệu...
-            </div>
-          ) : (
           <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
               <tr>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>
-                {/* <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Nguồn</th> */}
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ cho</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Thời gian nhận</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
+              {loading ? [...Array(8)].map((_, i) => (
+                <tr key={`skel-${i}`}>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      <div>
+                        <div style={{ width: 120, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                        <div style={{ width: 80, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                     <div style={{ width: 100, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                     <div style={{ width: 140, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                  </td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                     <div style={{ width: 80, height: 24, background: 'var(--color-border)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                  </td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                       <div style={{ width: 90, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                     </div>
+                  </td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                     <div style={{ width: 110, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                  </td>
+                </tr>
+              )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
                 const getInitials = (name: string) => {
                   if (!name || name === '-') return '?';
                   const parts = name.trim().split(' ');
@@ -377,7 +399,6 @@ export const DataList = () => {
               )}
             </tbody>
           </table>
-          )}
         </div>
 
         {/* Pagination */}

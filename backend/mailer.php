@@ -75,6 +75,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Prevent blocking the webhook/cron
         $result = curl_exec($ch);
         curl_close($ch);
         return true;
@@ -89,6 +90,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
             $mail->CharSet    = 'UTF-8';
+            $mail->Timeout    = 5; // Prevent blocking the webhook/cron
 
             $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
             $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';

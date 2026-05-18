@@ -102,10 +102,22 @@ if ($chkIdx3 && $chkIdx3->num_rows === 0) {
     $conn->query("ALTER TABLE leads ADD INDEX `idx_email` (`email`)");
 }
 
+// leads created_at index
+$chkIdxLeadTime = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_created_at'");
+if ($chkIdxLeadTime && $chkIdxLeadTime->num_rows === 0) {
+    $conn->query("ALTER TABLE leads ADD INDEX `idx_created_at` (`created_at`)");
+}
+
 // distribution_logs lead_id index
 $chkIdx4 = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_lead_id'");
 if ($chkIdx4 && $chkIdx4->num_rows === 0) {
     $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_lead_id` (`lead_id`)");
+}
+
+// distribution_logs received_at index
+$chkIdxTime = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_received_at'");
+if ($chkIdxTime && $chkIdxTime->num_rows === 0) {
+    $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_received_at` (`received_at`)");
 }
 
 // data_reports round_id index

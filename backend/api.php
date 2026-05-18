@@ -15,6 +15,14 @@ require_once 'db_connect.php';
 
 $JWT_SECRET = $_ENV['JWT_SECRET'] ?? "DOMATION_SECRET_KEY_2026";
 
+function getSafeErrorMsg($e) {
+    if ($e instanceof mysqli_sql_exception) {
+        error_log("DB Error: " . $e->getMessage());
+        return "Lỗi cơ sở dữ liệu hệ thống. Vui lòng thử lại sau.";
+    }
+    return $e->getMessage();
+}
+
 function create_jwt($payload, $secret) {
     $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
     $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
@@ -92,12 +100,15 @@ if (!in_array($action, $publicActions)) {
     
     // Check Admin roles for sensitive endpoints
     $adminOnlyActions = [
-        'add_account', 'edit_account', 'delete_account',
-        'save_settings',
-        'add_consultant', 'delete_consultant',
+        'get_accounts', 'add_account', 'edit_account', 'delete_account',
+        'save_settings', 'get_settings',
+        'add_consultant', 'edit_consultant', 'delete_consultant',
         'add_round', 'edit_round', 'delete_round',
         'add_rule', 'edit_rule', 'delete_rule', 'reorder_rules',
-        'approve_report', 'reject_report', 'get_reports', // BUG-07 & BUG-09 fix
+        'add_connection', 'edit_connection', 'delete_connection', 'toggle_connection', 'toggle_require_both',
+        'add_mapping', 'edit_mapping', 'delete_mapping',
+        'approve_report', 'reject_report', 'get_reports',
+        'reassign_lead', 'force_sync'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -305,7 +316,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -319,6 +330,7 @@ switch ($action) {
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
                                GROUP BY r.id");
         $data = [];
+        $roundIds = [];
         while($row = $res->fetch_assoc()) {
             $cIds = $row['consultant_ids'] ? explode(',', $row['consultant_ids']) : [];
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];
@@ -342,25 +354,27 @@ switch ($action) {
             }
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;
+            $row['ratios'] = [];
+            $row['data_per_turns'] = [];
+            $row['compensations'] = [];
             
-            // Fetch ratios, data_per_turn, compensation counts — use prepared stmt (avoid raw concat)
-            $roundId_int = (int)$row['id'];
-            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id = $roundId_int");
-            $ratios = [];
-            $perTurns = [];
-            $compensations = [];
-            while ($rr = $ratioRes->fetch_assoc()) {
-                $ratios[$rr['consultant_id']] = (int)$rr['receive_ratio'];
-                $perTurns[$rr['consultant_id']] = (int)($rr['data_per_turn'] ?? 1);
-                $compensations[$rr['consultant_id']] = (int)$rr['compensation_count'];
-            }
-            $row['ratios'] = $ratios;
-            $row['data_per_turns'] = $perTurns;
-            $row['compensations'] = $compensations;
-            
-            $data[] = $row;
+            $data[$row['id']] = $row;
+            $roundIds[] = $row['id'];
         }
-        echo json_encode(['success' => true, 'data' => $data]);
+        
+        if (!empty($roundIds)) {
+            $idsStr = implode(',', $roundIds);
+            $ratioRes = $conn->query("SELECT round_id, consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id IN ($idsStr)");
+            while ($rr = $ratioRes->fetch_assoc()) {
+                $rId = $rr['round_id'];
+                $cId = $rr['consultant_id'];
+                $data[$rId]['ratios'][$cId] = (int)$rr['receive_ratio'];
+                $data[$rId]['data_per_turns'][$cId] = (int)($rr['data_per_turn'] ?? 1);
+                $data[$rId]['compensations'][$cId] = (int)$rr['compensation_count'];
+            }
+        }
+        
+        echo json_encode(['success' => true, 'data' => array_values($data)]);
         break;
 
     case 'add_round':
@@ -409,7 +423,7 @@ switch ($action) {
             echo json_encode(['success' => true, 'id' => $roundId]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -479,7 +493,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -495,8 +509,14 @@ switch ($action) {
                 throw new Exception("Vòng này đã phân bổ Data, không thể xóa để bảo toàn thống kê. Vui lòng chuyển sang Ngừng hoạt động.");
             }
             
-            $conn->query("DELETE FROM round_consultants WHERE round_id=$id");
-            $conn->query("DELETE FROM data_reports WHERE round_id=$id");
+            $stmt1 = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
+            $stmt1->bind_param("i", $id);
+            $stmt1->execute();
+            
+            $stmt2 = $conn->prepare("DELETE FROM data_reports WHERE round_id=?");
+            $stmt2->bind_param("i", $id);
+            $stmt2->execute();
+            
             $stmt = $conn->prepare("DELETE FROM distribution_rounds WHERE id=?");
             $stmt->bind_param("i", $id);
             $stmt->execute();
@@ -504,7 +524,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
         
@@ -549,9 +569,19 @@ switch ($action) {
         $conn->begin_transaction();
         try {
             $id = (int)($_GET['id'] ?? 0);
-            $conn->query("DELETE FROM field_mappings WHERE connection_id=$id");
-            $conn->query("DELETE FROM routing_rules WHERE connection_id=$id");
-            $conn->query("DELETE FROM sheet_sync_records WHERE connection_id=$id");
+            
+            $stmt1 = $conn->prepare("DELETE FROM field_mappings WHERE connection_id=?");
+            $stmt1->bind_param("i", $id);
+            $stmt1->execute();
+            
+            $stmt2 = $conn->prepare("DELETE FROM routing_rules WHERE connection_id=?");
+            $stmt2->bind_param("i", $id);
+            $stmt2->execute();
+            
+            $stmt3 = $conn->prepare("DELETE FROM sheet_sync_records WHERE connection_id=?");
+            $stmt3->bind_param("i", $id);
+            $stmt3->execute();
+            
             $stmt = $conn->prepare("DELETE FROM sheet_connections WHERE id=?");
             $stmt->bind_param("i", $id);
             $stmt->execute();
@@ -559,7 +589,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -731,7 +761,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -908,7 +938,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -937,7 +967,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
@@ -1425,7 +1455,7 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
         break;
 
