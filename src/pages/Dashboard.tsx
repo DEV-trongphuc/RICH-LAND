@@ -14,18 +14,7 @@ import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 
-const getColorForName = (name: string) => {
-  if (!name || name === '-') return '#94a3b8';
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const colors = [
-    '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
-    '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
-  ];
-  return colors[Math.abs(hash) % colors.length];
-};
+import { Avatar } from '../components/ui/Avatar';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -272,15 +261,13 @@ export const Dashboard = () => {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
                     >
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(log.assigned_to_name), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'white', fontWeight: 800, fontSize: '0.875rem' }}>
-                        {log.assigned_to_name ? log.assigned_to_name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : 'HT'}
-                      </div>
+                      <Avatar name={log.assigned_to_name || 'Hệ thống'} size={32} />
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                           {log.assigned_to_name || 'Hệ thống'}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <strong style={{color: 'var(--color-text)'}}>{log.lead_name || 'Khách hàng'}</strong> • p:{(log.phone?.length >= 8) ? `${log.phone.slice(0, log.phone.length - 6)}***${log.phone.slice(-3)}` : log.phone} • {log.source || 'Data'}
+                          {log.lead_name || 'Khách hàng'} • {new Date(log.created_at).toLocaleString('vi-VN')}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>

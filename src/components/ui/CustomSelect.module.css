@@ -43,6 +43,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .placeholder {
@@ -52,6 +54,9 @@
 .selectedValue {
   color: var(--color-text);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon {

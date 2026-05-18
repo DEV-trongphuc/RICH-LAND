@@ -8,6 +8,7 @@ interface AvatarProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
+  color?: string;
 }
 
 const getInitials = (name: string) => {
@@ -38,7 +39,7 @@ const getColorFromName = (name: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title, color }) => {
   const sizeMap = {
     sm: 24,
     md: 32,
@@ -46,7 +47,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
   };
   const finalSize = typeof size === 'number' ? size : sizeMap[size];
   const initials = name ? getInitials(name) : '?';
-  const bgColor = name ? getColorFromName(name) : 'var(--color-primary)';
+  const bgColor = color ? color : (name ? getColorFromName(name) : 'var(--color-primary)');
 
   return (
     <div 

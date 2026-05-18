@@ -234,7 +234,7 @@ export const DataList = () => {
           ]}
           value={dateFilter}
           onChange={val => updateParams('date', val.toString())}
-          width={180}
+          width={200}
         />
 
         <CustomSelect 
@@ -248,7 +248,7 @@ export const DataList = () => {
           ]}
           value={statusFilter}
           onChange={val => updateParams('status', val.toString())}
-          width={180}
+          width={200}
         />
 
         <CustomSelect 
