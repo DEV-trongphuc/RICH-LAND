@@ -4,12 +4,12 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
-  { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
-  { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
-  { name: 'Luật xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
+  { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
+  { name: 'Luật xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
+  { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
 ];
 
@@ -65,7 +65,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           overflow: 'hidden'
         }}>
-          <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+          <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             alt="logo" />
         </div>
@@ -215,7 +215,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
           </div>
 
           {!isCollapsed && (
-            <button 
+            <button
               onClick={handleLogout}
               style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
@@ -226,10 +226,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
             </button>
           )}
         </div>
-        
+
         {isCollapsed && (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-            <button 
+            <button
               onClick={handleLogout}
               style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Activity, Filter, Server, MapPin, GripVertical, Edit2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Activity, Filter, Server, MapPin, GripVertical, Edit2, Link2 } from 'lucide-react';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -132,9 +133,11 @@ export const RuleSettings = () => {
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  const navigate = useNavigate();
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isNoSheetModalOpen, setIsNoSheetModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
@@ -215,6 +218,10 @@ export const RuleSettings = () => {
   };
 
   const openAddModal = () => {
+    if (connections.length === 0) {
+      setIsNoSheetModalOpen(true);
+      return;
+    }
     setEditingRule(null);
     setConnectionId('all');
     setCol('Nguồn');
@@ -434,6 +441,26 @@ export const RuleSettings = () => {
         title="Xóa Quy Tắc Định Tuyến"
         message="Bạn có chắc chắn muốn xóa Quy tắc này? Các luồng phân bổ Data có thể bị ảnh hưởng ngay lập tức."
       />
+
+      {/* No Sheet Modal */}
+      <CustomModal
+        isOpen={isNoSheetModalOpen}
+        onClose={() => setIsNoSheetModalOpen(false)}
+        title="Chưa có kết nối Google Sheets"
+        width={400}
+      >
+        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          <div style={{ background: 'var(--color-warning-light)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+            <Link2 size={32} color="var(--color-warning)" />
+          </div>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Bạn cần kết nối Sheets trước</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>Hệ thống quy tắc định tuyến cần có cấu hình cột từ Google Sheets để hoạt động. Vui lòng thiết lập ít nhất 1 kết nối Tích hợp trước khi tạo quy tắc.</p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button className="btn outline" onClick={() => setIsNoSheetModalOpen(false)}>Hủy bỏ</button>
+            <button className="btn primary" onClick={() => navigate('/integrations')}>Đi tới Tích hợp</button>
+          </div>
+        </div>
+      </CustomModal>
     </div>
   );
 };

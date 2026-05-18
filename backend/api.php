@@ -544,8 +544,21 @@ switch ($action) {
         $conn_id = $input['connection_id'] ?? 0;
         $sheet_col = $input['sheet_column'] ?? '';
         $sys_field = $input['system_field'] ?? '';
-        $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field) VALUES (?, ?, ?)");
-        $stmt->bind_param("iss", $conn_id, $sheet_col, $sys_field);
+        $custom_label = $input['custom_label'] ?? null;
+        $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field, custom_label) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isss", $conn_id, $sheet_col, $sys_field, $custom_label);
+        $stmt->execute();
+        echo json_encode(['success' => true]);
+        break;
+
+    case 'edit_mapping':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int)($input['id'] ?? 0);
+        $sheet_col = $input['sheet_column'] ?? '';
+        $sys_field = $input['system_field'] ?? '';
+        $custom_label = $input['custom_label'] ?? null;
+        $stmt = $conn->prepare("UPDATE field_mappings SET sheet_column=?, system_field=?, custom_label=? WHERE id=?");
+        $stmt->bind_param("sssi", $sheet_col, $sys_field, $custom_label, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -811,6 +824,74 @@ switch ($action) {
             'topConsultants' => $topConsultants,
             'roundRatio' => $roundRatio
         ]]);
+        break;
+
+    case 'reassign_lead':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $log_id = (int)($input['log_id'] ?? 0);
+        $new_consultant_id = (int)($input['new_consultant_id'] ?? 0);
+        
+        if (!$log_id || !$new_consultant_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID Log hoặc ID TVV mới']);
+            break;
+        }
+        
+        // 1. Fetch lead details and new consultant details
+        $stmt = $conn->prepare("
+            SELECT dl.lead_id, dl.round_id, l.name as lead_name, l.phone, l.note, l.source, r.cc_emails
+            FROM distribution_logs dl
+            LEFT JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            WHERE dl.id = ?
+        ");
+        $stmt->bind_param("i", $log_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy log phân bổ']);
+            break;
+        }
+        $log_data = $res->fetch_assoc();
+        $lead_id = $log_data['lead_id'];
+        $cc_emails = $log_data['cc_emails'] ?? '';
+        
+        // Fetch new consultant details
+        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+        $stmtC->bind_param("i", $new_consultant_id);
+        $stmtC->execute();
+        $resC = $stmtC->get_result();
+        if ($resC->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy Tư vấn viên']);
+            break;
+        }
+        $cons_data = $resC->fetch_assoc();
+        $new_cons_name = $cons_data['name'];
+        $new_cons_email = $cons_data['email'];
+        
+        // 2. Perform updates
+        // Update distribution_logs
+        $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = 'assigned' WHERE id = ?");
+        $stmtU1->bind_param("ii", $new_consultant_id, $log_id);
+        $stmtU1->execute();
+        
+        // Update leads
+        $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
+        $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
+        $stmtU2->execute();
+        
+        // 3. Send email to new consultant
+        require_once __DIR__ . '/mailer.php';
+        sendLeadAssignedEmailToSale(
+            $new_cons_email,
+            $new_cons_name,
+            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+            $log_data['phone'] ?: '',
+            $log_data['note'] ?: '',
+            $log_data['source'] ?: '',
+            $cc_emails
+        );
+        
+        echo json_encode(['success' => true]);
         break;
 
     default:

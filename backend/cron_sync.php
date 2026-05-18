@@ -58,7 +58,7 @@ foreach ($connections as $connItem) {
 
     try {
         // Fetch field mappings
-        $mapStmt = $conn->prepare("SELECT sheet_column, system_field FROM field_mappings WHERE connection_id = ?");
+        $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
         $mapStmt->bind_param("i", $connItem['id']);
         $mapStmt->execute();
         $mappingsResult = $mapStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -69,7 +69,10 @@ foreach ($connections as $connItem) {
             if (!isset($mappings[$sysField])) {
                 $mappings[$sysField] = [];
             }
-            $mappings[$sysField][] = $row['sheet_column'];
+            $mappings[$sysField][] = [
+                'sheet_column' => $row['sheet_column'],
+                'custom_label' => $row['custom_label']
+            ];
         }
 
         // Helper function for extraction
@@ -77,13 +80,18 @@ foreach ($connections as $connItem) {
             function extractMappedValues($mappingsArray, $systemField, $data) {
                 if (!isset($mappingsArray[$systemField])) return '';
                 $values = [];
-                foreach ($mappingsArray[$systemField] as $colName) {
+                foreach ($mappingsArray[$systemField] as $mapItem) {
+                    $colName = $mapItem['sheet_column'];
+                    $customLabel = $mapItem['custom_label'];
                     if (isset($data[$colName]) && $data[$colName] !== '') {
-                        $values[] = $colName . ': ' . $data[$colName];
+                        $label = !empty($customLabel) ? $customLabel : $colName;
+                        $values[] = $label . ': ' . $data[$colName];
                     }
                 }
-                if (count($values) === 1 && $systemField !== 'note') {
-                    $colName = $mappingsArray[$systemField][0];
+                // For phone, email, name: return the raw value directly to keep it clean.
+                // For other fields (note, type, source): always keep the Label: Value format so it goes to a new line nicely.
+                if (count($values) === 1 && in_array($systemField, ['phone', 'email', 'name'])) {
+                    $colName = $mappingsArray[$systemField][0]['sheet_column'];
                     return $data[$colName] ?? '';
                 }
                 return implode("\n", $values);
@@ -202,7 +210,7 @@ foreach ($connections as $connItem) {
             
             $ccEmails = '';
             if ($targetRoundId) {
-                $qRound = $conn->query("SELECT cc_emails FROM distribution_rounds WHERE id = $targetRoundId");
+                $qRound = $conn->query("SELECT cc_emails FROM distribution_rounds WHERE id = " . (int)$targetRoundId);
                 if ($qRound && $qRound->num_rows > 0) {
                     $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
                 }

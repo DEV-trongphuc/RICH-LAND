@@ -62,7 +62,9 @@ export const DataList = () => {
 
   useEffect(() => {
     fetchLeads();
+    fetchConsultants();
   }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
@@ -80,6 +82,45 @@ export const DataList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
+  const [reassignConsId, setReassignConsId] = useState<string>('');
+  const [isReassigning, setIsReassigning] = useState<boolean>(false);
+
+  const fetchConsultants = async () => {
+    try {
+      const json = await fetchAPI('get_consultants');
+      if (json.success) {
+        setConsultants(json.data.filter((c: any) => c.status === 'active'));
+      }
+    } catch (e: any) {
+      console.error(e.message);
+    }
+  };
+
+  const handleReassign = async () => {
+    if (!selectedLead || !reassignConsId) return;
+    setIsReassigning(true);
+    try {
+      const res = await fetchAPI('reassign_lead', {
+        method: 'POST',
+        body: JSON.stringify({
+          log_id: selectedLead.id,
+          new_consultant_id: Number(reassignConsId)
+        })
+      });
+      if (res.success) {
+        alert('Giao lại Tư vấn viên thành công!');
+        setSelectedLead(null);
+        setReassignConsId('');
+        fetchLeads();
+      } else {
+        alert('Lỗi: ' + (res.message || 'Không thể giao lại'));
+      }
+    } catch (err: any) {
+      alert('Đã xảy ra lỗi: ' + err.message);
+    }
+    setIsReassigning(false);
+  };
 
   const ITEMS_PER_PAGE = 50;
 
@@ -334,7 +375,10 @@ export const DataList = () => {
 
       <CustomModal
         isOpen={selectedLead !== null}
-        onClose={() => setSelectedLead(null)}
+        onClose={() => {
+          setSelectedLead(null);
+          setReassignConsId('');
+        }}
         title="Chi tiết Khách hàng"
         width="600px"
       >
@@ -402,6 +446,40 @@ export const DataList = () => {
                 Chưa có thông tin phân bổ cho Khách hàng này.
               </div>
             )}
+
+            {/* Reassignment section */}
+            <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên (Không ảnh hưởng vòng xoay)
+              </h4>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
+                Hệ thống sẽ cập nhật người tiếp nhận và tự động gửi email thông báo cho TVV mới mà không làm thay đổi hay gián đoạn thứ tự quay vòng chia số của Vòng.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <select 
+                    className="form-input" 
+                    value={reassignConsId} 
+                    onChange={e => setReassignConsId(e.target.value)}
+                    style={{ height: 38, fontSize: '0.875rem', border: '1px solid #cbd5e1', background: 'white' }}
+                  >
+                    <option value="">-- Chọn Tư vấn viên mới --</option>
+                    {consultants.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button 
+                  className="btn primary" 
+                  onClick={handleReassign}
+                  disabled={isReassigning || !reassignConsId}
+                  style={{ height: 38, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700 }}
+                >
+                  {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
+                  Xác nhận giao
+                </button>
+              </div>
+            </div>
             
           </div>
         )}

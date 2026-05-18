@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -33,11 +33,32 @@ type Mapping = {
   connection_id: number;
   sheet_column: string;
   system_field: string;
+  custom_label?: string;
 };
 
 import { fetchAPI } from '../utils/api';
 
 const generateToken = () => 'tok_' + Math.random().toString(36).slice(2, 10);
+
+const generateDefaultTemplate = (mappings: {sheet_col: string; sys_field: string; custom_label?: string}[]) => {
+  if (mappings.length === 0) {
+    return 'Thông tin Khách hàng:\n- Họ Tên: {name}\n- Số Điện Thoại: {phone}';
+  }
+  
+  let lines = ['Thông tin Khách hàng:'];
+  const mappedSystemFields = Array.from(new Set(mappings.map(m => m.sys_field)));
+  const order = ['name', 'phone', 'email', 'source', 'type', 'note'];
+  
+  order.forEach(field => {
+    if (mappedSystemFields.includes(field)) {
+      const fieldMapping = SYSTEM_FIELDS.find(f => f.value === field);
+      const label = fieldMapping ? fieldMapping.label : field;
+      lines.push(`- ${label}: {${field}}`);
+    }
+  });
+  
+  return lines.join('\n');
+};
 
 export const Integrations = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -51,7 +72,7 @@ export const Integrations = () => {
   const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
   const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [customSyncMins, setCustomSyncMins] = useState<number>(15);
-  const [tempMappings, setTempMappings] = useState<{sheet_col: string, sys_field: string}[]>([]);
+  const [tempMappings, setTempMappings] = useState<{sheet_col: string, sys_field: string, custom_label?: string}[]>([]);
   const [fetchedColumns, setFetchedColumns] = useState<string[]>([]);
   const [isFetchingColumns, setIsFetchingColumns] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -67,6 +88,8 @@ export const Integrations = () => {
   // Mapping states
   const [newMappingCol, setNewMappingCol] = useState('');
   const [newMappingField, setNewMappingField] = useState('phone');
+  const [newMappingCustomLabel, setNewMappingCustomLabel] = useState('');
+  const [editingMappingId, setEditingMappingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -168,7 +191,7 @@ export const Integrations = () => {
         for (const m of tempMappings) {
            await fetchAPI('add_mapping', {
              method: 'POST',
-             body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field })
+             body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field, custom_label: m.custom_label })
            });
         }
         fetchData();
@@ -199,22 +222,35 @@ export const Integrations = () => {
     setDeleteId(null);
     setIsConfirmOpen(false);
   };
-  const handleAddMapping = async () => {
+  const handleSaveMapping = async () => {
     if (!newMappingCol.trim() || !selected) return;
     try {
-        const json = await fetchAPI('add_mapping', {
+        const action = editingMappingId ? 'edit_mapping' : 'add_mapping';
+        const payload = editingMappingId 
+          ? { id: editingMappingId, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel }
+          : { connection_id: selected.id, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel };
+        
+        const json = await fetchAPI(action, {
             method: 'POST',
-            body: JSON.stringify({ connection_id: selected.id, sheet_column: newMappingCol, system_field: newMappingField })
+            body: JSON.stringify(payload)
         });
         if (json.success) {
             fetchData();
             setNewMappingCol('');
-            setNewMappingField('phone');
-            toast.success('Đã thêm mapping');
+            setNewMappingCustomLabel('');
+            setEditingMappingId(null);
+            toast.success(editingMappingId ? 'Đã cập nhật mapping' : 'Đã thêm mapping');
         }
     } catch (e: any) {
         toast.error('Lỗi: ' + e.message);
     }
+  };
+
+  const cancelEditMapping = () => {
+    setEditingMappingId(null);
+    setNewMappingCol('');
+    setNewMappingCustomLabel('');
+    setNewMappingField('phone');
   };
 
   const handleDeleteMapping = async (mappingId: number) => {
@@ -476,62 +512,10 @@ export const Integrations = () => {
                 </div>
               </div>
 
-              <div className="table-wrap" style={{ marginBottom: '1rem' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Tên cột trên Google Sheets</th>
-                      <th>Trường hệ thống</th>
-                      <th style={{ width: 60 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(selected.mappings || []).map(m => (
-                      <tr key={m.id}>
-                        <td>
-                          <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', border: '1px solid var(--color-border)' }}>
-                            {m.sheet_column}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
-                            {SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleDeleteMapping(m.id)}
-                            style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
-                            onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
-                            onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {(selected.mappings || []).length === 0 && (
-                      <tr>
-                        <td colSpan={3} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
-                          Chưa có mapping nào. Hãy thêm cột bên dưới.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
-                  <strong>Mẹo cấu hình:</strong> Bạn có thể map <strong>nhiều cột trên Sheets</strong> vào <strong>cùng 1 trường hệ thống</strong> (ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!
-                </p>
-              </div>
-
-              {/* Add Mapping Row using CustomSelect */}
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>Tên cột trên Sheets</label>
+              {/* Add Mapping Row at the TOP */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên cột trên Sheets</label>
                   {isFetchingSelectedCols ? (
                     <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
                       <RefreshCw size={14} className="spin" /> Đang quét cột...
@@ -548,21 +532,140 @@ export const Integrations = () => {
                       placeholder="VD: Số Điện Thoại KH"
                       value={newMappingCol}
                       onChange={e => setNewMappingCol(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleAddMapping()}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
                     />
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>Trường hệ thống</label>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Trường hệ thống</label>
                   <CustomSelect 
                     options={SYSTEM_FIELDS} 
                     value={newMappingField} 
                     onChange={(val) => setNewMappingField(String(val))} 
                   />
                 </div>
-                <button className="btn primary" onClick={handleAddMapping} style={{ flexShrink: 0, height: 42, background: 'var(--color-primary)' }}>
-                  <Plus size={16} /> Thêm
-                </button>
+                <div style={{ flex: '1 1 220px' }}>
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
+                  <input
+                    className="form-input"
+                    placeholder="VD: Khung giờ tư vấn"
+                    value={newMappingCustomLabel}
+                    onChange={e => setNewMappingCustomLabel(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                  <button className="btn primary" onClick={handleSaveMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                    {editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>}
+                  </button>
+                  {editingMappingId && (
+                    <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>
+                      Hủy
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+                  <strong>Mẹo cấu hình:</strong> Bạn có thể map <strong>nhiều cột trên Sheets</strong> vào <strong>cùng 1 trường hệ thống</strong> (ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!
+                </p>
+              </div>
+
+              {/* Mappings Table BELOW */}
+              <div className="table-wrap" style={{ marginBottom: '1rem' }}>
+                <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <colgroup>
+                    <col style={{ width: '45%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '8%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Tên cột trên Google Sheets</th>
+                      <th>Trường hiển thị trong Email</th>
+                      <th>Trường hệ thống</th>
+                      <th style={{ width: 60 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selected.mappings || []).map(m => (
+                      <tr key={m.id}>
+                        <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span 
+                            title={m.sheet_column}
+                            style={{ 
+                              fontFamily: 'monospace', 
+                              background: 'var(--color-bg)', 
+                              padding: '4px 10px', 
+                              borderRadius: 6, 
+                              fontSize: '0.875rem', 
+                              border: '1px solid var(--color-border)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'inline-block',
+                              maxWidth: '100%',
+                              verticalAlign: 'middle'
+                            }}
+                          >
+                            {m.sheet_column}
+                          </span>
+                        </td>
+                        <td>
+                          {m.custom_label ? (
+                            <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600 }}>
+                              {m.custom_label}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
+                              Để mặc định (Tên cột)
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
+                            {SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setEditingMappingId(m.id);
+                              setNewMappingCol(m.sheet_column);
+                              setNewMappingField(m.system_field);
+                              setNewMappingCustomLabel(m.custom_label || '');
+                            }}
+                            title="Chỉnh sửa mapping"
+                            style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', background: editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent' }}
+                            onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-warning)'); (e.currentTarget.style.background = 'var(--color-warning-light)'); }}
+                            onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent'); }}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMapping(m.id)}
+                            title="Xóa mapping"
+                            style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
+                            onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {(selected.mappings || []).length === 0 && (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                          Chưa có mapping nào. Hãy thêm cột ở trên.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -709,7 +812,7 @@ export const Integrations = () => {
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
                 <span onClick={() => setShowAddConn(false)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button 
                   className="btn" 
@@ -731,30 +834,10 @@ export const Integrations = () => {
                 <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Ánh xạ các cột trên Google Sheets của bạn vào hệ thống CRM.</p>
               </div>
 
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', background: '#f8fafc', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
-                  <div>Tên cột trên Google Sheets</div>
-                  <div>Trường hệ thống</div>
-                  <div></div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {tempMappings.map((m, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
-                      <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>{m.sheet_col}</div>
-                      <div style={{ color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 700 }}>{SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field}</div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Cột trên Sheets</label>
+              {/* Add Mapping Row at the TOP */}
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Cột trên Sheets</label>
                   {fetchedColumns.length > 0 ? (
                     <CustomSelect 
                       options={fetchedColumns.map(c => ({ value: c, label: c }))} 
@@ -765,18 +848,79 @@ export const Integrations = () => {
                     <input className="form-input" style={{ border: '1px solid #cbd5e1' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Trường hệ thống</label>
+                <div style={{ flex: '1 1 160px' }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Trường hệ thống</label>
                   <CustomSelect options={SYSTEM_FIELDS} value={newMappingField} onChange={v => setNewMappingField(String(v))} />
                 </div>
-                <button onClick={() => { if(newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField }]); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 42, padding: '0 1rem' }}>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
+                  <input
+                    className="form-input"
+                    style={{ border: '1px solid #cbd5e1', height: 38 }}
+                    placeholder="VD: Khung giờ tư vấn"
+                    value={newMappingCustomLabel}
+                    onChange={e => setNewMappingCustomLabel(e.target.value)}
+                  />
+                </div>
+                <button onClick={() => { if(newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField, custom_label: newMappingCustomLabel }]); setNewMappingCustomLabel(''); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 38, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
                   <Plus size={16} /> Thêm
                 </button>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+              {/* Mappings Table BELOW */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', background: '#f8fafc', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
+                  <div>Tên cột trên Sheets</div>
+                  <div>Trường hiển thị trong Email</div>
+                  <div>Trường hệ thống</div>
+                  <div></div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {tempMappings.map((m, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
+                      <div 
+                        title={m.sheet_col}
+                        style={{ 
+                          fontFamily: 'monospace', 
+                          fontSize: '0.875rem', 
+                          color: '#0f172a', 
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          paddingRight: '10px'
+                        }}
+                      >
+                        {m.sheet_col}
+                      </div>
+                      <div>
+                        {m.custom_label ? (
+                          <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '3px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600 }}>
+                            {m.custom_label}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>Mặc định</span>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 700 }}>{SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field}</div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {tempMappings.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.875rem' }}>
+                      Chưa có mapping nào. Hãy thêm cột ở trên.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
                 <span onClick={() => setAddStep(1)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
-                <button className="btn" onClick={() => setAddStep(3)} style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button className="btn" onClick={() => { setEmailTemplate(generateDefaultTemplate(tempMappings)); setAddStep(3); }} style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   Tiếp tục thiết lập Email <ChevronRight size={16} />
                 </button>
               </div>
@@ -809,7 +953,7 @@ export const Integrations = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
                 <span onClick={() => setAddStep(2)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button className="btn" onClick={handleAddConnection} style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   Hoàn tất kết nối <CheckCircle2 size={16} />

@@ -114,8 +114,30 @@ function getNextConsultantInRound($conn, $roundId) {
     $cRes = $cStmt->get_result();
     
     if ($cRes->num_rows === 0) {
+        // Log error when round has no active consultants
+        error_log("DOMATION ERROR: Round ID $roundId has no active consultants! Attempting self-healing fallback...");
+        if (php_sapi_name() === 'cli') {
+            echo "[ERROR] Round ID $roundId has no active consultants! Attempting self-healing fallback...\n";
+        }
+        
+        // Self-healing fallback: Find ANY active consultant in the entire system
+        $fbStmt = $conn->prepare("SELECT id FROM consultants WHERE status = 'active' ORDER BY id ASC LIMIT 1");
+        if ($fbStmt) {
+            $fbStmt->execute();
+            $fbRes = $fbStmt->get_result();
+            if ($fbRes->num_rows > 0) {
+                $fallbackId = $fbRes->fetch_assoc()['id'];
+                error_log("DOMATION SELF-HEAL: Automatically assigned lead to fallback active consultant ID: $fallbackId");
+                if (php_sapi_name() === 'cli') {
+                    echo "[SELF-HEAL] Automatically assigned lead to fallback active consultant ID: $fallbackId\n";
+                }
+                $conn->commit();
+                return $fallbackId;
+            }
+        }
+        
         $conn->rollback();
-        return null; // No active consultants
+        return null; // Absolute failure: no consultants in system
     }
     
     $consultants = [];

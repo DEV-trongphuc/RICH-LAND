@@ -61,7 +61,7 @@ if ($connRes->num_rows === 0) {
 $connectionId = $connRes->fetch_assoc()['id'];
 
 // Fetch field mappings
-$mapStmt = $conn->prepare("SELECT sheet_column, system_field FROM field_mappings WHERE connection_id = ?");
+$mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
 $mapStmt->bind_param("i", $connectionId);
 $mapStmt->execute();
 $mappingsResult = $mapStmt->get_result();
@@ -71,22 +71,28 @@ while($row = $mappingsResult->fetch_assoc()) {
     if (!isset($mappings[$sysField])) {
         $mappings[$sysField] = [];
     }
-    $mappings[$sysField][] = $row['sheet_column'];
+    $mappings[$sysField][] = [
+        'sheet_column' => $row['sheet_column'],
+        'custom_label' => $row['custom_label']
+    ];
 }
 
 // Extract mapped values from incoming data (handle multiple mapped columns by concatenating them)
 function extractMappedValues($mappingsArray, $systemField, $data) {
     if (!isset($mappingsArray[$systemField])) return '';
     $values = [];
-    foreach ($mappingsArray[$systemField] as $colName) {
+    foreach ($mappingsArray[$systemField] as $mapItem) {
+        $colName = $mapItem['sheet_column'];
+        $customLabel = $mapItem['custom_label'];
         if (isset($data[$colName]) && $data[$colName] !== '') {
-            $values[] = $colName . ': ' . $data[$colName];
+            $label = !empty($customLabel) ? $customLabel : $colName;
+            $values[] = $label . ': ' . $data[$colName];
         }
     }
-    // If it's just one value, return the value directly without the column prefix to keep it clean (e.g. for phone/name)
-    // If multiple (like notes), join them.
-    if (count($values) === 1 && $systemField !== 'note') {
-        $colName = $mappingsArray[$systemField][0];
+    // For phone, email, name: return the raw value directly to keep it clean.
+    // For other fields (note, type, source): always keep the Label: Value format so it goes to a new line nicely.
+    if (count($values) === 1 && in_array($systemField, ['phone', 'email', 'name'])) {
+        $colName = $mappingsArray[$systemField][0]['sheet_column'];
         return $data[$colName] ?? '';
     }
     return implode("\n", $values);

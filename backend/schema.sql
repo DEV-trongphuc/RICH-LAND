@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS field_mappings (
     connection_id INT NOT NULL COMMENT 'Sheet Connection mà mapping này thuộc về',
     sheet_column VARCHAR(255) NOT NULL COMMENT 'Tên cột trên Google Sheets',
     system_field VARCHAR(100) NOT NULL COMMENT 'Trường tương ứng trong hệ thống (phone, email, source, type, note, name)',
+    custom_label VARCHAR(255) NULL COMMENT 'Tên hiển thị tùy chỉnh trong Email',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
 );

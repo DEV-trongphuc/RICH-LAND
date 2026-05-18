@@ -1,11 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Users, Edit3, UserPlus, Zap, X, Shield, Check, LayoutGrid, List, Trash2 } from 'lucide-react';
+import { Plus, Users, Edit3, UserPlus, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 
+const AVATAR_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
+  '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
+];
+
+const getColorForName = (name: string) => {
+  if (!name || name === '-') return '#94a3b8';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
 export const Rounds = () => {
   const [rounds, setRounds] = useState<any[]>([]);
   const [consultants, setConsultants] = useState<any[]>([]);
@@ -26,6 +39,22 @@ export const Rounds = () => {
 
   const [searchUser, setSearchUser] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showStartSaleDropdown, setShowStartSaleDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const startSaleDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+      if (startSaleDropdownRef.current && !startSaleDropdownRef.current.contains(event.target as Node)) {
+        setShowStartSaleDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const fetchConsultants = async () => {
     try {
@@ -347,7 +376,7 @@ export const Rounds = () => {
         <div className="overlay-backdrop" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>
           <div 
             className="card"
-            style={{ width: '100%', maxWidth: 540, animation: 'slideUp 0.2s ease-out' }} 
+            style={{ width: '100%', maxWidth: 540, minHeight: 650, animation: 'slideUp 0.2s ease-out', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -359,8 +388,8 @@ export const Rounds = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSave}>
-              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
                 <div className="form-group">
                   <label className="form-label">Tên Vòng <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <input 
@@ -395,55 +424,28 @@ export const Rounds = () => {
                 </div>
 
                 {/* Custom Multi-Select with Avatars */}
-                <div className="form-group" style={{ position: 'relative' }}>
+                <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14}/> Chọn Tư vấn viên vào vòng này</label>
                   
-                  {/* Selected Tags Wrapper */}
-                  <div 
-                    style={{ 
-                      minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', 
-                      padding: '4px', background: 'var(--color-surface)', display: 'flex', flexWrap: 'wrap', gap: 4,
-                      cursor: 'text'
-                    }}
-                    onClick={() => setShowDropdown(true)}
-                  >
-                    {formData.selected_users.map(userId => {
-                      const user = consultants.find(c => c.id === userId);
-                      if (!user) return null;
-                      const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
-                      return (
-                        <div key={user.id} style={{
-                          background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                          padding: '2px 6px 2px 2px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text)',
-                          display: 'flex', alignItems: 'center', gap: 4
-                        }}>
-                          <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700 }}>
-                            {initials}
-                          </span>
-                          {user.name}
-                          <button type="button" onClick={(e) => removeUser(user.id, e)} style={{ color: 'var(--color-text-muted)', padding: 2, borderRadius: '50%', marginLeft: 2, border: 'none', background: 'transparent', cursor: 'pointer' }} onMouseEnter={e=>(e.currentTarget.style.color='var(--color-danger)')} onMouseLeave={e=>(e.currentTarget.style.color='var(--color-text-muted)')}>
-                            <X size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Search Input inline */}
+                  {/* Search Input Box */}
+                  <div style={{ position: 'relative' }}>
                     <input 
-                      style={{ flex: 1, minWidth: 100, border: 'none', outline: 'none', background: 'transparent', padding: '6px 8px', fontSize: '0.875rem' }}
-                      placeholder={formData.selected_users.length === 0 ? "Tìm kiếm TVV..." : ""}
+                      className="form-input" 
+                      style={{ paddingLeft: '2.5rem', background: '#f8fafc', border: '1px solid #cbd5e1' }}
+                      placeholder="Tìm kiếm và chọn Tư vấn viên..."
                       value={searchUser}
                       onChange={e => setSearchUser(e.target.value)}
                       onFocus={() => setShowDropdown(true)}
                     />
+                    <div style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}><Search size={16} /></div>
                   </div>
 
                   {/* Dropdown Options */}
                   {showDropdown && (
                     <div style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
+                      position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, zIndex: 50,
                       background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                      boxShadow: 'var(--shadow-lg)', maxHeight: 200, overflowY: 'auto'
+                      boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 180, overflowY: 'auto'
                     }}>
                       {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
                         const isSelected = formData.selected_users.includes(user.id);
@@ -461,7 +463,7 @@ export const Rounds = () => {
                             onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
                             onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: getColorForName(user.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>
                               {initials}
                             </div>
                             <div style={{ flex: 1 }}>
@@ -479,23 +481,125 @@ export const Rounds = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Selected Consultants List Block */}
+                  {formData.selected_users.length > 0 && (
+                    <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 150, overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Tư vấn viên đã chọn ({formData.selected_users.length}):</div>
+                      {formData.selected_users.map(userId => {
+                        const user = consultants.find(c => c.id === userId);
+                        if (!user) return null;
+                        const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                        return (
+                          <div key={user.id} style={{
+                            display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem',
+                            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
+                            transition: 'all 0.2s'
+                          }}>
+                            <div style={{ 
+                              width: 28, height: 28, borderRadius: '50%', 
+                              background: getColorForName(user.name) + '20', color: getColorForName(user.name), 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                              fontSize: '0.7rem', fontWeight: 700 
+                            }}>
+                              {initials}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user.name}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={(e) => removeUser(user.id, e)} 
+                              style={{ 
+                                color: 'var(--color-text-muted)', padding: 4, borderRadius: 6, 
+                                border: 'none', background: 'transparent', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s'
+                              }} 
+                              onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'var(--color-danger-light)'; }} 
+                              onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {formData.selected_users.length > 0 && (
                   <div className="form-group">
                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14}/> Chọn Sale bắt đầu (Tuỳ chọn)</label>
-                    <select 
-                      className="form-input" 
-                      value={formData.starting_consultant_id || ''}
-                      onChange={e => setFormData({ ...formData, starting_consultant_id: e.target.value ? parseInt(e.target.value) : null })}
-                      style={{ padding: '0.75rem', appearance: 'auto' }}
-                    >
-                      <option value="">-- Mặc định (Theo thứ tự thêm vào) --</option>
-                      {formData.selected_users.map(id => {
-                        const c = consultants.find(x => x.id === id);
-                        return c ? <option key={id} value={id}>{c.name}</option> : null;
-                      })}
-                    </select>
+                    <div ref={startSaleDropdownRef} style={{ position: 'relative' }}>
+                      <div 
+                        className="form-input" 
+                        onClick={() => setShowStartSaleDropdown(!showStartSaleDropdown)}
+                        style={{ padding: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc' }}
+                      >
+                        {formData.starting_consultant_id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {(() => {
+                               const c = consultants.find(x => x.id === formData.starting_consultant_id);
+                               if (!c) return '-- Mặc định (Theo thứ tự thêm vào) --';
+                               const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                               return (
+                                 <>
+                                   <div style={{ width: 20, height: 20, borderRadius: '50%', background: getColorForName(c.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>
+                                     {initials}
+                                   </div>
+                                   <span style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.name}</span>
+                                 </>
+                               )
+                            })()}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>-- Mặc định (Theo thứ tự thêm vào) --</span>
+                        )}
+                        <span style={{ transform: showStartSaleDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-text-muted)', display: 'inline-block', fontSize: '0.75rem' }}>▼</span>
+                      </div>
+                      
+                      {showStartSaleDropdown && (
+                        <div style={{
+                          position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, zIndex: 50,
+                          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                          boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 150, overflowY: 'auto'
+                        }}>
+                          <div 
+                            onClick={() => { setFormData({ ...formData, starting_consultant_id: null }); setShowStartSaleDropdown(false); }}
+                            style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)', fontSize: '0.875rem', background: formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                            onMouseLeave={e => e.currentTarget.style.background = formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent'}
+                          >
+                            -- Mặc định (Theo thứ tự thêm vào) --
+                          </div>
+                          {formData.selected_users.map(id => {
+                            const c = consultants.find(x => x.id === id);
+                            if (!c) return null;
+                            const isSelected = formData.starting_consultant_id === id;
+                            const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                            return (
+                              <div 
+                                key={id}
+                                onClick={() => { setFormData({ ...formData, starting_consultant_id: id }); setShowStartSaleDropdown(false); }}
+                                style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'transparent', transition: 'background 0.1s' }}
+                                onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: getColorForName(c.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>
+                                  {initials}
+                                </div>
+                                <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                                  {c.name}
+                                </div>
+                                {isSelected && <Check size={14} color="var(--color-primary)" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                       Người được chọn sẽ là người nhận Data tiếp theo của vòng này.
                     </p>
@@ -504,7 +608,7 @@ export const Rounds = () => {
 
               </div>
 
-              <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
                 <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>Hủy bỏ</button>
                 <button type="submit" className="btn primary">
                   {editingRound ? 'Cập nhật' : 'Thêm mới'}

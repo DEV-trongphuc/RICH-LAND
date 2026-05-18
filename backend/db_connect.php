@@ -16,3 +16,9 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8mb4");
 
+// Auto-migrate: ensure custom_label column exists in field_mappings
+$checkCol = $conn->query("SHOW COLUMNS FROM field_mappings LIKE 'custom_label'");
+if ($checkCol && $checkCol->num_rows === 0) {
+    $conn->query("ALTER TABLE field_mappings ADD COLUMN custom_label VARCHAR(255) NULL COMMENT 'Tên hiển thị tùy chỉnh trong Email'");
+}
+
