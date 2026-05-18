@@ -192,19 +192,21 @@ function getNextConsultantInRound($conn, $roundId) {
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     
-    // 2. Get active consultants in this round with their rules
-    $cStmt = $conn->prepare("SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count FROM round_consultants rc JOIN consultants c ON rc.consultant_id = c.id WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' ORDER BY c.id ASC");
+    // 2. Get active consultants with ALL rules (include data_per_turn, current_turn_remaining)
+    $cStmt = $conn->prepare("
+        SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+               rc.data_per_turn, rc.current_turn_remaining
+        FROM round_consultants rc 
+        JOIN consultants c ON rc.consultant_id = c.id 
+        WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' 
+        ORDER BY c.id ASC
+    ");
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
     
     if ($cRes->num_rows === 0) {
-        // Log error when round has no active consultants
-        error_log("DOMATION ERROR: Round ID $roundId has no active consultants! Attempting self-healing fallback...");
-        if (php_sapi_name() === 'cli') {
-            echo "[ERROR] Round ID $roundId has no active consultants! Attempting self-healing fallback...\n";
-        }
-        
+        error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
         // Self-healing fallback: Find ANY active consultant in the entire system
         $fbStmt = $conn->prepare("SELECT id FROM consultants WHERE status = 'active' ORDER BY id ASC LIMIT 1");
         if ($fbStmt) {
@@ -212,49 +214,56 @@ function getNextConsultantInRound($conn, $roundId) {
             $fbRes = $fbStmt->get_result();
             if ($fbRes->num_rows > 0) {
                 $fallbackId = $fbRes->fetch_assoc()['id'];
-                error_log("DOMATION SELF-HEAL: Automatically assigned lead to fallback active consultant ID: $fallbackId");
-                if (php_sapi_name() === 'cli') {
-                    echo "[SELF-HEAL] Automatically assigned lead to fallback active consultant ID: $fallbackId\n";
-                }
                 $conn->commit();
                 return $fallbackId;
             }
         }
-        
         $conn->rollback();
-        return null; // Absolute failure: no consultants in system
+        return null;
     }
     
     $consultants = [];
     $compensatedConsultant = null;
+    $midTurnConsultant = null;  // Consultant who is mid-turn (current_turn_remaining > 0)
     
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
-        // Check for compensation priority
+        // Priority 1: Compensation (error data replacement)
         if (empty($compensatedConsultant) && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
+        // Priority 2: Mid-turn (has remaining data_per_turn slots)
+        if (empty($midTurnConsultant) && intval($row['current_turn_remaining']) > 0) {
+            $midTurnConsultant = $row;
+        }
     }
     
-    // 2.5 IF ANYONE NEEDS COMPENSATION, ASSIGN IMMEDIATELY AND SKIP ROUND ROBIN
+    // === PRIORITY 1: COMPENSATION — Ai cần được đền bù thì được giao ngay ===
     if ($compensatedConsultant) {
         $nextId = $compensatedConsultant['id'];
-        
-        // NEW-04 fix: prepared statement instead of raw concat
         $compStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count - 1, skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
         $compStmt->bind_param("ii", $roundId, $nextId);
         $compStmt->execute();
-        
-        // Update last assigned so normal round-robin continues from here next time
         $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
         $updStmt->bind_param("ii", $nextId, $roundId);
         $updStmt->execute();
-        
+        $conn->commit();
+        return $nextId;
+    }
+
+    // === PRIORITY 2: MID-TURN — Đang trong lượt nhận nhiều data, tiếp tục giao cho họ ===
+    if ($midTurnConsultant) {
+        $nextId = $midTurnConsultant['id'];
+        // Decrement remaining counter
+        $midStmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = current_turn_remaining - 1 WHERE round_id = ? AND consultant_id = ?");
+        $midStmt->bind_param("ii", $roundId, $nextId);
+        $midStmt->execute();
+        // Note: do NOT update last_assigned here — keeps position for proper round-robin next turn
         $conn->commit();
         return $nextId;
     }
     
-    // 3. Find next index based on last_assigned_consultant_id
+    // === PRIORITY 3: ROUND-ROBIN — Find next consultant by receive_ratio ===
     $nextIdx = 0;
     if ($lastAssignedId) {
         foreach ($consultants as $i => $c) {
@@ -268,37 +277,45 @@ function getNextConsultantInRound($conn, $roundId) {
     $startIdx = $nextIdx;
     $chosenConsultant = null;
     
-    // 4. Check special rules (receive_ratio)
-    $skipResetStmt   = $conn->prepare("UPDATE round_consultants SET skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
-    $skipIncrStmt    = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
+    $skipResetStmt = $conn->prepare("UPDATE round_consultants SET skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
+    $skipIncrStmt  = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
     do {
         $candidate = $consultants[$nextIdx];
-        $ratio = max(1, (int)($candidate['receive_ratio'] ?? 1));
+        $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
         $skipCount = (int)($candidate['skip_count'] ?? 0);
         
         if ($ratio == 1 || $skipCount >= $ratio - 1) {
             $chosenConsultant = $candidate;
-            // NEW-04 fix: use prepared statement
             $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
             $skipResetStmt->execute();
             break;
         } else {
-            // Skip! Increment count and move to next
             $skipIncrStmt->bind_param("ii", $roundId, $candidate['id']);
             $skipIncrStmt->execute();
             $nextIdx = ($nextIdx + 1) % count($consultants);
         }
     } while ($nextIdx != $startIdx);
     
-    // Fallback if everyone is skipped (e.g. all have ratio > 1 and all skip simultaneously)
+    // Fallback: everyone is skipped simultaneously → pick start
     if (!$chosenConsultant) {
         $chosenConsultant = $consultants[$startIdx];
         $skipResetStmt->bind_param("ii", $roundId, $chosenConsultant['id']);
         $skipResetStmt->execute();
     }
     
-    // 5. Update last assigned
-    $nextId = $chosenConsultant['id'];
+    $nextId    = $chosenConsultant['id'];
+    $dataPerTurn = max(1, (int)($chosenConsultant['data_per_turn'] ?? 1));
+    
+    // If data_per_turn > 1, set current_turn_remaining = dataPerTurn - 1
+    // (minus 1 because this call already counts as the first assignment)
+    if ($dataPerTurn > 1) {
+        $setTurnStmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = ? WHERE round_id = ? AND consultant_id = ?");
+        $remaining = $dataPerTurn - 1;
+        $setTurnStmt->bind_param("iii", $remaining, $roundId, $nextId);
+        $setTurnStmt->execute();
+    }
+    
+    // Update last_assigned for round-robin tracking
     $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
     $updStmt->bind_param("ii", $nextId, $roundId);
     $updStmt->execute();

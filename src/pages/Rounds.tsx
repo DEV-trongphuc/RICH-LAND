@@ -38,7 +38,8 @@ export const Rounds = () => {
     cc_emails: '',
     selected_users: [] as number[],
     starting_consultant_id: null as number | null,
-    ratios: {} as Record<string, number>
+    ratios: {} as Record<string, number>,
+    data_per_turns: {} as Record<string, number>
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -90,7 +91,7 @@ export const Rounds = () => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {} });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {} });
     setModalOpen(true);
   };
 
@@ -108,7 +109,8 @@ export const Rounds = () => {
       cc_emails: r.cc_emails || '',
       selected_users: matchedIds,
       starting_consultant_id: r.next_consultant_id ? parseInt(r.next_consultant_id) : null,
-      ratios: r.ratios || {}
+      ratios: r.ratios || {},
+      data_per_turns: r.data_per_turns || {}
     });
     setModalOpen(true);
     fetchReports(r.id);
@@ -692,18 +694,41 @@ export const Rounds = () => {
                   </button>
                 </div>
                 
-                {/* Special Rule Ratio Input */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px dashed #cbd5e1', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Nhận 1 Data sau mỗi</span>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="99" 
-                    value={formData.ratios[user.id] || 1} 
-                    onChange={e => setFormData({...formData, ratios: {...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1)}})}
-                    style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
-                  />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>vòng {formData.ratios[user.id] > 1 ? '(Bỏ qua ' + ((formData.ratios[user.id] || 1) - 1) + ' vòng)' : '(Mặc định)'}</span>
+                {/* Special Rule: Ratio + Data Per Turn */}
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                  {/* Row 1: Data per turn */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Nhận</span>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="20" 
+                      value={formData.data_per_turns[user.id] || 1} 
+                      onChange={e => setFormData({...formData, data_per_turns: {...formData.data_per_turns, [user.id]: Math.max(1, parseInt(e.target.value) || 1)}})}
+                      style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: '#059669', fontWeight: 700, background: '#ecfdf5' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Data liên tiếp mỗi lượt, sau mỗi</span>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="99" 
+                      value={formData.ratios[user.id] || 1} 
+                      onChange={e => setFormData({...formData, ratios: {...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1)}})}
+                      style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>vòng</span>
+                  </div>
+                  {/* Summary label */}
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                    {(() => {
+                      const dpt = formData.data_per_turns[user.id] || 1;
+                      const rat = formData.ratios[user.id] || 1;
+                      if (dpt === 1 && rat === 1) return '⚡ Mặc định: nhận 1 data, luân phiên đều';
+                      if (dpt > 1 && rat === 1) return `⚡ Nhận ${dpt} data liên tiếp rồi chuyển sang người tiếp theo`;
+                      if (dpt === 1 && rat > 1) return `⚡ Chờ ${rat - 1} vòng rồi nhận 1 data`;
+                      return `⚡ Chờ ${rat - 1} vòng, rồi nhận ${dpt} data liên tiếp`;
+                    })()}
+                  </div>
                 </div>
               </div>
             );

@@ -114,4 +114,16 @@ if ($chkIdx5 && $chkIdx5->num_rows === 0) {
     $conn->query("ALTER TABLE data_reports ADD INDEX `idx_round_id` (`round_id`)");
 }
 
+// Auto-migrate: data_per_turn — bao nhiêu data mỗi lần đến lượt
+$checkColDPT = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'data_per_turn'");
+if ($checkColDPT && $checkColDPT->num_rows === 0) {
+    $conn->query("ALTER TABLE round_consultants ADD COLUMN data_per_turn INT DEFAULT 1 COMMENT 'Số Data nhận mỗi lần đến lượt'");
+}
+
+// Auto-migrate: current_turn_remaining — còn bao nhiêu data trong lượt hiện tại cần giao
+$checkColCTR = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'current_turn_remaining'");
+if ($checkColCTR && $checkColCTR->num_rows === 0) {
+    $conn->query("ALTER TABLE round_consultants ADD COLUMN current_turn_remaining INT DEFAULT 0 COMMENT 'Data còn lại trong lượt hiện tại'");
+}
+
 ?>

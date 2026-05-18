@@ -74,7 +74,7 @@ $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login and test_email
 // Public endpoints (no auth required)
-$publicActions = ['login', 'test_email', 'submit_report'];
+$publicActions = ['login', 'test_email', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -317,14 +317,17 @@ switch ($action) {
             $row['next_consultant_id'] = $nextId;
             
             // Fetch ratios and compensation counts
-            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, compensation_count FROM round_consultants WHERE round_id = " . $row['id']);
+            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id = " . $row['id']);
             $ratios = [];
+            $perTurns = [];
             $compensations = [];
             while ($rr = $ratioRes->fetch_assoc()) {
                 $ratios[$rr['consultant_id']] = (int)$rr['receive_ratio'];
+                $perTurns[$rr['consultant_id']] = (int)($rr['data_per_turn'] ?? 1);
                 $compensations[$rr['consultant_id']] = (int)$rr['compensation_count'];
             }
             $row['ratios'] = $ratios;
+            $row['data_per_turns'] = $perTurns;
             $row['compensations'] = $compensations;
             
             $data[] = $row;
@@ -362,13 +365,15 @@ switch ($action) {
             $stmt->execute();
             $roundId = $conn->insert_id;
             
-            $ratios = $input['ratios'] ?? [];
+            $ratios    = $input['ratios'] ?? [];
+            $per_turns = $input['data_per_turns'] ?? [];
             
             if (!empty($consultants)) {
-                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?)");
                 foreach($consultants as $cid) {
-                    $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
-                    $stmtC->bind_param("iii", $roundId, $cid, $ratio);
+                    $ratio    = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $perTurn  = isset($per_turns[$cid]) ? max(1, (int)$per_turns[$cid]) : 1;
+                    $stmtC->bind_param("iiii", $roundId, $cid, $ratio, $perTurn);
                     $stmtC->execute();
                 }
             }
@@ -429,13 +434,15 @@ switch ($action) {
                 $stmtDel->execute();
             }
             
-            $ratios = $input['ratios'] ?? [];
+            $ratios    = $input['ratios'] ?? [];
+            $per_turns = $input['data_per_turns'] ?? [];
             
             if (!empty($consultants)) {
-                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio)");
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), current_turn_remaining = 0");
                 foreach($consultants as $cid) {
-                    $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
-                    $stmtC->bind_param("iii", $id, $cid, $ratio);
+                    $ratio   = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $perTurn = isset($per_turns[$cid]) ? max(1, (int)$per_turns[$cid]) : 1;
+                    $stmtC->bind_param("iiii", $id, $cid, $ratio, $perTurn);
                     $stmtC->execute();
                 }
             }
@@ -701,21 +708,88 @@ switch ($action) {
         break;
 
     // --- REPORT DATA ENDPOINTS ---
+    case 'get_report_context':
+        // PUBLIC: Load lead/consultant/round info for the report page
+        $lead_id  = (int)($_GET['lead_id']  ?? 0);
+        $sale_id  = (int)($_GET['sale_id']  ?? 0);
+        $round_id = (int)($_GET['round_id'] ?? 0);
+        
+        if (!$lead_id || !$sale_id || !$round_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu tham số']);
+            break;
+        }
+        
+        // Verify ownership: lead must be assigned to this consultant in this round
+        $verifyStmt = $conn->prepare("
+            SELECT dl.id, l.name as lead_name, l.phone as lead_phone, l.source, l.note,
+                   c.name as consultant_name, c.email as consultant_email,
+                   dr.round_name, dl.received_at
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            JOIN consultants c ON dl.assigned_to = c.id
+            JOIN distribution_rounds dr ON dl.round_id = dr.id
+            WHERE dl.lead_id = ? AND dl.assigned_to = ? AND dl.round_id = ?
+            ORDER BY dl.received_at DESC LIMIT 1
+        ");
+        $verifyStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
+        $verifyStmt->execute();
+        $ctx = $verifyStmt->get_result()->fetch_assoc();
+        
+        if (!$ctx) {
+            echo json_encode(['success' => false, 'message' => 'Đường dẫn không hợp lệ hoặc thông tin không khớp với hệ thống.']);
+            break;
+        }
+        
+        // Check if already has a pending report
+        $pendingChk = $conn->prepare("SELECT id, status FROM data_reports WHERE lead_id=? AND consultant_id=? AND round_id=? ORDER BY created_at DESC LIMIT 1");
+        $pendingChk->bind_param("iii", $lead_id, $sale_id, $round_id);
+        $pendingChk->execute();
+        $existingReport = $pendingChk->get_result()->fetch_assoc();
+        
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'lead_name'        => $ctx['lead_name'],
+                'lead_phone'       => $ctx['lead_phone'],
+                'lead_source'      => $ctx['source'],
+                'lead_note'        => $ctx['note'],
+                'consultant_name'  => $ctx['consultant_name'],
+                'consultant_email' => $ctx['consultant_email'],
+                'round_name'       => $ctx['round_name'],
+                'assigned_at'      => $ctx['received_at'],
+                'existing_report'  => $existingReport ? $existingReport['status'] : null,
+            ]
+        ]);
+        break;
+
     case 'submit_report':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $lead_id = (int)($input['lead_id'] ?? 0);
-        $sale_id = (int)($input['sale_id'] ?? 0);
+        $input    = json_decode(file_get_contents('php://input'), true);
+        $lead_id  = (int)($input['lead_id']  ?? 0);
+        $sale_id  = (int)($input['sale_id']  ?? 0);
         $round_id = (int)($input['round_id'] ?? 0);
-        $reason = $input['reason'] ?? '';
+        $reason   = trim($input['reason'] ?? '');
         
         if (!$lead_id || !$sale_id || !$round_id || empty($reason)) {
             echo json_encode(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);
             break;
         }
         
-        // Prevent duplicate pending reports for same lead and sale
-        $checkStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id=? AND consultant_id=? AND status='pending'");
-        $checkStmt->bind_param("ii", $lead_id, $sale_id);
+        // SECURITY: Verify ownership — lead must truly belong to this consultant in this round
+        $verifyStmt = $conn->prepare("
+            SELECT id FROM distribution_logs 
+            WHERE lead_id = ? AND assigned_to = ? AND round_id = ? 
+            LIMIT 1
+        ");
+        $verifyStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
+        $verifyStmt->execute();
+        if ($verifyStmt->get_result()->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Thông tin không hợp lệ: Data này không thuộc về bạn trong vòng này.']);
+            break;
+        }
+        
+        // Prevent duplicate pending reports for same lead + consultant + round
+        $checkStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id=? AND consultant_id=? AND round_id=? AND status='pending'");
+        $checkStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
         $checkStmt->execute();
         if ($checkStmt->get_result()->num_rows > 0) {
             echo json_encode(['success' => false, 'message' => 'Bạn đã báo cáo Lead này và đang chờ duyệt!']);
@@ -730,6 +804,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Lỗi lưu báo cáo']);
         }
         break;
+
 
     case 'get_reports':
         // NEW-01 fix: use prepared statement for round_id filter (was SQL injection via concatenation)
