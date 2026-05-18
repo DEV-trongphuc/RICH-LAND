@@ -135,10 +135,15 @@ if ($lockRes['get_lock'] != 1) {
     exit();
 }
 
-// Ensure lock is released even if script fails
+// BUG-CRIT-01 fix: Dùng prepared statement cho RELEASE_LOCK, tránh SQL Injection
 register_shutdown_function(function() use ($conn, $lockKey) {
     if ($conn) {
-        $conn->query("SELECT RELEASE_LOCK('$lockKey')");
+        $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+        if ($relStmt) {
+            $relStmt->bind_param("s", $lockKey);
+            $relStmt->execute();
+            $relStmt->close();
+        }
     }
 });
 
@@ -155,7 +160,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         $conn->commit();
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: " . "H? th?ng dang b?n, vui l�ng th? l?i sau."]);
+        echo json_encode(["success" => false, "message" => "Lá»—i Database: " . "H? th?ng dang b?n, vui lòng th? l?i sau."]);
         exit();
     }
     echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < 6 months."]);
@@ -194,7 +199,7 @@ try {
     $conn->commit();
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Lỗi Database: " . "H? th?ng dang b?n, vui l�ng th? l?i sau."]);
+    echo json_encode(["success" => false, "message" => "Lá»—i Database: " . "H? th?ng dang b?n, vui lòng th? l?i sau."]);
     exit();
 }
 
@@ -203,8 +208,32 @@ if ($status === 'unassigned' || $status === 'pending') {
     exit();
 }
 
-// TODO: Notify via email
+// Send success response immediately to prevent Google Sheets Webhook timeout
+$response = [
+    "success" => true,
+    "status" => "assigned",
+    "assignedTo" => $assignedConsultantId,
+    "roundId" => $targetRoundId
+];
+
+if (function_exists('fastcgi_finish_request')) {
+    echo json_encode($response);
+    fastcgi_finish_request();
+} else {
+    ignore_user_abort(true);
+    ob_start();
+    echo json_encode($response);
+    $size = ob_get_length();
+    header("Content-Length: $size");
+    header("Connection: close");
+    ob_end_flush();
+    @ob_flush();
+    flush();
+}
+
+// Background Task: Notify via email (this takes 2-5s so it's done after responding to webhook)
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/zalo_bot.php';
 
 $ccEmails = '';
 $roundName = '';
@@ -227,14 +256,9 @@ $cRes = $stmt->get_result();
 if ($cRes->num_rows > 0) {
     $c = $cRes->fetch_assoc();
     sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
+    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
 }
 
-echo json_encode([
-    "success" => true,
-    "status" => "assigned",
-    "assignedTo" => $assignedConsultantId,
-    "roundId" => $targetRoundId
-]);
-
 $conn->close();
+
 

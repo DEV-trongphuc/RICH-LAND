@@ -1,6 +1,52 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ================================================
+   MOBILE RESPONSIVE OVERRIDES (SAFE)
+   ================================================ */
+@media (max-width: 1024px) {
+  .responsive-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .responsive-grid-6-4 { grid-template-columns: 1fr !important; }
+  .responsive-grid-5 { grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; }
+}
+
+@media (max-width: 768px) {
+  .responsive-grid-4 { grid-template-columns: 1fr !important; }
+  .responsive-grid-1-1 { grid-template-columns: 1fr !important; }
+  .responsive-filter-row { flex-direction: column !important; }
+  .responsive-filter-item { width: 100% !important; }
+  .responsive-filter-item > div { width: 100% !important; }
+  .responsive-flex-row { flex-direction: column !important; align-items: stretch !important; }
+  .responsive-btn-full { width: 100% !important; justify-content: center !important; }
+  .responsive-table-wrap { overflow-x: auto !important; }
+  .responsive-mapping-header, .responsive-mapping-row { min-width: 600px !important; }
+  .responsive-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+  .responsive-hide-mobile { display: none !important; }
+  .responsive-search-box { min-width: 40px !important; justify-content: center !important; }
+  .responsive-main { padding: 1rem !important; }
+  .responsive-grid-3 { grid-template-columns: 1fr !important; }
+  .responsive-grid-auto-400 { grid-template-columns: 1fr !important; }
+  
+  .responsive-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+  }
+  .responsive-sidebar.responsive-sidebar-open {
+    transform: translateX(0);
+  }
+}
+
+.responsive-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 15;
+}
+
+/* ================================================
    MINTH CRM - Design System
    ================================================ */
 :root {

@@ -15,6 +15,8 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset("utf8mb4");
+// BUG-FIX: Đảm bảo MySQL chạy cùng múi giờ với PHP để hàm NOW(), CURDATE() thống kê chính xác
+$conn->query("SET time_zone = '+07:00'");
 
 // Auto-migrate: ensure custom_label column exists in field_mappings
 $checkCol = $conn->query("SHOW COLUMNS FROM field_mappings LIKE 'custom_label'");
@@ -137,5 +139,76 @@ $checkColCTR = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'current_t
 if ($checkColCTR && $checkColCTR->num_rows === 0) {
     $conn->query("ALTER TABLE round_consultants ADD COLUMN current_turn_remaining INT DEFAULT 0 COMMENT 'Data còn lại trong lượt hiện tại'");
 }
+
+// distribution_logs duplicate check index
+$chkIdxDupLog = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_duplicate_check'");
+if ($chkIdxDupLog && $chkIdxDupLog->num_rows === 0) {
+    $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_duplicate_check` (`lead_id`, `assigned_to`, `round_id`)");
+}
+
+// data_reports lookup index
+$chkIdxReportLook = $conn->query("SHOW INDEX FROM data_reports WHERE Key_name='idx_report_lookup'");
+if ($chkIdxReportLook && $chkIdxReportLook->num_rows === 0) {
+    $conn->query("ALTER TABLE data_reports ADD INDEX `idx_report_lookup` (`lead_id`, `consultant_id`, `round_id`)");
+}
+
+// distribution_logs stats group index
+$chkIdxStatsGroup = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_stats_group'");
+if ($chkIdxStatsGroup && $chkIdxStatsGroup->num_rows === 0) {
+    $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_stats_group` (`received_at`, `status`)");
+}
+
+// Auto-migrate: thêm cột email vào accounts để đăng nhập bằng email
+$chkAccEmail = $conn->query("SHOW COLUMNS FROM accounts LIKE 'email'");
+if ($chkAccEmail && $chkAccEmail->num_rows === 0) {
+    $conn->query("ALTER TABLE accounts ADD COLUMN email VARCHAR(255) NULL UNIQUE COMMENT 'Email đăng nhập (bắt buộc với admin thường, tùy chọn với Super Admin)'");
+}
+
+// Auto-migrate: ticket_notify_settings bảng cấu hình ai nhận email ticket
+$conn->query("CREATE TABLE IF NOT EXISTS ticket_notify_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id INT NOT NULL,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_account (account_id)
+)");
+
+// Auto-migrate: thêm cột zalo_chat_id vào accounts
+$chkAccZalo = $conn->query("SHOW COLUMNS FROM accounts LIKE 'zalo_chat_id'");
+if ($chkAccZalo && $chkAccZalo->num_rows === 0) {
+    $conn->query("ALTER TABLE accounts ADD COLUMN zalo_chat_id VARCHAR(255) NULL COMMENT 'Zalo Bot Chat ID'");
+}
+
+// Auto-migrate: thêm cột reject_reason vào data_reports
+$chkRejectReason = $conn->query("SHOW COLUMNS FROM data_reports LIKE 'reject_reason'");
+if ($chkRejectReason && $chkRejectReason->num_rows === 0) {
+    $conn->query("ALTER TABLE data_reports ADD COLUMN reject_reason VARCHAR(255) NULL COMMENT 'Lý do từ chối ticket'");
+}
+
+// Auto-migrate: thêm cột is_confirmed và confirm_token vào accounts
+$chkAccConfirmed = $conn->query("SHOW COLUMNS FROM accounts LIKE 'is_confirmed'");
+if ($chkAccConfirmed && $chkAccConfirmed->num_rows === 0) {
+    $conn->query("ALTER TABLE accounts ADD COLUMN is_confirmed TINYINT(1) DEFAULT 0 COMMENT 'Xác nhận Email'");
+    $conn->query("ALTER TABLE accounts ADD COLUMN confirm_token VARCHAR(64) NULL COMMENT 'Token xác nhận Email'");
+    // Đánh dấu các tài khoản cũ là đã xác nhận
+    $conn->query("UPDATE accounts SET is_confirmed = 1");
+}
+
+// Auto-migrate: id sale migrate lên 4 chữ số
+$chkMaxId = $conn->query("SELECT MAX(id) as max_id FROM consultants");
+if ($chkMaxId) {
+    $row = $chkMaxId->fetch_assoc();
+    if (isset($row['max_id']) && $row['max_id'] > 0 && $row['max_id'] < 1000) {
+        $conn->query("SET FOREIGN_KEY_CHECKS=0;");
+        $offset = 1000;
+        $conn->query("UPDATE consultants SET id = id + $offset WHERE id < 1000");
+        $conn->query("UPDATE data_reports SET consultant_id = consultant_id + $offset WHERE consultant_id < 1000");
+        $conn->query("UPDATE distribution_logs SET assigned_to = assigned_to + $offset WHERE assigned_to < 1000");
+        $conn->query("UPDATE distribution_rounds SET last_assigned_consultant_id = last_assigned_consultant_id + $offset WHERE last_assigned_consultant_id < 1000");
+        $conn->query("UPDATE leads SET assigned_to = assigned_to + $offset WHERE assigned_to < 1000");
+        $conn->query("UPDATE round_consultants SET consultant_id = consultant_id + $offset WHERE consultant_id < 1000");
+        $conn->query("SET FOREIGN_KEY_CHECKS=1;");
+    }
+}
+$conn->query("ALTER TABLE consultants AUTO_INCREMENT = 1000;");
 
 ?>

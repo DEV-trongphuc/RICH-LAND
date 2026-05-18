@@ -17,7 +17,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
 ];
 
-export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolean; onToggleCollapse: () => void }) => {
+export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }: { isCollapsed: boolean; onToggleCollapse: () => void; isMobileOpen?: boolean; onMobileClose?: () => void }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [pendingTickets, setPendingTickets] = useState(0);
@@ -53,13 +53,20 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
   };
 
   return (
-    <aside style={{
+    <>
+      {isMobileOpen && (
+        <div 
+          className="responsive-sidebar-overlay"
+          onClick={onMobileClose}
+        />
+      )}
+    <aside className={`responsive-sidebar ${isMobileOpen ? 'responsive-sidebar-open' : ''}`} style={{
       width: isCollapsed ? 72 : 260,
       background: '#1e1246',
       color: 'white',
       display: 'flex',
       flexDirection: 'column',
-      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       flexShrink: 0,
       position: 'relative',
       zIndex: 20,
@@ -97,6 +104,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
       {/* Collapse Button */}
       <button
         onClick={onToggleCollapse}
+        className="responsive-hide-mobile"
         style={{
           position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
           width: 24, height: 24, borderRadius: '50%', background: 'white', color: '#1e1246',
@@ -244,5 +252,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
       {/* Pulse animation */}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }`}</style>
     </aside>
+    </>
   );
 };

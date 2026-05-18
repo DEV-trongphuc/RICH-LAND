@@ -15,6 +15,8 @@ $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
 
 // Helper for routing
 require_once __DIR__ . '/webhook_logic.php'; // We will extract routing logic into a separate file or just redefine them if not too complex. But better to extract.
+// BUG-03 fix: require_once mailer NGOÀI vòng lặp, tránh kiểm tra filesystem mỗi iteration
+require_once __DIR__ . '/mailer.php';
 
 if (!function_exists('logSync')) {
     function logSync($msg) {
@@ -110,6 +112,7 @@ foreach ($connections as $connItem) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -126,6 +129,19 @@ foreach ($connections as $connItem) {
         $headers = [];
         $syncedCount = 0;
         $rowCount = 0;
+
+        // Fetch all existing hashes to prevent N+1 Queries (Bottleneck Fix)
+        $hashMap = [];
+        $existingHashesStmt = $conn->prepare("SELECT row_hash FROM sheet_sync_records WHERE connection_id = ?");
+        $existingHashesStmt->bind_param("i", $connItem['id']);
+        $existingHashesStmt->execute();
+        $existingHashesRes = $existingHashesStmt->get_result();
+        while ($hRow = $existingHashesRes->fetch_assoc()) {
+            $hashMap[$hRow['row_hash']] = true;
+        }
+
+        // Prepare record statement once
+        $recordStmt = $conn->prepare("INSERT IGNORE INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
 
         while (($row = fgetcsv($stream)) !== FALSE) {
             $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
@@ -146,10 +162,9 @@ foreach ($connections as $connItem) {
 
             // Calculate MD5 hash of this row to check if already synced
             $rowHash = md5(json_encode($rowData));
-            $hashStmt = $conn->prepare("SELECT 1 FROM sheet_sync_records WHERE connection_id = ? AND row_hash = ?");
-            $hashStmt->bind_param("is", $connItem['id'], $rowHash);
-            $hashStmt->execute();
-            if ($hashStmt->get_result()->num_rows > 0) {
+            
+            // O(1) Memory check instead of DB query
+            if (isset($hashMap[$rowHash])) {
                 continue; // Row is EXACTLY same as before, skip completely!
             }
 
@@ -181,9 +196,9 @@ foreach ($connections as $connItem) {
                 logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months via cron_sync.');
                 
                 // Record hash so we don't spam duplicate logs on next run
-                $recordStmt = $conn->prepare("INSERT INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
                 $recordStmt->bind_param("is", $connItem['id'], $rowHash);
                 $recordStmt->execute();
+                $hashMap[$rowHash] = true;
                 
                 continue;
             }
@@ -217,9 +232,9 @@ foreach ($connections as $connItem) {
                 logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
                 
                 // Record hash so we don't process this row again on next cron run
-                $recordStmt = $conn->prepare("INSERT INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
                 $recordStmt->bind_param("is", $connItem['id'], $rowHash);
                 $recordStmt->execute();
+                $hashMap[$rowHash] = true;
                 
                 $conn->commit();
             } catch (Exception $txE) {
@@ -230,8 +245,7 @@ foreach ($connections as $connItem) {
 
             // Only notify sale when successfully assigned
             if ($cronStatus === 'assigned' && !empty($leadId)) {
-                // Notify Sale
-                require_once __DIR__ . '/mailer.php';
+                // Notify Sale (mailer.php already loaded above)
                 $ccEmails = '';
                 $roundName = '';
                 if ($targetRoundId) {

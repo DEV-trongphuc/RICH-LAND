@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2 } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -90,6 +90,9 @@ export const Integrations = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
+  // Pause warning modal
+  const [showPauseWarning, setShowPauseWarning] = useState(false);
+
   // Mapping states
   const [newMappingCol, setNewMappingCol] = useState('');
   const [newMappingField, setNewMappingField] = useState('phone');
@@ -107,7 +110,7 @@ export const Integrations = () => {
           ...c,
           is_active: Boolean(Number(c.is_active)),
           sync_interval: Number(c.sync_interval),
-          mappings: mapRes.data.filter((m: any) => m.connection_id === c.id)
+          mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
         if (selected) {
@@ -277,17 +280,28 @@ export const Integrations = () => {
     }
   };
 
-  const handleToggleActive = async (e: React.MouseEvent, conn: Connection) => {
-    e.stopPropagation();
+  // Actual API call to toggle the connection state
+  const doToggleActive = async (conn: Connection) => {
     try {
         const newActive = !conn.is_active;
         const json = await fetchAPI(`toggle_connection&id=${conn.id}&active=${newActive ? 1 : 0}`);
         if (json.success) {
-            toast.success(newActive ? 'Đã bật kết nối' : 'Đã tắt kết nối');
+            toast.success(newActive ? 'Kết nối đã được bật lại' : 'Kết nối đã tạm dừng');
             fetchData();
         }
     } catch (e: any) {
         toast.error('Lỗi: ' + e.message);
+    }
+  };
+
+  // Toggle handler: show warning modal when pausing, toggle immediately when resuming
+  const handleToggleActive = (conn: Connection) => {
+    if (conn.is_active) {
+      // Currently ON → about to PAUSE → show warning
+      setShowPauseWarning(true);
+    } else {
+      // Currently OFF → about to RESUME → no warning needed
+      doToggleActive(conn);
     }
   };
 
@@ -440,7 +454,38 @@ export const Integrations = () => {
                     <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)' }}>{selected.sheet_name}</h2>
+                    {selected.spreadsheet_id ? (
+                      <a
+                        href={`https://docs.google.com/spreadsheets/d/${selected.spreadsheet_id}/edit`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Mở Google Sheets"
+                        style={{
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          color: 'var(--color-text)',
+                          transition: 'color 0.2s ease',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.color = '#16a34a';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.color = 'var(--color-text)';
+                        }}
+                      >
+                        <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                          {selected.sheet_name}
+                          <ExternalLink size={14} style={{ color: 'inherit' }} />
+                        </h2>
+                      </a>
+                    ) : (
+                      <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {selected.sheet_name}
+                      </h2>
+                    )}
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
                       Token: <code style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{selected.webhook_token}</code>
                     </p>
@@ -448,6 +493,11 @@ export const Integrations = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {selected.last_sync_at && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      Lần cuối: {new Date(selected.last_sync_at).toLocaleString('vi-VN')}
+                    </div>
+                  )}
                   <button
                     className="btn outline"
                     style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
@@ -456,8 +506,12 @@ export const Integrations = () => {
                       setIsSyncing(true);
                       try {
                         const res = await fetchAPI(`force_sync&id=${selected.id}`);
-                        if (res.success) toast.success('Đã đồng bộ dữ liệu thủ công!');
-                        else toast.error('Đồng bộ thất bại: ' + (res.message || ''));
+                        if (res.success) {
+                          toast.success('Đã đồng bộ dữ liệu thủ công!');
+                          fetchData(); // Refresh to update last_sync_at on screen
+                        } else {
+                          toast.error('Đồng bộ thất bại: ' + (res.message || ''));
+                        }
                       } catch (e: any) {
                         toast.error('Lỗi kết nối: ' + e.message);
                       }
@@ -466,15 +520,10 @@ export const Integrations = () => {
                   >
                     <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
                   </button>
-                  {selected.last_sync_at && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      Lần cuối: {new Date(selected.last_sync_at).toLocaleString('vi-VN')}
-                    </div>
-                  )}
 
                   <ToggleSwitch 
                     checked={selected.is_active} 
-                    onChange={() => handleToggleActive(null as any, selected)}
+                    onChange={() => handleToggleActive(selected)}
                   />
                   <button
                     onClick={() => { setDeleteId(selected.id); setIsConfirmOpen(true); }}
@@ -795,7 +844,7 @@ export const Integrations = () => {
                   <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>(?) Cơ chế hoạt động?</span>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                   {[
                     { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
                     { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
@@ -897,8 +946,8 @@ export const Integrations = () => {
               </div>
 
               {/* Mappings Table BELOW */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', background: '#f8fafc', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }} className="responsive-table-wrap">
+                <div className="responsive-mapping-header" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', background: '#f8fafc', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
                   <div>Tên cột trên Sheets</div>
                   <div>Trường hiển thị trong Email</div>
                   <div>Trường hệ thống</div>
@@ -906,7 +955,7 @@ export const Integrations = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {tempMappings.map((m, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
+                    <div key={idx} className="responsive-mapping-row" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
                       <div 
                         title={m.sheet_col}
                         style={{ 
@@ -1000,6 +1049,16 @@ export const Integrations = () => {
         onConfirm={handleDeleteConnection}
         title="Xóa Kết Nối Sheets"
         message="Bạn có chắc chắn muốn xóa kết nối Sheets này? Toàn bộ Mapping sẽ bị xóa vĩnh viễn và không thể phục hồi."
+      />
+
+      <ConfirmModal
+        isOpen={showPauseWarning}
+        onClose={() => setShowPauseWarning(false)}
+        onConfirm={() => selected && doToggleActive(selected)}
+        title="⏸ Tạm dừng kết nối?"
+        message={`Khi tạm dừng kết nối "${selected?.sheet_name}":\n\n• Webhook sẽ ngừng nhận dữ liệu mới từ Google Sheets.\n• Cronjob đồng bộ tự động sẽ dừng hoàn toàn.\n• Dữ liệu hiện có sẽ được giữ nguyên.\n\nBạn có thể bật lại bất cứ lúc nào.`}
+        confirmText="Tạm dừng"
+        cancelText="Hủy bỏ"
       />
     </>
   );

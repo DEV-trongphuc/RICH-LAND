@@ -27,21 +27,39 @@ export const Dashboard = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`);
-      if (json.success) setStats(json.data);
+      // BUG-04 fix: Dùng Promise.all để gọi song song, tiết kiệm ~1-2s
+      // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
+      const [statsJson, logsJson] = await Promise.all([
+        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`),
+        fetchAPI('get_logs')
+      ]);
       
-      const logsJson = await fetchAPI('get_logs');
+      // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
+      if (signal?.aborted) return;
+      
+      if (statsJson.success) setStats(statsJson.data);
+      else console.error('Lỗi tải thống kê:', statsJson.message);
+      
       if (logsJson.success) setRecentLogs(logsJson.data.slice(0, 5));
-    } catch (e) {
-      console.error(e);
+      else console.error('Lỗi tải nhật ký:', logsJson.message);
+    } catch (e: any) {
+      // BUG-04 fix: Bỏ qua lỗi AbortError (do user đổi filter nhanh) - đây KHÔNG phải lỗi thực sự
+      if (e?.name !== 'AbortError') {
+        console.error('Dashboard fetch error:', e);
+      }
     }
     setLoading(false);
   };
 
-  useEffect(() => { fetchDashboard(); }, [dateFilter]);
+  useEffect(() => {
+    // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
+    const abortController = new AbortController();
+    fetchDashboard(abortController.signal);
+    return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
+  }, [dateFilter]);
 
   const kpiCards = [
     {
@@ -107,11 +125,9 @@ export const Dashboard = () => {
     if (!startDate || !endDate) return toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
     if (new Date(startDate) > new Date(endDate)) return toast.error("Từ ngày không được lớn hơn Đến ngày");
     
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    
-    const formatStr = (d: Date) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-    const label = `${formatStr(startObj)} - ${formatStr(endObj)}`;
+    // BUG-HIGH-1 fix: api.php expects format 'YYYY-MM-DD đến YYYY-MM-DD'
+    // startDate/endDate from <input type="date"> are already in YYYY-MM-DD format
+    const label = `${startDate} đến ${endDate}`;
     
     setDateFilter(label);
     setShowDateModal(false);
@@ -142,7 +158,7 @@ export const Dashboard = () => {
           </div>
           <button
             className="btn outline"
-            onClick={fetchDashboard}
+            onClick={() => fetchDashboard()}
             disabled={loading}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
@@ -152,7 +168,7 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <KpiCardSkeleton key={i} />)
         ) : kpiCards.map((card, i) => {
@@ -184,7 +200,7 @@ export const Dashboard = () => {
 
       {/* Chart + List row */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem' }}>
             <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
             <Skeleton width={300} height={11} style={{ marginBottom: 24 }} />
@@ -205,7 +221,7 @@ export const Dashboard = () => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
@@ -286,9 +302,9 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* NEW STATS ROW */}
+      {/* Source Pie + Quality row */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="card" style={{ padding: '1.25rem' }}>
               <Skeleton width={200} height={16} style={{ marginBottom: 20 }} />
@@ -305,7 +321,7 @@ export const Dashboard = () => {
           ))}
         </div>
       ) : (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
         {/* Top Consultants */}
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

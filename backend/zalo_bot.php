@@ -1,0 +1,173 @@
+<?php
+// backend/zalo_bot.php
+
+require_once __DIR__ . '/db_connect.php';
+
+/**
+ * Gửi tin nhắn qua Zalo Bot Platform
+ *
+ * @param string $botToken
+ * @param string $chatId
+ * @param string $text
+ * @return bool
+ */
+function sendZaloMessage($botToken, $chatId, $text) {
+    if (empty($botToken) || empty($chatId) || empty($text)) {
+        return false;
+    }
+
+    $url = "https://bot-api.zaloplatforms.com/bot" . $botToken . "/sendMessage";
+    
+    $payload = json_encode([
+        "chat_id" => $chatId,
+        "text" => $text
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout 5 giây tránh nghẽn
+    
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 200 && $httpCode < 300 && $result) {
+        $resObj = json_decode($result, true);
+        if (isset($resObj['ok']) && $resObj['ok'] === true) {
+            return true;
+        } else {
+            error_log("Zalo Bot Error: " . $result);
+        }
+    } else {
+        error_log("Zalo Bot HTTP Error: $httpCode - " . $result);
+    }
+    
+    return false;
+}
+
+/**
+ * Gửi tin nhắn qua Zalo Bot Platform cho NHIỀU người cùng lúc (Concurrent cURL)
+ *
+ * @param string $botToken
+ * @param array $chatIdsArray
+ * @param string $text
+ * @return bool
+ */
+function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text) {
+    if (empty($botToken) || empty($chatIdsArray) || empty($text)) {
+        return false;
+    }
+
+    $url = "https://bot-api.zaloplatforms.com/bot" . $botToken . "/sendMessage";
+    $multiHandle = curl_multi_init();
+    $curlHandles = [];
+
+    // Lọc trùng ID và loại bỏ giá trị rỗng
+    $chatIdsArray = array_unique(array_filter($chatIdsArray));
+
+    foreach ($chatIdsArray as $chatId) {
+        $ch = curl_init($url);
+        $payload = json_encode([
+            "chat_id" => $chatId,
+            "text" => $text
+        ], JSON_UNESCAPED_UNICODE);
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tránh nghẽn lâu
+        
+        curl_multi_add_handle($multiHandle, $ch);
+        $curlHandles[] = $ch;
+    }
+
+    // Thực thi tất cả cURL request song song
+    $running = null;
+    do {
+        curl_multi_exec($multiHandle, $running);
+        if ($running) {
+            curl_multi_select($multiHandle);
+        }
+    } while ($running > 0);
+
+    // Dọn dẹp memory
+    foreach ($curlHandles as $ch) {
+        // Tùy chọn: Log lỗi nếu muốn curl_getinfo($ch, CURLINFO_HTTP_CODE)
+        curl_multi_remove_handle($multiHandle, $ch);
+        curl_close($ch);
+    }
+    curl_multi_close($multiHandle);
+    
+    return true;
+}
+
+/**
+ * Gửi thông báo chia Lead mới cho Sale qua Zalo
+ */
+function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0) {
+    global $conn;
+
+    // Lấy config zalo_bot_token từ system_settings
+    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = '';
+    if ($stmt && $stmt->num_rows > 0) {
+        $botToken = $stmt->fetch_assoc()['setting_value'];
+    }
+
+    if (empty($botToken)) {
+        return false; // Chưa cấu hình Zalo Bot
+    }
+
+    // Lấy zalo_chat_id của Sale
+    $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    if (!$stmtConsultant) return false;
+    
+    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->execute();
+    $res = $stmtConsultant->get_result();
+    $chatId = '';
+    if ($res->num_rows > 0) {
+        $row = $res->fetch_assoc();
+        $chatId = $row['zalo_chat_id'];
+    }
+
+    if (empty($chatId)) {
+        return false; // Sale chưa liên kết Zalo
+    }
+
+    // Build nội dung tin nhắn
+    $roundStr = !empty($roundName) ? " Vòng: $roundName\n" : "";
+    $fName = !empty($leadName) ? $leadName : "Không có";
+    $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
+    $fSource = !empty($leadSource) ? $leadSource : "Không có";
+    $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    // Build Report URL
+    $frontendUrl = '';
+    $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+    if ($urlSetting && $urlSetting->num_rows > 0) {
+        $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
+    }
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+    }
+    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
+    $roundLine = !empty($roundName) ? "  • Vòng phân bổ: $roundName\n" : "";
+
+    $text = "[ THÔNG BÁO DATA MỚI ]\n\n"
+          . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
+          . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+          . "  • Tên KH: $fName\n"
+          . "  • Số ĐT: $fPhone\n"
+          . "  • Nguồn: $fSource\n"
+          . $roundLine
+          . "\n❖ GHI CHÚ:\n"
+          . "  $fNote\n\n"
+          . "Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+
+    return sendZaloMessage($botToken, $chatId, $text);
+}

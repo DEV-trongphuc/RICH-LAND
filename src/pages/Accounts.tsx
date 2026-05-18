@@ -17,6 +17,7 @@ export const Accounts = () => {
     username: '',
     password: '',
     name: '',
+    email: '',
     role: 'viewer'
   });
 
@@ -41,13 +42,13 @@ export const Accounts = () => {
 
   const openAddModal = () => {
     setEditingAccount(null);
-    setFormData({ username: '', password: '', name: '', role: 'viewer' });
+    setFormData({ username: '', password: '', name: '', email: '', role: 'viewer' });
     setModalOpen(true);
   };
 
   const openEditModal = (acc: any) => {
     setEditingAccount(acc);
-    setFormData({ username: acc.username, password: '', name: acc.name, role: acc.role });
+    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', role: acc.role });
     setModalOpen(true);
   };
 
@@ -55,6 +56,12 @@ export const Accounts = () => {
     e.preventDefault();
     if (!formData.username || !formData.name) return toast.error('Vui lòng nhập đủ tên và username');
     if (!editingAccount && !formData.password) return toast.error('Vui lòng nhập mật khẩu cho tài khoản mới');
+    // Email bắt buộc trừ Super Admin (id=1)
+    const isSuperAdmin = editingAccount?.id === 1;
+    if (!isSuperAdmin) {
+      if (!formData.email) return toast.error('Email là bắt buộc để đăng nhập');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return toast.error('Định dạng email không hợp lệ');
+    }
     if (isSaving) return;
     
     setIsSaving(true);
@@ -126,7 +133,7 @@ export const Accounts = () => {
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên đăng nhập</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email đăng nhập</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân quyền</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
                 </tr>
@@ -142,7 +149,8 @@ export const Accounts = () => {
                     </td>
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Shield size={14} /> {acc.username}
+                        <Shield size={14} />
+                        <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
                       </div>
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>{getRoleBadge(acc.role)}</td>
@@ -184,22 +192,37 @@ export const Accounts = () => {
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="form-group">
             <label className="form-label">Tên hiển thị <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input 
-              className="form-input" 
-              placeholder="VD: Nguyễn Văn A" 
+            <input
+              className="form-input"
+              placeholder="VD: Nguyễn Văn A"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
               required
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Tên đăng nhập <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input 
-              className="form-input" 
-              placeholder="VD: admin_nhansu" 
+            <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(dùng nội bộ)</span></label>
+            <input
+              className="form-input"
+              placeholder="VD: admin_nhansu"
               value={formData.username}
               onChange={e => setFormData({ ...formData, username: e.target.value })}
               required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">
+              Email đăng nhập {editingAccount?.id !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
+              {editingAccount?.id === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
+            </label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="VD: ten@company.com"
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
+              required={editingAccount?.id !== 1}
+              autoComplete="email"
             />
           </div>
           <div className="form-group">

@@ -266,7 +266,7 @@ export const Rounds = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.25rem' }}>
+        <div className="responsive-grid-auto-400" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.25rem' }}>
           {[1,2,3].map(i => <RoundCardSkeleton key={i} />)}
         </div>
       ) : (
@@ -470,7 +470,7 @@ export const Rounds = () => {
             
             {activeTab === 'config' ? (
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-  <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+  <div className="responsive-grid-1-1" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
     
     {/* LEFT COLUMN */}
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">

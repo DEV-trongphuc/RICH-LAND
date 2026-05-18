@@ -26,6 +26,12 @@ export const Settings = () => {
   // Collapse state for Input Webhook Code
   const [showInputScript, setShowInputScript] = useState(false);
 
+  // Zalo Bot config
+  const [zaloBotToken, setZaloBotToken] = useState('');
+  const [zaloWebhookSecret, setZaloWebhookSecret] = useState('');
+  const [zaloBotLink, setZaloBotLink] = useState('');
+  const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
+
   const fetchSettings = async () => {
     try {
       const json = await fetchAPI('get_settings');
@@ -38,6 +44,10 @@ export const Settings = () => {
         if (json.data.ses_password) setSesPass(json.data.ses_password);
         if (json.data.ses_sender_email) setSesSenderEmail(json.data.ses_sender_email);
         if (json.data.ses_sender_name) setSesSenderName(json.data.ses_sender_name);
+        if (json.data.zalo_bot_token) setZaloBotToken(json.data.zalo_bot_token);
+        if (json.data.zalo_webhook_secret) setZaloWebhookSecret(json.data.zalo_webhook_secret);
+        if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
+        if (json.data.zalo_daily_report_time) setZaloDailyReportTime(json.data.zalo_daily_report_time);
       }
     } catch (e) {
       console.error(e);
@@ -59,7 +69,11 @@ export const Settings = () => {
       ses_username: sesUser,
       ses_password: sesPass,
       ses_sender_email: sesSenderEmail,
-      ses_sender_name: sesSenderName
+      ses_sender_name: sesSenderName,
+      zalo_bot_token: zaloBotToken,
+      zalo_webhook_secret: zaloWebhookSecret,
+      zalo_bot_link: zaloBotLink,
+      zalo_daily_report_time: zaloDailyReportTime
     };
     
     try {
@@ -257,7 +271,7 @@ function sendToDataFlow(e) {
                 <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label className="form-label">SMTP Host</label>
                     <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
@@ -267,7 +281,7 @@ function sendToDataFlow(e) {
                     <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label className="form-label">SMTP Username</label>
                     <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
@@ -277,7 +291,7 @@ function sendToDataFlow(e) {
                     <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label className="form-label">Email Người Gửi (From Email)</label>
                     <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
@@ -289,6 +303,81 @@ function sendToDataFlow(e) {
                 </div>
               </div>
             )}
+          </div>
+          {/* Cấu hình Zalo Bot */}
+          <div className="card" style={{ padding: '1.5rem', borderTop: '4px solid #0068ff' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </span>
+              Cấu hình Zalo Bot (Gửi thông báo Data)
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br/>
+              Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{color: '#0068ff', fontWeight: 600}}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
+            </p>
+
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Bot Token (Zalo cung cấp)</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Ví dụ: 12345689:abc-xyz"
+                  value={zaloBotToken}
+                  onChange={e => setZaloBotToken(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Secret Token (Webhook bảo mật)</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)"
+                  value={zaloWebhookSecret}
+                  onChange={e => setZaloWebhookSecret(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
+                <input
+                  className="form-input"
+                  placeholder="VD: https://zalo.me/1185588456243371597"
+                  value={zaloBotLink}
+                  onChange={e => setZaloBotLink(e.target.value)}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Link chèn vào Email chào mừng TVV.
+                </p>
+              </div>
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Giờ gửi Báo cáo Ngày (VD: 17:00)</label>
+                <input
+                  type="time"
+                  className="form-input"
+                  value={zaloDailyReportTime}
+                  onChange={e => setZaloDailyReportTime(e.target.value)}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Tự động gửi thống kê chia Data/Ticket cho Admin.
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
+              <label className="form-label">Link Webhook khai báo trên Zalo Bot Platform:</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <code style={{ flex: 1, background: '#f8fafc', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: '#0068ff', border: '1px solid #bfdbfe' }}>
+                  https://open.domation.net/sale_data/zalo_webhook.php
+                </code>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
+                Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
+              </p>
+            </div>
           </div>
         </div>
 

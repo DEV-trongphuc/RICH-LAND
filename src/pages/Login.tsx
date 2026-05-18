@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Lock, User } from 'lucide-react';
+import { LogIn, Lock, Mail } from 'lucide-react';
 
 export const Login = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,10 +20,10 @@ export const Login = () => {
       const res = await fetch('https://open.domation.net/sale_data/api.php?action=login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email, password })
       });
       const json = await res.json();
-      
+
       if (json.success) {
         login(json.token, json.user);
         navigate('/');
@@ -31,20 +31,7 @@ export const Login = () => {
         setError(json.message || 'Đăng nhập thất bại');
       }
     } catch {
-      // Vì Server chưa up code mới, ta sẽ MOCK Đăng nhập tạm thời để bạn test UI
-      if (username === 'admin' && password === '123456') {
-        const mockToken = 'mock_jwt_token_for_admin_testing_purpose';
-        const mockUser = { username: 'admin', name: 'Super Admin', role: 'admin' as const };
-        login(mockToken, mockUser);
-        navigate('/');
-      } else if (username === 'viewer' && password === '123456') {
-        const mockToken = 'mock_jwt_token_for_viewer_testing_purpose';
-        const mockUser = { username: 'viewer', name: 'Trợ lý 1', role: 'assistant' as const };
-        login(mockToken, mockUser);
-        navigate('/');
-      } else {
-        setError('Tài khoản hoặc mật khẩu không chính xác (Test: admin/123456)');
-      }
+      setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.');
     }
     setLoading(false);
   };
@@ -96,16 +83,17 @@ export const Login = () => {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label className="form-label">Tài khoản</label>
+            <label className="form-label">Email đăng nhập</label>
             <div style={{ position: 'relative' }}>
-              <User size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
-              <input 
-                type="text" 
-                className="form-input" 
+              <Mail size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
+              <input
+                type="email"
+                className="form-input"
                 style={{ paddingLeft: 40 }}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nhập tên đăng nhập"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="VD: ten@domation.net"
+                autoComplete="email"
                 required
               />
             </div>

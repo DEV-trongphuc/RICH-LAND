@@ -60,8 +60,10 @@ export const ReportData = () => {
   useEffect(() => {
     navigate('/report-data', { replace: true });
     if (params.isTest) { setContext(TEST_MOCK_CONTEXT); setLoadingCtx(false); return; }
-    if (!params.leadId || !params.saleId || !params.roundId) {
-      setCtxError('Đường dẫn không hợp lệ. Vui lòng truy cập lại từ Email.');
+    // BUG-07 fix: Kiểm tra params phải là số nguyên dương hợp lệ, không chỉ "có tồn tại"
+    const isValidId = (v: string) => /^\d+$/.test(v) && parseInt(v) > 0;
+    if (!isValidId(params.leadId) || !isValidId(params.saleId) || !isValidId(params.roundId)) {
+      setCtxError('Đường dẫn không hợp lệ hoặc đã hết hạn. Vui lòng mở lại từ Email.');
       setLoadingCtx(false); return;
     }
     fetchPublicAPI(`get_report_context&lead_id=${params.leadId}&sale_id=${params.saleId}&round_id=${params.roundId}`)

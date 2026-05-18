@@ -33,12 +33,11 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
           color: 'var(--color-text-light)',
           fontSize: '0.875rem',
           cursor: 'pointer',
-          minWidth: 240,
           transition: 'border-color 0.2s'
-        }}>
+        }} className="responsive-search-box">
           <Search size={16} />
-          <span>Tìm kiếm toàn hệ thống...</span>
-          <span style={{
+          <span className="responsive-hide-mobile">Tìm kiếm toàn hệ thống...</span>
+          <span className="responsive-hide-mobile" style={{
             marginLeft: 'auto',
             display: 'flex',
             alignItems: 'center',
@@ -69,7 +68,7 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'white', fontSize: '0.7rem', fontWeight: 700
           }}>AD</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Admin System</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>Quản trị viên</span>
           </div>

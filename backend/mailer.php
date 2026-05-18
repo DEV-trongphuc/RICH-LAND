@@ -221,3 +221,263 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString);
 }
 
+
+/**
+ * sendTicketNotificationToAdmins
+ * Gui email thong bao cho admin khi sale bao cao data loi (Ticket)
+ */
+function sendTicketNotificationToAdmins(
+    string $toEmail,
+    string $toAdminName,
+    string $leadName,
+    string $leadPhone,
+    string $reason,
+    string $consultantName,
+    string $roundName = '',
+    string $ccEmailString = ''
+) {
+    $subject      = '🎫 Ticket Mới: Sale báo cáo data lỗi — ' . $leadName;
+    $roundStr     = !empty($roundName) ? htmlspecialchars($roundName) : 'Không rõ';
+    $fReason      = nl2br(htmlspecialchars($reason));
+    $fConsult     = htmlspecialchars($consultantName ?: 'Không rõ');
+    $fLead        = htmlspecialchars($leadName ?: 'Khách hàng ẩn danh');
+    $fPhone       = htmlspecialchars($leadPhone ?: 'Không có');
+    $fAdmin       = htmlspecialchars($toAdminName);
+
+    $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Một nhân viên tư vấn vừa gửi <strong>báo cáo data lỗi</strong> (Ticket) và cần bạn xem xét.</p><div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">TICKET CHỜ DUYỆT</span></div><div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-left:4px solid #eab308;padding:24px;margin:0 0 24px;border-radius:0 12px 12px 0;"><p style="color:#0f172a;font-size:15px;margin:0 0 16px;font-weight:700;border-bottom:1px solid #fde68a;padding-bottom:10px;">Chi tiết Ticket</p><table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;"><tr><td style="padding:7px 0;font-weight:600;width:160px;color:#64748b;vertical-align:top;">Nhân viên báo cáo:</td><td style="padding:7px 0;font-weight:700;color:#7c3aed;vertical-align:top;">' . $fConsult . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Vòng phân bổ:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $roundStr . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Tên khách hàng:</td><td style="padding:7px 0;font-weight:700;color:#0f172a;vertical-align:top;">' . $fLead . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Số điện thoại:</td><td style="padding:7px 0;font-weight:700;color:#d97706;vertical-align:top;">' . $fPhone . '</td></tr></table></div><div style="background:#fef2f2;border-left:4px solid #ef4444;padding:20px 24px;border-radius:0 12px 12px 0;margin-bottom:28px;"><p style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">Lý do báo cáo</p><p style="color:#0f172a;font-size:15px;line-height:1.7;margin:0;font-weight:500;">' . $fReason . '</p></div><div style="text-align:center;"><p style="color:#64748b;font-size:14px;margin-bottom:12px;">Vui lòng đăng nhập hệ thống để xem xét và xử lý ticket này.</p><div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;display:inline-block;font-size:13px;color:#475569;">Vào mục <strong style="color:#7c3aed;">Quản lý Ticket</strong> để Duyệt hoặc Từ chối báo cáo</div></div>';
+
+    sendEmailNotification($toEmail, $subject, '🎫 Có Ticket Mới Cần Xử Lý!', $content, $ccEmailString);
+}
+
+/**
+ * sendWelcomeEmailToSale
+ * Gui email chao mung va huong dan xac thuc Zalo Bot khi them Sale moi
+ */
+function sendWelcomeEmailToSale(
+    string $consultantEmail,
+    string $consultantName,
+    string $zaloBotLink
+) {
+    $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation CRM';
+    $fName = htmlspecialchars($consultantName ?: 'Bạn');
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #eff6ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">👋</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào mừng ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản của bạn đã được thêm vào hệ thống phân bổ Data tự động.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+                Để có thể <strong>nhận thông báo ngay lập tức qua Zalo</strong> mỗi khi có Data mới được phân bổ cho bạn, vui lòng thực hiện xác thực Zalo Bot theo 2 bước đơn giản:
+            </p>
+            <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
+                <li>Gửi tin nhắn cho Bot với nội dung chính là Email của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;">' . htmlspecialchars($consultantEmail) . '</strong></li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 32px;">
+            <a href="' . htmlspecialchars($zaloBotLink) . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #0068ff, #005ce6); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 104, 255, 0.2), 0 2px 4px -1px rgba(0, 104, 255, 0.1);">
+                BẤM VÀO ĐÂY ĐỂ XÁC THỰC ZALO
+            </a>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 12px;">Hoặc copy link này: <br/><span style="color: #0068ff;">' . htmlspecialchars($zaloBotLink) . '</span></p>
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px; text-align: center; margin: 0; padding-top: 16px; border-top: 1px dashed #cbd5e1;">
+            Nếu bạn không hiểu yêu cầu này, vui lòng liên hệ Admin để được hỗ trợ.
+        </p>
+    ';
+
+    sendEmailNotification($consultantEmail, $subject, 'Chào mừng gia nhập', $content, '');
+}
+
+/**
+ * sendWelcomeEmailToAdminTicket
+ * Gui email moi Admin xac thuc Zalo Bot khi ho duoc chon nhan thong bao Ticket
+ */
+function sendWelcomeEmailToAdminTicket(
+    string $adminEmail,
+    string $adminName,
+    string $zaloBotLink
+) {
+    $subject = '🎫 Yêu cầu xác thực Zalo Bot nhận thông báo Ticket';
+    $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">🔔</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+                Để có thể <strong>nhận thông báo tức thì qua Zalo</strong> mỗi khi có Sale báo cáo Data lỗi, vui lòng thực hiện xác thực Zalo Bot theo 2 bước đơn giản:
+            </p>
+            <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
+                <li>Gửi tin nhắn cho Bot với nội dung là Email của bạn: <br/><strong style="color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">' . htmlspecialchars($adminEmail) . '</strong></li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 32px;">
+            <a href="' . htmlspecialchars($zaloBotLink) . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #0068ff, #005ce6); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 104, 255, 0.2), 0 2px 4px -1px rgba(0, 104, 255, 0.1);">
+                BẤM VÀO ĐÂY ĐỂ XÁC THỰC ZALO
+            </a>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 12px;">Hoặc copy link này: <br/><span style="color: #0068ff;">' . htmlspecialchars($zaloBotLink) . '</span></p>
+        </div>
+    ';
+
+    sendEmailNotification($adminEmail, $subject, 'Xác thực Zalo Ticket', $content, '');
+}
+
+/**
+ * sendAdminConfirmationEmail
+ */
+function sendAdminConfirmationEmail(
+    string $adminEmail,
+    string $adminName,
+    string $confirmLink
+) {
+    $subject = 'Vui lòng xác nhận Email để kích hoạt tài khoản Admin';
+    $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #f0f9ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">✉️</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống CRM.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+                Vui lòng click vào nút bên dưới để xác nhận địa chỉ Email của bạn:
+            </p>
+            <a href="' . htmlspecialchars($confirmLink) . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #0f172a, #334155); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
+                XÁC NHẬN EMAIL
+            </a>
+        </div>
+    ';
+
+    sendEmailNotification($adminEmail, $subject, 'Xác nhận Email', $content, '');
+}
+
+/**
+ * sendAdminAddedToTicketEmail
+ */
+function sendAdminAddedToTicketEmail(
+    string $adminEmail,
+    string $adminName
+) {
+    $subject = 'Bạn đã được thêm quyền xử lý Ticket';
+    $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">🎫</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0;">
+                Từ bây giờ, hệ thống sẽ gửi thông báo mỗi khi có Ticket mới chờ duyệt tới Email và Zalo Bot của bạn.
+            </p>
+        </div>
+    ';
+
+    sendEmailNotification($adminEmail, $subject, 'Phân quyền Ticket', $content, '');
+}
+
+/**
+ * sendQuickMessageEmailToSale
+ */
+function sendQuickMessageEmailToSale(
+    string $consultantEmail,
+    string $consultantName,
+    string $message
+) {
+    $subject = 'Tin nhắn từ Quản trị viên';
+    $fName = htmlspecialchars($consultantName ?: 'Tư vấn viên');
+    $safeMsg = nl2br(htmlspecialchars($message));
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">💬</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn có một tin nhắn mới từ Quản trị viên.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: left;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0;">
+                ' . $safeMsg . '
+            </p>
+        </div>
+    ';
+
+    sendEmailNotification($consultantEmail, $subject, 'Tin Nhắn Nhanh', $content, '');
+}
+
+/**
+ * sendDailyReportEmailToAdmins
+ */
+function sendDailyReportEmailToAdmins(
+    string $adminEmail,
+    string $adminName,
+    int $totalData,
+    string $saleStatsHtml,
+    int $totalTicket
+) {
+    $subject = 'Báo cáo Tổng kết Ngày - ' . date('d/m/Y');
+    $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
+    
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px;">📊</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của Hệ thống CRM.</p>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h3 style="margin: 0; color: #0f172a; font-size: 16px;">Phân bổ Data mới (' . $totalData . ')</h3>
+            </div>
+            <div style="padding: 20px;">
+                <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+                    ' . $saleStatsHtml . '
+                </ul>
+            </div>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 16px 20px; background: #fff1f2; border-bottom: 1px solid #ffe4e6;">
+                <h3 style="margin: 0; color: #9f1239; font-size: 16px;">Báo cáo lỗi / Ticket mới (' . $totalTicket . ')</h3>
+            </div>
+            <div style="padding: 20px;">
+                <p style="margin: 0; color: #334155;">Hôm nay hệ thống ghi nhận có <strong>' . $totalTicket . '</strong> Ticket báo lỗi cần được xử lý.</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 24px;">
+            <a href="https://' . ($_SERVER['HTTP_HOST'] ?? '') . '/" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0068ff; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
+                TRUY CẬP HỆ THỐNG
+            </a>
+        </div>
+    ';
+
+    sendEmailNotification($adminEmail, $subject, 'Báo Cáo Hàng Ngày', $content, '');
+}

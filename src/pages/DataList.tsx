@@ -130,34 +130,27 @@ export const DataList = () => {
   };
 
   // BUG-05 fix: Implement CSV export from current filtered data
+  // BUG-05 fix: Implement CSV export from current filtered data using Backend Stream to prevent browser/server OOM
   const handleExportCSV = () => {
-    if (filteredLeads.length === 0) {
-      toast.error('Không có dữ liệu để xuất!');
-      return;
+    toast.loading('Đang chuẩn bị dữ liệu xuất CSV...', { id: 'export' });
+    try {
+      const date = encodeURIComponent(searchParams.get('date') || 'all');
+      const search = encodeURIComponent(searchTerm);
+      const status = encodeURIComponent(statusFilter);
+      const consultant = encodeURIComponent(consultantFilter);
+      
+      const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
+      const token = localStorage.getItem('domation_token');
+      
+      const url = `${BASE_URL}?action=export_csv&date=${date}&search=${search}&status=${status}&consultant=${consultant}&token=${token}`;
+      window.location.href = url;
+      
+      setTimeout(() => {
+        toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
+      }, 1500);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
     }
-    const headers = ['STT', 'Họ và Tên', 'Số Điện Thoại', 'Email', 'Nguồn', 'Loại', 'Trạng thái', 'TVV tiếp nhận', 'Vòng chia', 'Thời gian nhận'];
-    const statusMap: Record<string, string> = { assigned: 'Đã chia', pending: 'Chờ chia', duplicate: 'Trùng lặp', unassigned: 'Chưa phân bổ' };
-    const rows = filteredLeads.map((l, i) => [
-      i + 1,
-      l.name,
-      l.phone,
-      l.email,
-      l.source,
-      l.type,
-      statusMap[l.status] || l.status,
-      l.assigned_to_name,
-      l.round_name,
-      l.created_at
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `data_export_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Đã xuất ${filteredLeads.length} dòng dữ liệu!`);
   };
 
   const filteredLeads = useMemo(() => {
@@ -210,62 +203,68 @@ export const DataList = () => {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexShrink: 0, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', width: 300 }}>
+      <div className="responsive-filter-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="responsive-filter-item" style={{ position: 'relative', width: 300 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
           <input 
             className="form-input" 
             placeholder="Tìm theo tên, SĐT, email..." 
-            style={{ paddingLeft: 36 }}
+            style={{ paddingLeft: 36, width: '100%' }}
             value={searchTerm}
             onChange={e => updateParams('search', e.target.value)}
           />
         </div>
         
-        <CustomSelect 
-          options={[
-            { value: 'all', label: 'Tất cả thời gian', icon: <Clock size={16} /> },
-            { value: 'today', label: 'Hôm nay' },
-            { value: 'yesterday', label: 'Hôm qua' },
-            { value: '7days', label: '7 ngày qua' },
-            { value: '30days', label: '30 ngày qua' },
-            { value: 'this_month', label: 'Tháng này' },
-            { value: 'last_month', label: 'Tháng trước' }
-          ]}
-          value={dateFilter}
-          onChange={val => updateParams('date', val.toString())}
-          width={200}
-        />
+        <div className="responsive-filter-item">
+          <CustomSelect 
+            options={[
+              { value: 'all', label: 'Tất cả thời gian', icon: <Clock size={16} /> },
+              { value: 'today', label: 'Hôm nay' },
+              { value: 'yesterday', label: 'Hôm qua' },
+              { value: '7days', label: '7 ngày qua' },
+              { value: '30days', label: '30 ngày qua' },
+              { value: 'this_month', label: 'Tháng này' },
+              { value: 'last_month', label: 'Tháng trước' }
+            ]}
+            value={dateFilter}
+            onChange={val => updateParams('date', val.toString())}
+            width={200}
+          />
+        </div>
 
-        <CustomSelect 
-          options={[
-            { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
-            { value: 'assigned', label: 'Đã chia' },
-            { value: 'pending', label: 'Chờ chia' },
-            { value: 'duplicate', label: 'Trùng lặp' },
-            { value: 'rule_6_month', label: 'Quy định 6 tháng' },
-            { value: 'error', label: 'Lỗi / Không xác định' }
-          ]}
-          value={statusFilter}
-          onChange={val => updateParams('status', val.toString())}
-          width={200}
-        />
+        <div className="responsive-filter-item">
+          <CustomSelect 
+            options={[
+              { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
+              { value: 'assigned', label: 'Đã chia' },
+              { value: 'pending', label: 'Chờ chia' },
+              { value: 'duplicate', label: 'Trùng lặp' },
+              { value: 'rule_6_month', label: 'Quy định 6 tháng' },
+              { value: 'error', label: 'Lỗi / Không xác định' }
+            ]}
+            value={statusFilter}
+            onChange={val => updateParams('status', val.toString())}
+            width={200}
+          />
+        </div>
 
-        <CustomSelect 
-          options={[
-            { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
-            ...Array.from(new Set(leads.map(l => l.assigned_to_name).filter(n => n && n !== '-'))).map(name => ({
-              value: name as string,
-              label: name as string,
-              avatar: '' // We use name for Avatar initials
-            }))
-          ]}
-          value={consultantFilter}
-          onChange={val => updateParams('consultant', val.toString())}
-          showAvatars={true}
-          searchable={true}
-          width={220}
-        />
+        <div className="responsive-filter-item">
+          <CustomSelect 
+            options={[
+              { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
+              ...Array.from(new Set(leads.map(l => l.assigned_to_name).filter(n => n && n !== '-'))).map(name => ({
+                value: name as string,
+                label: name as string,
+                avatar: '' // We use name for Avatar initials
+              }))
+            ]}
+            value={consultantFilter}
+            onChange={val => updateParams('consultant', val.toString())}
+            showAvatars={true}
+            searchable={true}
+            width={220}
+          />
+        </div>
         
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           {/* BUG-04 fix: show warning if data is truncated */}
@@ -446,7 +445,7 @@ export const DataList = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Số điện thoại</div>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.phone}</div>
@@ -457,7 +456,7 @@ export const DataList = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
@@ -518,7 +517,7 @@ export const DataList = () => {
               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
                 Hệ thống sẽ cập nhật người tiếp nhận và tự động gửi email thông báo cho TVV mới mà không làm thay đổi hay gián đoạn thứ tự quay vòng chia số của Vòng.
               </p>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <div className="responsive-flex-row" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <CustomSelect 
                     options={[
@@ -538,7 +537,7 @@ export const DataList = () => {
                   />
                 </div>
                 <button 
-                  className="btn primary" 
+                  className="btn primary responsive-btn-full" 
                   onClick={handleReassign}
                   disabled={isReassigning || !reassignConsId}
                   style={{ height: 38, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700 }}

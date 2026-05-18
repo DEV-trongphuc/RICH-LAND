@@ -4,6 +4,7 @@ type User = {
   username: string;
   name: string;
   role: 'admin' | 'assistant' | 'viewer';
+  email?: string;
 };
 
 interface AuthContextType {

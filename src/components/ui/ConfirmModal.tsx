@@ -32,7 +32,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <AlertTriangle size={20} />
           </div>
           <div>
-            <p style={{ color: 'var(--color-text)', lineHeight: 1.5, fontSize: '0.9375rem' }}>{message}</p>
+            <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', whiteSpace: 'pre-line' }}>{message}</p>
           </div>
         </div>
         

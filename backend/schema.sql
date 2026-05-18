@@ -1,140 +1,469 @@
--- MySQL Database Schema for DataFlow App
+-- phpMyAdmin SQL Dump
+-- version 5.2.2
+-- https://www.phpmyadmin.net/
+--
+-- Máy chủ: localhost:3306
+-- Thời gian đã tạo: Th5 19, 2026 lúc 04:52 AM
+-- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
+-- Phiên bản PHP: 8.4.21
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
 
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
--- Bảng Tư vấn viên
-CREATE TABLE IF NOT EXISTS consultants (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    status ENUM('active', 'inactive', 'leave') DEFAULT 'active',
-    leave_start DATE NULL,
-    leave_end DATE NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+--
+-- Cơ sở dữ liệu: `vhvxoigh_sale_data`
+--
 
--- Bảng Định nghĩa Vòng Data (Rounds)
-CREATE TABLE IF NOT EXISTS distribution_rounds (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    round_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    cc_emails TEXT NULL COMMENT 'Danh sách email CC, phân tách bằng dấu phẩy',
-    last_assigned_consultant_id INT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    FOREIGN KEY (last_assigned_consultant_id) REFERENCES consultants(id) ON DELETE SET NULL
-);
+-- --------------------------------------------------------
 
--- Bảng TVV thuộc Vòng nào (N-N)
-CREATE TABLE IF NOT EXISTS round_consultants (
-    round_id INT,
-    consultant_id INT,
-    is_active BOOLEAN DEFAULT TRUE,
-    PRIMARY KEY (round_id, consultant_id),
-    FOREIGN KEY (round_id) REFERENCES distribution_rounds(id) ON DELETE CASCADE,
-    FOREIGN KEY (consultant_id) REFERENCES consultants(id) ON DELETE CASCADE
-);
+--
+-- Cấu trúc bảng cho bảng `accounts`
+--
 
+CREATE TABLE `accounts` (
+  `id` int(11) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `role` enum('admin','assistant','viewer') DEFAULT 'viewer',
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL COMMENT 'Email đăng nhập (bắt buộc trừ Super Admin)',
+  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
 
--- Bảng Khách hàng (Leads)
-CREATE TABLE IF NOT EXISTS leads (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    phone VARCHAR(20) UNIQUE,
-    email VARCHAR(255),
-    name VARCHAR(255),
-    source VARCHAR(255) NULL,
-    type VARCHAR(100) NULL,
-    note TEXT NULL,
-    last_interaction_date DATETIME,
-    assigned_to INT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (assigned_to) REFERENCES consultants(id) ON DELETE SET NULL,
-    INDEX idx_phone (phone),
-    INDEX idx_email (email)
-);
+--
+-- Cấu trúc bảng cho bảng `consultants`
+--
 
--- Bảng Log Phân bổ
-CREATE TABLE IF NOT EXISTS distribution_logs (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    lead_id INT,
-    assigned_to INT NULL,
-    round_id INT NULL,
-    status VARCHAR(50),
-    message TEXT,
-    received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigned_to) REFERENCES consultants(id) ON DELETE SET NULL,
-    FOREIGN KEY (round_id) REFERENCES distribution_rounds(id) ON DELETE SET NULL,
-    INDEX idx_received_at (received_at),
-    INDEX idx_status (status),
-    INDEX idx_round_id (round_id),
-    INDEX idx_assigned_to (assigned_to)
-);
+CREATE TABLE `consultants` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `status` enum('active','inactive','leave') DEFAULT 'active',
+  `leave_start` date DEFAULT NULL,
+  `leave_end` date DEFAULT NULL,
+  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng kết nối Google Sheets (mỗi sheet là 1 kết nối riêng)
-CREATE TABLE IF NOT EXISTS sheet_connections (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    sheet_name VARCHAR(255) NOT NULL COMMENT 'Tên Sheet hoặc mô tả',
-    spreadsheet_id VARCHAR(255) COMMENT 'Google Spreadsheet ID (optional)',
-    webhook_token VARCHAR(64) UNIQUE NOT NULL COMMENT 'Token bảo mật riêng cho từng sheet',
-    is_active BOOLEAN DEFAULT TRUE,
-    sync_interval INT DEFAULT 5 COMMENT 'Thời gian đồng bộ (phút)',
-    last_sync_at DATETIME NULL,
-    sync_status VARCHAR(50) DEFAULT 'idle',
-    require_both_contact BOOLEAN DEFAULT FALSE COMMENT 'Yêu cầu có cả SĐT và Email',
-    email_template TEXT NULL COMMENT 'Mẫu nội dung email gửi Sale',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
--- Bảng Rules (Rule Engine)
-CREATE TABLE IF NOT EXISTS routing_rules (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    connection_id INT NULL COMMENT 'Nếu NULL thì áp dụng cho tất cả các Sheet',
-    target_round_id INT,
-    condition_column VARCHAR(100) NOT NULL,
-    condition_operator VARCHAR(50) DEFAULT 'contains',
-    condition_value VARCHAR(255) NOT NULL,
-    priority INT DEFAULT 0,
-    FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_round_id) REFERENCES distribution_rounds(id) ON DELETE CASCADE
-);
--- Bảng Mapping Cột theo từng Sheet Connection
-CREATE TABLE IF NOT EXISTS field_mappings (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    connection_id INT NOT NULL COMMENT 'Sheet Connection mà mapping này thuộc về',
-    sheet_column VARCHAR(255) NOT NULL COMMENT 'Tên cột trên Google Sheets',
-    system_field VARCHAR(100) NOT NULL COMMENT 'Trường tương ứng trong hệ thống (phone, email, source, type, note, name)',
-    custom_label VARCHAR(255) NULL COMMENT 'Tên hiển thị tùy chỉnh trong Email',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
-);
+--
+-- Cấu trúc bảng cho bảng `data_reports`
+--
 
--- Bảng Cài đặt Hệ thống (Settings)
-CREATE TABLE IF NOT EXISTS system_settings (
-    setting_key VARCHAR(100) PRIMARY KEY,
-    setting_value TEXT
-);
+CREATE TABLE `data_reports` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `consultant_id` int(11) DEFAULT NULL,
+  `round_id` int(11) DEFAULT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `resolved_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng Tài khoản Quản trị (Authentication)
-CREATE TABLE IF NOT EXISTS accounts (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'assistant', 'viewer') DEFAULT 'viewer',
-    name VARCHAR(255),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
--- Bảng ghi nhận các dòng dữ liệu Google Sheets đã đồng bộ (để tránh đồng bộ lại dòng cũ)
-CREATE TABLE IF NOT EXISTS sheet_sync_records (
-    connection_id INT,
-    row_hash VARCHAR(64),
-    synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (connection_id, row_hash),
-    FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
-);
+--
+-- Cấu trúc bảng cho bảng `distribution_logs`
+--
 
--- Tạo sẵn tài khoản Admin mặc định (mật khẩu: 123456)
--- Hash của 123456 bằng password_hash('123456', PASSWORD_DEFAULT)
-INSERT IGNORE INTO accounts (username, password_hash, role, name) 
-VALUES ('admin', '$2y$10$Y1/J.4rGvO1C9XfRkXZ8xOQsI5nJ1yXf5M0t0h0LqGqXQh7Vf4L8C', 'admin', 'Super Admin');
+CREATE TABLE `distribution_logs` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `assigned_to` int(11) DEFAULT NULL,
+  `round_id` int(11) DEFAULT NULL,
+  `status` varchar(50) DEFAULT NULL,
+  `message` mediumtext DEFAULT NULL,
+  `received_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `distribution_rounds`
+--
+
+CREATE TABLE `distribution_rounds` (
+  `id` int(11) NOT NULL,
+  `round_name` varchar(255) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `cc_emails` mediumtext DEFAULT NULL COMMENT 'Danh sách email CC, phân tách bằng dấu phẩy',
+  `last_assigned_consultant_id` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `field_mappings`
+--
+
+CREATE TABLE `field_mappings` (
+  `id` int(11) NOT NULL,
+  `connection_id` int(11) NOT NULL COMMENT 'Sheet Connection mà mapping này thuộc về',
+  `sheet_column` varchar(255) NOT NULL COMMENT 'Tên cột trên Google Sheets',
+  `system_field` varchar(100) NOT NULL COMMENT 'Trường tương ứng trong hệ thống (phone, email, source, type, note, name)',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `custom_label` varchar(255) DEFAULT NULL COMMENT 'Tên hiển thị tùy chỉnh trong Email'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `leads`
+--
+
+CREATE TABLE `leads` (
+  `id` int(11) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `source` varchar(255) DEFAULT NULL,
+  `type` varchar(100) DEFAULT NULL,
+  `note` mediumtext DEFAULT NULL,
+  `last_interaction_date` datetime DEFAULT NULL,
+  `assigned_to` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `round_consultants`
+--
+
+CREATE TABLE `round_consultants` (
+  `round_id` int(11) NOT NULL,
+  `consultant_id` int(11) NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `receive_ratio` int(11) DEFAULT 1,
+  `skip_count` int(11) DEFAULT 0,
+  `compensation_count` int(11) DEFAULT 0 COMMENT 'Số data cần đền bù',
+  `data_per_turn` int(11) DEFAULT 1 COMMENT 'Số Data nhận mỗi lần đến lượt',
+  `current_turn_remaining` int(11) DEFAULT 0 COMMENT 'Data còn lại trong lượt hiện tại'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `routing_rules`
+--
+
+CREATE TABLE `routing_rules` (
+  `id` int(11) NOT NULL,
+  `connection_id` int(11) DEFAULT NULL COMMENT 'Nếu NULL thì áp dụng cho tất cả các Sheet',
+  `target_round_id` int(11) DEFAULT NULL,
+  `condition_column` varchar(100) NOT NULL,
+  `condition_operator` varchar(50) DEFAULT 'contains',
+  `condition_value` varchar(255) NOT NULL,
+  `priority` int(11) DEFAULT 0,
+  `conditions_json` longtext DEFAULT NULL COMMENT 'Mảng điều kiện JSON',
+  `logical_operator` varchar(10) DEFAULT 'AND' COMMENT 'Toán tử logic giữa các điều kiện'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `sheet_connections`
+--
+
+CREATE TABLE `sheet_connections` (
+  `id` int(11) NOT NULL,
+  `sheet_name` varchar(255) NOT NULL COMMENT 'Tên Sheet hoặc mô tả',
+  `spreadsheet_id` varchar(255) DEFAULT NULL COMMENT 'Google Spreadsheet ID (optional)',
+  `webhook_token` varchar(64) NOT NULL COMMENT 'Token bảo mật riêng cho từng sheet',
+  `is_active` tinyint(1) DEFAULT 1,
+  `sync_interval` int(11) DEFAULT 5 COMMENT 'Thời gian đồng bộ (phút)',
+  `last_sync_at` datetime DEFAULT NULL,
+  `sync_status` varchar(50) DEFAULT 'idle',
+  `email_template` mediumtext DEFAULT NULL COMMENT 'Mẫu nội dung email gửi Sale',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `require_both_contact` tinyint(1) DEFAULT 0 COMMENT 'Yêu cầu có cả SĐT và Email'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `sheet_sync_records`
+--
+
+CREATE TABLE `sheet_sync_records` (
+  `connection_id` int(11) NOT NULL,
+  `row_hash` varchar(64) NOT NULL,
+  `synced_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `system_settings`
+--
+
+CREATE TABLE `system_settings` (
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` mediumtext DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `ticket_notify_settings`
+--
+
+CREATE TABLE `ticket_notify_settings` (
+  `id` int(11) NOT NULL,
+  `account_id` int(11) NOT NULL COMMENT 'ID của tài khoản admin nhận thông báo ticket'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Chỉ mục cho các bảng đã đổ
+--
+
+--
+-- Chỉ mục cho bảng `accounts`
+--
+ALTER TABLE `accounts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Chỉ mục cho bảng `consultants`
+--
+ALTER TABLE `consultants`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Chỉ mục cho bảng `data_reports`
+--
+ALTER TABLE `data_reports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `consultant_id` (`consultant_id`),
+  ADD KEY `idx_round_id` (`round_id`),
+  ADD KEY `idx_report_lookup` (`lead_id`,`consultant_id`,`round_id`);
+
+--
+-- Chỉ mục cho bảng `distribution_logs`
+--
+ALTER TABLE `distribution_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_received_at` (`received_at`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_round_id` (`round_id`),
+  ADD KEY `idx_assigned_to` (`assigned_to`),
+  ADD KEY `idx_lead_id` (`lead_id`),
+  ADD KEY `idx_duplicate_check` (`lead_id`,`assigned_to`,`round_id`),
+  ADD KEY `idx_stats_group` (`received_at`,`status`);
+
+--
+-- Chỉ mục cho bảng `distribution_rounds`
+--
+ALTER TABLE `distribution_rounds`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `last_assigned_consultant_id` (`last_assigned_consultant_id`);
+
+--
+-- Chỉ mục cho bảng `field_mappings`
+--
+ALTER TABLE `field_mappings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `connection_id` (`connection_id`);
+
+--
+-- Chỉ mục cho bảng `leads`
+--
+ALTER TABLE `leads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `phone` (`phone`),
+  ADD KEY `assigned_to` (`assigned_to`),
+  ADD KEY `idx_phone` (`phone`),
+  ADD KEY `idx_email` (`email`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Chỉ mục cho bảng `round_consultants`
+--
+ALTER TABLE `round_consultants`
+  ADD PRIMARY KEY (`round_id`,`consultant_id`),
+  ADD UNIQUE KEY `idx_round_consultant_unique` (`round_id`,`consultant_id`),
+  ADD KEY `consultant_id` (`consultant_id`);
+
+--
+-- Chỉ mục cho bảng `routing_rules`
+--
+ALTER TABLE `routing_rules`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `connection_id` (`connection_id`),
+  ADD KEY `target_round_id` (`target_round_id`);
+
+--
+-- Chỉ mục cho bảng `sheet_connections`
+--
+ALTER TABLE `sheet_connections`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `webhook_token` (`webhook_token`);
+
+--
+-- Chỉ mục cho bảng `sheet_sync_records`
+--
+ALTER TABLE `sheet_sync_records`
+  ADD PRIMARY KEY (`connection_id`,`row_hash`);
+
+--
+-- Chỉ mục cho bảng `system_settings`
+--
+ALTER TABLE `system_settings`
+  ADD PRIMARY KEY (`setting_key`);
+
+--
+-- Chỉ mục cho bảng `ticket_notify_settings`
+--
+ALTER TABLE `ticket_notify_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_account_unique` (`account_id`),
+  ADD KEY `account_id` (`account_id`);
+
+--
+-- AUTO_INCREMENT cho các bảng đã đổ
+--
+
+--
+-- AUTO_INCREMENT cho bảng `accounts`
+--
+ALTER TABLE `accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `consultants`
+--
+ALTER TABLE `consultants`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `data_reports`
+--
+ALTER TABLE `data_reports`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `distribution_logs`
+--
+ALTER TABLE `distribution_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `distribution_rounds`
+--
+ALTER TABLE `distribution_rounds`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `field_mappings`
+--
+ALTER TABLE `field_mappings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `leads`
+--
+ALTER TABLE `leads`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `routing_rules`
+--
+ALTER TABLE `routing_rules`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `sheet_connections`
+--
+ALTER TABLE `sheet_connections`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `ticket_notify_settings`
+--
+ALTER TABLE `ticket_notify_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Ràng buộc đối với các bảng kết xuất
+--
+
+--
+-- Ràng buộc cho bảng `data_reports`
+--
+ALTER TABLE `data_reports`
+  ADD CONSTRAINT `data_reports_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `data_reports_ibfk_2` FOREIGN KEY (`consultant_id`) REFERENCES `consultants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `data_reports_ibfk_3` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `distribution_logs`
+--
+ALTER TABLE `distribution_logs`
+  ADD CONSTRAINT `distribution_logs_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `distribution_logs_ibfk_2` FOREIGN KEY (`assigned_to`) REFERENCES `consultants` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `distribution_logs_ibfk_3` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE SET NULL;
+
+--
+-- Ràng buộc cho bảng `distribution_rounds`
+--
+ALTER TABLE `distribution_rounds`
+  ADD CONSTRAINT `distribution_rounds_ibfk_1` FOREIGN KEY (`last_assigned_consultant_id`) REFERENCES `consultants` (`id`) ON DELETE SET NULL;
+
+--
+-- Ràng buộc cho bảng `field_mappings`
+--
+ALTER TABLE `field_mappings`
+  ADD CONSTRAINT `field_mappings_ibfk_1` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `leads`
+--
+ALTER TABLE `leads`
+  ADD CONSTRAINT `leads_ibfk_1` FOREIGN KEY (`assigned_to`) REFERENCES `consultants` (`id`) ON DELETE SET NULL;
+
+--
+-- Ràng buộc cho bảng `round_consultants`
+--
+ALTER TABLE `round_consultants`
+  ADD CONSTRAINT `round_consultants_ibfk_1` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `round_consultants_ibfk_2` FOREIGN KEY (`consultant_id`) REFERENCES `consultants` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `routing_rules`
+--
+ALTER TABLE `routing_rules`
+  ADD CONSTRAINT `routing_rules_ibfk_1` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `routing_rules_ibfk_2` FOREIGN KEY (`target_round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `sheet_sync_records`
+--
+ALTER TABLE `sheet_sync_records`
+  ADD CONSTRAINT `sheet_sync_records_ibfk_1` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `ticket_notify_settings`
+--
+ALTER TABLE `ticket_notify_settings`
+  ADD CONSTRAINT `ticket_notify_settings_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

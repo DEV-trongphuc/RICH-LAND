@@ -2,7 +2,10 @@
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token");
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=utf-8");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("X-XSS-Protection: 1; mode=block");
 
 // Handle CORS Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -108,7 +111,8 @@ if (!in_array($action, $publicActions)) {
         'add_connection', 'edit_connection', 'delete_connection', 'toggle_connection', 'toggle_require_both',
         'add_mapping', 'edit_mapping', 'delete_mapping',
         'approve_report', 'reject_report', 'get_reports',
-        'reassign_lead', 'force_sync'
+        'reassign_lead', 'force_sync',
+        'get_ticket_settings', 'save_ticket_settings' // Ticket notification config
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -122,28 +126,46 @@ if (!in_array($action, $publicActions)) {
 switch ($action) {
     case 'login':
         $input = json_decode(file_get_contents('php://input'), true);
-        $username = $input['username'] ?? '';
-        $password = $input['password'] ?? '';
-        
-        $stmt = $conn->prepare("SELECT * FROM accounts WHERE username=?");
-        $stmt->bind_param("s", $username);
+        // FEATURE: Đăng nhập bằng Email thay vì username
+        // Backward compatible: Super Admin (id=1) vẫn có thể dùng username nếu chưa có email
+        $loginField = trim($input['email'] ?? $input['username'] ?? '');
+        $password   = $input['password'] ?? '';
+
+        if (empty($loginField) || empty($password)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập email và mật khẩu']);
+            break;
+        }
+
+        // Tìm theo email trước, fallback sang username cho super admin
+        $stmt = $conn->prepare("SELECT * FROM accounts WHERE email = ? OR (id = 1 AND username = ?) LIMIT 1");
+        $stmt->bind_param("ss", $loginField, $loginField);
         $stmt->execute();
         $res = $stmt->get_result();
         if ($res->num_rows > 0) {
             $user = $res->fetch_assoc();
             if (password_verify($password, $user['password_hash'])) {
                 $payload = [
-                    'id' => $user['id'],
+                    'id'       => $user['id'],
                     'username' => $user['username'],
-                    'role' => $user['role'],
-                    'exp' => time() + 86400 // 1 day expiration
+                    'email'    => $user['email'] ?? '',
+                    'role'     => $user['role'],
+                    'exp'      => time() + 86400
                 ];
                 $token = create_jwt($payload, $JWT_SECRET);
-                echo json_encode(['success' => true, 'token' => $token, 'user' => ['username' => $user['username'], 'role' => $user['role'], 'name' => $user['name']]]);
+                echo json_encode([
+                    'success' => true,
+                    'token'   => $token,
+                    'user'    => [
+                        'username' => $user['username'],
+                        'email'    => $user['email'] ?? '',
+                        'role'     => $user['role'],
+                        'name'     => $user['name']
+                    ]
+                ]);
                 exit;
             }
         }
-        echo json_encode(['success' => false, 'message' => 'Tài khoản hoặc mật khẩu không chính xác']);
+        echo json_encode(['success' => false, 'message' => 'Email hoặc mật khẩu không chính xác']);
         break;
     case 'get_stats':
         $todayStr = date('Y-m-d');
@@ -194,6 +216,9 @@ switch ($action) {
         $totalCount = (int)($countRes->fetch_assoc()['cnt'] ?? 0);
 
         $LIMIT = 500;
+        if (isset($_GET['limit']) && $_GET['limit'] === 'all' && isset($decodedUser) && $decodedUser['role'] === 'admin') {
+            $LIMIT = 50000; // Chỉ Admin được phép dump toàn bộ
+        }
         $res = $conn->query("
             SELECT 
                 dl.id, 
@@ -222,6 +247,96 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $LIMIT]);
         break;
 
+    case 'export_csv':
+        // BUG-CRIT-02 fix: Xác thực token TRƯỚC khi đổi Content-Type sang CSV
+        // Nếu kiểm tra ở đây sau khi đã set header CSV, lỗi 401 sẽ không hiện được
+        if (!isset($decodedUser) || !$decodedUser) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Token required to export data']);
+            exit();
+        }
+        // Xử lý xuất CSV trực tiếp (Stream) để tránh tràn bộ nhớ RAM (OOM) với file > 100,000 dòng
+        $date = $_GET['date'] ?? 'all';
+        $dateCondition = "1=1";
+        
+        if ($date === 'today' || $date === 'Hôm nay') {
+            $dateCondition = "dl.received_at >= CURDATE() AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        } else if ($date === 'yesterday' || $date === 'Hôm qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND dl.received_at < CURDATE()";
+        } else if ($date === '7days' || $date === '7 ngày qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } else if ($date === '30days' || $date === '30 ngày qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } else if ($date === 'this_month' || $date === 'Tháng này') {
+            $dateCondition = "dl.received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND dl.received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } else if ($date === 'last_month' || $date === 'Tháng trước') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND dl.received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đ?ế?n (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+            $start = $conn->real_escape_string($matches[1]);
+            $end = $conn->real_escape_string($matches[2]);
+            $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
+        }
+
+        // Add filters for export
+        $statusFilter = $_GET['status'] ?? 'all';
+        $consultantFilter = $_GET['consultant'] ?? 'all';
+        $searchFilter = trim($_GET['search'] ?? '');
+
+        $sqlFilters = "";
+        if ($statusFilter !== 'all') {
+            $sqlFilters .= " AND dl.status = '" . $conn->real_escape_string($statusFilter) . "'";
+        }
+        if ($consultantFilter !== 'all') {
+            $sqlFilters .= " AND c.name = '" . $conn->real_escape_string($consultantFilter) . "'";
+        }
+        if ($searchFilter !== '') {
+            $s = $conn->real_escape_string($searchFilter);
+            $sqlFilters .= " AND (l.name LIKE '%$s%' OR l.phone LIKE '%$s%' OR l.email LIKE '%$s%')";
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="export_' . date('Ymd_His') . '.csv"');
+        // Vô hiệu hóa JSON header đã set ở trên
+        header_remove('Content-Type');
+        header('Content-Type: text/csv; charset=utf-8');
+
+        $output = fopen('php://output', 'w');
+        // Thêm BOM để Excel đọc đúng tiếng Việt
+        fputs($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['ID', 'Họ Tên', 'SĐT', 'Email', 'Vòng', 'Phân bổ cho', 'Trạng thái', 'Nguồn', 'Ghi chú', 'Thời gian']);
+
+        $res = $conn->query("
+            SELECT 
+                dl.id, l.name, l.phone, l.email, dr.round_name, c.name as assigned_to_name, 
+                dl.status, l.source, l.note, dl.received_at
+            FROM distribution_logs dl
+            LEFT JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+            WHERE $dateCondition $sqlFilters
+            ORDER BY dl.received_at DESC
+        ");
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                fputcsv($output, [
+                    $row['id'],
+                    $row['name'],
+                    $row['phone'],
+                    $row['email'],
+                    $row['round_name'],
+                    $row['assigned_to_name'],
+                    $row['status'],
+                    $row['source'],
+                    str_replace("\n", " ", $row['note']), // Tránh vỡ form CSV
+                    $row['received_at']
+                ]);
+            }
+        }
+        fclose($output);
+        exit(); // Kết thúc script ngay lập tức để không lọt JSON rác
+        break;
+
     case 'get_consultants':
         $res = $conn->query("SELECT * FROM consultants ORDER BY created_at DESC");
         $data = [];
@@ -234,6 +349,7 @@ switch ($action) {
         $name = trim($input['name'] ?? '');
         $email = trim($input['email'] ?? '');
         $status = $input['status'] ?? 'active';
+        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
         // NEW-03 fix: validate required fields
         if (empty($name)) {
             echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
@@ -251,9 +367,20 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
             break;
         }
-        $stmt = $conn->prepare("INSERT INTO consultants (name, email, status) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $name, $email, $status);
+        $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $name, $email, $status, $zalo_chat_id);
         $stmt->execute();
+
+        // Gửi Email Welcome kèm link Zalo Bot
+        require_once 'mailer.php';
+        $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link'");
+        $botLink = "https://zalo.me/1185588456243371597"; // Default
+        if ($settingStmt && $settingStmt->num_rows > 0) {
+            $row = $settingStmt->fetch_assoc();
+            if (!empty($row['setting_value'])) $botLink = $row['setting_value'];
+        }
+        sendWelcomeEmailToSale($email, $name, $botLink);
+
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
 
@@ -265,6 +392,7 @@ switch ($action) {
         $status = $input['status'] ?? 'active';
         $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
         $leave_end   = !empty($input['leave_end'])   ? $input['leave_end']   : null;
+        $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
 
         if (!$id) {
             echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
@@ -286,8 +414,8 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
             break;
         }
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=? WHERE id=?");
-        $stmt->bind_param("sssssi", $name, $email, $status, $leave_start, $leave_end, $id);
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=? WHERE id=?");
+        $stmt->bind_param("ssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -413,7 +541,7 @@ switch ($action) {
             if (!empty($consultants)) {
                 $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?)");
                 foreach($consultants as $cid) {
-                    $ratio    = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $ratio    = isset($ratios[$cid]) ? max(1, (int)$ratios[$cid]) : 1;
                     $perTurn  = isset($per_turns[$cid]) ? max(1, (int)$per_turns[$cid]) : 1;
                     $stmtC->bind_param("iiii", $roundId, $cid, $ratio, $perTurn);
                     $stmtC->execute();
@@ -482,7 +610,7 @@ switch ($action) {
             if (!empty($consultants)) {
                 $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), current_turn_remaining = 0");
                 foreach($consultants as $cid) {
-                    $ratio   = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $ratio   = isset($ratios[$cid]) ? max(1, (int)$ratios[$cid]) : 1;
                     $perTurn = isset($per_turns[$cid]) ? max(1, (int)$per_turns[$cid]) : 1;
                     $stmtC->bind_param("iiii", $id, $cid, $ratio, $perTurn);
                     $stmtC->execute();
@@ -603,6 +731,7 @@ switch ($action) {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); // MISSING-FIX: Tránh server treo vô hạn khi Google Sheets không phản hồi
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         $html = curl_exec($ch);
         curl_close($ch);
@@ -649,6 +778,7 @@ switch ($action) {
         $ch = curl_init($csvUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); // MISSING-FIX: Tránh server treo vô hạn khi Google Sheets không phản hồi
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -857,6 +987,82 @@ switch ($action) {
         $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
         if ($stmt->execute()) {
+            // FEATURE: Gửi email thông báo tới admin được thiết lập nhận ticket
+            require_once __DIR__ . '/mailer.php';
+            $notifyIds = [];
+            $notifyRes = $conn->query("SELECT account_id FROM ticket_notify_settings");
+            if ($notifyRes) while ($nr = $notifyRes->fetch_assoc()) $notifyIds[] = (int)$nr['account_id'];
+
+            if (!empty($notifyIds)) {
+                // Lấy thông tin consultant và lead để gửi email
+                $ctxForEmail = $conn->prepare("
+                    SELECT l.name as lead_name, l.phone as lead_phone, c.name as consultant_name, c.zalo_chat_id, dr.round_name
+                    FROM distribution_logs dl
+                    LEFT JOIN leads l ON dl.lead_id = l.id
+                    LEFT JOIN consultants c ON dl.assigned_to = c.id
+                    LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+                    WHERE dl.lead_id = ? AND dl.assigned_to = ? AND dl.round_id = ?
+                    LIMIT 1
+                ");
+                $ctxForEmail->bind_param("iii", $lead_id, $sale_id, $round_id);
+                $ctxForEmail->execute();
+                $ctxData = $ctxForEmail->get_result()->fetch_assoc();
+
+                // Lấy danh sách email và zalo_chat_id của admin được chọn
+                $placeholders = implode(',', array_fill(0, count($notifyIds), '?'));
+                $adminEmailStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id IN ($placeholders) AND email IS NOT NULL");
+                $adminEmailStmt->bind_param(str_repeat('i', count($notifyIds)), ...$notifyIds);
+                $adminEmailStmt->execute();
+                $adminEmails = $adminEmailStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                if (!empty($adminEmails)) {
+                    $toAdmin   = array_shift($adminEmails); // Admin đầu tiên là recipient chính
+                    $ccList    = array_map(fn($a) => $a['email'], $adminEmails); // Còn lại là CC
+                    $ccString  = implode(',', array_filter($ccList));
+                    
+                    // 1. Gửi Email
+                    sendTicketNotificationToAdmins(
+                        $toAdmin['email'],
+                        $toAdmin['name'],
+                        $ctxData['lead_name'] ?? 'Khách hàng',
+                        $ctxData['lead_phone'] ?? '',
+                        $reason,
+                        $ctxData['consultant_name'] ?? '',
+                        $ctxData['round_name'] ?? '',
+                        $ccString
+                    );
+                    
+                    // 2. Gửi Zalo Message cho toàn bộ admin có zalo_chat_id
+                    require_once __DIR__ . '/zalo_bot.php';
+                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                    if (!empty($botToken)) {
+                        $allAdmins = array_merge([$toAdmin], $adminEmails);
+                        $leadName = $ctxData['lead_name'] ?? 'Khách hàng';
+                        $leadPhone = $ctxData['lead_phone'] ?? 'Không rõ';
+                        $consultName = $ctxData['consultant_name'] ?? 'Không rõ';
+                        
+                        $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"
+                                 . "Một nhân viên vừa gửi báo cáo lỗi Data:\n\n"
+                                 . "❖ THÔNG TIN BÁO CÁO:\n"
+                                 . "  • Sale báo cáo: $consultName\n"
+                                 . "  • Khách hàng: $leadName ($leadPhone)\n\n"
+                                 . "❖ LÝ DO LỖI:\n"
+                                 . "  $reason\n\n"
+                                 . "Vui lòng đăng nhập hệ thống CRM để duyệt hoặc từ chối Ticket này.";
+                                 
+                        $adminChatIds = [];
+                        foreach ($allAdmins as $adm) {
+                            if (!empty($adm['zalo_chat_id'])) {
+                                $adminChatIds[] = $adm['zalo_chat_id'];
+                            }
+                        }
+                        if (!empty($adminChatIds)) {
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
+                        }
+                    }
+                }
+            }
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi lưu báo cáo']);
@@ -870,7 +1076,7 @@ switch ($action) {
         
         if ($round_id > 0) {
             $sql = "SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
-                           c.name as consultant_name, dr.round_name
+                           c.name as consultant_name, c.zalo_chat_id, dr.round_name
                     FROM data_reports r 
                     JOIN leads l ON r.lead_id = l.id 
                     JOIN consultants c ON r.consultant_id = c.id
@@ -883,7 +1089,7 @@ switch ($action) {
             $res = $stmtR->get_result();
         } else {
             $res = $conn->query("SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
-                           c.name as consultant_name, dr.round_name
+                           c.name as consultant_name, c.zalo_chat_id, dr.round_name
                     FROM data_reports r 
                     JOIN leads l ON r.lead_id = l.id 
                     JOIN consultants c ON r.consultant_id = c.id
@@ -935,6 +1141,48 @@ switch ($action) {
             $updComp->execute();
             
             $conn->commit();
+            
+            // Lấy thông tin Sale & Lead để gửi thông báo
+            $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $consultStmt->bind_param("i", $report['consultant_id']);
+            $consultStmt->execute();
+            $consultant = $consultStmt->get_result()->fetch_assoc();
+            
+            $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
+            $leadStmt->bind_param("i", $report['lead_id']);
+            $leadStmt->execute();
+            $lead = $leadStmt->get_result()->fetch_assoc();
+            
+            $cName = $consultant['name'] ?? 'Bạn';
+            $lName = $lead['name'] ?? 'Khách hàng';
+            $lPhone = $lead['phone'] ?? 'Không rõ';
+            
+            // Thông báo qua Zalo Bot
+            require_once __DIR__ . '/zalo_bot.php';
+            $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+            $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+            
+            if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
+                $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
+                         . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT.\n\n"
+                         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                         . "  • Khách hàng: $lName ($lPhone)\n"
+                         . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                         . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+            }
+            
+            // Thông báo qua Email
+            if (!empty($consultant['email'])) {
+                require_once __DIR__ . '/mailer.php';
+                $emailSubj = "[Domation CRM] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
+                              <p>Chào $cName,</p>
+                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công.</p>
+                              <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                sendEmail($consultant['email'], $cName, $emailSubj, $emailBody);
+            }
+            
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
@@ -945,25 +1193,80 @@ switch ($action) {
     case 'reject_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int)($input['id'] ?? 0);
+        $reject_reason = trim($input['reject_reason'] ?? '');
+        
         if (!$report_id) {
             echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
+            break;
+        }
+        
+        if (empty($reject_reason)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do từ chối']);
             break;
         }
         
         $conn->begin_transaction();
         try {
             // Check status first — prevent rejecting already-processed reports
-            $chkStmt = $conn->prepare("SELECT status FROM data_reports WHERE id = ? FOR UPDATE");
+            $chkStmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
             $chkStmt->bind_param("i", $report_id);
             $chkStmt->execute();
-            $chkRow = $chkStmt->get_result()->fetch_assoc();
-            if (!$chkRow || $chkRow['status'] !== 'pending') {
+            $report = $chkStmt->get_result()->fetch_assoc();
+            
+            if (!$report || $report['status'] !== 'pending') {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý rồi.");
             }
-            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', resolved_at=NOW() WHERE id=?");
-            $stmt->bind_param("i", $report_id);
+            
+            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_at=NOW() WHERE id=?");
+            $stmt->bind_param("si", $reject_reason, $report_id);
             $stmt->execute();
+            
             $conn->commit();
+            
+            // Lấy thông tin Sale & Lead để gửi thông báo
+            $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $consultStmt->bind_param("i", $report['consultant_id']);
+            $consultStmt->execute();
+            $consultant = $consultStmt->get_result()->fetch_assoc();
+            
+            $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
+            $leadStmt->bind_param("i", $report['lead_id']);
+            $leadStmt->execute();
+            $lead = $leadStmt->get_result()->fetch_assoc();
+            
+            $cName = $consultant['name'] ?? 'Bạn';
+            $lName = $lead['name'] ?? 'Khách hàng';
+            $lPhone = $lead['phone'] ?? 'Không rõ';
+            
+            // Thông báo qua Zalo Bot
+            require_once __DIR__ . '/zalo_bot.php';
+            $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+            $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+            
+            if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
+                $zaloMsg = "[ TICKET BỊ TỪ CHỐI ]\n\n"
+                         . "Chào $cName, báo cáo lỗi Data của bạn đã BỊ TỪ CHỐI.\n\n"
+                         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                         . "  • Khách hàng: $lName ($lPhone)\n"
+                         . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                         . "❖ LÝ DO TỪ CHỐI:\n"
+                         . "  $reject_reason\n\n"
+                         . "Bạn sẽ không được đền bù Data cho trường hợp này.";
+                sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+            }
+            
+            // Thông báo qua Email
+            if (!empty($consultant['email'])) {
+                require_once __DIR__ . '/mailer.php';
+                $emailSubj = "[Domation CRM] Ticket Lỗi Data Bị Từ Chối - $lName";
+                $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
+                              <p>Chào $cName,</p>
+                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên từ chối.</p>
+                              <p><strong>Lý do từ chối:</strong> $reject_reason</p>
+                              <p>Bạn sẽ không được nhận Data đền bù cho trường hợp này.</p>";
+                sendEmail($consultant['email'], $cName, $emailSubj, $emailBody);
+            }
+            
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
@@ -1155,56 +1458,97 @@ switch ($action) {
 
 
     case 'get_accounts':
-        $res = $conn->query("SELECT id, username, name, role, created_at FROM accounts ORDER BY created_at DESC");
+        // Include email field for display and ticket notification settings
+        $res = $conn->query("SELECT id, username, name, email, role, created_at FROM accounts ORDER BY created_at DESC");
         $data = [];
         while($row = $res->fetch_assoc()) $data[] = $row;
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 
     case 'add_account':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $username = $input['username'] ?? '';
+        $input    = json_decode(file_get_contents('php://input'), true);
+        $username = trim($input['username'] ?? '');
         $password = $input['password'] ?? '';
-        $name = $input['name'] ?? '';
-        $role = $input['role'] ?? 'viewer';
-        
-        if (empty($username) || empty($password)) {
-            echo json_encode(['success' => false, 'message' => 'Username and password are required']);
+        $name     = trim($input['name'] ?? '');
+        $role     = $input['role'] ?? 'viewer';
+        $email    = trim($input['email'] ?? '');
+
+        if (empty($username) || empty($password) || empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên hiển thị, username và mật khẩu là bắt buộc']);
+            break;
+        }
+        // FEATURE: Email bắt buộc cho tất cả tài khoản (trừ Super Admin id=1 là tài khoản đặc biệt)
+        if (empty($email)) {
+            echo json_encode(['success' => false, 'message' => 'Email là bắt buộc để đăng nhập']);
+            break;
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Định dạng email không hợp lệ']);
             break;
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $username, $hash, $name, $role);
+        $token = bin2hex(random_bytes(32));
         
+        $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token) VALUES (?, ?, ?, ?, ?, 0, ?)");
+        $stmt->bind_param("ssssss", $username, $hash, $name, $role, $email, $token);
+
         if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'id' => $conn->insert_id]);
+            $newId = $conn->insert_id;
+            
+            // Build confirm link
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+            $confirmLink = $frontendUrl . "/backend/confirm.php?token=" . $token;
+            
+            require_once 'mailer.php';
+            sendAdminConfirmationEmail($email, $name, $confirmLink);
+            
+            echo json_encode(['success' => true, 'id' => $newId]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Username có thể đã tồn tại']);
+            echo json_encode(['success' => false, 'message' => 'Username hoặc Email có thể đã tồn tại']);
         }
         break;
 
     case 'edit_account':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int)($input['id'] ?? 0);
-        $username = $input['username'] ?? '';
+        $input    = json_decode(file_get_contents('php://input'), true);
+        $id       = (int)($input['id'] ?? 0);
+        $username = trim($input['username'] ?? '');
         $password = $input['password'] ?? '';
-        $name = $input['name'] ?? '';
-        $role = $input['role'] ?? 'viewer';
-        
+        $name     = trim($input['name'] ?? '');
+        $role     = $input['role'] ?? 'viewer';
+        $email    = trim($input['email'] ?? '');
+
+        // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
+        if ($id !== 1) {
+            if (empty($email)) {
+                echo json_encode(['success' => false, 'message' => 'Email là bắt buộc để đăng nhập']);
+                break;
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Định dạng email không hợp lệ']);
+                break;
+            }
+        }
+
+        // Đảm bảo nếu email trống (chỉ được phép đối với Super Admin id=1) thì lưu là NULL thay vì chuỗi rỗng
+        // để tránh lỗi vi phạm UNIQUE constraint trong MySQL (nhiều dòng có thể là NULL, nhưng chỉ có một dòng có thể là '')
+        $dbEmail = empty($email) ? null : $email;
+
         if (!empty($password)) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=? WHERE id=?");
-            $stmt->bind_param("ssssi", $username, $hash, $name, $role, $id);
+            $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=? WHERE id=?");
+            $stmt->bind_param("sssssi", $username, $hash, $name, $role, $dbEmail, $id);
         } else {
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=? WHERE id=?");
-            $stmt->bind_param("sssi", $username, $name, $role, $id);
+            $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=? WHERE id=?");
+            $stmt->bind_param("ssssi", $username, $name, $role, $dbEmail, $id);
         }
-        
+
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username có thể bị trùng']);
+            echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);
         }
         break;
 
@@ -1218,6 +1562,68 @@ switch ($action) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
+        break;
+
+    // ── TICKET NOTIFICATION SETTINGS ──────────────────────────────────────────
+    case 'get_ticket_settings':
+        // Trả về danh sách account_id được chọn nhận thông báo ticket
+        $res = $conn->query("SELECT account_id FROM ticket_notify_settings");
+        $ids = [];
+        if ($res) while ($r = $res->fetch_assoc()) $ids[] = (int)$r['account_id'];
+        echo json_encode(['success' => true, 'data' => $ids]);
+        break;
+
+    case 'save_ticket_settings':
+        $input   = json_decode(file_get_contents('php://input'), true);
+        $adminIds = array_map('intval', $input['admin_ids'] ?? []);
+
+        $conn->begin_transaction();
+        try {
+            // Xóa toàn bộ cấu hình cũ rồi insert lại
+            $conn->query("DELETE FROM ticket_notify_settings");
+            if (!empty($adminIds)) {
+                $insStmt = $conn->prepare("INSERT IGNORE INTO ticket_notify_settings (account_id) VALUES (?)");
+                foreach ($adminIds as $aid) {
+                    if ($aid > 0) {
+                        $insStmt->bind_param("i", $aid);
+                        $insStmt->execute();
+                    }
+                }
+            }
+            $conn->commit();
+            
+            // Send notification email and Zalo to admins
+            if (!empty($adminIds)) {
+                require_once 'mailer.php';
+                require_once 'zalo_bot.php';
+                
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                
+                $idsStr = implode(',', $adminIds);
+                $resAdmins = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($idsStr)");
+                if ($resAdmins) {
+                    while ($admin = $resAdmins->fetch_assoc()) {
+                        if (!empty($admin['email'])) {
+                            sendAdminAddedToTicketEmail($admin['email'], $admin['name']);
+                        }
+                        if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
+                            $zName = $admin['name'] ?: 'Quản trị viên';
+                            $zaloMsg = "[ PHÂN QUYỀN TICKET ]\n\n"
+                                     . "Chào $zName,\n"
+                                     . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống CRM.\n\n"
+                                     . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
+                            sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                        }
+                    }
+                }
+            }
+
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi lưu cấu hình: ' . $e->getMessage()]);
+        }
         break;
 
     case 'force_sync':
@@ -1264,23 +1670,35 @@ switch ($action) {
             $prevDateCondition = "received_at >= DATE_SUB('$start', INTERVAL $diff DAY) AND received_at < '$start'";
         }
 
-        // Query current period stats
-        $statsSql = "SELECT 
-                        COUNT(*) as total,
-                        SUM(IF(status='assigned', 1, 0)) as distributed,
-                        SUM(IF(status='duplicate', 1, 0)) as duplicates,
-                        SUM(IF(status='error', 1, 0)) as errors
-                     FROM distribution_logs WHERE $dateCondition";
-        $statsRes = $conn->query($statsSql)->fetch_assoc();
+        // Query current period stats using GROUP BY for index optimization
+        $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition GROUP BY status";
+        $statsResRaw = $conn->query($statsSql);
+        $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
+        if ($statsResRaw) {
+            while ($row = $statsResRaw->fetch_assoc()) {
+                $status = $row['status'];
+                $cnt = (int)$row['cnt'];
+                $statsRes['total'] += $cnt;
+                if ($status === 'assigned') $statsRes['distributed'] += $cnt;
+                else if ($status === 'duplicate') $statsRes['duplicates'] += $cnt;
+                else if ($status === 'error') $statsRes['errors'] += $cnt;
+            }
+        }
 
         // Query previous period stats for % change
-        $prevStatsSql = "SELECT 
-                            COUNT(*) as total,
-                            SUM(IF(status='assigned', 1, 0)) as distributed,
-                            SUM(IF(status='duplicate', 1, 0)) as duplicates,
-                            SUM(IF(status='error', 1, 0)) as errors
-                         FROM distribution_logs WHERE $prevDateCondition";
-        $prevStatsRes = $conn->query($prevStatsSql)->fetch_assoc();
+        $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition GROUP BY status";
+        $prevStatsResRaw = $conn->query($prevStatsSql);
+        $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
+        if ($prevStatsResRaw) {
+            while ($row = $prevStatsResRaw->fetch_assoc()) {
+                $status = $row['status'];
+                $cnt = (int)$row['cnt'];
+                $prevStatsRes['total'] += $cnt;
+                if ($status === 'assigned') $prevStatsRes['distributed'] += $cnt;
+                else if ($status === 'duplicate') $prevStatsRes['duplicates'] += $cnt;
+                else if ($status === 'error') $prevStatsRes['errors'] += $cnt;
+            }
+        }
 
         $calcChange = function($current, $prev) {
             $current = (int)$current;
@@ -1452,6 +1870,19 @@ switch ($action) {
                 $roundId
             );
             
+            require_once __DIR__ . '/zalo_bot.php';
+            sendLeadAssignedZaloMessageToSale(
+                $new_consultant_id,
+                $new_cons_name,
+                $log_data['lead_name'] ?: 'Khach hang an danh',
+                $log_data['phone'] ?: '',
+                $log_data['note'] ?: '',
+                $log_data['source'] ?: '',
+                $roundNameStr,
+                $lead_id,
+                $roundId
+            );
+            
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
@@ -1459,7 +1890,72 @@ switch ($action) {
         }
         break;
 
+    case 'send_quick_zalo_message':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $consultant_id = (int)($input['consultant_id'] ?? 0);
+        $message = trim($input['message'] ?? '');
+        
+        if (!$consultant_id || empty($message)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin người nhận hoặc nội dung tin nhắn']);
+            break;
+        }
+        
+        $stmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $consultant_id);
+        $stmt->execute();
+        $consultant = $stmt->get_result()->fetch_assoc();
+        
+        if (!$consultant) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy Tư vấn viên']);
+            break;
+        }
+        
+        $sentZalo = false;
+        $sentEmail = false;
+        
+        // 1. Send Zalo
+        require_once __DIR__ . '/zalo_bot.php';
+        $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+        $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+        
+        if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
+            $zaloMsg = "[ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]\n\n"
+                     . "Chào {$consultant['name']},\n\n"
+                     . $message;
+            $sentZalo = sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+        }
+        
+        // 2. Send Email
+        if (!empty($consultant['email'])) {
+            require_once __DIR__ . '/mailer.php';
+            sendQuickMessageEmailToSale($consultant['email'], $consultant['name'], $message);
+            $sentEmail = true;
+        }
+        
+        if ($sentZalo || $sentEmail) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gửi thất bại. TVV chưa có Email và chưa liên kết Zalo.']);
+        }
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
 }
+
+// 1. Flush response to client (Non-blocking for pseudo-cron)
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    // Fallback for Apache/mod_php or others
+    ignore_user_abort(true);
+    ob_end_flush();
+    if (ob_get_level() > 0) ob_flush();
+    flush();
+}
+
+// 2. Pseudo-cron: Kiểm tra báo cáo hàng ngày
+require_once __DIR__ . '/cron_daily_report.php';
+runDailyReportCron($conn);
+
 $conn->close();
