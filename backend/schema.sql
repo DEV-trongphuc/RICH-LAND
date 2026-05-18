@@ -124,6 +124,15 @@ CREATE TABLE IF NOT EXISTS accounts (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Bảng ghi nhận các dòng dữ liệu Google Sheets đã đồng bộ (để tránh đồng bộ lại dòng cũ)
+CREATE TABLE IF NOT EXISTS sheet_sync_records (
+    connection_id INT,
+    row_hash VARCHAR(64),
+    synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (connection_id, row_hash),
+    FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
+);
+
 -- Tạo sẵn tài khoản Admin mặc định (mật khẩu: 123456)
 -- Hash của 123456 bằng password_hash('123456', PASSWORD_DEFAULT)
 INSERT IGNORE INTO accounts (username, password_hash, role, name) 
