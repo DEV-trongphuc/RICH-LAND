@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -25,6 +25,7 @@ type Connection = {
   is_active: boolean;
   sync_interval?: number;
   mappings?: Mapping[];
+  require_both_contact?: number | boolean;
 };
 
 type Mapping = {
