@@ -120,8 +120,32 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $ccEmailString = '') {
+function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '') {
+    global $conn;
+    
+    // Fetch additional fields (email, type) from DB to display completely
+    $email = '';
+    $type = '';
+    $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ?");
+    if ($stmt) {
+        $stmt->bind_param("s", $leadPhone);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $email = $row['email'] ?? '';
+            $type = $row['type'] ?? '';
+        }
+    }
+    
     $subject = "DOMATION - Bạn có 1 Data mới được phân bổ!";
+    
+    // Format values nicely for HTML, converting newlines (\n) to <br/> tags
+    $formattedNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : '<em>Không có ghi chú</em>';
+    $formattedSource = !empty($leadSource) ? nl2br(htmlspecialchars($leadSource)) : '<em>Không có</em>';
+    $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
+    $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
+    
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
             Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
@@ -129,14 +153,39 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         </p>
         
         <div style="background-color: #f8fafc; border-left: 4px solid #7c3aed; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
-            <p style="color: #0f172a; font-size: 16px; margin: 0 0 10px 0; font-weight: bold; line-height: 1.6;">
-                Thông tin Khách hàng:
+            <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                Thông tin chi tiết Khách hàng:
             </p>
-            <ul style="color: #334155; font-size: 15px; margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li>Tên Khách Hàng: <strong style="color: #0f172a;">' . htmlspecialchars($leadName) . '</strong></li>
-                <li>Số điện thoại: <strong style="color: #2563eb;">' . htmlspecialchars($leadPhone) . '</strong></li>
-                <li>Trạng thái: <strong style="color: #ef4444;">Chưa tư vấn</strong></li>
-            </ul>
+            <table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">Họ và Tên:</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($leadName) . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: #2563eb; vertical-align: top;">' . htmlspecialchars($leadPhone) . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedEmail . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Nguồn Data:</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedSource . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Loại Data:</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedType . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $formattedNote . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Trạng thái:</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: #ef4444; vertical-align: top;">Chưa tư vấn</td>
+                </tr>
+            </table>
         </div>
         
         <p style="color: #64748b; font-size: 15px; line-height: 1.7;">
