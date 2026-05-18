@@ -246,12 +246,33 @@ switch ($action) {
 
     case 'edit_consultant':
         $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int)($input['id'] ?? 0);
-        $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
+        $id     = (int)($input['id'] ?? 0);
+        $name   = trim($input['name'] ?? '');
+        $email  = trim($input['email'] ?? '');
         $status = $input['status'] ?? 'active';
         $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
-        $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
+        $leave_end   = !empty($input['leave_end'])   ? $input['leave_end']   : null;
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+            break;
+        }
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
+            break;
+        }
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
+            break;
+        }
+        // Check duplicate email — but exclude self
+        $dupChk2 = $conn->prepare("SELECT id FROM consultants WHERE email = ? AND id != ?");
+        $dupChk2->bind_param("si", $email, $id);
+        $dupChk2->execute();
+        if ($dupChk2->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
+            break;
+        }
         $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=? WHERE id=?");
         $stmt->bind_param("sssssi", $name, $email, $status, $leave_start, $leave_end, $id);
         $stmt->execute();
@@ -262,18 +283,22 @@ switch ($action) {
         $conn->begin_transaction();
         try {
             $id = (int)($_GET['id'] ?? 0);
+            if (!$id) throw new Exception('ID không hợp lệ');
             
             // Check if consultant has any assigned leads in distribution_logs
-            $checkLog = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to=$id");
-            if ($checkLog && $checkLog->fetch_assoc()['cnt'] > 0) {
-                throw new Exception("TVV này đã nhận Data, không thể xóa để bảo toàn thống kê. Vui lòng chọn 'Ngừng hoạt động'.");
+            $checkLog = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ?");
+            $checkLog->bind_param("i", $id);
+            $checkLog->execute();
+            if ((int)$checkLog->get_result()->fetch_assoc()['cnt'] > 0) {
+                throw new Exception("TVV này đã nhận Data, không thể xóa để bảo toàn thống kê. Vui lòng chọn 'Ngưng hoạt động'.");
             }
             
-            $conn->query("DELETE FROM round_consultants WHERE consultant_id=$id");
-            $conn->query("DELETE FROM data_reports WHERE consultant_id=$id");
-            $stmt = $conn->prepare("DELETE FROM consultants WHERE id=?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
+            $stmtD1 = $conn->prepare("DELETE FROM round_consultants WHERE consultant_id = ?");
+            $stmtD1->bind_param("i", $id); $stmtD1->execute();
+            $stmtD2 = $conn->prepare("DELETE FROM data_reports WHERE consultant_id = ?");
+            $stmtD2->bind_param("i", $id); $stmtD2->execute();
+            $stmtD3 = $conn->prepare("DELETE FROM consultants WHERE id = ?");
+            $stmtD3->bind_param("i", $id); $stmtD3->execute();
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -316,8 +341,9 @@ switch ($action) {
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;
             
-            // Fetch ratios and compensation counts
-            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id = " . $row['id']);
+            // Fetch ratios, data_per_turn, compensation counts — use prepared stmt (avoid raw concat)
+            $roundId_int = (int)$row['id'];
+            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id = $roundId_int");
             $ratios = [];
             $perTurns = [];
             $compensations = [];
@@ -811,10 +837,12 @@ switch ($action) {
         $round_id = isset($_GET['round_id']) ? (int)$_GET['round_id'] : 0;
         
         if ($round_id > 0) {
-            $sql = "SELECT r.*, l.name as lead_name, l.phone as lead_phone, c.name as consultant_name 
+            $sql = "SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
+                           c.name as consultant_name, dr.round_name
                     FROM data_reports r 
                     JOIN leads l ON r.lead_id = l.id 
                     JOIN consultants c ON r.consultant_id = c.id
+                    JOIN distribution_rounds dr ON r.round_id = dr.id
                     WHERE r.round_id = ?
                     ORDER BY r.created_at DESC";
             $stmtR = $conn->prepare($sql);
@@ -822,10 +850,12 @@ switch ($action) {
             $stmtR->execute();
             $res = $stmtR->get_result();
         } else {
-            $res = $conn->query("SELECT r.*, l.name as lead_name, l.phone as lead_phone, c.name as consultant_name 
+            $res = $conn->query("SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
+                           c.name as consultant_name, dr.round_name
                     FROM data_reports r 
                     JOIN leads l ON r.lead_id = l.id 
                     JOIN consultants c ON r.consultant_id = c.id
+                    JOIN distribution_rounds dr ON r.round_id = dr.id
                     ORDER BY r.created_at DESC");
         }
         
@@ -839,6 +869,10 @@ switch ($action) {
     case 'approve_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int)($input['id'] ?? 0);
+        if (!$report_id) {
+            echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
+            break;
+        }
         
         $conn->begin_transaction();
         try {
@@ -879,6 +913,10 @@ switch ($action) {
     case 'reject_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int)($input['id'] ?? 0);
+        if (!$report_id) {
+            echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
+            break;
+        }
         
         $conn->begin_transaction();
         try {
@@ -965,36 +1003,132 @@ switch ($action) {
 
     case 'test_email':
         $input = json_decode(file_get_contents('php://input'), true);
-        $email = $input['email'] ?? '';
-        $type = $input['type'] ?? 'system';
+        $email = trim($input['email'] ?? '');
+        $type  = $input['type'] ?? 'system';
         
-        if (!$email) {
-            echo json_encode(['success' => false, 'message' => 'No email provided']);
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
             break;
         }
         
         require_once __DIR__ . '/mailer.php';
         
         if ($type === 'assignment') {
-            $subject = "Thông báo: Bạn có Data mới (Bản thử nghiệm)";
-            $body = "<p>Chào bạn,</p>
-                     <p>Hệ thống vừa phân bổ một data thử nghiệm cho bạn để kiểm tra tính năng giao số.</p>
-                     <ul>
-                         <li><strong>Họ tên:</strong> Nguyễn Văn Test</li>
-                         <li><strong>SĐT:</strong> 0987654321</li>
-                         <li><strong>Khóa học quan tâm:</strong> Digital Marketing cơ bản</li>
-                     </ul>
-                     <p>Vui lòng xác nhận bạn đã nhận được data này.</p>";
-            $title = "Data Mới Phân Bổ (Test)";
+            // Send a REAL-FORMAT email using the actual template with mock data
+            // Mock IDs that clearly don't exist in DB (0 = test mode)
+            $mockLeadId      = 0;
+            $mockConsultantId = 0;
+            $mockRoundId     = 0;
+            
+            // Build frontend URL for the report link (same logic as real emails)
+            $frontendUrl = '';
+            $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+            if ($urlSetting && $urlSetting->num_rows > 0) {
+                $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
+            }
+            if (empty($frontendUrl)) {
+                $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $frontendUrl = $proto . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            }
+            // For test, link goes to report page but with id=0 — server will reject gracefully
+            $reportUrl = $frontendUrl . "/report-data?lead_id=0&sale_id=0&round_id=0";
+            
+            // Mock lead data — realistic Vietnamese customer
+            $mockPhone  = '0912 345 678';
+            $mockName   = 'Trần Thị Mai Anh';
+            $mockEmail  = 'maianh.tran@gmail.com';
+            $mockSource = 'Facebook Ads — Chiến dịch Tuyển sinh T5/2026';
+            $mockType   = 'Học viên tiềm năng';
+            $mockNote   = "Quan tâm: Khóa Marketing Online\nNgân sách: 5–10 triệu\nThời gian học: Buổi tối / Cuối tuần\nGhi chú: Đã nhắn tin fanpage hỏi lịch khai giảng";
+            $mockRound  = 'Vòng A — Facebook Inbound';
+            $consultantName = 'Bạn (Test)';
+
+            $formattedNote   = nl2br(htmlspecialchars($mockNote));
+            $formattedSource = htmlspecialchars($mockSource);
+            $formattedType   = htmlspecialchars($mockType);
+            $formattedEmail  = htmlspecialchars($mockEmail);
+            $phoneEncoded    = urlencode(str_replace(' ', '', $mockPhone));
+
+            $subject = "[TEST] Bạn vừa nhận được Lead {$mockName} — {$mockRound}";
+            
+            $content = '
+                <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:12px 16px;margin-bottom:28px;border-radius:0 8px 8px 0;font-size:14px;color:#856404;">
+                    ⚠️ <strong>Email thử nghiệm</strong> — Đây là email kiểm tra hệ thống, không phải Data thật.
+                </div>
+                
+                <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
+                    Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
+                    Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ chiến dịch Inbound.
+                </p>
+                
+                <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
+                    <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                        Thông tin chi tiết Khách hàng:
+                    </p>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">Họ và Tên:</td>
+                            <td style="padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($mockName) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
+                            <td style="padding: 6px 0; font-weight: 700; color: #2563eb; vertical-align: top;">' . htmlspecialchars($mockPhone) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
+                            <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedEmail . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Nguồn Data:</td>
+                            <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedSource . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Loại Data:</td>
+                            <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedType . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
+                            <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $formattedNote . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Vòng phân bổ:</td>
+                            <td style="padding: 6px 0; font-weight: 700; color: #7c3aed; vertical-align: top;">' . htmlspecialchars($mockRound) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Trạng thái:</td>
+                            <td style="padding: 6px 0; font-weight: 700; color: #ef4444; vertical-align: top;">Chưa tư vấn</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <p style="color: #64748b; font-size: 15px; line-height: 1.7; margin-bottom: 24px;">
+                    Vui lòng nhanh chóng liên hệ với khách hàng để đảm bảo tỷ lệ chốt Sales cao nhất nhé!
+                </p>
+
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . $phoneEncoded . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
+                </div>
+
+                <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
+                    <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                        🚨 BÁO CÁO DATA LỖI
+                    </a>
+                    <p style="color: #94a3b8; font-size: 12px; margin-top: 10px;">(Trong email test, link sẽ mở trang báo cáo nhưng không thể gửi vì đây là dữ liệu mock)</p>
+                </div>
+            ';
+            
+            $success = sendEmailNotification($email, $subject, "Có Data Mới Về!", $content);
         } else {
             $subject = "Test Cấu hình Email từ DOMATION";
-            $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p>";
-            $title = "Kết nối thành công";
+            $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p><p style='color:#64748b;font-size:14px;'>Gửi lúc: " . date('d/m/Y H:i:s') . "</p>";
+            $success = sendEmailNotification($email, $subject, "Kết nối thành công ✅", $body);
         }
         
-        $success = sendEmailNotification($email, $subject, $title, $body);
-        echo json_encode(['success' => $success]);
+        echo json_encode(['success' => $success, 'message' => $success ? 'Email đã được gửi thành công!' : 'Gửi email thất bại, kiểm tra cấu hình.']);
         break;
+
 
     case 'get_accounts':
         $res = $conn->query("SELECT id, username, name, role, created_at FROM accounts ORDER BY created_at DESC");

@@ -12,6 +12,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 const getColorForName = (name: string) => {
   if (!name || name === '-') return '#94a3b8';
@@ -161,9 +162,11 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards — Exact match with F:\CRM */}
+      {/* KPI Cards */}
       <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        {kpiCards.map((card, i) => {
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <KpiCardSkeleton key={i} />)
+        ) : kpiCards.map((card, i) => {
           const Icon = card.icon;
           return (
             <div
@@ -190,25 +193,44 @@ export const Dashboard = () => {
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-
-        {/* CHART SECTION - Using exact F:\CRM Recharts structure */}
-        <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua' ? 'giờ' : 'ngày'}</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về {dateFilter === 'Tùy chỉnh' ? 'trong khoảng thời gian đã chọn' : `trong ${dateFilter.toLowerCase()}`}.</p>
-            </div>
+      {/* Chart + List row */}
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
+            <Skeleton width={300} height={11} style={{ marginBottom: 24 }} />
+            <Skeleton width="100%" height={260} borderRadius={12} />
           </div>
-
-          {stats?.chartData && stats.chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={stats.chartData} margin={{ left: -20, right: 5, top: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip 
-                  content={({ active, payload, label }) => {
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <Skeleton width={180} height={16} style={{ marginBottom: 20 }} />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <Skeleton width={32} height={32} borderRadius="50%" />
+                <div style={{ flex: 1 }}>
+                  <Skeleton width="60%" height={13} />
+                  <Skeleton width="40%" height={10} style={{ marginTop: 6 }} />
+                </div>
+                <Skeleton width={60} height={22} borderRadius={12} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua' ? 'giờ' : 'ngày'}</h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về {dateFilter === 'Tùy chỉnh' ? 'trong khoảng thời gian đã chọn' : `trong ${dateFilter.toLowerCase()}`}.</p>
+              </div>
+            </div>
+            {stats?.chartData && stats.chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={stats.chartData} margin={{ left: -20, right: 5, top: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
                         <div style={{ background: 'white', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
@@ -218,69 +240,84 @@ export const Dashboard = () => {
                       );
                     }
                     return null;
-                  }} 
-                />
-                <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
-              Chưa có dữ liệu thống kê
-            </div>
-          )}
-        </div>
-
-        {/* LIST SECTION */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Lịch sử giao Data gần đây</h3>
-            <span 
-              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer' }}
-              onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
-            >Xem tất cả</span>
-          </div>
-          <div style={{ flex: 1, padding: '0.5rem', overflowY: 'auto', maxHeight: 260 }}>
-            {loading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải...</div>
-            ) : recentLogs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {recentLogs.map((log) => (
-                  <div key={log.id} className="hover-lift" style={{
-                    padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    borderRadius: 'var(--radius-lg)', cursor: 'pointer', transition: 'background 0.2s',
-                    borderBottom: '1px solid var(--color-border-light)'
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
-                  >
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(log.assigned_to_name), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'white', fontWeight: 800, fontSize: '0.875rem' }}>
-                      {log.assigned_to_name ? log.assigned_to_name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : 'HT'}
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                        {log.assigned_to_name || 'Hệ thống'}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <strong style={{color: 'var(--color-text)'}}>{log.lead_name || 'Khách hàng'}</strong> • p:{(log.phone?.length >= 8) ? `${log.phone.slice(0, log.phone.length - 6)}***${log.phone.slice(-3)}` : log.phone} • {log.source || 'Data'}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span className="badge" style={{ background: log.status === 'assigned' ? 'var(--color-success-light)' : 'var(--color-border)', color: log.status === 'assigned' ? 'var(--color-success)' : 'var(--color-text)', border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
-                        {log.status === 'assigned' ? (log.round_name || 'Đã chia') : (log.status === 'duplicate' ? 'Trùng lặp' : log.status)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  }} />
+                  <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20} />
+                </ComposedChart>
+              </ResponsiveContainer>
             ) : (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Không có data mới</div>
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                Chưa có dữ liệu thống kê
+              </div>
             )}
           </div>
+
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Lịch sử giao Data gần đây</h3>
+              <span 
+                style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
+              >Xem tất cả</span>
+            </div>
+            <div style={{ flex: 1, padding: '0.5rem', overflowY: 'auto', maxHeight: 260 }}>
+              {recentLogs.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {recentLogs.map((log) => (
+                    <div key={log.id} className="hover-lift" style={{
+                      padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      borderRadius: 'var(--radius-lg)', cursor: 'pointer', transition: 'background 0.2s',
+                      borderBottom: '1px solid var(--color-border-light)'
+                    }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(log.assigned_to_name), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'white', fontWeight: 800, fontSize: '0.875rem' }}>
+                        {log.assigned_to_name ? log.assigned_to_name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : 'HT'}
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                          {log.assigned_to_name || 'Hệ thống'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <strong style={{color: 'var(--color-text)'}}>{log.lead_name || 'Khách hàng'}</strong> • p:{(log.phone?.length >= 8) ? `${log.phone.slice(0, log.phone.length - 6)}***${log.phone.slice(-3)}` : log.phone} • {log.source || 'Data'}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="badge" style={{ background: log.status === 'assigned' ? 'var(--color-success-light)' : 'var(--color-border)', color: log.status === 'assigned' ? 'var(--color-success)' : 'var(--color-text)', border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
+                          {log.status === 'assigned' ? (log.round_name || 'Đã chia') : (log.status === 'duplicate' ? 'Trùng lặp' : log.status)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Không có data mới</div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* NEW STATS ROW */}
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="card" style={{ padding: '1.25rem' }}>
+              <Skeleton width={200} height={16} style={{ marginBottom: 20 }} />
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div key={j} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Skeleton width="50%" height={13} />
+                    <Skeleton width={40} height={13} />
+                  </div>
+                  <Skeleton width="100%" height={8} borderRadius={4} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
         {/* Top Consultants */}
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
@@ -332,6 +369,7 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+      )}{/* end stats ternary */}
       {/* Date Picker Modal */}
       <CustomModal 
         isOpen={showDateModal} 

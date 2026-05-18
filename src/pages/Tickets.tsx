@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Shield, Users, CheckCircle, Ticket as TicketIcon } from 'lucide-react';
+import { AlertCircle, Shield, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 export const Tickets = () => {
   const [reports, setReports] = useState<any[]>([]);
@@ -74,6 +75,9 @@ export const Tickets = () => {
               {tab.label} {tab.key !== 'all' && `(${reports.filter(r => r.status === tab.key).length})`}
             </button>
           ))}
+          <button onClick={fetchReports} disabled={loading} title="Làm mới" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+          </button>
           <div style={{ 
             background: pendingCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
             color: pendingCount > 0 ? 'var(--color-danger)' : '#10b981', 
@@ -94,7 +98,7 @@ export const Tickets = () => {
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu...</div>
+          <TableSkeleton rows={4} cols={5} />
         ) : filteredReports.length === 0 ? (
           <div style={{ padding: '6rem 2rem', textAlign: 'center' }}>
             <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
@@ -110,6 +114,7 @@ export const Tickets = () => {
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thông tin Lead</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tư vấn viên</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Vòng phân bổ</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Lý do lỗi</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
                 </tr>
@@ -130,6 +135,13 @@ export const Tickets = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500 }}>
                         <Users size={16} color="var(--color-text-muted)" /> {r.consultant_name}
                       </div>
+                    </td>
+                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                      {r.round_name && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                          <Zap size={12} /> {r.round_name}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       {/* NEW-07 fix: reason + status badge always visible */}

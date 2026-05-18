@@ -331,6 +331,11 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) 
                             VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
                             ON DUPLICATE KEY UPDATE 
+                                name = IF(VALUES(name) != '' AND name = '', VALUES(name), name),
+                                email = IF(VALUES(email) != '' AND email = '', VALUES(email), email),
+                                source = VALUES(source),
+                                type = VALUES(type),
+                                note = VALUES(note),
                                 last_interaction_date = NOW(),
                                 assigned_to = VALUES(assigned_to)");
     $stmt->bind_param("ssssssi", $phone, $email, $name, $source, $type, $note, $assignedConsultantId);
