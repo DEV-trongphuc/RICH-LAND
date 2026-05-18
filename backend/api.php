@@ -4,6 +4,12 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token");
 header("Content-Type: application/json");
 
+// Handle CORS Preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 require_once 'env.php';
 require_once 'db_connect.php';
 
@@ -610,12 +616,6 @@ switch ($action) {
         break;
 
     case 'get_dashboard_stats':
-        // Temporary alter table and migrate rule columns
-        $conn->query("ALTER TABLE sheet_connections ADD COLUMN require_both_contact BOOLEAN DEFAULT FALSE");
-        $conn->query("UPDATE routing_rules SET condition_column = 'source' WHERE condition_column = 'Nguồn'");
-        $conn->query("UPDATE routing_rules SET condition_column = 'type' WHERE condition_column = 'Loại Data'");
-        $conn->query("UPDATE routing_rules SET condition_column = 'note' WHERE condition_column = 'Ghi Chú'");
-
         $date = $_GET['date'] ?? 'Hôm nay';
         
         // Define date filters

@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/env.php';
 
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 $servername = $_ENV['DB_HOST'] ?? "localhost";
 $username = $_ENV['DB_USER'] ?? "vhvxoigh_mail_auto";
 $password = $_ENV['DB_PASS'] ?? "Ideas@812";

@@ -10,6 +10,12 @@ require_once 'db_connect.php';
 
 require_once 'webhook_logic.php';
 
+// Handle CORS Preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 // Check if request is POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

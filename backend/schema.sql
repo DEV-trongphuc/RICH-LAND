@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS sheet_connections (
     sync_interval INT DEFAULT 5 COMMENT 'Thời gian đồng bộ (phút)',
     last_sync_at DATETIME NULL,
     sync_status VARCHAR(50) DEFAULT 'idle',
+    require_both_contact BOOLEAN DEFAULT FALSE COMMENT 'Yêu cầu có cả SĐT và Email',
     email_template TEXT NULL COMMENT 'Mẫu nội dung email gửi Sale',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
