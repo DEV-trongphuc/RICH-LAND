@@ -2,31 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Edit2, Trash2, UserX, Clock, X, Mail, User, Shield, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchAPI } from '../utils/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { Avatar } from '../components/ui/Avatar';
+import { fetchAPI } from '../utils/api';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 
 interface User {
   id: number;
   name: string;
-  status: 'active' | 'inactive' | 'leave';
-  leave_start?: string;
-  leave_end?: string;
+  email: string;
+  phone: string | null;
+  status: 'active' | 'inactive';
+  telegram_id: string | null;
+  created_at: string;
 }
-
-const AVATAR_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
-  '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
-];
-
-const getColorForName = (name: string) => {
-  if (!name || name === '-') return '#94a3b8';
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
 
 export const Consultants = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -178,14 +167,11 @@ export const Consultants = () => {
                   </td>
                 </tr>
               ) : users.map((u) => {
-                const initials = u.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                 return (
                   <tr key={u.id} className="group table-row-hover">
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div className="avatar-placeholder sm" style={{ background: getColorForName(u.name), color: 'white', border: 'none', flexShrink: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                          {initials}
-                        </div>
+                        <Avatar name={u.name} size={32} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{u.name}</div>
                         </div>

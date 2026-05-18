@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webho
 import { useAuth } from '../../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { fetchAPI } from '../../utils/api';
+import { Avatar } from '../ui/Avatar';
 
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
@@ -202,12 +203,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
           justifyContent: isCollapsed ? 'center' : 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 700, fontSize: '0.7rem', flexShrink: 0
-            }}>{user?.name?.[0]?.toUpperCase() || 'U'}</div>
+            <Avatar name={user?.name} size={32} />
 
             {!isCollapsed && (
               <div style={{ overflow: 'hidden' }}>

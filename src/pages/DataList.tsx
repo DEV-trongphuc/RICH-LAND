@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { Avatar } from '../components/ui/Avatar';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -17,20 +19,6 @@ type Lead = {
   type?: string;
   note?: string;
   report_status?: string;
-};
-
-const AVATAR_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
-  '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
-];
-
-const getColorForName = (name: string) => {
-  if (!name || name === '-') return '#94a3b8';
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
 import { fetchAPI } from '../utils/api';
@@ -234,52 +222,50 @@ export const DataList = () => {
           />
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
-          <Clock size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
-          <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
-            value={dateFilter}
-            onChange={e => updateParams('date', e.target.value)}
-          >
-            <option value="all">Tất cả thời gian</option>
-            <option value="today">Hôm nay</option>
-            <option value="yesterday">Hôm qua</option>
-            <option value="7days">7 ngày qua</option>
-            <option value="30days">30 ngày qua</option>
-            <option value="this_month">Tháng này</option>
-            <option value="last_month">Tháng trước</option>
-          </select>
-        </div>
+        <CustomSelect 
+          options={[
+            { value: 'all', label: 'Tất cả thời gian', icon: <Clock size={16} /> },
+            { value: 'today', label: 'Hôm nay' },
+            { value: 'yesterday', label: 'Hôm qua' },
+            { value: '7days', label: '7 ngày qua' },
+            { value: '30days', label: '30 ngày qua' },
+            { value: 'this_month', label: 'Tháng này' },
+            { value: 'last_month', label: 'Tháng trước' }
+          ]}
+          value={dateFilter}
+          onChange={val => updateParams('date', val.toString())}
+          width={180}
+        />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
-          <Filter size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
-          <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
-            value={statusFilter}
-            onChange={e => updateParams('status', e.target.value)}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="assigned">Đã chia</option>
-            <option value="pending">Chờ chia</option>
-            <option value="duplicate">Trùng lặp</option>
-            <option value="rule_6_month">Quy định 6 tháng</option>
-            <option value="error">Lỗi / Không xác định</option>
-          </select>
-        </div>
+        <CustomSelect 
+          options={[
+            { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
+            { value: 'assigned', label: 'Đã chia' },
+            { value: 'pending', label: 'Chờ chia' },
+            { value: 'duplicate', label: 'Trùng lặp' },
+            { value: 'rule_6_month', label: 'Quy định 6 tháng' },
+            { value: 'error', label: 'Lỗi / Không xác định' }
+          ]}
+          value={statusFilter}
+          onChange={val => updateParams('status', val.toString())}
+          width={180}
+        />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
-          <User size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
-          <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
-            value={consultantFilter}
-            onChange={e => updateParams('consultant', e.target.value)}
-          >
-            <option value="all">Tất cả TVV</option>
-            {Array.from(new Set(leads.map(l => l.assigned_to_name).filter(n => n && n !== '-'))).map(name => (
-              <option key={name as string} value={name as string}>{name as string}</option>
-            ))}
-          </select>
-        </div>
+        <CustomSelect 
+          options={[
+            { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
+            ...Array.from(new Set(leads.map(l => l.assigned_to_name).filter(n => n && n !== '-'))).map(name => ({
+              value: name as string,
+              label: name as string,
+              avatar: '' // We use name for Avatar initials
+            }))
+          ]}
+          value={consultantFilter}
+          onChange={val => updateParams('consultant', val.toString())}
+          showAvatars={true}
+          searchable={true}
+          width={220}
+        />
         
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           {/* BUG-04 fix: show warning if data is truncated */}
@@ -336,13 +322,6 @@ export const DataList = () => {
                   </td>
                 </tr>
               )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
-                const getInitials = (name: string) => {
-                  if (!name || name === '-') return '?';
-                  const parts = name.trim().split(' ');
-                  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                  return name.substring(0, 2).toUpperCase();
-                };
-
                 return (
                   <tr 
                     key={lead.id} 
@@ -352,9 +331,7 @@ export const DataList = () => {
                   >
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div className="avatar-placeholder sm" style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))', color: 'white', border: 'none', fontSize: '0.7rem' }}>
-                          {getInitials(lead.name)}
-                        </div>
+                        <Avatar name={lead.name} size={32} />
                         <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
                       </div>
                     </td>
@@ -375,9 +352,7 @@ export const DataList = () => {
                     <td style={{ padding: '1rem' }}>
                       {lead.assigned_to_name !== '-' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div className="avatar-placeholder sm" style={{ background: getColorForName(lead.assigned_to_name), color: 'white', border: 'none', fontSize: '0.7rem' }}>
-                            {getInitials(lead.assigned_to_name)}
-                          </div>
+                          <Avatar name={lead.assigned_to_name} size={28} />
                           <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.round_name}</div>
@@ -464,9 +439,7 @@ export const DataList = () => {
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div className="avatar-placeholder" style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))', color: 'white', border: 'none', width: 48, height: 48, fontSize: '1.25rem' }}>
-                {selectedLead.name.substring(0, 2).toUpperCase()}
-              </div>
+              <Avatar name={selectedLead.name} size={48} />
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
                 <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
@@ -513,9 +486,7 @@ export const DataList = () => {
             {selectedLead.assigned_to_name !== '-' ? (
               <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <div className="avatar-placeholder" style={{ background: getColorForName(selectedLead.assigned_to_name), color: 'white', border: 'none', width: 40, height: 40, fontSize: '1rem' }}>
-                    {selectedLead.assigned_to_name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
-                  </div>
+                  <Avatar name={selectedLead.assigned_to_name} size={24} />
                   <div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
@@ -549,17 +520,22 @@ export const DataList = () => {
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
-                  <select 
-                    className="form-input" 
-                    value={reassignConsId} 
-                    onChange={e => setReassignConsId(e.target.value)}
-                    style={{ height: 38, fontSize: '0.875rem', border: '1px solid #cbd5e1', background: 'white' }}
-                  >
-                    <option value="">-- Chọn Tư vấn viên mới --</option>
-                    {consultants.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect 
+                    options={[
+                      { value: '', label: '-- Chọn Tư vấn viên --' },
+                      ...consultants.map(c => ({
+                        value: c.id.toString(),
+                        label: c.name,
+                        avatar: ''
+                      }))
+                    ]}
+                    value={reassignConsId}
+                    onChange={val => setReassignConsId(val.toString())}
+                    showAvatars={true}
+                    searchable={true}
+                    width="100%"
+                    direction="up"
+                  />
                 </div>
                 <button 
                   className="btn primary" 

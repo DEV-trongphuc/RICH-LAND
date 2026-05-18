@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -133,7 +135,10 @@ export const Accounts = () => {
                 {accounts.map(acc => (
                   <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
                     <td style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{acc.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={acc.name} size={36} />
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{acc.name}</div>
+                      </div>
                     </td>
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -214,15 +219,17 @@ export const Accounts = () => {
           </div>
           <div className="form-group">
             <label className="form-label">Phân quyền <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select 
-              className="form-input" 
+            <CustomSelect 
+              options={[
+                { value: 'admin', label: 'Admin (Toàn quyền)' },
+                { value: 'assistant', label: 'Assistant (Trợ lý / Phân bổ Data)' },
+                { value: 'viewer', label: 'Viewer (Chỉ xem Data)' }
+              ]}
               value={formData.role}
-              onChange={e => setFormData({ ...formData, role: e.target.value })}
-            >
-              <option value="admin">Admin (Toàn quyền)</option>
-              <option value="assistant">Assistant (Trợ lý / Phân bổ Data)</option>
-              <option value="viewer">Viewer (Chỉ xem Data)</option>
-            </select>
+              onChange={val => setFormData({ ...formData, role: val.toString() })}
+              width="100%"
+              direction="up"
+            />
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1 }}>Hủy</button>

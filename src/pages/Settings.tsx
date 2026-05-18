@@ -302,15 +302,16 @@ function sendToDataFlow(e) {
               Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <select 
-                className="form-input" 
-                value={testType} 
-                onChange={e => setTestType(e.target.value)}
-                style={{ padding: '0 1rem', background: 'white' }}
-              >
-                <option value="system">Test Hệ Thống (SMTP / AppScript)</option>
-                <option value="assignment">Test Template Giao Data</option>
-              </select>
+              <CustomSelect 
+                options={[
+                  { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
+                  { value: 'assignment', label: 'Test Template Giao Data' }
+                ]}
+                value={testType}
+                onChange={val => setTestType(val.toString())}
+                width="100%"
+                direction="down"
+              />
 
               <input 
                 className="form-input" 

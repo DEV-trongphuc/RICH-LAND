@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { AlertCircle, Shield, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar } from 'lucide-react';
+import { AlertCircle, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { Avatar } from '../components/ui/Avatar';
 
 export const Tickets = () => {
   const [reports, setReports] = useState<any[]>([]);
@@ -130,34 +132,21 @@ export const Tickets = () => {
 
         {/* Sale filter */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Users size={13} style={{ position: 'absolute', left: 10, color: saleFilter ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
-          <select
+          <CustomSelect 
+            options={[
+              { value: '', label: 'Tất cả Sale', icon: <Users size={16} /> },
+              ...consultantOptions.map(name => ({
+                value: name,
+                label: name,
+                avatar: ''
+              }))
+            ]}
             value={saleFilter}
-            onChange={e => setSaleFilter(e.target.value)}
-            style={{
-              fontSize: '0.8rem', padding: '7px 32px 7px 30px',
-              borderRadius: 10,
-              border: '1.5px solid',
-              borderColor: saleFilter ? '#7c3aed' : 'rgba(124,58,237,0.2)',
-              background: saleFilter ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
-              color: saleFilter ? '#5b21b6' : '#64748b',
-              fontWeight: saleFilter ? 700 : 500,
-              outline: 'none', cursor: 'pointer',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              boxShadow: saleFilter ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
-              transition: 'all 0.2s',
-              minWidth: 140,
-            }}
-          >
-            <option value="">Tất cả Sale</option>
-            {consultantOptions.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          <svg style={{ position: 'absolute', right: 8, pointerEvents: 'none', color: saleFilter ? '#7c3aed' : '#94a3b8' }} width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+            onChange={val => setSaleFilter(val.toString())}
+            showAvatars={true}
+            searchable={true}
+            width={200}
+          />
         </div>
 
         {/* Date from */}
@@ -259,17 +248,22 @@ export const Tickets = () => {
                 {filteredReports.map(r => (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: r.status === 'pending' ? 'rgba(239, 68, 68, 0.02)' : 'transparent' }}>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{r.lead_name}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <Shield size={14} /> {r.lead_phone}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: 4 }}>
-                        {new Date(r.created_at).toLocaleString('vi-VN')}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={r.lead_name} size={36} />
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
+                            <span>{r.lead_phone}</span>
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                            {new Date(r.created_at).toLocaleString('vi-VN')}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500 }}>
-                        <Users size={16} color="var(--color-text-muted)" /> {r.consultant_name}
+                        <Avatar name={r.consultant_name} size={24} /> {r.consultant_name}
                       </div>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
