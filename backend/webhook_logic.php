@@ -233,9 +233,8 @@ function getNextConsultantInRound($conn, $roundId) {
         $compStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count - 1, skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
         $compStmt->bind_param("ii", $roundId, $nextId);
         $compStmt->execute();
-        $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
-        $updStmt->bind_param("ii", $nextId, $roundId);
-        $updStmt->execute();
+        // Note: Do NOT update last_assigned_consultant_id here. 
+        // Compensation is an out-of-band assignment and shouldn't disrupt the normal round-robin order.
         $conn->commit();
         return $nextId;
     }

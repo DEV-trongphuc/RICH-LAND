@@ -200,8 +200,9 @@ export const ReportData = () => {
             }}>
               {/* Test banner */}
               {params.isTest && (
-                <div style={{ background: '#fff3cd', border: '1px solid #ffc107', color: '#856404', padding: '8px 12px', borderRadius: 10, marginBottom: 14, fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                  ⚠️ Trang xem thử — Dữ liệu mock, không thể gửi báo cáo thật.
+                <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', color: '#b45309', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.08)' }}>
+                  <AlertCircle size={16} color="#d97706" />
+                  <span>Trang xem thử — Dữ liệu mock, không gửi được.</span>
                 </div>
               )}
 
@@ -237,16 +238,16 @@ export const ReportData = () => {
 
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Chọn lý do lỗi</div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {REPORT_REASONS.map(r => (
                       <label key={r} style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 14px',
-                        border: '1.5px solid', borderColor: reason === r ? '#8b5cf6' : '#e2e8f0',
-                        background: reason === r ? 'linear-gradient(135deg, rgba(139,92,246,0.07), rgba(124,58,237,0.12))' : 'white',
-                        borderRadius: 10, cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        boxShadow: reason === r ? '0 2px 8px rgba(139,92,246,0.15)' : 'none',
+                        border: '1.5px solid', borderColor: reason === r ? '#8b5cf6' : 'transparent',
+                        background: reason === r ? 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))' : '#f8fafc',
+                        borderRadius: 12, cursor: 'pointer',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: reason === r ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
                         flexShrink: 0
                       }}>
                         <input type="radio" name="reason" value={r} checked={reason === r}
@@ -265,13 +266,13 @@ export const ReportData = () => {
 
                   <button type="submit" disabled={submitting}
                     style={{
-                      width: '100%', flexShrink: 0,
-                      background: params.isTest ? '#94a3b8' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-                      color: 'white', padding: '12px', borderRadius: 12, border: 'none',
-                      fontSize: '0.9rem', fontWeight: 700,
+                      width: '100%', flexShrink: 0, marginTop: 'auto',
+                      background: params.isTest ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                      color: 'white', padding: '14px', borderRadius: 12, border: 'none',
+                      fontSize: '0.95rem', fontWeight: 700,
                       cursor: submitting || params.isTest ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: params.isTest ? 'none' : '0 4px 16px rgba(109,40,217,0.4)',
+                      boxShadow: params.isTest ? '0 4px 16px rgba(245,158,11,0.3)' : '0 4px 16px rgba(109,40,217,0.4)',
                       opacity: submitting ? 0.7 : 1, transition: 'all 0.2s'
                     }}>
                     {submitting ? <><Loader2 size={17} className="spin" /> Đang gửi...</>
