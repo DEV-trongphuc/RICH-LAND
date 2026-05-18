@@ -242,10 +242,10 @@ export const ReportData = () => {
 // ─── Shared shell ─────────────────────────────────────────────────────────────
 const PageShell = ({ children, context }: { children: React.ReactNode; context?: ReportContext | null }) => (
   <div style={{
-    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    position: 'fixed', inset: 0, overflowY: 'auto',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
     padding: '24px 16px',
-    position: 'relative', overflow: 'hidden'
   }}>
     {/* Background decorations */}
     <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
