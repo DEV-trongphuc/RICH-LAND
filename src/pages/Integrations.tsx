@@ -26,6 +26,7 @@ type Connection = {
   sync_interval?: number;
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
+  last_sync_at?: string;
 };
 
 type Mapping = {
@@ -453,6 +454,11 @@ export const Integrations = () => {
                   >
                     <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
                   </button>
+                  {selected.last_sync_at && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      Lần cuối: {new Date(selected.last_sync_at).toLocaleString('vi-VN')}
+                    </div>
+                  )}
 
                   <ToggleSwitch 
                     checked={selected.is_active} 

@@ -165,13 +165,16 @@ logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, 'assigned
 require_once __DIR__ . '/mailer.php';
 
 $ccEmails = '';
+$roundName = '';
 if ($targetRoundId) {
-    $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
+    $stmtQ = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
     $stmtQ->bind_param("i", $targetRoundId);
     $stmtQ->execute();
     $qRound = $stmtQ->get_result();
     if ($qRound && $qRound->num_rows > 0) {
-        $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+        $rData = $qRound->fetch_assoc();
+        $ccEmails = $rData['cc_emails'] ?? '';
+        $roundName = $rData['round_name'] ?? '';
     }
 }
 
@@ -181,7 +184,7 @@ $stmt->execute();
 $cRes = $stmt->get_result();
 if ($cRes->num_rows > 0) {
     $c = $cRes->fetch_assoc();
-    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails);
+    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName);
 }
 
 echo json_encode([

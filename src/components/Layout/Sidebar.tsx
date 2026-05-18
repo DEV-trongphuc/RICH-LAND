@@ -5,11 +5,11 @@ import { useAuth } from '../../contexts/AuthContext';
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
-  { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
-  { name: 'Luật xử lý', href: '/rules', icon: Webhook, adminOnly: true },
-  { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
+  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
+  { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
+  { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
 ];
 

@@ -13,6 +13,8 @@ type Lead = {
   assigned_to_name: string;
   round_name: string;
   created_at: string;
+  type?: string;
+  note?: string;
 };
 
 const AVATAR_COLORS = [
@@ -32,13 +34,19 @@ const getColorForName = (name: string) => {
 import { fetchAPI } from '../utils/api';
 
 export const DataList = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchTerm = searchParams.get('search') || '';
+  const statusFilter = searchParams.get('status') || 'all';
+  const dateFilter = searchParams.get('date') || 'all';
+  const consultantFilter = searchParams.get('consultant') || 'all';
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI('get_logs');
+      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'all')}`);
       if (json.success) {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
@@ -47,6 +55,8 @@ export const DataList = () => {
           phone: item.phone || '-',
           email: item.email || '-',
           source: item.source || '-',
+          type: item.type || '-',
+          note: item.note || '',
           status: item.status,
           assigned_to_name: item.assigned_to_name || '-',
           round_name: item.round_name || '-',
@@ -63,13 +73,7 @@ export const DataList = () => {
   useEffect(() => {
     fetchLeads();
     fetchConsultants();
-  }, []);
-
-  const [searchParams, setSearchParams] = useSearchParams();
-  const searchTerm = searchParams.get('search') || '';
-  const statusFilter = searchParams.get('status') || 'all';
-  const dateFilter = searchParams.get('date') || 'all';
-  const consultantFilter = searchParams.get('consultant') || 'all';
+  }, [searchParams.get('date')]);
 
   const updateParams = (key: string, value: string) => {
     setSearchParams(prev => {
@@ -195,16 +199,16 @@ export const DataList = () => {
           <Clock size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
           <select 
             style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
-            value={['Hôm nay', 'Hôm qua', '7 ngày qua', 'all'].includes(dateFilter) ? dateFilter : 'all'}
+            value={dateFilter}
             onChange={e => updateParams('date', e.target.value)}
           >
-            <option value="all">Thời gian: Mọi lúc</option>
-            <option value="Hôm nay">Hôm nay</option>
-            <option value="Hôm qua">Hôm qua</option>
-            <option value="7 ngày qua">7 ngày qua</option>
-            {!['Hôm nay', 'Hôm qua', '7 ngày qua', 'all'].includes(dateFilter) && (
-              <option value={dateFilter}>{dateFilter}</option>
-            )}
+            <option value="all">Tất cả thời gian</option>
+            <option value="today">Hôm nay</option>
+            <option value="yesterday">Hôm qua</option>
+            <option value="7days">7 ngày qua</option>
+            <option value="30days">30 ngày qua</option>
+            <option value="this_month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
           </select>
         </div>
 
@@ -256,7 +260,7 @@ export const DataList = () => {
               <tr>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Nguồn</th>
+                {/* <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Nguồn</th> */}
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ cho</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Thời gian nhận</th>
@@ -287,10 +291,12 @@ export const DataList = () => {
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.phone}</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                        {(lead.phone?.length >= 8) ? `${lead.phone.slice(0, lead.phone.length - 6)}***${lead.phone.slice(-3)}` : lead.phone}
+                      </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email}</div>
                     </td>
-                    <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td>
+                    {/* <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td> */}
                     <td style={{ padding: '1rem' }}>{getStatusBadge(lead.status)}</td>
                     <td style={{ padding: '1rem' }}>
                       {lead.assigned_to_name !== '-' ? (
@@ -405,7 +411,7 @@ export const DataList = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
@@ -413,6 +419,19 @@ export const DataList = () => {
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
                 <div>{getStatusBadge(selectedLead.status)}</div>
+              </div>
+            </div>
+
+            <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Ghi chú / Khác:</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{selectedLead.note ? selectedLead.note : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}</span>
+                </div>
               </div>
             </div>
 

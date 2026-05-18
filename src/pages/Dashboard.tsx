@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Users, AlertTriangle, RefreshCw,
-  Clock, ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -12,6 +12,19 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+
+const getColorForName = (name: string) => {
+  if (!name || name === '-') return '#94a3b8';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', 
+    '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
+  ];
+  return colors[Math.abs(hash) % colors.length];
+};
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -87,10 +100,14 @@ export const Dashboard = () => {
   const dateOptions = [
     { value: 'Hôm nay', label: 'Hôm nay' },
     { value: 'Hôm qua', label: 'Hôm qua' },
-    { value: '7 ngày qua', label: '7 ngày qua' }
+    { value: '7 ngày qua', label: '7 ngày qua' },
+    { value: '30 ngày qua', label: '30 ngày qua' },
+    { value: 'Tháng này', label: 'Tháng này' },
+    { value: 'Tháng trước', label: 'Tháng trước' }
   ];
 
-  if (!['Hôm nay', 'Hôm qua', '7 ngày qua', 'Tùy chỉnh'].includes(dateFilter)) {
+  const defaultFilters = ['Hôm nay', 'Hôm qua', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
+  if (!defaultFilters.includes(dateFilter)) {
     dateOptions.push({ value: dateFilter, label: dateFilter });
   }
 
@@ -173,14 +190,14 @@ export const Dashboard = () => {
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
 
         {/* CHART SECTION - Using exact F:\CRM Recharts structure */}
-        <div className="card" style={{ padding: '1.25rem' }}>
+        <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
             <div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo giờ</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về trong ngày hôm nay.</p>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua' ? 'giờ' : 'ngày'}</h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về {dateFilter === 'Tùy chỉnh' ? 'trong khoảng thời gian đã chọn' : `trong ${dateFilter.toLowerCase()}`}.</p>
             </div>
           </div>
 
@@ -214,7 +231,7 @@ export const Dashboard = () => {
         </div>
 
         {/* LIST SECTION */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Lịch sử giao Data gần đây</h3>
             <span 
@@ -235,22 +252,22 @@ export const Dashboard = () => {
                   }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    onClick={() => navigate(`/data?search=${log.phone}`)}
+                    onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
                   >
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--color-primary)' }}>
-                      <Clock size={16} />
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(log.assigned_to_name), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'white', fontWeight: 800, fontSize: '0.875rem' }}>
+                      {log.assigned_to_name ? log.assigned_to_name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : 'HT'}
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                        {log.name || 'Khách hàng'} • {log.phone}
+                      <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                        {log.assigned_to_name || 'Hệ thống'}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {log.source || 'Nguồn Data'} • {log.type || 'Chưa phân loại'}
+                        <strong style={{color: 'var(--color-text)'}}>{log.lead_name || 'Khách hàng'}</strong> • p:{(log.phone?.length >= 8) ? `${log.phone.slice(0, log.phone.length - 6)}***${log.phone.slice(-3)}` : log.phone} • {log.source || 'Data'}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <span className="badge" style={{ background: log.status === 'assigned' ? 'var(--color-success-light)' : 'var(--color-border)', color: log.status === 'assigned' ? 'var(--color-success)' : 'var(--color-text)', border: 'none', padding: '2px 8px', fontSize: '0.65rem' }}>
-                        {log.status === 'assigned' ? 'Đã chia' : (log.status === 'duplicate' ? 'Trùng lặp' : log.status)}
+                      <span className="badge" style={{ background: log.status === 'assigned' ? 'var(--color-success-light)' : 'var(--color-border)', color: log.status === 'assigned' ? 'var(--color-success)' : 'var(--color-text)', border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
+                        {log.status === 'assigned' ? (log.round_name || 'Đã chia') : (log.status === 'duplicate' ? 'Trùng lặp' : log.status)}
                       </span>
                     </div>
                   </div>
@@ -272,7 +289,7 @@ export const Dashboard = () => {
               <Users size={18} color="var(--color-primary)" /> Top Tư vấn viên nhận Data
             </h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'center' }}>
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
             {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, i: number) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600 }}>
@@ -299,7 +316,7 @@ export const Dashboard = () => {
               <GitBranch size={18} color="#3b82f6" /> Tỷ lệ theo Vòng Phân Bổ
             </h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'center' }}>
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
             {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.map((r: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />

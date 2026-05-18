@@ -108,7 +108,7 @@ switch ($action) {
         $res = $stmt->get_result();
         if ($res->num_rows > 0) {
             $user = $res->fetch_assoc();
-            if (password_verify($password, $user['password_hash']) || $password === '123456') {
+            if (password_verify($password, $user['password_hash'])) {
                 $payload = [
                     'id' => $user['id'],
                     'username' => $user['username'],
@@ -139,6 +139,27 @@ switch ($action) {
         break;
 
     case 'get_logs':
+        $date = $_GET['date'] ?? 'all';
+        $dateCondition = "1=1";
+        
+        if ($date === 'today' || $date === 'Hôm nay') {
+            $dateCondition = "dl.received_at >= CURDATE() AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        } else if ($date === 'yesterday' || $date === 'Hôm qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND dl.received_at < CURDATE()";
+        } else if ($date === '7days' || $date === '7 ngày qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } else if ($date === '30days' || $date === '30 ngày qua') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } else if ($date === 'this_month' || $date === 'Tháng này') {
+            $dateCondition = "dl.received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND dl.received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } else if ($date === 'last_month' || $date === 'Tháng trước') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND dl.received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đến (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+            $start = $conn->real_escape_string($matches[1]);
+            $end = $conn->real_escape_string($matches[2]);
+            $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
+        }
+
         $res = $conn->query("
             SELECT 
                 dl.id, 
@@ -147,6 +168,7 @@ switch ($action) {
                 l.email, 
                 l.source, 
                 l.type,
+                l.note,
                 dl.status, 
                 c.name as assigned_to_name, 
                 dr.round_name, 
@@ -155,6 +177,7 @@ switch ($action) {
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+            WHERE $dateCondition
             ORDER BY dl.received_at DESC 
             LIMIT 500
         ");
@@ -209,7 +232,7 @@ switch ($action) {
                                     GROUP_CONCAT(c.id ORDER BY c.id ASC) as consultant_ids,
                                     (SELECT c2.name FROM consultants c2 WHERE c2.id = r.last_assigned_consultant_id) as last_assigned_name
                                FROM distribution_rounds r 
-                               LEFT JOIN round_consultants rc ON r.id = rc.round_id AND rc.is_active = 1
+                               LEFT JOIN round_consultants rc ON r.id = rc.round_id
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
                                GROUP BY r.id");
         $data = [];
@@ -236,6 +259,15 @@ switch ($action) {
             }
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;
+            
+            // Fetch ratios
+            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio FROM round_consultants WHERE round_id = " . $row['id']);
+            $ratios = [];
+            while ($rr = $ratioRes->fetch_assoc()) {
+                $ratios[$rr['consultant_id']] = $rr['receive_ratio'];
+            }
+            $row['ratios'] = $ratios;
+            
             $data[] = $row;
         }
         echo json_encode(['success' => true, 'data' => $data]);
@@ -269,10 +301,13 @@ switch ($action) {
         $stmt->execute();
         $roundId = $conn->insert_id;
         
+        $ratios = $input['ratios'] ?? [];
+        
         if (!empty($consultants)) {
-            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id) VALUES (?, ?)");
+            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
             foreach($consultants as $cid) {
-                $stmtC->bind_param("ii", $roundId, $cid);
+                $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                $stmtC->bind_param("iii", $roundId, $cid, $ratio);
                 $stmtC->execute();
             }
         }
@@ -316,10 +351,14 @@ switch ($action) {
         $stmtDel = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
         $stmtDel->bind_param("i", $id);
         $stmtDel->execute();
+        
+        $ratios = $input['ratios'] ?? [];
+        
         if (!empty($consultants)) {
-            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id) VALUES (?, ?)");
+            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
             foreach($consultants as $cid) {
-                $stmtC->bind_param("ii", $id, $cid);
+                $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                $stmtC->bind_param("iii", $id, $cid, $ratio);
                 $stmtC->execute();
             }
         }
@@ -445,14 +484,18 @@ switch ($action) {
             break;
         }
         
-        $lines = explode("\n", $csvData);
         $columns = [];
-        if (!empty($lines[0])) {
-            $row = str_getcsv($lines[0]);
-            $columns = array_map(function($h) { return trim($h, "\" "); }, $row);
+        $stream = fopen("php://temp", "r+");
+        fwrite($stream, $csvData);
+        rewind($stream);
+        
+        $row = fgetcsv($stream);
+        if ($row !== FALSE) {
+            $columns = array_map(function($h) { return trim($h ?? '', "\" "); }, $row);
             $columns = array_filter($columns, function($c) { return $c !== ''; });
             $columns = array_values($columns);
         }
+        fclose($stream);
         
         echo json_encode(['success' => true, 'columns' => $columns]);
         break;
@@ -491,11 +534,13 @@ switch ($action) {
         $col = $input['condition_column'] ?? '';
         $op = $input['condition_operator'] ?? '';
         $val = $input['condition_value'] ?? '';
+        $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
+        $logical_operator = $input['logical_operator'] ?? 'AND';
         $target = (int)($input['target_round_id'] ?? 0);
         $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int)$input['connection_id'] : null;
         
-        $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssi", $conn_id, $col, $op, $val, $target);
+        $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id, conditions_json, logical_operator) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -514,11 +559,13 @@ switch ($action) {
         $col = $input['condition_column'] ?? '';
         $op = $input['condition_operator'] ?? '';
         $val = $input['condition_value'] ?? '';
+        $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
+        $logical_operator = $input['logical_operator'] ?? 'AND';
         $target = (int)($input['target_round_id'] ?? 0);
         $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int)$input['connection_id'] : null;
         
-        $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=? WHERE id=?");
-        $stmt->bind_param("isssii", $conn_id, $col, $op, $val, $target, $id);
+        $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=?, conditions_json=?, logical_operator=? WHERE id=?");
+        $stmt->bind_param("isssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -714,16 +761,31 @@ switch ($action) {
     case 'get_dashboard_stats':
         $date = $_GET['date'] ?? 'Hôm nay';
         
-        // Define date filters
-        $dateCondition = "DATE(received_at) = CURDATE()";
-        $prevDateCondition = "DATE(received_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+        // Define date filters - SARGable for performance
+        $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
         
         if ($date === 'Hôm qua') {
-            $dateCondition = "DATE(received_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
-            $prevDateCondition = "DATE(received_at) = DATE_SUB(CURDATE(), INTERVAL 2 DAY)";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
+            $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 2 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
         } else if ($date === '7 ngày qua') {
-            $dateCondition = "DATE(received_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-            $prevDateCondition = "DATE(received_at) >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND DATE(received_at) < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } else if ($date === '30 ngày qua') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } else if ($date === 'Tháng này') {
+            $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            $prevDateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } else if ($date === 'Tháng trước') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+            $prevDateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 2 MONTH) AND received_at < DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đến (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+            $start = $conn->real_escape_string($matches[1]);
+            $end = $conn->real_escape_string($matches[2]);
+            $dateCondition = "received_at >= '$start 00:00:00' AND received_at <= '$end 23:59:59'";
+            $diff = max(1, (strtotime($end) - strtotime($start)) / 86400);
+            $prevDateCondition = "received_at >= DATE_SUB('$start', INTERVAL $diff DAY) AND received_at < '$start'";
         }
 
         // Query current period stats
@@ -777,7 +839,7 @@ switch ($action) {
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
                               WHERE $dateCondition AND dl.status='assigned' 
-                              GROUP BY c.id ORDER BY data_count DESC LIMIT 4";
+                              GROUP BY c.id ORDER BY data_count DESC";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $topConsultants = [];
         $totalAssignedForTop = max(1, (int)$statsRes['distributed']);
@@ -889,7 +951,7 @@ switch ($action) {
         sendLeadAssignedEmailToSale(
             $new_cons_email,
             $new_cons_name,
-            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+            $log_data['lead_name'] ?: 'Khach hang an danh',
             $log_data['phone'] ?: '',
             $log_data['note'] ?: '',
             $log_data['source'] ?: '',

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Activity, Filter, Server, MapPin, GripVertical, Edit2, Link2 } from 'lucide-react';
-import { 
+import { Plus, Trash2, ShieldCheck, ArrowRight, Activity, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet } from 'lucide-react';
+import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { 
-  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable 
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import toast from 'react-hot-toast';
@@ -18,7 +18,9 @@ import { fetchAPI } from '../utils/api';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
+  not_contains: 'Không chứa từ khóa',
   equals: 'Trùng khớp chính xác với',
+  not_equals: 'Không trùng khớp chính xác',
   starts_with: 'Bắt đầu bằng',
   ends_with: 'Kết thúc bằng',
   is_empty: 'Trống (Không có dữ liệu)',
@@ -68,28 +70,68 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
         <div style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ flex: 1 }}>
             {rule.connection_id && rule.sheet_name && (
-              <span style={{ display: 'inline-block', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                Nguồn: {rule.sheet_name}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {rule.sheet_name}
               </span>
             )}
+            
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Điều kiện kích hoạt</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>Nếu trường</span>
-              <span style={{
-                background: 'rgba(124, 58, 237, 0.08)', border: '1px solid var(--color-primary-light)', padding: '6px 12px', borderRadius: 8, fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 6
-              }}>
-                <Server size={14} /> {rule.condition_column}
-              </span>
-              <span style={{ color: 'var(--color-text-light)', fontSize: '0.875rem', fontStyle: 'italic' }}>
-                {OP_LABELS[rule.condition_operator] || rule.condition_operator}
-              </span>
-              {rule.condition_operator !== 'is_empty' && rule.condition_operator !== 'is_not_empty' && (
-                <span style={{
-                  background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '6px 12px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.875rem'
-                }}>
-                  "{rule.condition_value}"
-                </span>
-              )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {(() => {
+                let parsed = [];
+                if (rule.conditions_json) {
+                  try {
+                    parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
+                  } catch(e) {
+                    parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+                  }
+                } else {
+                  parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+                }
+                
+                // Convert to array of arrays if legacy format
+                const branches = (Array.isArray(parsed) && parsed.length > 0 && !Array.isArray(parsed[0])) ? [parsed] : parsed;
+
+                return branches.map((branch: any[], bIndex: number) => (
+                  <div key={bIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {bIndex > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-warning)', color: 'white', padding: '2px 8px', borderRadius: 10 }}>OR</span>
+                        <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
+                      </div>
+                    )}
+                    <div style={{ background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 8 }}>
+                      {branch.map((c: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: i > 0 ? '0.5rem' : 0 }}>
+                          {i > 0 && (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-text-muted)', color: 'white', padding: '2px 6px', borderRadius: 4 }}>
+                              AND
+                            </span>
+                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              background: 'rgba(124, 58, 237, 0.08)', border: '1px solid var(--color-primary-light)', padding: '4px 10px', borderRadius: 8, fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6
+                            }}>
+                              <Server size={12} /> {c.col}
+                            </span>
+                            <span style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
+                              {OP_LABELS[c.op] || c.op}
+                            </span>
+                            {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
+                              <span style={{
+                                background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem'
+                              }}>
+                                "{c.val}"
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
           
@@ -142,11 +184,12 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
   );
 };
 
+
 export const RuleSettings = () => {
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const navigate = useNavigate();
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -156,9 +199,7 @@ export const RuleSettings = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form states
-  const [col, setCol] = useState('source');
-  const [op, setOp] = useState('contains');
-  const [val, setVal] = useState('');
+  const [branches, setBranches] = useState<any[][]>([ [{ col: 'source', op: 'contains', val: '' }] ]);
   const [targetRound, setTargetRound] = useState<number | ''>('');
   const [connectionId, setConnectionId] = useState<number | 'all'>('all');
   const [connections, setConnections] = useState<any[]>([]);
@@ -238,9 +279,7 @@ export const RuleSettings = () => {
     }
     setEditingRule(null);
     setConnectionId('all');
-    setCol('Nguồn');
-    setOp('contains');
-    setVal('');
+    setBranches([ [{ col: 'source', op: 'contains', val: '' }] ]);
     setTargetRound(rounds[0]?.id || '');
     setIsModalOpen(true);
   };
@@ -248,23 +287,47 @@ export const RuleSettings = () => {
   const openEditModal = (rule: any) => {
     setEditingRule(rule);
     setConnectionId(rule.connection_id ? Number(rule.connection_id) : 'all');
-    setCol(rule.condition_column);
-    setOp(rule.condition_operator);
-    setVal(rule.condition_value);
+    if (rule.conditions_json) {
+      try {
+        const parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
+        // Handle legacy flat array vs new array of arrays
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!Array.isArray(parsed[0])) {
+            setBranches([parsed]);
+          } else {
+            setBranches(parsed);
+          }
+        } else {
+          setBranches([ [{ col: 'source', op: 'contains', val: '' }] ]);
+        }
+      } catch (e) {
+        setBranches([ [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }] ]);
+      }
+    } else {
+      setBranches([ [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }] ]);
+    }
     setTargetRound(rule.target_round_id);
     setIsModalOpen(true);
   };
 
   const handleSaveRule = async () => {
-    const isNoValueOp = op === 'is_empty' || op === 'is_not_empty';
-    if ((!val && !isNoValueOp) || !targetRound) return toast.error('Vui lòng nhập đủ thông tin');
-    
+    for (const branch of branches) {
+      if (branch.length === 0) return toast.error('Có nhánh đang trống điều kiện');
+      for (const c of branch) {
+        const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
+        if (!c.col || !c.op || (!c.val && !isNoValueOp)) return toast.error('Vui lòng nhập đủ thông tin các điều kiện');
+      }
+    }
+    if (!targetRound) return toast.error('Vui lòng chọn vòng phân bổ');
+
     const payload = {
       id: editingRule?.id,
       connection_id: connectionId === 'all' ? null : connectionId,
-      condition_column: col,
-      condition_operator: op,
-      condition_value: val,
+      condition_column: branches[0]?.[0]?.col || '',
+      condition_operator: branches[0]?.[0]?.op || '',
+      condition_value: branches[0]?.[0]?.val || '',
+      conditions_json: branches,
+      logical_operator: 'OR',
       target_round_id: targetRound
     };
 
@@ -316,10 +379,12 @@ export const RuleSettings = () => {
     }
     return baseFields;
   };
-  
+
   const opOptions = [
     { value: 'contains', label: 'Có chứa từ khóa' },
+    { value: 'not_contains', label: 'Không chứa từ khóa' },
     { value: 'equals', label: 'Trùng khớp chính xác với' },
+    { value: 'not_equals', label: 'Không trùng khớp chính xác' },
     { value: 'starts_with', label: 'Bắt đầu bằng' },
     { value: 'ends_with', label: 'Kết thúc bằng' },
     { value: 'is_empty', label: 'Trống (Không có dữ liệu)' },
@@ -348,11 +413,11 @@ export const RuleSettings = () => {
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '2rem'
       }}>
-        <div style={{ 
-          background: 'white', 
+        <div style={{
+          background: 'white',
           width: 40, height: 40, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)' 
+          borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
         }}>
           <ShieldCheck size={20} />
         </div>
@@ -377,31 +442,39 @@ export const RuleSettings = () => {
             </div>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Quy tắc Định tuyến nào</h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thêm quy tắc đầu tiên để hệ thống tự động phân loại và chuyển tiếp dữ liệu đến đúng vòng phân bổ.</p>
-            <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Quy tắc</button>
+            <button className="btn primary" onClick={openAddModal}><Plus size={18} /> Thêm Quy tắc</button>
           </div>
         ) : (
           <div style={{ padding: '0.5rem' }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={rules.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 {rules.map((rule, idx) => (
-                  <SortableRuleItem 
-                    key={rule.id} rule={rule} idx={idx} 
-                    onEdit={openEditModal} 
-                    onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }} 
+                  <SortableRuleItem
+                    key={rule.id} rule={rule} idx={idx}
+                    onEdit={openEditModal}
+                    onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
                   />
                 ))}
               </SortableContext>
             </DndContext>
+            <div style={{ padding: '0 1rem', marginTop: '1rem' }}>
+              <button 
+                onClick={openAddModal}
+                style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              >
+                <Filter size={18} /> Thêm Quy tắc mới
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Custom Modal for Add/Edit */}
-      <CustomModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <CustomModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title={editingRule ? "Chỉnh sửa Quy tắc" : "Thêm Quy tắc mới"}
-        width="600px"
+        width="800px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
           <div>
@@ -415,48 +488,141 @@ export const RuleSettings = () => {
               onChange={(v) => setConnectionId(v === 'all' ? 'all' : Number(v))}
             />
           </div>
-          <div>
-            <label className="form-label">Kiểm tra trường</label>
-            <CustomSelect 
-              options={getFieldOptions()}
-              value={col}
-              onChange={val => setCol(String(val))}
-              placeholder="Chọn trường..."
-            />
+
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {branches.map((branch, bIndex) => (
+              <div key={bIndex} style={{ border: '1px solid #e2e8f0', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#8b5cf6', borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#4c1d95', textTransform: 'uppercase', margin: 0 }}>Nhánh {bIndex + 1}</h4>
+                  {branches.length > 1 && (
+                    <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: 4 }} onClick={() => setBranches(branches.filter((_, idx) => idx !== bIndex))}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {branch.map((c: any, i: number) => {
+                    const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
+                    const isLast = i === branch.length - 1;
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', background: 'transparent', padding: '0', position: 'relative' }}>
+                        <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          {i === 0 ? (
+                            <div style={{ background: '#f3e8ff', color: '#7c3aed', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
+                          ) : (
+                            <div style={{ background: '#f1f5f9', color: '#64748b', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
+                          )}
+                          {!isLast && (
+                            <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: '#e2e8f0', zIndex: 1 }} />
+                          )}
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ background: '#f8fafc', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                            <CustomSelect
+                              options={getFieldOptions()}
+                              value={c.col}
+                              onChange={val => {
+                                const newB = [...branches];
+                                newB[bIndex][i].col = String(val);
+                                setBranches(newB);
+                              }}
+                              placeholder="Chọn trường..."
+                            />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ background: '#f8fafc', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                            <CustomSelect
+                              options={opOptions}
+                              value={c.op}
+                              onChange={val => {
+                                const newB = [...branches];
+                                newB[bIndex][i].op = String(val);
+                                setBranches(newB);
+                              }}
+                            />
+                          </div>
+                        </div>
+                        {!isNoValueOp && (
+                          <div style={{ flex: 1 }}>
+                            {c.op.startsWith('date_') ? (
+                              <input
+                                type="date"
+                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                value={c.val}
+                                onChange={e => {
+                                  const newB = [...branches];
+                                  newB[bIndex][i].val = e.target.value;
+                                  setBranches(newB);
+                                }}
+                              />
+                            ) : (
+                              <input
+                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                placeholder="Nhập giá trị..."
+                                value={c.val}
+                                onChange={e => {
+                                  const newB = [...branches];
+                                  newB[bIndex][i].val = e.target.value;
+                                  setBranches(newB);
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {branch.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
+                            onClick={() => {
+                               const newB = [...branches];
+                               newB[bIndex] = branch.filter((_, idx) => idx !== i);
+                               setBranches(newB);
+                            }}
+                            title="Xóa điều kiện này"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div style={{ paddingLeft: 44, marginTop: '0.75rem', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: -12, left: 15, width: 2, height: 24, background: '#e2e8f0', zIndex: 1 }} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                         const newB = [...branches];
+                         newB[bIndex].push({ col: 'source', op: 'contains', val: '' });
+                         setBranches(newB);
+                      }}
+                      style={{ background: '#f3e8ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <Plus size={14} /> Thêm điều kiện
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <label className="form-label">Điều kiện</label>
-            <CustomSelect 
-              options={opOptions}
-              value={op}
-              onChange={val => setOp(String(val))}
-            />
+          
+          <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
+            <button 
+              type="button"
+              onClick={() => setBranches([...branches, [{ col: 'source', op: 'contains', val: '' }]])}
+              style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
+              <Plus size={18} /> Thêm Nhánh Mới
+            </button>
           </div>
-          {op !== 'is_empty' && op !== 'is_not_empty' && (
-            <div>
-              <label className="form-label">
-                {op.startsWith('date_') ? 'Giá trị so sánh (YYYY-MM-DD)' : 'Giá trị so sánh'}
-              </label>
-              {op.startsWith('date_') ? (
-                <input 
-                  type="date"
-                  className="form-input" 
-                  value={val} 
-                  onChange={e => setVal(e.target.value)} 
-                />
-              ) : (
-                <input 
-                  className="form-input" 
-                  placeholder="VD: form, DBA,..." 
-                  value={val} 
-                  onChange={e => setVal(e.target.value)} 
-                />
-              )}
-            </div>
-          )}
           <div>
             <label className="form-label">Hành động: Phân bổ vào</label>
-            <CustomSelect 
+            <CustomSelect
               options={rounds.map(r => ({ value: r.id.toString(), label: r.name || r.round_name }))}
               value={targetRound.toString()}
               onChange={(v) => setTargetRound(Number(v))}
@@ -472,7 +638,7 @@ export const RuleSettings = () => {
       </CustomModal>
 
       {/* Global Confirm Modal for Deletion */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleDelete}

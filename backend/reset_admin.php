@@ -1,6 +1,12 @@
 <?php
 require_once 'db_connect.php';
 
+// Only allow local or CLI access for security
+if (php_sapi_name() !== 'cli' && ($_SERVER['REMOTE_ADDR'] ?? '') !== '127.0.0.1' && ($_SERVER['REMOTE_ADDR'] ?? '') !== '::1') {
+    http_response_code(403);
+    die("Forbidden: This script can only be run locally or via CLI.");
+}
+
 // Tạo mã băm chuẩn xác cho mật khẩu '123456' trên server của bạn
 $hash = password_hash('123456', PASSWORD_DEFAULT);
 

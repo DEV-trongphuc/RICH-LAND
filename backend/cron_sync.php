@@ -118,24 +118,30 @@ foreach ($connections as $connItem) {
             throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode");
         }
 
-        // Parse CSV
-        $lines = explode("\n", $csvData);
+        // Parse CSV robustly using in-memory stream to handle newlines within quotes correctly
+        $stream = fopen("php://temp", "r+");
+        fwrite($stream, $csvData);
+        rewind($stream);
+
         $headers = [];
         $syncedCount = 0;
+        $rowCount = 0;
 
-        foreach ($lines as $i => $line) {
-            $row = str_getcsv($line);
-            if ($i === 0) {
+        while (($row = fgetcsv($stream)) !== FALSE) {
+            $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
+            if ($rowCount === 0) {
                 // Headers
-                $headers = array_map(function($h) { return trim($h, "\" "); }, $row);
+                $headers = $row;
+                $rowCount++;
                 continue;
             }
+            $rowCount++;
 
             if (empty(array_filter($row))) continue; // skip empty rows
 
             $rowData = [];
             foreach ($headers as $colIdx => $colName) {
-                $rowData[$colName] = trim($row[$colIdx] ?? '', "\" ");
+                $rowData[$colName] = $row[$colIdx] ?? '';
             }
 
             // Calculate MD5 hash of this row to check if already synced
@@ -211,10 +217,13 @@ foreach ($connections as $connItem) {
             require_once __DIR__ . '/mailer.php';
             
             $ccEmails = '';
+            $roundName = '';
             if ($targetRoundId) {
-                $qRound = $conn->query("SELECT cc_emails FROM distribution_rounds WHERE id = " . (int)$targetRoundId);
+                $qRound = $conn->query("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = " . (int)$targetRoundId);
                 if ($qRound && $qRound->num_rows > 0) {
-                    $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                    $rRow = $qRound->fetch_assoc();
+                    $ccEmails = $rRow['cc_emails'] ?? '';
+                    $roundName = $rRow['round_name'] ?? '';
                 }
             }
             
@@ -224,7 +233,7 @@ foreach ($connections as $connItem) {
             $cRes = $cStmt->get_result();
             if ($cRes->num_rows > 0) {
                 $c = $cRes->fetch_assoc();
-                sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails);
+                sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName);
             }
 
             // Record hash so we skip on next run
@@ -234,6 +243,7 @@ foreach ($connections as $connItem) {
 
             $syncedCount++;
         }
+        fclose($stream);
 
         logSync("Finished Connection ID {$connItem['id']}. Synced $syncedCount new leads.");
 

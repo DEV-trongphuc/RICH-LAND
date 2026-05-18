@@ -4,6 +4,17 @@
 
 require_once __DIR__ . '/db_connect.php';
 
+function normalizePhone($phone) {
+    if (empty($phone)) return '';
+    // Strip everything except digits
+    $clean = preg_replace('/[^0-9]/', '', $phone);
+    // If it starts with 84, replace with 0
+    if (strpos($clean, '84') === 0 && strlen($clean) > 9) {
+        $clean = '0' . substr($clean, 2);
+    }
+    return $clean;
+}
+
 function checkCRMInteraction($conn, $phone, $email) {
     if (empty($phone) && empty($email)) {
         return ['isDuplicate' => false, 'monthsSinceLastInteraction' => 0, 'assignedTo' => null];
@@ -13,6 +24,7 @@ function checkCRMInteraction($conn, $phone, $email) {
     $params = [];
     $types = '';
     
+    $phone = normalizePhone($phone);
     if (!empty($phone)) {
         $where[] = "phone = ?";
         $params[] = $phone;
@@ -55,49 +67,82 @@ function checkCRMInteraction($conn, $phone, $email) {
     ];
 }
 
+function evaluateSingleCondition($data, $source, $type, $col, $op, $val) {
+    $dataVal = '';
+    if ($col === 'source') $dataVal = $source;
+    elseif ($col === 'type') $dataVal = $type;
+    else $dataVal = $data[$col] ?? '';
+    
+    $dataVal = strtolower($dataVal);
+    $val = strtolower($val);
+    $op = strtolower($op);
+    
+    switch ($op) {
+        case 'contains':
+            return strpos($dataVal, $val) !== false;
+        case 'not_contains':
+            return strpos($dataVal, $val) === false;
+        case 'equals':
+            return $dataVal === $val;
+        case 'not_equals':
+            return $dataVal !== $val;
+        case 'starts_with':
+            return strpos($dataVal, $val) === 0;
+        case 'ends_with':
+            return substr($dataVal, -strlen($val)) === $val;
+        case 'is_empty':
+            return trim($dataVal) === '';
+        case 'is_not_empty':
+            return trim($dataVal) !== '';
+        case 'date_before':
+            return strtotime($dataVal) && strtotime($val) && strtotime($dataVal) < strtotime($val);
+        case 'date_after':
+            return strtotime($dataVal) && strtotime($val) && strtotime($dataVal) > strtotime($val);
+        case 'date_equals':
+            return strtotime($dataVal) && strtotime($val) && date('Y-m-d', strtotime($dataVal)) === date('Y-m-d', strtotime($val));
+    }
+    return false;
+}
+
 function evaluateRules($conn, $data, $source, $type) {
-    $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value FROM routing_rules ORDER BY priority ASC");
+    $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator FROM routing_rules ORDER BY priority ASC");
     
     while ($row = $result->fetch_assoc()) {
-        $col = $row['condition_column'];
-        $op = strtolower($row['condition_operator']);
-        $val = strtolower($row['condition_value']);
+        $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');
+        $isMatch = false;
+
+        if (!empty($row['conditions_json'])) {
+            $parsed = json_decode($row['conditions_json'], true);
+            if (is_array($parsed) && count($parsed) > 0) {
+                // Ensure array of arrays (backward compatibility for flat arrays)
+                $branches = isset($parsed[0]['col']) ? [$parsed] : $parsed;
+                
+                $isMatch = false;
+                foreach ($branches as $branch) {
+                    if (!is_array($branch) || count($branch) === 0) continue;
+                    
+                    $branchMatch = true; // AND logic within branch
+                    foreach ($branch as $cond) {
+                        if (!isset($cond['col'])) continue;
+                        if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'])) {
+                            $branchMatch = false;
+                            break; // One condition failed, entire branch fails
+                        }
+                    }
+                    
+                    if ($branchMatch) {
+                        $isMatch = true; // OR logic between branches
+                        break; // One branch passed, rule passes
+                    }
+                }
+            }
+        } else {
+            // Legacy format fallback
+            $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value']);
+        }
         
-        $dataVal = '';
-        if ($col === 'source') $dataVal = $source;
-        elseif ($col === 'type') $dataVal = $type;
-        else $dataVal = $data[$col] ?? '';
-        
-        $dataVal = strtolower($dataVal);
-        
-        switch ($op) {
-            case 'contains':
-                if (strpos($dataVal, $val) !== false) return $row['target_round_id'];
-                break;
-            case 'equals':
-                if ($dataVal === $val) return $row['target_round_id'];
-                break;
-            case 'starts_with':
-                if (strpos($dataVal, $val) === 0) return $row['target_round_id'];
-                break;
-            case 'ends_with':
-                if (substr($dataVal, -strlen($val)) === $val) return $row['target_round_id'];
-                break;
-            case 'is_empty':
-                if (trim($dataVal) === '') return $row['target_round_id'];
-                break;
-            case 'is_not_empty':
-                if (trim($dataVal) !== '') return $row['target_round_id'];
-                break;
-            case 'date_before':
-                if (strtotime($dataVal) && strtotime($val) && strtotime($dataVal) < strtotime($val)) return $row['target_round_id'];
-                break;
-            case 'date_after':
-                if (strtotime($dataVal) && strtotime($val) && strtotime($dataVal) > strtotime($val)) return $row['target_round_id'];
-                break;
-            case 'date_equals':
-                if (strtotime($dataVal) && strtotime($val) && date('Y-m-d', strtotime($dataVal)) === date('Y-m-d', strtotime($val))) return $row['target_round_id'];
-                break;
+        if ($isMatch) {
+            return $row['target_round_id'];
         }
     }
     
@@ -122,8 +167,8 @@ function getNextConsultantInRound($conn, $roundId) {
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     
-    // 2. Get active consultants in this round
-    $cStmt = $conn->prepare("SELECT c.id FROM round_consultants rc JOIN consultants c ON rc.consultant_id = c.id WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' ORDER BY c.id ASC");
+    // 2. Get active consultants in this round with their rules
+    $cStmt = $conn->prepare("SELECT c.id, rc.receive_ratio, rc.skip_count FROM round_consultants rc JOIN consultants c ON rc.consultant_id = c.id WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' ORDER BY c.id ASC");
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
@@ -157,19 +202,49 @@ function getNextConsultantInRound($conn, $roundId) {
     
     $consultants = [];
     while ($row = $cRes->fetch_assoc()) {
-        $consultants[] = $row['id'];
+        $consultants[] = $row;
     }
     
-    // 3. Find next consultant
-    $nextId = $consultants[0]; // default to first
+    // 3. Find next index based on last_assigned_consultant_id
+    $nextIdx = 0;
     if ($lastAssignedId) {
-        $idx = array_search($lastAssignedId, $consultants);
-        if ($idx !== false && isset($consultants[$idx + 1])) {
-            $nextId = $consultants[$idx + 1];
+        foreach ($consultants as $i => $c) {
+            if ($c['id'] == $lastAssignedId) {
+                $nextIdx = ($i + 1) % count($consultants);
+                break;
+            }
         }
     }
     
-    // 4. Update last assigned
+    $startIdx = $nextIdx;
+    $chosenConsultant = null;
+    
+    // 4. Check special rules (receive_ratio)
+    do {
+        $candidate = $consultants[$nextIdx];
+        $ratio = max(1, (int)($candidate['receive_ratio'] ?? 1));
+        $skipCount = (int)($candidate['skip_count'] ?? 0);
+        
+        if ($ratio == 1 || $skipCount >= $ratio - 1) {
+            $chosenConsultant = $candidate;
+            // Reset skip count
+            $conn->query("UPDATE round_consultants SET skip_count = 0 WHERE round_id = $roundId AND consultant_id = " . $candidate['id']);
+            break;
+        } else {
+            // Skip! Increment count and move to next
+            $conn->query("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = $roundId AND consultant_id = " . $candidate['id']);
+            $nextIdx = ($nextIdx + 1) % count($consultants);
+        }
+    } while ($nextIdx != $startIdx);
+    
+    // Fallback if everyone is skipped (e.g. all have ratio > 1 and all skip simultaneously)
+    if (!$chosenConsultant) {
+        $chosenConsultant = $consultants[$startIdx];
+        $conn->query("UPDATE round_consultants SET skip_count = 0 WHERE round_id = $roundId AND consultant_id = " . $chosenConsultant['id']);
+    }
+    
+    // 5. Update last assigned
+    $nextId = $chosenConsultant['id'];
     $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
     $updStmt->bind_param("ii", $nextId, $roundId);
     $updStmt->execute();
@@ -181,6 +256,7 @@ function getNextConsultantInRound($conn, $roundId) {
 }
 
 function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note) {
+    $phone = normalizePhone($phone);
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) 
                             VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
                             ON DUPLICATE KEY UPDATE 
@@ -200,6 +276,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
 }
 
 function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note) {
+    $phone = normalizePhone($phone);
     if (empty($phone) && empty($email)) return null;
     
     $where = [];

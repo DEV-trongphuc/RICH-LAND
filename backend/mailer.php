@@ -120,7 +120,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '') {
+function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '') {
     global $conn;
     
     // Fetch additional fields (email, type) from DB to display completely
@@ -138,7 +138,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         }
     }
     
-    $subject = "DOMATION - Bạn có 1 Data mới được phân bổ!";
+    $roundStr = !empty($roundName) ? " vòng {$roundName}" : "";
+    $subject = "Bạn vừa nhận được Lead {$leadName}{$roundStr}";
     
     // Format values nicely for HTML, converting newlines (\n) to <br/> tags
     $formattedNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : '<em>Không có ghi chú</em>';
@@ -152,7 +153,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ chiến dịch Inbound.
         </p>
         
-        <div style="background-color: #f8fafc; border-left: 4px solid #7c3aed; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
+        <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
             <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
                 Thông tin chi tiết Khách hàng:
             </p>
@@ -192,11 +193,6 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             Vui lòng nhanh chóng liên hệ với khách hàng để đảm bảo tỷ lệ chốt Sales cao nhất nhé!
         </p>
         
-        <div style="text-align: center; margin-top: 40px;">
-            <a href="https://open.domation.net/sale_data/" target="_blank" style="background-color: #7c3aed; background-image: linear-gradient(to right, #7c3aed, #4f46e5); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px rgba(124,58,237,0.3);">
-                Đăng nhập CRM
-            </a>
-        </div>
     ';
     
     sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString);
