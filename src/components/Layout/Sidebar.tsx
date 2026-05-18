@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { fetchAPI } from '../../utils/api';
 
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
@@ -8,7 +10,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
   { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
-  { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true },
+  { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
@@ -17,6 +19,23 @@ const ALL_NAV_ITEMS = [
 export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolean; onToggleCollapse: () => void }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [pendingTickets, setPendingTickets] = useState(0);
+
+  // Poll pending ticket count every 60s
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    const fetchPending = async () => {
+      try {
+        const res = await fetchAPI('get_reports');
+        if (res.success) {
+          setPendingTickets(res.data.filter((r: any) => r.status === 'pending').length);
+        }
+      } catch { /* silent */ }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
     if (item.adminOnly && user?.role !== 'admin') return false;
@@ -55,16 +74,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
       }}>
         {/* Logo Icon */}
         <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
+          width: 36, height: 36, borderRadius: 10,
           background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          overflow: 'hidden'
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', overflow: 'hidden'
         }}>
           <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -72,14 +85,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
         </div>
 
         {!isCollapsed && (
-          <span style={{
-            fontSize: '1.1rem',
-            fontWeight: 800,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            flex: 1,
-            letterSpacing: '-0.02em'
-          }}>DOMATION</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', flex: 1, letterSpacing: '-0.02em' }}>DOMATION</span>
         )}
       </div>
 
@@ -87,23 +93,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
       <button
         onClick={onToggleCollapse}
         style={{
-          position: 'absolute',
-          right: -12,
-          top: 36,
-          transform: 'translateY(-50%)',
-          width: 24,
-          height: 24,
-          borderRadius: '50%',
-          background: 'white',
-          color: '#1e1246',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 200,
-          border: '1px solid rgba(0,0,0,0.1)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          transition: 'all 0.2s'
+          position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
+          width: 24, height: 24, borderRadius: '50%', background: 'white', color: '#1e1246',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', zIndex: 200, border: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s'
         }}
       >
         <ChevronLeft size={14} style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
@@ -114,89 +108,93 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
         <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
           {!isCollapsed && (
             <span style={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.3)',
-              padding: '0.5rem 1.5rem',
-              whiteSpace: 'nowrap'
+              fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+              padding: '0.5rem 1.5rem', whiteSpace: 'nowrap'
             }}>Chức năng chính</span>
           )}
 
-          {NAV_ITEMS.map(({ name, href, icon: Icon, end }) => (
-            <NavLink
-              key={href}
-              to={href}
-              end={end}
-              title={isCollapsed ? name : undefined}
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.875rem',
-                padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
-                textDecoration: 'none',
-                fontSize: '0.9375rem',
-                fontWeight: isActive ? 700 : 500,
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-              })}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Active indicator */}
-                  {isActive && (
-                    <span style={{
-                      position: 'absolute',
-                      left: 0, top: 0, bottom: 0,
-                      width: 4,
-                      background: 'var(--color-primary)',
-                      borderRadius: '0 2px 2px 0'
-                    }} />
-                  )}
+          {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
+            const badgeCount = badgeKey === 'tickets' ? pendingTickets : 0;
+            return (
+              <NavLink
+                key={href}
+                to={href}
+                end={end}
+                title={isCollapsed ? name : undefined}
+                style={({ isActive }) => ({
+                  display: 'flex', alignItems: 'center', gap: '0.875rem',
+                  padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
+                  textDecoration: 'none', fontSize: '0.9375rem',
+                  fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
+                  position: 'relative',
+                  background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+                  whiteSpace: 'nowrap', overflow: 'hidden',
+                })}
+              >
+                {({ isActive }) => (
+                  <>
+                    {/* Active indicator */}
+                    {isActive && (
+                      <span style={{
+                        position: 'absolute', left: 0, top: 0, bottom: 0,
+                        width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
+                      }} />
+                    )}
 
-                  {/* Icon Box */}
-                  <div style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: 'all 0.2s'
-                  }}>
-                    <Icon size={18} color={isActive ? 'white' : 'rgba(255,255,255,0.5)'} />
-                  </div>
+                    {/* Icon Box — with badge dot when collapsed */}
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, transition: 'all 0.2s', position: 'relative'
+                    }}>
+                      <Icon size={18} color={isActive ? 'white' : 'rgba(255,255,255,0.5)'} />
+                      {/* Collapsed badge dot */}
+                      {isCollapsed && badgeCount > 0 && (
+                        <span style={{
+                          position: 'absolute', top: 4, right: 4,
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: '#ef4444',
+                          boxShadow: '0 0 0 2px #1e1246'
+                        }} />
+                      )}
+                    </div>
 
-                  {!isCollapsed && <span>{name}</span>}
-                </>
-              )}
-            </NavLink>
-          ))}
+                    {/* Label + badge count when expanded */}
+                    {!isCollapsed && (
+                      <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        {name}
+                        {badgeCount > 0 && (
+                          <span style={{
+                            background: '#ef4444', color: 'white',
+                            fontSize: '0.65rem', fontWeight: 800,
+                            padding: '2px 7px', borderRadius: 20,
+                            minWidth: 20, textAlign: 'center',
+                            lineHeight: '1.4',
+                            boxShadow: '0 2px 4px rgba(239,68,68,0.4)',
+                            animation: 'pulse 2s infinite'
+                          }}>
+                            {badgeCount}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </div>
 
       {/* Footer User */}
-      <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '0.75rem',
-        background: 'rgba(0,0,0,0.15)',
-        flexShrink: 0
-      }}>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.625rem',
-          borderRadius: 10,
-          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          padding: '0.625rem', borderRadius: 10, cursor: 'pointer',
           justifyContent: isCollapsed ? 'center' : 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -242,6 +240,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
           </div>
         )}
       </div>
+
+      {/* Pulse animation */}
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }`}</style>
     </aside>
   );
 };

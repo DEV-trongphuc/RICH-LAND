@@ -1030,8 +1030,8 @@ switch ($action) {
                 $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $frontendUrl = $proto . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
             }
-            // For test, link goes to report page but with id=0 — server will reject gracefully
-            $reportUrl = $frontendUrl . "/report-data?lead_id=0&sale_id=0&round_id=0";
+            // For test, use ?test=1 — frontend shows mock data, disables submit
+            $reportUrl = $frontendUrl . "/report-data?test=1";
             
             // Mock lead data — realistic Vietnamese customer
             $mockPhone  = '0912 345 678';
@@ -1072,7 +1072,7 @@ switch ($action) {
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
-                            <td style="padding: 6px 0; font-weight: 700; color: #2563eb; vertical-align: top;">' . htmlspecialchars($mockPhone) . '</td>
+                            <td style="padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;">' . htmlspecialchars($mockPhone) . '</td>
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
@@ -1092,19 +1092,11 @@ switch ($action) {
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Vòng phân bổ:</td>
-                            <td style="padding: 6px 0; font-weight: 700; color: #7c3aed; vertical-align: top;">' . htmlspecialchars($mockRound) . '</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Trạng thái:</td>
-                            <td style="padding: 6px 0; font-weight: 700; color: #ef4444; vertical-align: top;">Chưa tư vấn</td>
+                            <td style="padding: 6px 0; font-weight: 500; color: #334155; vertical-align: top;">' . htmlspecialchars($mockRound) . '</td>
                         </tr>
                     </table>
                 </div>
                 
-                <p style="color: #64748b; font-size: 15px; line-height: 1.7; margin-bottom: 24px;">
-                    Vui lòng nhanh chóng liên hệ với khách hàng để đảm bảo tỷ lệ chốt Sales cao nhất nhé!
-                </p>
-
                 <div style="text-align: center; margin-bottom: 32px;">
                     <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . $phoneEncoded . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
@@ -1112,10 +1104,10 @@ switch ($action) {
 
                 <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
                     <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
-                    <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
-                        🚨 BÁO CÁO DATA LỖI
+                    <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                        BÁO CÁO DATA LỖI
                     </a>
-                    <p style="color: #94a3b8; font-size: 12px; margin-top: 10px;">(Trong email test, link sẽ mở trang báo cáo nhưng không thể gửi vì đây là dữ liệu mock)</p>
+                    <p style="color: #94a3b8; font-size: 12px; margin-top: 10px;">(Trong email test, link sẽ mở trang xem thử — không gửi báo cáo thật)</p>
                 </div>
             ';
             

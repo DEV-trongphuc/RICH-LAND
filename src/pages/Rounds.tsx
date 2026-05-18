@@ -661,9 +661,10 @@ export const Rounds = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ 
                     width: 28, height: 28, borderRadius: '50%', 
-                    background: getColorForName(user.name) + '20', color: getColorForName(user.name), 
+                    background: getColorForName(user.name), color: 'white', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    fontSize: '0.7rem', fontWeight: 700 
+                    fontSize: '0.7rem', fontWeight: 700, flexShrink: 0,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.12)'
                   }}>
                     {initials}
                   </div>
@@ -718,17 +719,7 @@ export const Rounds = () => {
                     />
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>vòng</span>
                   </div>
-                  {/* Summary label */}
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                    {(() => {
-                      const dpt = formData.data_per_turns[user.id] || 1;
-                      const rat = formData.ratios[user.id] || 1;
-                      if (dpt === 1 && rat === 1) return '⚡ Mặc định: nhận 1 data, luân phiên đều';
-                      if (dpt > 1 && rat === 1) return `⚡ Nhận ${dpt} data liên tiếp rồi chuyển sang người tiếp theo`;
-                      if (dpt === 1 && rat > 1) return `⚡ Chờ ${rat - 1} vòng rồi nhận 1 data`;
-                      return `⚡ Chờ ${rat - 1} vòng, rồi nhận ${dpt} data liên tiếp`;
-                    })()}
-                  </div>
+
                 </div>
               </div>
             );

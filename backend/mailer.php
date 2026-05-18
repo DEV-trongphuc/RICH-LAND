@@ -180,7 +180,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 </tr>
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
-                    <td style="padding: 6px 0; font-weight: 700; color: #2563eb; vertical-align: top;">' . htmlspecialchars($leadPhone) . '</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;">' . htmlspecialchars($leadPhone) . '</td>
                 </tr>
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
@@ -198,16 +198,10 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
                     <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $formattedNote . '</td>
                 </tr>
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Trạng thái:</td>
-                    <td style="padding: 6px 0; font-weight: 700; color: #ef4444; vertical-align: top;">Chưa tư vấn</td>
-                </tr>
+
             </table>
         </div>
-        
-        <p style="color: #64748b; font-size: 15px; line-height: 1.7; margin-bottom: 24px;">
-            Vui lòng nhanh chóng liên hệ với khách hàng để đảm bảo tỷ lệ chốt Sales cao nhất nhé!
-        </p>
+
 
         <div style="text-align: center; margin-bottom: 32px;">
             <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
@@ -216,8 +210,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
 
         <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
             <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
-            <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
-                🚨 BÁO CÁO DATA LỖI
+            <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                BÁO CÁO DATA LỖI
             </a>
         </div>
     ';

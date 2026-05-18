@@ -12,6 +12,19 @@ const REPORT_REASONS = [
   'Khác (Vui lòng ghi rõ ở phần ghi chú)'
 ];
 
+// Mock data for test mode — matches real email template
+const TEST_MOCK_CONTEXT = {
+  lead_name: 'Trần Thị Mai Anh',
+  lead_phone: '0912 345 678',
+  lead_source: 'Facebook Ads — Chiến dịch Tuyển sinh T5/2026',
+  lead_note: 'Quan tâm: Khóa Marketing Online\nNgân sách: 5–10 triệu\nThời gian học: Buổi tối / Cuối tuần',
+  consultant_name: 'Bạn (Tài khoản Test)',
+  consultant_email: 'test@example.com',
+  round_name: 'Vòng A — Facebook Inbound',
+  assigned_at: new Date().toISOString(),
+  existing_report: null as string | null,
+};
+
 interface ReportContext {
   lead_name: string;
   lead_phone: string;
@@ -33,6 +46,7 @@ export const ReportData = () => {
     leadId: searchParams.get('lead_id') || '',
     saleId: searchParams.get('sale_id') || '',
     roundId: searchParams.get('round_id') || '',
+    isTest: searchParams.get('test') === '1',
   });
 
   const [context, setContext] = useState<ReportContext | null>(null);
@@ -46,10 +60,17 @@ export const ReportData = () => {
   const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
-    const { leadId, saleId, roundId } = params;
+    const { leadId, saleId, roundId, isTest } = params;
 
     // Clear URL params immediately to prevent re-use / sharing
     navigate('/report-data', { replace: true });
+
+    // ── TEST MODE: show mock data, no DB check ─────────────────────────────
+    if (isTest) {
+      setContext(TEST_MOCK_CONTEXT);
+      setLoadingCtx(false);
+      return;
+    }
 
     if (!leadId || !saleId || !roundId) {
       setCtxError('Đường dẫn không hợp lệ. Vui lòng truy cập lại từ Email của bạn.');
@@ -73,6 +94,13 @@ export const ReportData = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting || submitStatus === 'success') return;
+
+    // Block real submission in test mode
+    if (params.isTest) {
+      setSubmitError('Đây là link thử nghiệm — không thể gửi báo cáo thật.');
+      setSubmitStatus('error');
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError('');
@@ -137,13 +165,13 @@ export const ReportData = () => {
   // ─── Already reported ───────────────────────────────────────────────────────
   if (context?.existing_report === 'pending') {
     return (
-      <PageShell context={context}>
+      <PageShell context={context} isTest={params.isTest}>
         <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#fde68a,#f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: '0 8px 24px rgba(245,158,11,0.3)' }}>
             <Shield size={30} color="white" />
           </div>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Đã gửi báo cáo trước đó</h3>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: 1.6 }}>Báo cáo của bạn đang chờ Admin xét duyệt. Bạn sẽ được đền bù nếu báo cáo hợp lệ.</p>
+          <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: 1.6 }}>Báo cáo của bạn đang chờ Admin xét duyệt.</p>
         </div>
       </PageShell>
     );
@@ -151,7 +179,7 @@ export const ReportData = () => {
 
   if (context?.existing_report === 'approved') {
     return (
-      <PageShell context={context}>
+      <PageShell context={context} isTest={params.isTest}>
         <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: '0 8px 24px rgba(16,185,129,0.3)' }}>
             <CheckCircle size={30} color="white" />
@@ -166,7 +194,7 @@ export const ReportData = () => {
   // ─── Success state ──────────────────────────────────────────────────────────
   if (submitStatus === 'success') {
     return (
-      <PageShell context={context}>
+      <PageShell context={context} isTest={params.isTest}>
         <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', boxShadow: '0 8px 24px rgba(16,185,129,0.35)' }}>
             <CheckCircle size={36} color="white" />
@@ -182,7 +210,14 @@ export const ReportData = () => {
 
   // ─── Main form ──────────────────────────────────────────────────────────────
   return (
-    <PageShell context={context}>
+    <PageShell context={context} isTest={params.isTest}>
+      {/* Test mode notice */}
+      {params.isTest && (
+        <div style={{ background: '#fff3cd', border: '1px solid #ffc107', color: '#856404', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+          ⚠️ Trang xem thử — Dữ liệu mock, không thể gửi báo cáo thật.
+        </div>
+      )}
+
       {submitStatus === 'error' && (
         <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '12px 16px', borderRadius: 12, marginBottom: 20, fontSize: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -202,13 +237,12 @@ export const ReportData = () => {
                 padding: '11px 14px',
                 border: '1.5px solid', borderColor: reason === r ? '#8b5cf6' : '#e2e8f0',
                 background: reason === r ? 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(124,58,237,0.1))' : 'white',
-                borderRadius: 10, cursor: submitting ? 'not-allowed' : 'pointer',
-                opacity: submitting ? 0.6 : 1,
+                borderRadius: 10, cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 boxShadow: reason === r ? '0 2px 8px rgba(139,92,246,0.15)' : 'none'
               }}>
                 <input type="radio" name="reason" value={r} checked={reason === r}
-                  onChange={() => setReason(r)} disabled={submitting}
+                  onChange={() => setReason(r)}
                   style={{ width: 16, height: 16, accentColor: '#8b5cf6' }} />
                 <span style={{ fontSize: '0.875rem', color: reason === r ? '#5b21b6' : '#475569', fontWeight: reason === r ? 600 : 400 }}>{r}</span>
               </label>
@@ -222,16 +256,18 @@ export const ReportData = () => {
               Chi tiết lý do
             </label>
             <textarea required value={customReason} onChange={e => setCustomReason(e.target.value)}
-              disabled={submitting} placeholder="Nhập chi tiết lý do tại đây..."
+              placeholder="Nhập chi tiết lý do tại đây..."
               style={{ width: '100%', padding: '12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.9rem', minHeight: 90, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
         )}
 
         <button type="submit" disabled={submitting}
-          style={{ width: '100%', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', padding: '13px', borderRadius: 12, border: 'none', fontSize: '0.975rem', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 16px rgba(109,40,217,0.4)', opacity: submitting ? 0.7 : 1, transition: 'all 0.2s' }}>
+          style={{ width: '100%', background: params.isTest ? '#94a3b8' : 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', padding: '13px', borderRadius: 12, border: 'none', fontSize: '0.975rem', fontWeight: 700, cursor: submitting || params.isTest ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: params.isTest ? 'none' : '0 4px 16px rgba(109,40,217,0.4)', opacity: submitting ? 0.7 : 1, transition: 'all 0.2s' }}>
           {submitting
             ? <><Loader2 size={18} className="spin" /> Đang gửi...</>
-            : <><Send size={18} /> Gửi Báo Cáo</>}
+            : params.isTest
+              ? '🔒 Gửi bị tắt (Trang thử nghiệm)'
+              : <><Send size={18} /> Gửi Báo Cáo</>}
         </button>
       </form>
       <SpinStyle />
@@ -240,40 +276,41 @@ export const ReportData = () => {
 };
 
 // ─── Shared shell ─────────────────────────────────────────────────────────────
-const PageShell = ({ children, context }: { children: React.ReactNode; context?: ReportContext | null }) => (
+const PageShell = ({ children, context, isTest }: { children: React.ReactNode; context?: ReportContext | null; isTest?: boolean }) => (
   <div style={{
-    position: 'fixed', inset: 0, overflowY: 'auto',
+    position: 'fixed', inset: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
-    padding: '24px 16px',
+    overflow: 'hidden',
   }}>
     {/* Background decorations */}
     <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
     <div style={{ position: 'absolute', bottom: -100, right: -60, width: 280, height: 280, borderRadius: '50%', background: 'rgba(236,72,153,0.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
     <div style={{ position: 'absolute', top: '40%', right: '10%', width: 160, height: 160, borderRadius: '50%', background: 'rgba(16,185,129,0.07)', filter: 'blur(40px)', pointerEvents: 'none' }} />
 
-    <div style={{ width: '100%', maxWidth: 480, position: 'relative', zIndex: 1 }}>
+    {/* Scrollable inner container */}
+    <div style={{ width: '100%', maxWidth: 520, maxHeight: '100vh', overflowY: 'auto', padding: '24px 16px', boxSizing: 'border-box', position: 'relative', zIndex: 1 }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '6px 16px', borderRadius: 20, marginBottom: 16 }}>
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '6px 16px', borderRadius: 20, marginBottom: 14 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
-          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontWeight: 600 }}>Báo cáo Data lỗi</span>
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', fontWeight: 600 }}>Báo cáo Data lỗi{isTest ? ' (Thử nghiệm)' : ''}</span>
         </div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
-          Yêu cầu đền bù Data
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', textShadow: '0 2px 12px rgba(0,0,0,0.3)', margin: '0 0 6px' }}>
+          Báo cáo data không đạt chuẩn
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', marginTop: 6 }}>
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', margin: 0 }}>
           Gửi báo cáo nếu thông tin khách hàng không chính xác
         </p>
       </div>
 
       {/* Context card */}
       {context && (
-        <div style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: '18px 20px', marginBottom: 16 }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+        <div style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: '16px 18px', marginBottom: 14 }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
             Thông tin Data cần báo cáo
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
             <InfoRow icon={<User size={13} />} label="Khách hàng" value={context.lead_name || 'Ẩn danh'} highlight />
             <InfoRow icon={<Phone size={13} />} label="Số điện thoại" value={context.lead_phone || 'Không có'} />
             <InfoRow icon={<Building2 size={13} />} label="Nguồn" value={context.lead_source || 'Không rõ'} />
@@ -285,12 +322,12 @@ const PageShell = ({ children, context }: { children: React.ReactNode; context?:
       )}
 
       {/* Form card */}
-      <div style={{ background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 20, padding: '28px 24px', boxShadow: '0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' }}>
+      <div style={{ background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 20, padding: '24px 20px', boxShadow: '0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' }}>
         {children}
       </div>
 
       {/* Footer */}
-      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', marginTop: 20 }}>
+      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', marginTop: 16, marginBottom: 0 }}>
         Powered by DOMATION · Hệ thống phân bổ data tự động
       </p>
     </div>
