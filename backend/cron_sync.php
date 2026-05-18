@@ -81,8 +81,11 @@ foreach ($connections as $connItem) {
             }
         }
 
-        // Fetch CSV from Google Sheets using gviz/tq
+        // Fetch CSV from Google Sheets using gviz/tq, supporting specific sheet names
         $csvUrl = "https://docs.google.com/spreadsheets/d/" . trim($connItem['spreadsheet_id']) . "/gviz/tq?tqx=out:csv";
+        if (!empty($connItem['sheet_name'])) {
+            $csvUrl .= "&sheet=" . urlencode($connItem['sheet_name']);
+        }
         
         $ch = curl_init($csvUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -137,7 +140,7 @@ foreach ($connections as $connItem) {
             // --- 1. Check CRM (Duplication & 6-month rule) ---
             $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
-            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6) {
+            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
                 // Duplicate < 6 months, skip assigning to new round but update last interaction
                 $assignedTo = $crmCheckResult['assignedTo'];
                 $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);

@@ -108,7 +108,7 @@ if (empty($phone) && empty($email)) {
 // --- 1. Check CRM (Duplication & 6-month rule) ---
 $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
-if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6) {
+if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
     $assignedTo = $crmCheckResult['assignedTo'];
     // Update last interaction
     $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
