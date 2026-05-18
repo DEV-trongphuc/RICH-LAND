@@ -150,10 +150,10 @@ export const DataList = () => {
           />
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
           <Clock size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
           <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '6px 12px', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
             value={['Hôm nay', 'Hôm qua', '7 ngày qua', 'all'].includes(dateFilter) ? dateFilter : 'all'}
             onChange={e => updateParams('date', e.target.value)}
           >
@@ -167,10 +167,10 @@ export const DataList = () => {
           </select>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
           <Filter size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
           <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '6px 12px', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
             value={statusFilter}
             onChange={e => updateParams('status', e.target.value)}
           >
@@ -183,10 +183,10 @@ export const DataList = () => {
           </select>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 4px', height: 44 }}>
           <User size={16} style={{ color: 'var(--color-text-muted)', marginLeft: 8 }} />
           <select 
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '6px 12px', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.875rem', color: 'var(--color-text)', padding: '0 12px', height: '100%', cursor: 'pointer' }}
             value={consultantFilter}
             onChange={e => updateParams('consultant', e.target.value)}
           >
