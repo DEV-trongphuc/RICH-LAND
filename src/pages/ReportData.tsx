@@ -115,7 +115,7 @@ export const ReportData = () => {
       </div>
 
       {/* ── Main content: 2 cols ── */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 0, padding: '0 24px 16px', overflow: 'hidden', maxWidth: 900, margin: '0 auto', width: '100%' }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 0, padding: '0 24px 16px', overflowY: 'auto', maxWidth: 900, margin: '0 auto', width: '100%' }}>
 
         {loadingCtx ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -123,7 +123,7 @@ export const ReportData = () => {
             <SpinStyle />
           </div>
         ) : ctxError ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem' }}>
             <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#fca5a5,#f87171)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                 <XCircle size={36} color="white" />
@@ -133,7 +133,7 @@ export const ReportData = () => {
             </div>
           </div>
         ) : submitStatus === 'success' ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem' }}>
             <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                 <CheckCircle size={36} color="white" />
@@ -143,13 +143,16 @@ export const ReportData = () => {
             </div>
           </div>
         ) : (
-          <>
+          <div style={{ 
+            display: 'flex', width: '100%', 
+            background: 'white', borderRadius: 20, 
+            boxShadow: '0 24px 64px rgba(0,0,0,0.35)', 
+            overflow: 'hidden' 
+          }}>
             {/* ── LEFT: Info card (white) ── */}
             <div style={{
-              flex: '0 0 320px', background: 'white', borderRadius: '20px 0 0 20px',
-              padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 18,
-              boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
-              overflow: 'hidden'
+              flex: '0 0 320px', background: 'white',
+              padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 18
             }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Thông tin Data cần báo cáo
@@ -193,10 +196,9 @@ export const ReportData = () => {
 
             {/* ── RIGHT: Form card ── */}
             <div style={{
-              flex: 1, background: 'rgba(255,255,255,0.97)', borderRadius: '0 20px 20px 0',
+              flex: 1, background: 'rgba(255,255,255,0.97)',
               padding: '22px 22px', display: 'flex', flexDirection: 'column',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
-              borderLeft: '1px solid #f1f5f9', overflow: 'hidden'
+              borderLeft: '1px solid #f1f5f9'
             }}>
               {/* Test banner */}
               {params.isTest && (
@@ -282,7 +284,7 @@ export const ReportData = () => {
                 </form>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 
