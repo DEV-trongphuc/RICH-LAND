@@ -385,17 +385,27 @@ switch ($action) {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         $html = curl_exec($ch);
         curl_close($ch);
 
         $sheets = [];
-        if (preg_match_all('/<li\s+id="sheet-button-.*?"><a\s+href=".*?">(.*?)<\/a><\/li>/i', $html, $matches)) {
+        
+        // Pattern 1: JS items array (most reliable for modern Google Sheets htmlview)
+        if (preg_match_all('/items\.push\(\{name:\s*"([^"]+)"/i', $html, $matches)) {
+            $sheets = array_map(function($val) {
+                return str_replace('\/', '/', $val);
+            }, $matches[1]);
+        }
+        
+        // Pattern 2: HTML sheet buttons tab menu (for published public pages or older sheets)
+        if (empty($sheets) && preg_match_all('/<li\s+id="sheet-button-.*?"><a\s+href=".*?">(.*?)<\/a><\/li>/i', $html, $matches)) {
             $sheets = $matches[1];
-        } else if (preg_match_all('/"name":"(.*?)"/i', $html, $matches)) {
-            // Very naive json parsing from the inline javascript
-            // It might match other things, let's just collect them and take unique
+        }
+        
+        // Pattern 3: Naive JSON property fallback
+        if (empty($sheets) && preg_match_all('/"name"\s*:\s*"([^"]+)"\s*,\s*"sheetId"/i', $html, $matches)) {
             $sheets = array_values(array_unique($matches[1]));
-            // remove some common false positives
             $sheets = array_filter($sheets, function($v) {
                 return !in_array($v, ['Arial', 'Verdana', 'Helvetica', 'Times New Roman']);
             });
