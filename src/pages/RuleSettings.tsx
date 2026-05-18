@@ -139,7 +139,7 @@ export const RuleSettings = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form states
-  const [col, setCol] = useState('Nguồn');
+  const [col, setCol] = useState('source');
   const [op, setOp] = useState('contains');
   const [val, setVal] = useState('');
   const [targetRound, setTargetRound] = useState<number | ''>('');
@@ -148,8 +148,17 @@ export const RuleSettings = () => {
 
   const fetchConnections = async () => {
     try {
-      const json = await fetchAPI('get_connections');
-      if (json.success) setConnections(json.data);
+      const [connRes, mapRes] = await Promise.all([
+        fetchAPI('get_connections'),
+        fetchAPI('get_mappings')
+      ]);
+      if (connRes.success && mapRes.success) {
+        const conns = connRes.data.map((c: any) => ({
+          ...c,
+          mappings: mapRes.data.filter((m: any) => m.connection_id === c.id)
+        }));
+        setConnections(conns);
+      }
     } catch (e: any) {
       console.error(e);
     }
@@ -267,11 +276,24 @@ export const RuleSettings = () => {
     setIsConfirmOpen(false);
   };
 
-  const columnOptions = [
-    { value: 'Nguồn', label: 'Nguồn Data' },
-    { value: 'Loại Data', label: 'Loại Data' },
-    { value: 'Ghi Chú', label: 'Ghi Chú' }
-  ];
+  const getFieldOptions = () => {
+    const baseFields = [
+      { value: 'source', label: 'Nguồn Data (Hệ thống)' },
+      { value: 'type', label: 'Loại Data (Hệ thống)' },
+      { value: 'note', label: 'Ghi Chú (Hệ thống)' }
+    ];
+    if (connectionId !== 'all') {
+      const conn = connections.find(c => c.id === connectionId);
+      if (conn && conn.mappings) {
+        const customFields = conn.mappings.map((m: any) => ({
+          value: m.sheet_column,
+          label: `Cột: ${m.sheet_column}`
+        }));
+        return [...baseFields, ...customFields];
+      }
+    }
+    return baseFields;
+  };
   
   const opOptions = [
     { value: 'contains', label: 'Có chứa từ khóa' },
@@ -364,7 +386,7 @@ export const RuleSettings = () => {
           <div>
             <label className="form-label">Kiểm tra trường</label>
             <CustomSelect 
-              options={columnOptions}
+              options={getFieldOptions()}
               value={col}
               onChange={val => setCol(String(val))}
               placeholder="Chọn trường..."

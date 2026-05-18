@@ -124,8 +124,14 @@ foreach ($connections as $connItem) {
             $note = extractMappedValues($mappings, 'note', $rowData);
             $name = extractMappedValues($mappings, 'name', $rowData);
 
-            if (empty($phone) && empty($email)) {
-                continue; // Cannot sync without phone or email
+            if (!empty($connItem['require_both_contact'])) {
+                if (empty($phone) || empty($email)) {
+                    continue; // Must have BOTH phone and email
+                }
+            } else {
+                if (empty($phone) && empty($email)) {
+                    continue; // Must have at least one
+                }
             }
 
             // --- 1. Check CRM (Duplication & 6-month rule) ---

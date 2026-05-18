@@ -214,6 +214,19 @@ export const Integrations = () => {
     }
   };
 
+  const handleToggleRequireBoth = async (conn: any) => {
+    try {
+        const newRequire = conn.require_both_contact ? 0 : 1;
+        const json = await fetchAPI(`toggle_require_both&id=${conn.id}&require=${newRequire}`);
+        if (json.success) {
+            toast.success(newRequire ? 'Đã bật yêu cầu đủ SĐT và Email' : 'Đã tắt yêu cầu đủ SĐT và Email');
+            fetchData();
+        }
+    } catch (e: any) {
+        toast.error('Lỗi: ' + e.message);
+    }
+  };
+
   useEffect(() => {
     if (connections.length > 0 && !selected) {
       setSelected(connections[0]);
@@ -359,6 +372,21 @@ export const Integrations = () => {
                 <button onClick={() => handleCopyWebhook(selected)} className="btn primary sm" style={{ borderRadius: 8, flexShrink: 0, margin: '4px' }}>
                   {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy URL'}
                 </button>
+              </div>
+
+              <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Yêu cầu đủ SĐT và Email
+                  </h4>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Nếu bật, dòng dữ liệu trên Sheets phải có <strong>CẢ SĐT LẪN EMAIL</strong> mới được đồng bộ vào hệ thống.
+                  </p>
+                </div>
+                <ToggleSwitch 
+                  checked={!!selected.require_both_contact} 
+                  onChange={() => handleToggleRequireBoth(selected)}
+                />
               </div>
             </div>
 

@@ -338,9 +338,10 @@ switch ($action) {
         $webhookToken = $input['webhook_token'] ?? '';
         $isActive = $input['is_active'] ?? 1;
         $syncInterval = $input['sync_interval'] ?? 15;
+        $requireBoth = $input['require_both_contact'] ?? 0;
         
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval);
+        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth);
         $stmt->execute();
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -352,9 +353,10 @@ switch ($action) {
         $spreadsheetId = $input['spreadsheet_id'] ?? '';
         $isActive = $input['is_active'] ?? 1;
         $syncInterval = $input['sync_interval'] ?? 15;
+        $requireBoth = $input['require_both_contact'] ?? 0;
         
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=? WHERE id=?");
-        $stmt->bind_param("ssiii", $name, $spreadsheetId, $isActive, $syncInterval, $id);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=? WHERE id=?");
+        $stmt->bind_param("ssiiii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -363,6 +365,24 @@ switch ($action) {
         $id = (int)($_GET['id'] ?? 0);
         $stmt = $conn->prepare("DELETE FROM sheet_connections WHERE id=?");
         $stmt->bind_param("i", $id);
+        $stmt->execute();
+        echo json_encode(['success' => true]);
+        break;
+
+    case 'toggle_connection':
+        $id = (int)($_GET['id'] ?? 0);
+        $active = (int)($_GET['active'] ?? 0);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET is_active=? WHERE id=?");
+        $stmt->bind_param("ii", $active, $id);
+        $stmt->execute();
+        echo json_encode(['success' => true]);
+        break;
+
+    case 'toggle_require_both':
+        $id = (int)($_GET['id'] ?? 0);
+        $require = (int)($_GET['require'] ?? 0);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET require_both_contact=? WHERE id=?");
+        $stmt->bind_param("ii", $require, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -437,10 +457,11 @@ switch ($action) {
 
     case 'add_mapping':
         $input = json_decode(file_get_contents('php://input'), true);
+        $conn_id = $input['connection_id'] ?? 0;
         $sheet_col = $input['sheet_column'] ?? '';
         $sys_field = $input['system_field'] ?? '';
-        $stmt = $conn->prepare("INSERT INTO field_mappings (sheet_column, system_field) VALUES (?, ?)");
-        $stmt->bind_param("ss", $sheet_col, $sys_field);
+        $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $conn_id, $sheet_col, $sys_field);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -589,6 +610,12 @@ switch ($action) {
         break;
 
     case 'get_dashboard_stats':
+        // Temporary alter table and migrate rule columns
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN require_both_contact BOOLEAN DEFAULT FALSE");
+        $conn->query("UPDATE routing_rules SET condition_column = 'source' WHERE condition_column = 'Nguồn'");
+        $conn->query("UPDATE routing_rules SET condition_column = 'type' WHERE condition_column = 'Loại Data'");
+        $conn->query("UPDATE routing_rules SET condition_column = 'note' WHERE condition_column = 'Ghi Chú'");
+
         $date = $_GET['date'] ?? 'Hôm nay';
         
         // Define date filters
