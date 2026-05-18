@@ -90,15 +90,17 @@ export const ReportData = () => {
   // ── Full-screen wrapper ──────────────────────────────────────────────────────
   return (
     <div style={{
-      position: 'fixed', inset: 0, overflowY: 'auto',
+      width: '100%', height: '100%', overflowY: 'auto',
       background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
-      display: 'flex', flexDirection: 'column',
+      display: 'flex', flexDirection: 'column', position: 'relative'
     }}>
       {/* Blobs */}
       <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -80, right: -60, width: 260, height: 260, borderRadius: '50%', background: 'rgba(236,72,153,0.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
-      <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 900, padding: '40px 0', zIndex: 1, position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: '20px' }} /> {/* Safe top spacer */}
+
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 900, margin: '0 auto', zIndex: 1, position: 'relative' }}>
         {/* ── Header strip ── */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 24, flexShrink: 0 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '5px 14px', borderRadius: 20, marginBottom: 10 }}>
@@ -295,6 +297,7 @@ export const ReportData = () => {
         </div>
       </div>
 
+      <div style={{ flex: 1, minHeight: '20px' }} /> {/* Safe bottom spacer */}
       <SpinStyle />
     </div>
   );
