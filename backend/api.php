@@ -700,10 +700,11 @@ switch ($action) {
     case 'force_sync':
         $id = (int)($_GET['id'] ?? 0);
         if ($id) {
-            // Using shell_exec to run PHP script synchronously
-            $phpPath = PHP_BINARY ?: 'php';
-            $scriptPath = __DIR__ . '/cron_sync.php';
-            $output = shell_exec(escapeshellarg($phpPath) . " " . escapeshellarg($scriptPath) . " " . escapeshellarg($id) . " 2>&1");
+            ob_start();
+            // Mock CLI arguments for cron_sync.php
+            $argv = ['cron_sync.php', $id];
+            require __DIR__ . '/cron_sync.php';
+            $output = ob_get_clean();
             echo json_encode(['success' => true, 'output' => $output]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid ID']);

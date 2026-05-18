@@ -16,8 +16,10 @@ $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
 // Helper for routing
 require_once __DIR__ . '/webhook_logic.php'; // We will extract routing logic into a separate file or just redefine them if not too complex. But better to extract.
 
-function logSync($msg) {
-    echo "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n";
+if (!function_exists('logSync')) {
+    function logSync($msg) {
+        echo "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n";
+    }
 }
 
 logSync("Starting Google Sheets Sync Cronjob...");

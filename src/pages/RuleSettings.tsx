@@ -247,7 +247,7 @@ export const RuleSettings = () => {
 
   const openEditModal = (rule: any) => {
     setEditingRule(rule);
-    setConnectionId(rule.connection_id || 'all');
+    setConnectionId(rule.connection_id ? Number(rule.connection_id) : 'all');
     setCol(rule.condition_column);
     setOp(rule.condition_operator);
     setVal(rule.condition_value);
@@ -305,7 +305,7 @@ export const RuleSettings = () => {
       { value: 'note', label: 'Ghi Chú (Hệ thống)' }
     ];
     if (connectionId !== 'all') {
-      const conn = connections.find(c => Number(c.id) === connectionId);
+      const conn = connections.find(c => Number(c.id) === Number(connectionId));
       if (conn && conn.mappings) {
         const customFields = conn.mappings.map((m: any) => ({
           value: m.sheet_column,
@@ -348,7 +348,12 @@ export const RuleSettings = () => {
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '2rem'
       }}>
-        <div style={{ background: 'white', padding: 8, borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)' }}>
+        <div style={{ 
+          background: 'white', 
+          width: 40, height: 40, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)' 
+        }}>
           <ShieldCheck size={20} />
         </div>
         <div>
