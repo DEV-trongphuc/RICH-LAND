@@ -20,7 +20,8 @@ export const Rounds = () => {
     round_name: '',
     is_active: 1,
     cc_emails: '',
-    selected_users: [] as number[]
+    selected_users: [] as number[],
+    starting_consultant_id: null as number | null
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -52,7 +53,7 @@ export const Rounds = () => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [] });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null });
     setModalOpen(true);
   };
 
@@ -67,7 +68,8 @@ export const Rounds = () => {
       round_name: r.round_name, 
       is_active: r.is_active, 
       cc_emails: r.cc_emails || '',
-      selected_users: matchedIds
+      selected_users: matchedIds,
+      starting_consultant_id: r.next_consultant_id ? parseInt(r.next_consultant_id) : null
     });
     setModalOpen(true);
   };
@@ -187,7 +189,16 @@ export const Rounds = () => {
           gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(400px, 1fr))' : 'none', 
           gap: '1.25rem' 
         }}>
-          {rounds.map((r, idx) => {
+          {rounds.length === 0 ? (
+            <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', gridColumn: '1 / -1' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                <Zap size={32} color="var(--color-text-muted)" />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Vòng Phân Bổ</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.</p>
+              <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Vòng ngay</button>
+            </div>
+          ) : rounds.map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
             const color = ROUND_COLORS[idx % ROUND_COLORS.length];
 
@@ -469,6 +480,27 @@ export const Rounds = () => {
                     </div>
                   )}
                 </div>
+
+                {formData.selected_users.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14}/> Chọn Sale bắt đầu (Tuỳ chọn)</label>
+                    <select 
+                      className="form-input" 
+                      value={formData.starting_consultant_id || ''}
+                      onChange={e => setFormData({ ...formData, starting_consultant_id: e.target.value ? parseInt(e.target.value) : null })}
+                      style={{ padding: '0.75rem', appearance: 'auto' }}
+                    >
+                      <option value="">-- Mặc định (Theo thứ tự thêm vào) --</option>
+                      {formData.selected_users.map(id => {
+                        const c = consultants.find(x => x.id === id);
+                        return c ? <option key={id} value={id}>{c.name}</option> : null;
+                      })}
+                    </select>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Người được chọn sẽ là người nhận Data tiếp theo của vòng này.
+                    </p>
+                  </div>
+                )}
 
               </div>
 

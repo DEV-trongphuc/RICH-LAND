@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Edit2, Trash2, UserX, Clock, X, Mail, User, Shield } from 'lucide-react';
+import { Plus, Edit2, Trash2, UserX, Clock, X, Mail, User, Shield, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -156,6 +156,19 @@ export const Consultants = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={4} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải...</td></tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                        <Users size={32} color="var(--color-text-muted)" />
+                      </div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Tư vấn viên</h3>
+                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thêm tư vấn viên đầu tiên để bắt đầu chia số tự động.</p>
+                      <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Tư vấn viên</button>
+                    </div>
+                  </td>
+                </tr>
               ) : users.map((u) => {
                 const initials = u.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                 return (

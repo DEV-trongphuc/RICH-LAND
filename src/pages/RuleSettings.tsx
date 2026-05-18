@@ -317,9 +317,13 @@ export const RuleSettings = () => {
             Đang tải dữ liệu Rule Engine...
           </div>
         ) : rules.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            <Server size={48} color="var(--color-border)" style={{ margin: '0 auto', marginBottom: 16 }} />
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-text)' }}>Chưa có Quy tắc định tuyến nào</h3>
+          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+              <Filter size={32} color="var(--color-text-muted)" />
+            </div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Quy tắc Định tuyến nào</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thêm quy tắc đầu tiên để hệ thống tự động phân loại và chuyển tiếp dữ liệu đến đúng vòng phân bổ.</p>
+            <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Quy tắc</button>
           </div>
         ) : (
           <div style={{ padding: '0.5rem' }}>

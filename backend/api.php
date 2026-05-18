@@ -212,19 +212,24 @@ switch ($action) {
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];
             
             $nextName = null;
+            $nextId = null;
             if (!empty($cIds)) {
                 $nextName = $cNames[0]; // default
+                $nextId = $cIds[0];
                 if ($row['last_assigned_consultant_id']) {
                     $idx = array_search($row['last_assigned_consultant_id'], $cIds);
                     if ($idx !== false && isset($cNames[$idx + 1])) {
                         $nextName = $cNames[$idx + 1];
+                        $nextId = $cIds[$idx + 1];
                     } else {
                         // Loop back to start
                         $nextName = $cNames[0];
+                        $nextId = $cIds[0];
                     }
                 }
             }
             $row['next_assigned_name'] = $nextName;
+            $row['next_consultant_id'] = $nextId;
             $data[] = $row;
         }
         echo json_encode(['success' => true, 'data' => $data]);
@@ -236,9 +241,23 @@ switch ($action) {
         $cc = $input['cc_emails'] ?? '';
         $status = $input['is_active'] ?? 1;
         $consultants = $input['consultants'] ?? [];
+        $starting_consultant_id = $input['starting_consultant_id'] ?? null;
         
-        $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails) VALUES (?, ?, ?)");
-        $stmt->bind_param("sis", $name, $status, $cc);
+        $last_assigned = null;
+        if ($starting_consultant_id && !empty($consultants)) {
+            $idx = array_search($starting_consultant_id, $consultants);
+            if ($idx !== false) {
+                if ($idx === 0) {
+                    $last_assigned = end($consultants);
+                    reset($consultants); // reset array pointer
+                } else {
+                    $last_assigned = $consultants[$idx - 1];
+                }
+            }
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("sisi", $name, $status, $cc, $last_assigned);
         $stmt->execute();
         $roundId = $conn->insert_id;
         
@@ -259,9 +278,29 @@ switch ($action) {
         $cc = $input['cc_emails'] ?? '';
         $status = $input['is_active'] ?? 1;
         $consultants = $input['consultants'] ?? [];
+        $starting_consultant_id = $input['starting_consultant_id'] ?? null;
         
-        $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=? WHERE id=?");
-        $stmt->bind_param("sisi", $name, $status, $cc, $id);
+        $last_assigned = null;
+        if ($starting_consultant_id && !empty($consultants)) {
+            $idx = array_search($starting_consultant_id, $consultants);
+            if ($idx !== false) {
+                if ($idx === 0) {
+                    $last_assigned = end($consultants);
+                    reset($consultants);
+                } else {
+                    $last_assigned = $consultants[$idx - 1];
+                }
+            }
+        }
+        
+        // Chỉ cập nhật last_assigned_consultant_id nếu user có truyền lên (khác null)
+        if ($starting_consultant_id) {
+            $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=? WHERE id=?");
+            $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $id);
+        } else {
+            $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=? WHERE id=?");
+            $stmt->bind_param("sisi", $name, $status, $cc, $id);
+        }
         $stmt->execute();
         
         $stmtDel = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
