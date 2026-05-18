@@ -95,7 +95,7 @@ export const Rounds = () => {
     
     setFormData({ 
       round_name: r.round_name, 
-      is_active: r.is_active, 
+      is_active: Number(r.is_active), 
       cc_emails: r.cc_emails || '',
       selected_users: matchedIds,
       starting_consultant_id: r.next_consultant_id ? parseInt(r.next_consultant_id) : null
@@ -128,12 +128,13 @@ export const Rounds = () => {
     }
   };
 
-  const toggleUserSelection = (userId: number) => {
+  const toggleUserSelection = (userId: number | string) => {
+    const id = Number(userId);
     setFormData(prev => ({
       ...prev,
-      selected_users: prev.selected_users.includes(userId)
-        ? prev.selected_users.filter(id => id !== userId)
-        : [...prev.selected_users, userId]
+      selected_users: prev.selected_users.includes(id)
+        ? prev.selected_users.filter(x => x !== id)
+        : [...prev.selected_users, id]
     }));
   };
 
@@ -151,11 +152,12 @@ export const Rounds = () => {
     setConfirmDeleteOpen(false);
   };
 
-  const removeUser = (userId: number, e: React.MouseEvent) => {
+  const removeUser = (userId: number | string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const id = Number(userId);
     setFormData(prev => ({
       ...prev,
-      selected_users: prev.selected_users.filter(id => id !== userId)
+      selected_users: prev.selected_users.filter(x => x !== id)
     }));
   };
 
@@ -253,33 +255,43 @@ export const Rounds = () => {
                   </div>
 
                   <div style={{ flex: 1, marginBottom: '1rem' }}>
-                    <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                      <Users size={11} /> Thành viên ({consList.length})
-                    </p>
-                    {consList.length > 0 ? (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        {consList.map((c: string, i: number) => {
-                          const initials = c.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
-                          return (
-                            <span key={i} style={{
-                              background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                              padding: '2px 10px 2px 2px', borderRadius: 20, fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text)',
-                              display: 'flex', alignItems: 'center', gap: 6
-                            }}>
-                              <span style={{ width: 22, height: 22, borderRadius: '50%', background: color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
+                        {consList.length} Thành viên
+                      </p>
+                      {consList.length > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {consList.slice(0, 4).map((c: string, i: number) => {
+                            const initials = c.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                            return (
+                              <div key={i} title={c} style={{
+                                width: 32, height: 32, borderRadius: '50%', background: getColorForName(c),
+                                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
+                                marginLeft: i === 0 ? 0 : -8, position: 'relative', zIndex: 10 - i, boxShadow: 'var(--shadow-sm)'
+                              }}>
                                 {initials}
-                              </span>
-                              {c}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa gán TVV nào</p>
-                    )}
+                              </div>
+                            );
+                          })}
+                          {consList.length > 4 && (
+                            <div style={{
+                              width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)',
+                              color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
+                              marginLeft: -8, position: 'relative', zIndex: 5, boxShadow: 'var(--shadow-sm)'
+                            }}>
+                              +{consList.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có</p>
+                      )}
+                    </div>
                     
                     {r.next_assigned_name && (
-                      <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Zap size={14} color="var(--color-primary)" />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
                       </div>
@@ -287,14 +299,14 @@ export const Rounds = () => {
                   </div>
 
                   <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1 }}>
+                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
                       <Edit3 size={13} /> Sửa
                     </button>
-                    <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.5rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
-                      <Trash2 size={13} />
-                    </button>
-                    <button className="btn primary sm" onClick={() => openEditModal(r)} style={{ flex: 1 }}>
+                    <button className="btn primary sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
                       <UserPlus size={13} /> Gán TVV
+                    </button>
+                    <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -320,14 +332,14 @@ export const Rounds = () => {
 
                 <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
                       {consList.length} Thành viên
                     </p>
                     {consList.slice(0, 4).map((c: string, i: number) => {
                       const initials = c.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                       return (
                         <div key={i} title={c} style={{
-                          width: 32, height: 32, borderRadius: '50%', background: color, color: 'white', 
+                          width: 32, height: 32, borderRadius: '50%', background: getColorForName(c), color: 'white', 
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700,
                           border: '2px solid white', marginLeft: i > 0 ? -12 : 0, boxShadow: 'var(--shadow-sm)'
                         }}>
@@ -354,15 +366,15 @@ export const Rounds = () => {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <button className="btn outline sm" onClick={() => openEditModal(r)}>
                     <Edit3 size={14} /> Sửa
                   </button>
-                  <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', padding: '0 0.5rem' }}>
-                    <Trash2 size={14} />
-                  </button>
                   <button className="btn primary sm" onClick={() => openEditModal(r)}>
                     <UserPlus size={14} /> Gán TVV
+                  </button>
+                  <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', padding: '0 0.5rem' }}>
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -448,7 +460,7 @@ export const Rounds = () => {
                       boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 180, overflowY: 'auto'
                     }}>
                       {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
-                        const isSelected = formData.selected_users.includes(user.id);
+                        const isSelected = formData.selected_users.includes(Number(user.id));
                         const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                         
                         return (
@@ -487,7 +499,7 @@ export const Rounds = () => {
                     <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 150, overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
                       <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Tư vấn viên đã chọn ({formData.selected_users.length}):</div>
                       {formData.selected_users.map(userId => {
-                        const user = consultants.find(c => c.id === userId);
+                        const user = consultants.find(c => Number(c.id) === userId);
                         if (!user) return null;
                         const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                         return (
@@ -541,7 +553,7 @@ export const Rounds = () => {
                         {formData.starting_consultant_id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {(() => {
-                               const c = consultants.find(x => x.id === formData.starting_consultant_id);
+                               const c = consultants.find(x => Number(x.id) === formData.starting_consultant_id);
                                if (!c) return '-- Mặc định (Theo thứ tự thêm vào) --';
                                const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                                return (

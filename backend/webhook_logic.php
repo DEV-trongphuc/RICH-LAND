@@ -83,6 +83,21 @@ function evaluateRules($conn, $data, $source, $type) {
             case 'ends_with':
                 if (substr($dataVal, -strlen($val)) === $val) return $row['target_round_id'];
                 break;
+            case 'is_empty':
+                if (trim($dataVal) === '') return $row['target_round_id'];
+                break;
+            case 'is_not_empty':
+                if (trim($dataVal) !== '') return $row['target_round_id'];
+                break;
+            case 'date_before':
+                if (strtotime($dataVal) && strtotime($val) && strtotime($dataVal) < strtotime($val)) return $row['target_round_id'];
+                break;
+            case 'date_after':
+                if (strtotime($dataVal) && strtotime($val) && strtotime($dataVal) > strtotime($val)) return $row['target_round_id'];
+                break;
+            case 'date_equals':
+                if (strtotime($dataVal) && strtotime($val) && date('Y-m-d', strtotime($dataVal)) === date('Y-m-d', strtotime($val))) return $row['target_round_id'];
+                break;
         }
     }
     

@@ -283,7 +283,7 @@ export const Integrations = () => {
         const newRequire = conn.require_both_contact ? 0 : 1;
         const json = await fetchAPI(`toggle_require_both&id=${conn.id}&require=${newRequire}`);
         if (json.success) {
-            toast.success(newRequire ? 'Đã bật yêu cầu đủ SĐT và Email' : 'Đã tắt yêu cầu đủ SĐT và Email');
+            toast.success(newRequire ? 'Đã bật yêu cầu Số Điện Thoại' : 'Đã tắt yêu cầu Số Điện Thoại');
             fetchData();
         }
     } catch (e: any) {
@@ -382,10 +382,11 @@ export const Integrations = () => {
               {selected?.id === conn.id && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
               <div style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-bg)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                border: selected?.id === conn.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
               }}>
-                <Link2 size={16} color={selected?.id === conn.id ? 'white' : 'var(--color-text-light)'} />
+                <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: selected?.id === conn.id ? 1 : 0.6 }} alt="Google Sheets" />
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -420,10 +421,10 @@ export const Integrations = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                   <div style={{
-                    width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--color-primary), #8b5cf6)',
+                    width: 44, height: 44, borderRadius: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Webhook size={22} color="white" />
+                    <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
                   </div>
                   <div>
                     <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)' }}>{selected.sheet_name}</h2>
@@ -487,16 +488,26 @@ export const Integrations = () => {
               <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    Yêu cầu đủ SĐT và Email
+                    Yêu cầu bắt buộc có Số Điện Thoại
                   </h4>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Nếu bật, dòng dữ liệu trên Sheets phải có <strong>CẢ SĐT LẪN EMAIL</strong> mới được đồng bộ vào hệ thống.
+                    Nếu bật, dòng dữ liệu trên Sheets phải có <strong>Số Điện Thoại (Phone)</strong> mới được đồng bộ vào hệ thống.
                   </p>
                 </div>
-                <ToggleSwitch 
-                  checked={!!selected.require_both_contact} 
-                  onChange={() => handleToggleRequireBoth(selected)}
-                />
+                <div 
+                  onClick={() => handleToggleRequireBoth(selected)}
+                  style={{
+                    width: 44, height: 24, borderRadius: 24, cursor: 'pointer', position: 'relative',
+                    background: selected.require_both_contact ? 'var(--color-success)' : 'var(--color-border)',
+                    transition: 'background 0.3s'
+                  }}
+                >
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%', background: 'white',
+                    position: 'absolute', top: 3, left: selected.require_both_contact ? 23 : 3,
+                    transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
               </div>
             </div>
 

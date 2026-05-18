@@ -251,13 +251,15 @@ switch ($action) {
         
         $last_assigned = null;
         if ($starting_consultant_id && !empty($consultants)) {
-            $idx = array_search($starting_consultant_id, $consultants);
+            $sorted_consultants = $consultants;
+            sort($sorted_consultants);
+            $idx = array_search($starting_consultant_id, $sorted_consultants);
             if ($idx !== false) {
                 if ($idx === 0) {
-                    $last_assigned = end($consultants);
-                    reset($consultants); // reset array pointer
+                    $last_assigned = end($sorted_consultants);
+                    reset($sorted_consultants); // reset array pointer
                 } else {
-                    $last_assigned = $consultants[$idx - 1];
+                    $last_assigned = $sorted_consultants[$idx - 1];
                 }
             }
         }
@@ -288,13 +290,15 @@ switch ($action) {
         
         $last_assigned = null;
         if ($starting_consultant_id && !empty($consultants)) {
-            $idx = array_search($starting_consultant_id, $consultants);
+            $sorted_consultants = $consultants;
+            sort($sorted_consultants);
+            $idx = array_search($starting_consultant_id, $sorted_consultants);
             if ($idx !== false) {
                 if ($idx === 0) {
-                    $last_assigned = end($consultants);
-                    reset($consultants);
+                    $last_assigned = end($sorted_consultants);
+                    reset($sorted_consultants);
                 } else {
-                    $last_assigned = $consultants[$idx - 1];
+                    $last_assigned = $sorted_consultants[$idx - 1];
                 }
             }
         }

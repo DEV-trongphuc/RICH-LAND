@@ -39,10 +39,10 @@ $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
 $stmt = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
 } else {
     http_response_code(401);
@@ -58,7 +58,9 @@ if ($connRes->num_rows === 0) {
     echo json_encode(["success" => false, "message" => "Invalid or inactive connection"]);
     exit();
 }
-$connectionId = $connRes->fetch_assoc()['id'];
+$connData = $connRes->fetch_assoc();
+$connectionId = $connData['id'];
+$requirePhone = $connData['require_both_contact'];
 
 // Fetch field mappings
 $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
@@ -105,10 +107,18 @@ $type = extractMappedValues($mappings, 'type', $data);
 $note = extractMappedValues($mappings, 'note', $data);
 $name = extractMappedValues($mappings, 'name', $data);
 
-if (empty($phone) && empty($email)) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "Phone or email is required"]);
-    exit();
+if ($requirePhone == 1) {
+    if (empty($phone)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Phone number is required"]);
+        exit();
+    }
+} else {
+    if (empty($phone) && empty($email)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Phone or email is required"]);
+        exit();
+    }
 }
 
 // --- 1. Check CRM (Duplication & 6-month rule) ---

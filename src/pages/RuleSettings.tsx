@@ -21,6 +21,11 @@ const OP_LABELS: Record<string, string> = {
   equals: 'Trùng khớp chính xác với',
   starts_with: 'Bắt đầu bằng',
   ends_with: 'Kết thúc bằng',
+  is_empty: 'Trống (Không có dữ liệu)',
+  is_not_empty: 'Không trống (Có dữ liệu)',
+  date_before: 'Ngày trước (Nhỏ hơn ngày)',
+  date_after: 'Ngày sau (Lớn hơn ngày)',
+  date_equals: 'Chính xác ngày'
 };
 
 // Sortable Item Component
@@ -78,11 +83,13 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
               <span style={{ color: 'var(--color-text-light)', fontSize: '0.875rem', fontStyle: 'italic' }}>
                 {OP_LABELS[rule.condition_operator] || rule.condition_operator}
               </span>
-              <span style={{
-                background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '6px 12px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.875rem'
-              }}>
-                "{rule.condition_value}"
-              </span>
+              {rule.condition_operator !== 'is_empty' && rule.condition_operator !== 'is_not_empty' && (
+                <span style={{
+                  background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '6px 12px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.875rem'
+                }}>
+                  "{rule.condition_value}"
+                </span>
+              )}
             </div>
           </div>
           
@@ -93,13 +100,20 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
           <div style={{ flex: '0 0 250px' }}>
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Hành động xử lý</p>
             <div style={{
-              background: '#0f172a', color: 'white', padding: '10px 16px', borderRadius: 10, fontWeight: 600, fontSize: '0.875rem',
-              display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'var(--shadow-md)'
+              background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.15))',
+              border: '1px solid var(--color-primary)', 
+              color: 'var(--color-primary)', 
+              padding: '8px 16px', 
+              borderRadius: 50, 
+              fontWeight: 600, 
+              fontSize: '0.875rem',
+              display: 'flex', alignItems: 'center', gap: 10, 
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.15)'
             }}>
-              <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: 6, borderRadius: '50%' }}>
-                <MapPin size={16} color="#10b981" />
+              <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MapPin size={16} />
               </div>
-              <span style={{ flex: 1 }}>{rule.round_name || `Vòng ID: ${rule.target_round_id}`}</span>
+              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rule.round_name || `Vòng ID: ${rule.target_round_id}`}</span>
             </div>
           </div>
         </div>
@@ -242,7 +256,8 @@ export const RuleSettings = () => {
   };
 
   const handleSaveRule = async () => {
-    if (!val || !targetRound) return toast.error('Vui lòng nhập đủ thông tin');
+    const isNoValueOp = op === 'is_empty' || op === 'is_not_empty';
+    if ((!val && !isNoValueOp) || !targetRound) return toast.error('Vui lòng nhập đủ thông tin');
     
     const payload = {
       id: editingRule?.id,
@@ -290,7 +305,7 @@ export const RuleSettings = () => {
       { value: 'note', label: 'Ghi Chú (Hệ thống)' }
     ];
     if (connectionId !== 'all') {
-      const conn = connections.find(c => c.id === connectionId);
+      const conn = connections.find(c => Number(c.id) === connectionId);
       if (conn && conn.mappings) {
         const customFields = conn.mappings.map((m: any) => ({
           value: m.sheet_column,
@@ -306,7 +321,12 @@ export const RuleSettings = () => {
     { value: 'contains', label: 'Có chứa từ khóa' },
     { value: 'equals', label: 'Trùng khớp chính xác với' },
     { value: 'starts_with', label: 'Bắt đầu bằng' },
-    { value: 'ends_with', label: 'Kết thúc bằng' }
+    { value: 'ends_with', label: 'Kết thúc bằng' },
+    { value: 'is_empty', label: 'Trống (Không có dữ liệu)' },
+    { value: 'is_not_empty', label: 'Không trống (Có dữ liệu)' },
+    { value: 'date_before', label: 'Ngày trước (Nhỏ hơn ngày)' },
+    { value: 'date_after', label: 'Ngày sau (Lớn hơn ngày)' },
+    { value: 'date_equals', label: 'Chính xác ngày' }
   ];
 
   return (
@@ -407,15 +427,28 @@ export const RuleSettings = () => {
               onChange={val => setOp(String(val))}
             />
           </div>
-          <div>
-            <label className="form-label">Giá trị so sánh</label>
-            <input 
-              className="form-input" 
-              placeholder="VD: form, DBA,..." 
-              value={val} 
-              onChange={e => setVal(e.target.value)} 
-            />
-          </div>
+          {op !== 'is_empty' && op !== 'is_not_empty' && (
+            <div>
+              <label className="form-label">
+                {op.startsWith('date_') ? 'Giá trị so sánh (YYYY-MM-DD)' : 'Giá trị so sánh'}
+              </label>
+              {op.startsWith('date_') ? (
+                <input 
+                  type="date"
+                  className="form-input" 
+                  value={val} 
+                  onChange={e => setVal(e.target.value)} 
+                />
+              ) : (
+                <input 
+                  className="form-input" 
+                  placeholder="VD: form, DBA,..." 
+                  value={val} 
+                  onChange={e => setVal(e.target.value)} 
+                />
+              )}
+            </div>
+          )}
           <div>
             <label className="form-label">Hành động: Phân bổ vào</label>
             <CustomSelect 
