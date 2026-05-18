@@ -123,7 +123,7 @@ export const ReportData = () => {
             <SpinStyle />
           </div>
         ) : ctxError ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: 'auto' }}>
             <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#fca5a5,#f87171)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                 <XCircle size={36} color="white" />
@@ -133,7 +133,7 @@ export const ReportData = () => {
             </div>
           </div>
         ) : submitStatus === 'success' ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: 'auto' }}>
             <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                 <CheckCircle size={36} color="white" />
@@ -144,7 +144,7 @@ export const ReportData = () => {
           </div>
         ) : (
           <div style={{ 
-            display: 'flex', width: '100%', 
+            display: 'flex', width: '100%', margin: 'auto',
             background: 'white', borderRadius: 20, 
             boxShadow: '0 24px 64px rgba(0,0,0,0.35)', 
             overflow: 'hidden' 
