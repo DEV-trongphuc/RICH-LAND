@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 type Lead = {
   id: number;
@@ -42,6 +43,8 @@ export const DataList = () => {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [limitReached, setLimitReached] = useState(false);
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -63,9 +66,12 @@ export const DataList = () => {
           created_at: item.created_at
         }));
         setLeads(mappedLeads);
+        // BUG-04 fix: track truncation
+        setTotalCount(json.total_count ?? mappedLeads.length);
+        setLimitReached((json.total_count ?? 0) > (json.limit ?? 500));
       }
     } catch (e: any) {
-      console.error(e.message);
+      toast.error('Lỗi tải dữ liệu: ' + e.message);
     }
     setLoading(false);
   };
@@ -113,15 +119,15 @@ export const DataList = () => {
         })
       });
       if (res.success) {
-        alert('Giao lại Tư vấn viên thành công!');
+        toast.success('Giao lại Tư vấn viên thành công!'); // BUG-03 fix: was alert()
         setSelectedLead(null);
         setReassignConsId('');
         fetchLeads();
       } else {
-        alert('Lỗi: ' + (res.message || 'Không thể giao lại'));
+        toast.error('Lỗi: ' + (res.message || 'Không thể giao lại')); // BUG-03 fix
       }
     } catch (err: any) {
-      alert('Đã xảy ra lỗi: ' + err.message);
+      toast.error('Đã xảy ra lỗi: ' + err.message); // BUG-03 fix
     }
     setIsReassigning(false);
   };
@@ -131,6 +137,37 @@ export const DataList = () => {
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchLeads().then(() => setIsRefreshing(false));
+  };
+
+  // BUG-05 fix: Implement CSV export from current filtered data
+  const handleExportCSV = () => {
+    if (filteredLeads.length === 0) {
+      toast.error('Không có dữ liệu để xuất!');
+      return;
+    }
+    const headers = ['STT', 'Họ và Tên', 'Số Điện Thoại', 'Email', 'Nguồn', 'Loại', 'Trạng thái', 'TVV tiếp nhận', 'Vòng chia', 'Thời gian nhận'];
+    const statusMap: Record<string, string> = { assigned: 'Đã chia', pending: 'Chờ chia', duplicate: 'Trùng lặp', unassigned: 'Chưa phân bổ' };
+    const rows = filteredLeads.map((l, i) => [
+      i + 1,
+      l.name,
+      l.phone,
+      l.email,
+      l.source,
+      l.type,
+      statusMap[l.status] || l.status,
+      l.assigned_to_name,
+      l.round_name,
+      l.created_at
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `data_export_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Đã xuất ${filteredLeads.length} dòng dữ liệu!`);
   };
 
   const filteredLeads = useMemo(() => {
@@ -176,8 +213,8 @@ export const DataList = () => {
           <button className="btn outline" onClick={handleRefresh} style={{ padding: '0 0.875rem' }}>
             <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} /> <span className="hidden sm:inline">Làm mới</span>
           </button>
-          <button className="btn primary" style={{ padding: '0 1.25rem' }}>
-            <Download size={16} /> Xuất Excel
+          <button className="btn primary" onClick={handleExportCSV} style={{ padding: '0 1.25rem' }}>
+            <Download size={16} /> Xuất CSV
           </button>
         </div>
       </div>
@@ -242,7 +279,14 @@ export const DataList = () => {
           </select>
         </div>
         
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+          {/* BUG-04 fix: show warning if data is truncated */}
+          {limitReached && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600 }}>
+              <AlertTriangle size={14} />
+              Đang hiển thị 500/{totalCount} bản ghi. Hãy lọc để xem đầy đủ.
+            </div>
+          )}
           Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{filteredLeads.length}</strong> data
         </div>
       </div>

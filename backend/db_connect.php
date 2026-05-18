@@ -60,3 +60,58 @@ $checkColRROp = $conn->query("SHOW COLUMNS FROM routing_rules LIKE 'logical_oper
 if ($checkColRROp && $checkColRROp->num_rows === 0) {
     $conn->query("ALTER TABLE routing_rules ADD COLUMN logical_operator VARCHAR(10) DEFAULT 'AND' COMMENT 'Toán tử logic giữa các điều kiện'");
 }
+
+// Auto-migrate: ensure compensation_count column exists in round_consultants
+$checkColComp = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'compensation_count'");
+if ($checkColComp && $checkColComp->num_rows === 0) {
+    $conn->query("ALTER TABLE round_consultants ADD COLUMN compensation_count INT DEFAULT 0 COMMENT 'Số data cần đền bù'");
+}
+
+// Auto-migrate: create data_reports table
+$conn->query("CREATE TABLE IF NOT EXISTS data_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lead_id INT,
+    consultant_id INT,
+    round_id INT,
+    reason VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME NULL,
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+    FOREIGN KEY (consultant_id) REFERENCES consultants(id) ON DELETE CASCADE,
+    FOREIGN KEY (round_id) REFERENCES distribution_rounds(id) ON DELETE CASCADE
+)");
+// Auto-migrate: Performance Indexes — only add if they don't already exist
+// BUG-15 fix: wrapped in SHOW INDEX checks to avoid ALTER TABLE on every request
+
+// Unique key for round_consultants
+$chkIdx1 = $conn->query("SHOW INDEX FROM round_consultants WHERE Key_name='idx_round_consultant_unique'");
+if ($chkIdx1 && $chkIdx1->num_rows === 0) {
+    $conn->query("ALTER TABLE round_consultants ADD UNIQUE KEY `idx_round_consultant_unique` (`round_id`, `consultant_id`)");
+}
+
+// leads phone index
+$chkIdx2 = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_phone'");
+if ($chkIdx2 && $chkIdx2->num_rows === 0) {
+    $conn->query("ALTER TABLE leads ADD INDEX `idx_phone` (`phone`)");
+}
+
+// leads email index
+$chkIdx3 = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_email'");
+if ($chkIdx3 && $chkIdx3->num_rows === 0) {
+    $conn->query("ALTER TABLE leads ADD INDEX `idx_email` (`email`)");
+}
+
+// distribution_logs lead_id index
+$chkIdx4 = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_lead_id'");
+if ($chkIdx4 && $chkIdx4->num_rows === 0) {
+    $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_lead_id` (`lead_id`)");
+}
+
+// data_reports round_id index
+$chkIdx5 = $conn->query("SHOW INDEX FROM data_reports WHERE Key_name='idx_round_id'");
+if ($chkIdx5 && $chkIdx5->num_rows === 0) {
+    $conn->query("ALTER TABLE data_reports ADD INDEX `idx_round_id` (`round_id`)");
+}
+
+?>

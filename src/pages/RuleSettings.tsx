@@ -197,6 +197,8 @@ export const RuleSettings = () => {
   const [isNoSheetModalOpen, setIsNoSheetModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
   const [branches, setBranches] = useState<any[][]>([ [{ col: 'source', op: 'contains', val: '' }] ]);
@@ -258,16 +260,19 @@ export const RuleSettings = () => {
       const oldIndex = rules.findIndex((r) => r.id === active.id);
       const newIndex = rules.findIndex((r) => r.id === over?.id);
       const newRules = arrayMove(rules, oldIndex, newIndex);
-      setRules(newRules);
+      setRules(newRules); // Optimistic update
 
-      // Save order
+      // Save order to backend
       try {
         await fetchAPI('reorder_rules', {
           method: 'POST',
           body: JSON.stringify({ order: newRules.map(r => r.id) })
         });
+        // Silent success — order is already reflected on screen
       } catch (e: any) {
-        console.error("Failed to save order", e);
+        // Revert on failure
+        toast.error('Lỗi lưu thứ tự: ' + e.message);
+        fetchRules(); // Re-fetch to restore correct order
       }
     }
   };
@@ -319,7 +324,9 @@ export const RuleSettings = () => {
       }
     }
     if (!targetRound) return toast.error('Vui lòng chọn vòng phân bổ');
+    if (isSaving) return;
 
+    setIsSaving(true);
     const payload = {
       id: editingRule?.id,
       connection_id: connectionId === 'all' ? null : connectionId,
@@ -344,20 +351,27 @@ export const RuleSettings = () => {
       } else {
         toast.error(json.message || "Lỗi lưu Rule");
       }
-    } catch (e: any) { toast.error("Lỗi lưu Rule: " + e.message); }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsSaving(false);
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_rule&id=${deleteId}`);
       if (json.success) {
         toast.success('Xóa thành công!');
         fetchRules();
       } else {
-        toast.error(json.message || "Lỗi xóa Rule");
+        toast.error(json.message || 'Lỗi khi xóa');
       }
-    } catch (e: any) { toast.error("Lỗi kết nối: " + e.message); }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsDeleting(false);
     setIsConfirmOpen(false);
   };
 
@@ -629,10 +643,11 @@ export const RuleSettings = () => {
               placeholder="Chọn vòng phân bổ..."
             />
           </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setIsModalOpen(false)}>Hủy</button>
-            <button className="btn primary" onClick={handleSaveRule}>Lưu Quy tắc</button>
+          <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>Hủy bỏ</button>
+            <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
+              {isSaving ? 'Đang lưu...' : (editingRule ? 'Cập nhật' : 'Thêm mới')}
+            </button>
           </div>
         </div>
       </CustomModal>

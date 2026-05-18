@@ -34,6 +34,8 @@ export const Consultants = () => {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -74,7 +76,9 @@ export const Consultants = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email) return toast.error('Vui lòng điền đầy đủ thông tin');
+    if (isSaving) return;
 
+    setIsSaving(true);
     try {
       const action = editingUser ? 'edit_consultant' : 'add_consultant';
       const payload = { ...formData, id: editingUser?.id };
@@ -91,10 +95,12 @@ export const Consultants = () => {
         toast.error(json.message || 'Lỗi khi lưu');
       }
     } catch (e: any) { toast.error('Lỗi: ' + e.message); }
+    setIsSaving(false);
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_consultant&id=${deleteId}`);
       if (json.success) {
@@ -104,6 +110,7 @@ export const Consultants = () => {
         toast.error(json.message || 'Lỗi khi xóa');
       }
     } catch (e: any) { toast.error('Lỗi: ' + e.message); }
+    setIsDeleting(false);
     setConfirmDeleteOpen(false);
   };
 
@@ -332,8 +339,8 @@ export const Consultants = () => {
 
               <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                 <button type="button" className="btn outline" onClick={() => setModalOpen(false)}>Hủy bỏ</button>
-                <button type="submit" className="btn primary">
-                  {editingUser ? 'Cập nhật' : 'Thêm mới'}
+                <button type="submit" className="btn primary" disabled={isSaving}>
+                  {isSaving ? 'Đang lưu...' : (editingUser ? 'Cập nhật' : 'Thêm mới')}
                 </button>
               </div>
             </form>

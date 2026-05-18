@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Users, Edit3, UserPlus, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search } from 'lucide-react';
+import { Plus, Users, Edit3, UserPlus, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
@@ -29,6 +29,9 @@ export const Rounds = () => {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingRound, setEditingRound] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isActioning, setIsActioning] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     round_name: '',
     is_active: 1,
@@ -43,6 +46,10 @@ export const Rounds = () => {
   const [showStartSaleDropdown, setShowStartSaleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const startSaleDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [activeTab, setActiveTab] = useState<'config' | 'reports'>('config');
+  const [reports, setReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -89,6 +96,7 @@ export const Rounds = () => {
 
   const openEditModal = (r: any) => {
     setEditingRound(r);
+    setActiveTab('config');
     let matchedIds: number[] = [];
     if (r.consultant_ids) {
         matchedIds = r.consultant_ids.split(',').map((id: string) => parseInt(id, 10));
@@ -103,12 +111,48 @@ export const Rounds = () => {
       ratios: r.ratios || {}
     });
     setModalOpen(true);
+    fetchReports(r.id);
+  };
+
+  const fetchReports = async (roundId: number) => {
+    setLoadingReports(true);
+    try {
+      const res = await fetchAPI(`get_reports&round_id=${roundId}`);
+      if (res.success) setReports(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingReports(false);
+  };
+
+  const handleReportAction = async (reportId: number, action: 'approve' | 'reject') => {
+    if (isActioning) return;
+    setIsActioning(reportId);
+    try {
+      const endpoint = action === 'approve' ? 'approve_report' : 'reject_report';
+      const res = await fetchAPI(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ id: reportId })
+      });
+      if (res.success) {
+        toast.success(action === 'approve' ? 'Đã duyệt đền bù Data!' : 'Đã từ chối báo cáo!');
+        fetchReports(editingRound.id);
+        fetchRounds(); // Refresh to get updated compensations count
+      } else {
+        toast.error(res.message || 'Có lỗi xảy ra');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsActioning(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.round_name) return toast.error("Vui lòng nhập tên vòng");
+    if (isSaving) return;
 
+    setIsSaving(true);
     try {
       const action = editingRound ? 'edit_round' : 'add_round';
       const payload = { ...formData, id: editingRound?.id, consultants: formData.selected_users };
@@ -128,6 +172,7 @@ export const Rounds = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setIsSaving(false);
   };
 
   const toggleUserSelection = (userId: number | string) => {
@@ -141,16 +186,20 @@ export const Rounds = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_round&id=${deleteId}`);
       if (json.success) {
         toast.success('Đã xóa thành công!');
         fetchRounds();
       } else {
-        toast.error(json.message || 'Lỗi khi xóa vòng');
+        toast.error(json.message || 'Lỗi khi xóa');
       }
-    } catch (e: any) { toast.error('Lỗi: ' + e.message); }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsDeleting(false);
     setConfirmDeleteOpen(false);
   };
 
@@ -402,7 +451,20 @@ export const Rounds = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            {editingRound && (
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', padding: '0 1.25rem', gap: '2rem', flexShrink: 0 }}>
+                <button type="button" onClick={() => setActiveTab('config')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'config' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'config' ? 600 : 500, cursor: 'pointer' }}>Cấu hình chung</button>
+                <button type="button" onClick={() => setActiveTab('reports')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'reports' ? '2px solid var(--color-danger)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'reports' ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: activeTab === 'reports' ? 600 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Data Lỗi & Đền Bù
+                  {reports.filter(r => r.status === 'pending').length > 0 && (
+                    <span style={{ background: 'var(--color-danger)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 10 }}>{reports.filter(r => r.status === 'pending').length}</span>
+                  )}
+                </button>
+              </div>
+            )}
+            
+            {activeTab === 'config' ? (
+              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
   <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
     
     {/* LEFT COLUMN */}
@@ -604,7 +666,14 @@ export const Rounds = () => {
                     {initials}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user.name}</div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
+                      {user.name}
+                      {editingRound?.compensations?.[user.id] > 0 && (
+                        <span style={{ marginLeft: 8, padding: '2px 6px', background: 'var(--color-danger)', color: 'white', fontSize: '0.65rem', borderRadius: 10, fontWeight: 700 }}>
+                          Nợ bù: {editingRound.compensations[user.id]}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
                   </div>
                   <button 
@@ -646,11 +715,56 @@ export const Rounds = () => {
 
   <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
     <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>Hủy bỏ</button>
-    <button type="submit" className="btn primary">
-      {editingRound ? 'Cập nhật' : 'Thêm mới'}
+    <button type="submit" className="btn primary" disabled={isSaving}>
+      {isSaving ? 'Đang lưu...' : (editingRound ? 'Cập nhật' : 'Thêm mới')}
     </button>
   </div>
 </form>
+            ) : (
+              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                {loadingReports ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu báo cáo...</div>
+                ) : reports.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: '#f8fafc', borderRadius: 12 }}>
+                    <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Chưa có báo cáo lỗi nào</p>
+                    <p style={{ fontSize: '0.875rem' }}>Các báo cáo Data lỗi của vòng này sẽ xuất hiện tại đây.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {reports.map(r => (
+                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.25rem', border: '1px solid', borderColor: r.status === 'pending' ? '#fbbf24' : '#e2e8f0', borderRadius: 12, background: r.status === 'pending' ? '#fffbeb' : '#f8fafc' }}>
+                        <div>
+                          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} color="var(--color-text-muted)" /> {r.lead_name} - <span style={{ color: 'var(--color-primary)' }}>{r.lead_phone}</span></span>
+                            <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> Sale: {r.consultant_name}</span>
+                          </div>
+                          <div style={{ color: 'var(--color-danger)', fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
+                            🚨 Lý do: {r.reason}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                            Báo cáo lúc: {new Date(r.created_at).toLocaleString('vi-VN')}
+                          </div>
+                        </div>
+                        
+                        {r.status === 'pending' ? (
+                          <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <button onClick={() => handleReportAction(r.id, 'approve')} disabled={isActioning === r.id} className="btn primary sm" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' }}>
+                              {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
+                            </button>
+                            <button onClick={() => handleReportAction(r.id, 'reject')} disabled={isActioning === r.id} className="btn outline sm">Từ chối</button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? '#dcfce7' : '#f1f5f9', padding: '6px 12px', borderRadius: 20 }}>
+                            {r.status === 'approved' ? <><Check size={14} /> Đã duyệt đền bù</> : <><X size={14} /> Đã từ chối</>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         </div>, document.body

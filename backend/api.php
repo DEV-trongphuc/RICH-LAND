@@ -73,7 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login and test_email
-if ($action !== 'login' && $action !== 'test_email') {
+// Public endpoints (no auth required)
+$publicActions = ['login', 'test_email', 'submit_report'];
+
+if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
     if (!$token) {
         http_response_code(401);
@@ -88,12 +91,21 @@ if ($action !== 'login' && $action !== 'test_email') {
     }
     
     // Check Admin roles for sensitive endpoints
-    $adminOnlyActions = ['add_account', 'edit_account', 'delete_account', 'save_settings', 'add_consultant', 'delete_consultant', 'add_round', 'edit_round', 'delete_round', 'add_rule', 'edit_rule', 'delete_rule', 'reorder_rules'];
+    $adminOnlyActions = [
+        'add_account', 'edit_account', 'delete_account',
+        'save_settings',
+        'add_consultant', 'delete_consultant',
+        'add_round', 'edit_round', 'delete_round',
+        'add_rule', 'edit_rule', 'delete_rule', 'reorder_rules',
+        'approve_report', 'reject_report', 'get_reports', // BUG-07 & BUG-09 fix
+    ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
         exit();
     }
+} else {
+    $decodedUser = null; // Public actions have no user context
 }
 
 switch ($action) {
@@ -123,17 +135,23 @@ switch ($action) {
         echo json_encode(['success' => false, 'message' => 'Tài khoản hoặc mật khẩu không chính xác']);
         break;
     case 'get_stats':
-        $today = date('Y-m-d');
-        $q_total = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59'");
-        $q_assigned = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59' AND status='assigned'");
-        $q_dupes = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59' AND status='duplicate'");
-        
+        $todayStr = date('Y-m-d');
+        $stmt = $conn->prepare("SELECT 
+            COUNT(*) as total,
+            SUM(IF(status='assigned',1,0)) as assigned,
+            SUM(IF(status='duplicate',1,0)) as duplicates
+        FROM distribution_logs WHERE received_at >= ? AND received_at <= ?");
+        $todayStart = $todayStr . ' 00:00:00';
+        $todayEnd   = $todayStr . ' 23:59:59';
+        $stmt->bind_param("ss", $todayStart, $todayEnd);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         echo json_encode([
             'success' => true,
             'data' => [
-                'total_today' => $q_total->fetch_assoc()['c'],
-                'assigned' => $q_assigned->fetch_assoc()['c'],
-                'duplicates' => $q_dupes->fetch_assoc()['c']
+                'total_today' => (int)$row['total'],
+                'assigned'    => (int)$row['assigned'],
+                'duplicates'  => (int)$row['duplicates']
             ]
         ]);
         break;
@@ -160,6 +178,11 @@ switch ($action) {
             $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
         }
 
+        // BUG-04 fix: get total count first so UI can warn if truncated
+        $countRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs dl WHERE $dateCondition");
+        $totalCount = (int)($countRes->fetch_assoc()['cnt'] ?? 0);
+
+        $LIMIT = 500;
         $res = $conn->query("
             SELECT 
                 dl.id, 
@@ -179,11 +202,11 @@ switch ($action) {
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             WHERE $dateCondition
             ORDER BY dl.received_at DESC 
-            LIMIT 500
+            LIMIT $LIMIT
         ");
         $data = [];
         while($row = $res->fetch_assoc()) $data[] = $row;
-        echo json_encode(['success' => true, 'data' => $data]);
+        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $LIMIT]);
         break;
 
     case 'get_consultants':
@@ -195,9 +218,26 @@ switch ($action) {
 
     case 'add_consultant':
         $input = json_decode(file_get_contents('php://input'), true);
-        $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
+        $name = trim($input['name'] ?? '');
+        $email = trim($input['email'] ?? '');
         $status = $input['status'] ?? 'active';
+        // NEW-03 fix: validate required fields
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
+            break;
+        }
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
+            break;
+        }
+        // Check duplicate email
+        $dupChk = $conn->prepare("SELECT id FROM consultants WHERE email = ?");
+        $dupChk->bind_param("s", $email);
+        $dupChk->execute();
+        if ($dupChk->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
+            break;
+        }
         $stmt = $conn->prepare("INSERT INTO consultants (name, email, status) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $name, $email, $status);
         $stmt->execute();
@@ -219,11 +259,27 @@ switch ($action) {
         break;
 
     case 'delete_consultant':
-        $id = (int)($_GET['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM consultants WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+        $conn->begin_transaction();
+        try {
+            $id = (int)($_GET['id'] ?? 0);
+            
+            // Check if consultant has any assigned leads in distribution_logs
+            $checkLog = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to=$id");
+            if ($checkLog && $checkLog->fetch_assoc()['cnt'] > 0) {
+                throw new Exception("TVV này đã nhận Data, không thể xóa để bảo toàn thống kê. Vui lòng chọn 'Ngừng hoạt động'.");
+            }
+            
+            $conn->query("DELETE FROM round_consultants WHERE consultant_id=$id");
+            $conn->query("DELETE FROM data_reports WHERE consultant_id=$id");
+            $stmt = $conn->prepare("DELETE FROM consultants WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'get_rounds':
@@ -260,13 +316,16 @@ switch ($action) {
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;
             
-            // Fetch ratios
-            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio FROM round_consultants WHERE round_id = " . $row['id']);
+            // Fetch ratios and compensation counts
+            $ratioRes = $conn->query("SELECT consultant_id, receive_ratio, compensation_count FROM round_consultants WHERE round_id = " . $row['id']);
             $ratios = [];
+            $compensations = [];
             while ($rr = $ratioRes->fetch_assoc()) {
-                $ratios[$rr['consultant_id']] = $rr['receive_ratio'];
+                $ratios[$rr['consultant_id']] = (int)$rr['receive_ratio'];
+                $compensations[$rr['consultant_id']] = (int)$rr['compensation_count'];
             }
             $row['ratios'] = $ratios;
+            $row['compensations'] = $compensations;
             
             $data[] = $row;
         }
@@ -274,103 +333,144 @@ switch ($action) {
         break;
 
     case 'add_round':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $name = $input['round_name'] ?? '';
-        $cc = $input['cc_emails'] ?? '';
-        $status = $input['is_active'] ?? 1;
-        $consultants = $input['consultants'] ?? [];
-        $starting_consultant_id = $input['starting_consultant_id'] ?? null;
-        
-        $last_assigned = null;
-        if ($starting_consultant_id && !empty($consultants)) {
-            $sorted_consultants = $consultants;
-            sort($sorted_consultants);
-            $idx = array_search($starting_consultant_id, $sorted_consultants);
-            if ($idx !== false) {
-                if ($idx === 0) {
-                    $last_assigned = end($sorted_consultants);
-                    reset($sorted_consultants); // reset array pointer
-                } else {
-                    $last_assigned = $sorted_consultants[$idx - 1];
+        $conn->begin_transaction();
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $name = $input['round_name'] ?? '';
+            $cc = $input['cc_emails'] ?? '';
+            $status = $input['is_active'] ?? 1;
+            $consultants = $input['consultants'] ?? [];
+            $starting_consultant_id = $input['starting_consultant_id'] ?? null;
+            
+            $last_assigned = null;
+            if ($starting_consultant_id && !empty($consultants)) {
+                $sorted_consultants = $consultants;
+                sort($sorted_consultants);
+                $idx = array_search($starting_consultant_id, $sorted_consultants);
+                if ($idx !== false) {
+                    if ($idx === 0) {
+                        $last_assigned = end($sorted_consultants);
+                        reset($sorted_consultants);
+                    } else {
+                        $last_assigned = $sorted_consultants[$idx - 1];
+                    }
                 }
             }
-        }
-        
-        $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("sisi", $name, $status, $cc, $last_assigned);
-        $stmt->execute();
-        $roundId = $conn->insert_id;
-        
-        $ratios = $input['ratios'] ?? [];
-        
-        if (!empty($consultants)) {
-            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
-            foreach($consultants as $cid) {
-                $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
-                $stmtC->bind_param("iii", $roundId, $cid, $ratio);
-                $stmtC->execute();
+            
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("sisi", $name, $status, $cc, $last_assigned);
+            $stmt->execute();
+            $roundId = $conn->insert_id;
+            
+            $ratios = $input['ratios'] ?? [];
+            
+            if (!empty($consultants)) {
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
+                foreach($consultants as $cid) {
+                    $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $stmtC->bind_param("iii", $roundId, $cid, $ratio);
+                    $stmtC->execute();
+                }
             }
+            $conn->commit();
+            echo json_encode(['success' => true, 'id' => $roundId]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true, 'id' => $roundId]);
         break;
 
     case 'edit_round':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int)($input['id'] ?? 0);
-        $name = $input['round_name'] ?? '';
-        $cc = $input['cc_emails'] ?? '';
-        $status = $input['is_active'] ?? 1;
-        $consultants = $input['consultants'] ?? [];
-        $starting_consultant_id = $input['starting_consultant_id'] ?? null;
-        
-        $last_assigned = null;
-        if ($starting_consultant_id && !empty($consultants)) {
-            $sorted_consultants = $consultants;
-            sort($sorted_consultants);
-            $idx = array_search($starting_consultant_id, $sorted_consultants);
-            if ($idx !== false) {
-                if ($idx === 0) {
-                    $last_assigned = end($sorted_consultants);
-                    reset($sorted_consultants);
-                } else {
-                    $last_assigned = $sorted_consultants[$idx - 1];
+        $conn->begin_transaction();
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int)($input['id'] ?? 0);
+            $name = $input['round_name'] ?? '';
+            $cc = $input['cc_emails'] ?? '';
+            $status = $input['is_active'] ?? 1;
+            $consultants = $input['consultants'] ?? [];
+            $starting_consultant_id = $input['starting_consultant_id'] ?? null;
+            
+            $last_assigned = null;
+            if ($starting_consultant_id && !empty($consultants)) {
+                $sorted_consultants = $consultants;
+                sort($sorted_consultants);
+                $idx = array_search($starting_consultant_id, $sorted_consultants);
+                if ($idx !== false) {
+                    if ($idx === 0) {
+                        $last_assigned = end($sorted_consultants);
+                        reset($sorted_consultants);
+                    } else {
+                        $last_assigned = $sorted_consultants[$idx - 1];
+                    }
                 }
             }
-        }
-        
-        // Chỉ cập nhật last_assigned_consultant_id nếu user có truyền lên (khác null)
-        if ($starting_consultant_id) {
-            $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=? WHERE id=?");
-            $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $id);
-        } else {
-            $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=? WHERE id=?");
-            $stmt->bind_param("sisi", $name, $status, $cc, $id);
-        }
-        $stmt->execute();
-        
-        $stmtDel = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
-        $stmtDel->bind_param("i", $id);
-        $stmtDel->execute();
-        
-        $ratios = $input['ratios'] ?? [];
-        
-        if (!empty($consultants)) {
-            $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?)");
-            foreach($consultants as $cid) {
-                $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
-                $stmtC->bind_param("iii", $id, $cid, $ratio);
-                $stmtC->execute();
+            
+            if ($starting_consultant_id) {
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=? WHERE id=?");
+                $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $id);
+            } else {
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=? WHERE id=?");
+                $stmt->bind_param("sisi", $name, $status, $cc, $id);
             }
+            $stmt->execute();
+            
+            // Delete consultants that are no longer in this round
+            if (empty($consultants)) {
+                $stmtDel = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
+                $stmtDel->bind_param("i", $id);
+                $stmtDel->execute();
+            } else {
+                $placeholders = implode(',', array_fill(0, count($consultants), '?'));
+                $stmtDel = $conn->prepare("DELETE FROM round_consultants WHERE round_id=? AND consultant_id NOT IN ($placeholders)");
+                $params = array_merge([$id], $consultants);
+                $types = str_repeat('i', count($params));
+                $stmtDel->bind_param($types, ...$params);
+                $stmtDel->execute();
+            }
+            
+            $ratios = $input['ratios'] ?? [];
+            
+            if (!empty($consultants)) {
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio)");
+                foreach($consultants as $cid) {
+                    $ratio = isset($ratios[$cid]) ? (int)$ratios[$cid] : 1;
+                    $stmtC->bind_param("iii", $id, $cid, $ratio);
+                    $stmtC->execute();
+                }
+            }
+            
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true]);
         break;
 
+
     case 'delete_round':
-        $id = (int)($_GET['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM distribution_rounds WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+        $conn->begin_transaction();
+        try {
+            $id = (int)($_GET['id'] ?? 0);
+            
+            // Check if round has any distribution logs
+            $checkLog = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE round_id=$id");
+            if ($checkLog && $checkLog->fetch_assoc()['cnt'] > 0) {
+                throw new Exception("Vòng này đã phân bổ Data, không thể xóa để bảo toàn thống kê. Vui lòng chuyển sang Ngừng hoạt động.");
+            }
+            
+            $conn->query("DELETE FROM round_consultants WHERE round_id=$id");
+            $conn->query("DELETE FROM data_reports WHERE round_id=$id");
+            $stmt = $conn->prepare("DELETE FROM distribution_rounds WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
         
     case 'get_connections':
@@ -411,11 +511,21 @@ switch ($action) {
         break;
 
     case 'delete_connection':
-        $id = (int)($_GET['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM sheet_connections WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+        $conn->begin_transaction();
+        try {
+            $id = (int)($_GET['id'] ?? 0);
+            $conn->query("DELETE FROM field_mappings WHERE connection_id=$id");
+            $conn->query("DELETE FROM routing_rules WHERE connection_id=$id");
+            $conn->query("DELETE FROM sheet_sync_records WHERE connection_id=$id");
+            $stmt = $conn->prepare("DELETE FROM sheet_connections WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'fetch_sheets':
@@ -571,16 +681,149 @@ switch ($action) {
         break;
 
     case 'reorder_rules':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $order = $input['order'] ?? [];
-        $stmt = $conn->prepare("UPDATE routing_rules SET priority=? WHERE id=?");
-        foreach ($order as $index => $id) {
-            $id = (int)$id;
-            $priority = $index + 1;
-            $stmt->bind_param("ii", $priority, $id);
-            $stmt->execute();
+        $conn->begin_transaction();
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $order = $input['order'] ?? [];
+            $stmt = $conn->prepare("UPDATE routing_rules SET priority=? WHERE id=?");
+            foreach ($order as $index => $id) {
+                $id = (int)$id;
+                $priority = $index + 1;
+                $stmt->bind_param("ii", $priority, $id);
+                $stmt->execute();
+            }
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true]);
+        break;
+
+    // --- REPORT DATA ENDPOINTS ---
+    case 'submit_report':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $lead_id = (int)($input['lead_id'] ?? 0);
+        $sale_id = (int)($input['sale_id'] ?? 0);
+        $round_id = (int)($input['round_id'] ?? 0);
+        $reason = $input['reason'] ?? '';
+        
+        if (!$lead_id || !$sale_id || !$round_id || empty($reason)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);
+            break;
+        }
+        
+        // Prevent duplicate pending reports for same lead and sale
+        $checkStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id=? AND consultant_id=? AND status='pending'");
+        $checkStmt->bind_param("ii", $lead_id, $sale_id);
+        $checkStmt->execute();
+        if ($checkStmt->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'Bạn đã báo cáo Lead này và đang chờ duyệt!']);
+            break;
+        }
+
+        $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi lưu báo cáo']);
+        }
+        break;
+
+    case 'get_reports':
+        // NEW-01 fix: use prepared statement for round_id filter (was SQL injection via concatenation)
+        $round_id = isset($_GET['round_id']) ? (int)$_GET['round_id'] : 0;
+        
+        if ($round_id > 0) {
+            $sql = "SELECT r.*, l.name as lead_name, l.phone as lead_phone, c.name as consultant_name 
+                    FROM data_reports r 
+                    JOIN leads l ON r.lead_id = l.id 
+                    JOIN consultants c ON r.consultant_id = c.id
+                    WHERE r.round_id = ?
+                    ORDER BY r.created_at DESC";
+            $stmtR = $conn->prepare($sql);
+            $stmtR->bind_param("i", $round_id);
+            $stmtR->execute();
+            $res = $stmtR->get_result();
+        } else {
+            $res = $conn->query("SELECT r.*, l.name as lead_name, l.phone as lead_phone, c.name as consultant_name 
+                    FROM data_reports r 
+                    JOIN leads l ON r.lead_id = l.id 
+                    JOIN consultants c ON r.consultant_id = c.id
+                    ORDER BY r.created_at DESC");
+        }
+        
+        $data = [];
+        if ($res) {
+            while($row = $res->fetch_assoc()) $data[] = $row;
+        }
+        echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'approve_report':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $report_id = (int)($input['id'] ?? 0);
+        
+        $conn->begin_transaction();
+        try {
+            // 1. Get report info
+            $stmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
+            $stmt->bind_param("i", $report_id);
+            $stmt->execute();
+            $report = $stmt->get_result()->fetch_assoc();
+            
+            if (!$report || $report['status'] !== 'pending') {
+                throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý.");
+            }
+            
+            // 2. Mark report as approved
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_at=NOW() WHERE id=?");
+            $updRep->bind_param("i", $report_id);
+            $updRep->execute();
+            
+            // 3. Mark lead as faulty (Append to note and unassign)
+            $faultyMsg = "[LỖI - ĐÃ DUYỆT]: " . $report['reason'];
+            $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+            $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
+            $updLead->execute();
+            
+            // 4. Increment compensation_count for the consultant in that round
+            $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
+            $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
+            $updComp->execute();
+            
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'reject_report':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $report_id = (int)($input['id'] ?? 0);
+        
+        $conn->begin_transaction();
+        try {
+            // Check status first — prevent rejecting already-processed reports
+            $chkStmt = $conn->prepare("SELECT status FROM data_reports WHERE id = ? FOR UPDATE");
+            $chkStmt->bind_param("i", $report_id);
+            $chkStmt->execute();
+            $chkRow = $chkStmt->get_result()->fetch_assoc();
+            if (!$chkRow || $chkRow['status'] !== 'pending') {
+                throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý rồi.");
+            }
+            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', resolved_at=NOW() WHERE id=?");
+            $stmt->bind_param("i", $report_id);
+            $stmt->execute();
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'get_mappings':
@@ -935,30 +1178,52 @@ switch ($action) {
         $new_cons_name = $cons_data['name'];
         $new_cons_email = $cons_data['email'];
         
-        // 2. Perform updates
-        // Update distribution_logs
-        $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = 'assigned' WHERE id = ?");
-        $stmtU1->bind_param("ii", $new_consultant_id, $log_id);
-        $stmtU1->execute();
-        
-        // Update leads
-        $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
-        $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
-        $stmtU2->execute();
-        
-        // 3. Send email to new consultant
-        require_once __DIR__ . '/mailer.php';
-        sendLeadAssignedEmailToSale(
-            $new_cons_email,
-            $new_cons_name,
-            $log_data['lead_name'] ?: 'Khach hang an danh',
-            $log_data['phone'] ?: '',
-            $log_data['note'] ?: '',
-            $log_data['source'] ?: '',
-            $cc_emails
-        );
-        
-        echo json_encode(['success' => true]);
+        $conn->begin_transaction();
+        try {
+            // 2. Perform updates
+            // Update distribution_logs
+            $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = 'assigned' WHERE id = ?");
+            $stmtU1->bind_param("ii", $new_consultant_id, $log_id);
+            $stmtU1->execute();
+            
+            // Update leads
+            $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
+            $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
+            $stmtU2->execute();
+            
+            $conn->commit();
+            
+            // 3. Send email to new consultant (NEW-05 fix: include round_name and IDs in email)
+            require_once __DIR__ . '/mailer.php';
+            // Fetch round name
+            $roundNameStr = '';
+            $roundId = (int)($log_data['round_id'] ?? 0);
+            if ($roundId) {
+                $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                $rStmt->bind_param("i", $roundId);
+                $rStmt->execute();
+                $rRes = $rStmt->get_result();
+                if ($rRes->num_rows > 0) $roundNameStr = $rRes->fetch_assoc()['round_name'] ?? '';
+            }
+            sendLeadAssignedEmailToSale(
+                $new_cons_email,
+                $new_cons_name,
+                $log_data['lead_name'] ?: 'Khach hang an danh',
+                $log_data['phone'] ?: '',
+                $log_data['note'] ?: '',
+                $log_data['source'] ?: '',
+                $cc_emails,
+                $roundNameStr,
+                $lead_id,
+                $new_consultant_id,
+                $roundId
+            );
+            
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     default:

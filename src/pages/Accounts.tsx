@@ -20,6 +20,8 @@ export const Accounts = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAccounts = async () => {
     try {
@@ -51,7 +53,9 @@ export const Accounts = () => {
     e.preventDefault();
     if (!formData.username || !formData.name) return toast.error('Vui lòng nhập đủ tên và username');
     if (!editingAccount && !formData.password) return toast.error('Vui lòng nhập mật khẩu cho tài khoản mới');
-
+    if (isSaving) return;
+    
+    setIsSaving(true);
     const action = editingAccount ? 'edit_account' : 'add_account';
     const payload = { ...formData, id: editingAccount?.id };
 
@@ -70,10 +74,12 @@ export const Accounts = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setIsSaving(false);
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_account&id=${deleteId}`);
       if (json.success) {
@@ -85,6 +91,7 @@ export const Accounts = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setIsDeleting(false);
     setConfirmOpen(false);
   };
 
@@ -219,7 +226,9 @@ export const Accounts = () => {
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1 }}>Hủy</button>
-            <button type="submit" className="btn primary" style={{ flex: 1 }}>Lưu Tài khoản</button>
+            <button type="submit" className="btn primary" disabled={isSaving} style={{ flex: 1 }}>
+              {isSaving ? 'Đang lưu...' : 'Lưu Tài khoản'}
+            </button>
           </div>
         </form>
       </CustomModal>

@@ -66,6 +66,10 @@ export const Integrations = () => {
   const [selected, setSelected] = useState<Connection | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingMapping, setIsSavingMapping] = useState(false);
+  
   // Modal states
   const [showAddConn, setShowAddConn] = useState(false);
   const [addStep, setAddStep] = useState(1);
@@ -181,6 +185,9 @@ export const Integrations = () => {
       sync_interval: finalInterval
     };
     
+    if (isSaving) return;
+    setIsSaving(true);
+    
     try {
       const json = await fetchAPI('add_connection', {
         method: 'POST',
@@ -208,10 +215,12 @@ export const Integrations = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setIsSaving(false);
   };
 
   const handleDeleteConnection = async () => {
-    if (!deleteId) return;
+    if (!deleteId || isDeleting) return;
+    setIsDeleting(true);
     try {
       await fetchAPI(`delete_connection&id=${deleteId}`);
       toast.success('Đã xóa kết nối');
@@ -220,11 +229,13 @@ export const Integrations = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setIsDeleting(false);
     setDeleteId(null);
     setIsConfirmOpen(false);
   };
   const handleSaveMapping = async () => {
-    if (!newMappingCol.trim() || !selected) return;
+    if (!newMappingCol.trim() || !selected || isSavingMapping) return;
+    setIsSavingMapping(true);
     try {
         const action = editingMappingId ? 'edit_mapping' : 'add_mapping';
         const payload = editingMappingId 
@@ -245,6 +256,7 @@ export const Integrations = () => {
     } catch (e: any) {
         toast.error('Lỗi: ' + e.message);
     }
+    setIsSavingMapping(false);
   };
 
   const cancelEditMapping = () => {
@@ -572,8 +584,8 @@ export const Integrations = () => {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                  <button className="btn primary" onClick={handleSaveMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
-                    {editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>}
+                  <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                    {isSavingMapping ? 'Đang lưu...' : (editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>)}
                   </button>
                   {editingMappingId && (
                     <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>

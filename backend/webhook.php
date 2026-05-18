@@ -100,7 +100,9 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     return implode("\n", $values);
 }
 
-$phone = extractMappedValues($mappings, 'phone', $data);
+// normalizePhone is defined in webhook_logic.php (already required above)
+
+$phone = normalizePhone(extractMappedValues($mappings, 'phone', $data));
 $email = extractMappedValues($mappings, 'email', $data);
 $source = extractMappedValues($mappings, 'source', $data);
 $type = extractMappedValues($mappings, 'type', $data);
@@ -121,45 +123,85 @@ if ($requirePhone == 1) {
     }
 }
 
+// --- 0. Advisory Lock to prevent simultaneous identical webhooks ---
+$lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
+$lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
+$lockStmt->bind_param("s", $lockKey);
+$lockStmt->execute();
+$lockRes = $lockStmt->get_result()->fetch_assoc();
+if ($lockRes['get_lock'] != 1) {
+    http_response_code(429);
+    echo json_encode(["success" => false, "message" => "Too many concurrent requests for this lead. Please try again later."]);
+    exit();
+}
+
+// Ensure lock is released even if script fails
+register_shutdown_function(function() use ($conn, $lockKey) {
+    if ($conn) {
+        $conn->query("SELECT RELEASE_LOCK('$lockKey')");
+    }
+});
+
 // --- 1. Check CRM (Duplication & 6-month rule) ---
 $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
 if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
     $assignedTo = $crmCheckResult['assignedTo'];
-    // Update last interaction
-    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
-    logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months, returned to previous consultant.');
+    $conn->begin_transaction();
+    try {
+        // Update last interaction
+        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
+        logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months, returned to previous consultant.');
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "message" => "Lỗi Database: " . $e->getMessage()]);
+        exit();
+    }
     echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < 6 months."]);
     exit();
 }
 
 // --- 2. Evaluate Dynamic Rules to determine the Target Round ---
 $targetRoundId = evaluateRules($conn, $data, $source, $type);
+$assignedConsultantId = null;
+$status = 'unassigned';
+$message = 'No matching rule found.';
 
-if (!$targetRoundId) {
-    logDistribution($conn, null, null, null, 'unassigned', 'No matching rule found.');
-    echo json_encode(["success" => true, "status" => "unassigned", "message" => "No matching rule found for this data."]);
-    exit();
-}
-
-// --- 3. Round-Robin Assignment ---
-$assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
-
-if (!$assignedConsultantId) {
-    logDistribution($conn, null, null, $targetRoundId, 'pending', 'No active consultants in this round.');
-    echo json_encode(["success" => true, "status" => "pending", "message" => "No active consultants in round $targetRoundId."]);
-    exit();
+if ($targetRoundId) {
+    // --- 3. Round-Robin Assignment ---
+    $assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
+    if ($assignedConsultantId) {
+        $status = 'assigned';
+        $message = 'Assigned via round-robin.';
+    } else {
+        $status = 'pending';
+        $message = 'No active consultants in this round.';
+    }
 }
 
 // --- 4. Process new Lead and Log Distribution ---
-if ($crmCheckResult['isDuplicate']) {
-    // Existed but older than 6 months -> new assignment
-    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
-} else {
-    $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
+$conn->begin_transaction();
+try {
+    if ($crmCheckResult['isDuplicate']) {
+        // Existed but older than 6 months -> new assignment
+        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
+    } else {
+        $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
+    }
+
+    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message);
+    $conn->commit();
+} catch (Exception $e) {
+    $conn->rollback();
+    echo json_encode(["success" => false, "message" => "Lỗi Database: " . $e->getMessage()]);
+    exit();
 }
 
-logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, 'assigned', 'Assigned via round-robin.');
+if ($status === 'unassigned' || $status === 'pending') {
+    echo json_encode(["success" => true, "status" => $status, "message" => $message]);
+    exit();
+}
 
 // TODO: Notify via email
 require_once __DIR__ . '/mailer.php';
@@ -184,7 +226,7 @@ $stmt->execute();
 $cRes = $stmt->get_result();
 if ($cRes->num_rows > 0) {
     $c = $cRes->fetch_assoc();
-    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName);
+    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
 }
 
 echo json_encode([

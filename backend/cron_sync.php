@@ -153,8 +153,8 @@ foreach ($connections as $connItem) {
                 continue; // Row is EXACTLY same as before, skip completely!
             }
 
-            // Extract fields based on mapping
-            $phone = extractMappedValues($mappings, 'phone', $rowData);
+            // Extract fields based on mapping — BUG-13/14 fix: normalizePhone now canonical
+            $phone = normalizePhone(extractMappedValues($mappings, 'phone', $rowData));
             $email = extractMappedValues($mappings, 'email', $rowData);
             $source = extractMappedValues($mappings, 'source', $rowData);
             $type = extractMappedValues($mappings, 'type', $rowData);
@@ -190,58 +190,65 @@ foreach ($connections as $connItem) {
 
             // --- 2. Evaluate Dynamic Rules to determine Target Round ---
             $targetRoundId = evaluateRules($conn, $rowData, $source, $type);
+            $assignedConsultantId = null;
+            $cronStatus = 'unassigned';
+            $cronMessage = 'No matching rule found via cron_sync.';
 
-            if (!$targetRoundId) {
-                logDistribution($conn, null, null, null, 'unassigned', 'No matching rule found via cron_sync.');
-                continue;
-            }
-
-            // --- 3. Round-Robin Assignment ---
-            $assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
-
-            if (!$assignedConsultantId) {
-                logDistribution($conn, null, null, $targetRoundId, 'pending', 'No active consultants in this round via cron_sync.');
-                continue;
-            }
-
-            // --- 4. Process new Lead and Log Distribution ---
-            if ($crmCheckResult['isDuplicate']) {
-                $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
-            } else {
-                $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
-            }
-
-            logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, 'assigned', 'Assigned via round-robin via cron_sync.');
-
-            // Notify Sale
-            require_once __DIR__ . '/mailer.php';
-            
-            $ccEmails = '';
-            $roundName = '';
             if ($targetRoundId) {
-                $qRound = $conn->query("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = " . (int)$targetRoundId);
-                if ($qRound && $qRound->num_rows > 0) {
-                    $rRow = $qRound->fetch_assoc();
-                    $ccEmails = $rRow['cc_emails'] ?? '';
-                    $roundName = $rRow['round_name'] ?? '';
+                // --- 3. Round-Robin Assignment ---
+                $assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
+                if ($assignedConsultantId) {
+                    $cronStatus = 'assigned';
+                    $cronMessage = 'Assigned via round-robin via cron_sync.';
+                } else {
+                    $cronStatus = 'pending';
+                    $cronMessage = 'No active consultants in this round via cron_sync.';
                 }
             }
-            
-            $cStmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-            $cStmt->bind_param("i", $assignedConsultantId);
-            $cStmt->execute();
-            $cRes = $cStmt->get_result();
-            if ($cRes->num_rows > 0) {
-                $c = $cRes->fetch_assoc();
-                sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName);
+
+            // --- 4. Process new Lead and Log Distribution (always save lead) ---
+            $conn->begin_transaction();
+            try {
+                if ($crmCheckResult['isDuplicate']) {
+                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
+                } else {
+                    $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
+                }
+                logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
+                $conn->commit();
+            } catch (Exception $txE) {
+                $conn->rollback();
+                logSync("Transaction failed for row: " . $txE->getMessage());
+                continue;
             }
 
-            // Record hash so we skip on next run
-            $recordStmt = $conn->prepare("INSERT INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
-            $recordStmt->bind_param("is", $connItem['id'], $rowHash);
-            $recordStmt->execute();
-
-            $syncedCount++;
+            // Only notify sale and record hash when successfully assigned
+            if ($cronStatus === 'assigned' && !empty($leadId)) {
+                // Notify Sale
+                require_once __DIR__ . '/mailer.php';
+                $ccEmails = '';
+                $roundName = '';
+                if ($targetRoundId) {
+                    $qRoundStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+                    $qRoundStmt->bind_param("i", $targetRoundId);
+                    $qRoundStmt->execute();
+                    $qRound = $qRoundStmt->get_result();
+                    if ($qRound && $qRound->num_rows > 0) {
+                        $rRow = $qRound->fetch_assoc();
+                        $ccEmails = $rRow['cc_emails'] ?? '';
+                        $roundName = $rRow['round_name'] ?? '';
+                    }
+                }
+                $cStmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                $cStmt->bind_param("i", $assignedConsultantId);
+                $cStmt->execute();
+                $cRes = $cStmt->get_result();
+                if ($cRes->num_rows > 0) {
+                    $c = $cRes->fetch_assoc();
+                    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+                }
+                $syncedCount++;
+            }
         }
         fclose($stream);
 

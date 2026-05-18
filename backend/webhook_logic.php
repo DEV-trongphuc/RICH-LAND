@@ -4,14 +4,39 @@
 
 require_once __DIR__ . '/db_connect.php';
 
-function normalizePhone($phone) {
-    if (empty($phone)) return '';
-    // Strip everything except digits
-    $clean = preg_replace('/[^0-9]/', '', $phone);
-    // If it starts with 84, replace with 0
-    if (strpos($clean, '84') === 0 && strlen($clean) > 9) {
-        $clean = '0' . substr($clean, 2);
+/**
+ * Normalize phone number to standard format.
+ * - Vietnamese numbers: 0xxxxxxxxx (10 digits)
+ * - Foreign numbers: +{countryCode}{number} (keep leading +)
+ * - Removes all formatting chars (spaces, dashes, p:, tel:, etc.)
+ * BUG-13 fix: Single canonical implementation (was duplicated with wrong logic in webhook_logic.php)
+ */
+function normalizePhone($phoneRaw) {
+    if (empty($phoneRaw)) return '';
+    $phone = trim((string)$phoneRaw);
+
+    // Remove common prefixes like "p:", "tel:", "phone:", etc.
+    $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
+
+    // Keep only digits and leading +
+    $hasPlusPrefix = (strpos($phone, '+') !== false);
+    $clean = preg_replace('/[^\d]/', '', $phone);
+
+    // If original had a + at start, restore it (foreign number)
+    if ($hasPlusPrefix && strpos(ltrim($phone), '+') === 0) {
+        // Check if it's +84 (Vietnamese)
+        if (strpos($clean, '84') === 0 && strlen($clean) >= 11) {
+            return '0' . substr($clean, 2); // +84xxx → 0xxx
+        }
+        return '+' . $clean; // Keep as foreign number
     }
+
+    // No plus sign — pure digits
+    // Handle 84xxxxxxxxx (11 digits, Vietnamese without +)
+    if (strpos($clean, '84') === 0 && strlen($clean) === 11) {
+        return '0' . substr($clean, 2);
+    }
+
     return $clean;
 }
 
@@ -168,7 +193,7 @@ function getNextConsultantInRound($conn, $roundId) {
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     
     // 2. Get active consultants in this round with their rules
-    $cStmt = $conn->prepare("SELECT c.id, rc.receive_ratio, rc.skip_count FROM round_consultants rc JOIN consultants c ON rc.consultant_id = c.id WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' ORDER BY c.id ASC");
+    $cStmt = $conn->prepare("SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count FROM round_consultants rc JOIN consultants c ON rc.consultant_id = c.id WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' ORDER BY c.id ASC");
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
@@ -201,8 +226,32 @@ function getNextConsultantInRound($conn, $roundId) {
     }
     
     $consultants = [];
+    $compensatedConsultant = null;
+    
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
+        // Check for compensation priority
+        if (empty($compensatedConsultant) && intval($row['compensation_count']) > 0) {
+            $compensatedConsultant = $row;
+        }
+    }
+    
+    // 2.5 IF ANYONE NEEDS COMPENSATION, ASSIGN IMMEDIATELY AND SKIP ROUND ROBIN
+    if ($compensatedConsultant) {
+        $nextId = $compensatedConsultant['id'];
+        
+        // NEW-04 fix: prepared statement instead of raw concat
+        $compStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count - 1, skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
+        $compStmt->bind_param("ii", $roundId, $nextId);
+        $compStmt->execute();
+        
+        // Update last assigned so normal round-robin continues from here next time
+        $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
+        $updStmt->bind_param("ii", $nextId, $roundId);
+        $updStmt->execute();
+        
+        $conn->commit();
+        return $nextId;
     }
     
     // 3. Find next index based on last_assigned_consultant_id
@@ -220,6 +269,8 @@ function getNextConsultantInRound($conn, $roundId) {
     $chosenConsultant = null;
     
     // 4. Check special rules (receive_ratio)
+    $skipResetStmt   = $conn->prepare("UPDATE round_consultants SET skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
+    $skipIncrStmt    = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
     do {
         $candidate = $consultants[$nextIdx];
         $ratio = max(1, (int)($candidate['receive_ratio'] ?? 1));
@@ -227,12 +278,14 @@ function getNextConsultantInRound($conn, $roundId) {
         
         if ($ratio == 1 || $skipCount >= $ratio - 1) {
             $chosenConsultant = $candidate;
-            // Reset skip count
-            $conn->query("UPDATE round_consultants SET skip_count = 0 WHERE round_id = $roundId AND consultant_id = " . $candidate['id']);
+            // NEW-04 fix: use prepared statement
+            $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
+            $skipResetStmt->execute();
             break;
         } else {
             // Skip! Increment count and move to next
-            $conn->query("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = $roundId AND consultant_id = " . $candidate['id']);
+            $skipIncrStmt->bind_param("ii", $roundId, $candidate['id']);
+            $skipIncrStmt->execute();
             $nextIdx = ($nextIdx + 1) % count($consultants);
         }
     } while ($nextIdx != $startIdx);
@@ -240,7 +293,8 @@ function getNextConsultantInRound($conn, $roundId) {
     // Fallback if everyone is skipped (e.g. all have ratio > 1 and all skip simultaneously)
     if (!$chosenConsultant) {
         $chosenConsultant = $consultants[$startIdx];
-        $conn->query("UPDATE round_consultants SET skip_count = 0 WHERE round_id = $roundId AND consultant_id = " . $chosenConsultant['id']);
+        $skipResetStmt->bind_param("ii", $roundId, $chosenConsultant['id']);
+        $skipResetStmt->execute();
     }
     
     // 5. Update last assigned
@@ -294,9 +348,6 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $types .= 's';
     }
     
-    $types .= 'i';
-    $params[] = $assignedConsultantId;
-    
     $whereClause = implode(" OR ", $where);
     // Find ID first
     $sStmt = $conn->prepare("SELECT id FROM leads WHERE $whereClause LIMIT 1");
@@ -311,8 +362,15 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     $res = $sStmt->get_result();
     if ($res->num_rows > 0) {
         $id = $res->fetch_assoc()['id'];
-        $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = ?, last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");
-        $uStmt->bind_param("sssii", $source, $type, $note, $assignedConsultantId, $id);
+        // NEW-02 fix: Only update assigned_to if we actually have a consultant
+        if ($assignedConsultantId) {
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = ?, last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");
+            $uStmt->bind_param("sssii", $source, $type, $note, $assignedConsultantId, $id);
+        } else {
+            // Don't overwrite assigned_to when lead is pending/unassigned
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = ?, last_interaction_date = NOW() WHERE id = ?");
+            $uStmt->bind_param("sssi", $source, $type, $note, $id);
+        }
         $uStmt->execute();
         return $id;
     }

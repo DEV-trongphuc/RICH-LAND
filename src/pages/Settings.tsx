@@ -12,6 +12,7 @@ export const Settings = () => {
   // States
   const [provider, setProvider] = useState('appscript');
   const [appscriptUrl, setAppscriptUrl] = useState('');
+  const [frontendUrl, setFrontendUrl] = useState('');
   
   const [sesHost, setSesHost] = useState('');
   const [sesUser, setSesUser] = useState('');
@@ -30,6 +31,7 @@ export const Settings = () => {
       if (json.success && json.data) {
         if (json.data.email_provider) setProvider(json.data.email_provider);
         if (json.data.appscript_webhook_url) setAppscriptUrl(json.data.appscript_webhook_url);
+        if (json.data.frontend_url) setFrontendUrl(json.data.frontend_url);
         if (json.data.ses_host) setSesHost(json.data.ses_host);
         if (json.data.ses_username) setSesUser(json.data.ses_username);
         if (json.data.ses_password) setSesPass(json.data.ses_password);
@@ -51,6 +53,7 @@ export const Settings = () => {
     const payload = {
       email_provider: provider,
       appscript_webhook_url: appscriptUrl,
+      frontend_url: frontendUrl, // BUG-02 fix: save frontend URL for email report links
       ses_host: sesHost,
       ses_username: sesUser,
       ses_password: sesPass,
@@ -131,6 +134,18 @@ export const Settings = () => {
                 value={provider}
                 onChange={val => setProvider(String(val))}
               />
+            </div>
+
+            {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
+            <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)</label>
+              <input
+                className="form-input"
+                placeholder="Ví dụ: https://sale.domation.net"
+                value={frontendUrl}
+                onChange={e => setFrontendUrl(e.target.value)}
+              />
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.</p>
             </div>
 
             {provider === 'appscript' && (

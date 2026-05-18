@@ -120,7 +120,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '') {
+function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $leadId = 0, $consultantId = 0, $roundId = 0) {
     global $conn;
     
     // Fetch additional fields (email, type) from DB to display completely
@@ -147,6 +147,22 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
     $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
     
+    // BUG-02 fix: Build report URL dynamically from system_settings or server vars
+    $frontendUrl = '';
+    // 1. Try system_settings table first
+    $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+    if ($urlSetting && $urlSetting->num_rows > 0) {
+        $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
+    }
+    // 2. Fallback: construct from current server HTTP_HOST
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Strip /backend suffix to get root frontend URL
+        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+    }
+    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
+
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
             Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
@@ -189,10 +205,21 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             </table>
         </div>
         
-        <p style="color: #64748b; font-size: 15px; line-height: 1.7;">
+        <p style="color: #64748b; font-size: 15px; line-height: 1.7; margin-bottom: 24px;">
             Vui lòng nhanh chóng liên hệ với khách hàng để đảm bảo tỷ lệ chốt Sales cao nhất nhé!
         </p>
-        
+
+        <div style="text-align: center; margin-bottom: 32px;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . urlencode($leadPhone) . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
+        </div>
+
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
+            <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                🚨 BÁO CÁO DATA LỖI
+            </a>
+        </div>
     ';
     
     sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString);
