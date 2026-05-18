@@ -39,6 +39,7 @@ export const Tickets = () => {
       });
       if (res.success) {
         toast.success(action === 'approve' ? 'Đã duyệt đền bù Data!' : 'Đã từ chối báo cáo!');
+        window.dispatchEvent(new Event('ticket-resolved'));
         fetchReports();
       } else {
         toast.error(res.message || 'Có lỗi xảy ra');

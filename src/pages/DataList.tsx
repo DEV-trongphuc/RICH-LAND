@@ -16,6 +16,7 @@ type Lead = {
   created_at: string;
   type?: string;
   note?: string;
+  report_status?: string;
 };
 
 const AVATAR_COLORS = [
@@ -63,7 +64,8 @@ export const DataList = () => {
           status: item.status,
           assigned_to_name: item.assigned_to_name || '-',
           round_name: item.round_name || '-',
-          created_at: item.created_at
+          created_at: item.created_at,
+          report_status: item.report_status
         }));
         setLeads(mappedLeads);
         // BUG-04 fix: track truncation
@@ -341,7 +343,13 @@ export const DataList = () => {
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email}</div>
                     </td>
                     {/* <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td> */}
-                    <td style={{ padding: '1rem' }}>{getStatusBadge(lead.status)}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                        {getStatusBadge(lead.status)}
+                        {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>⏳ Report Pending</span>}
+                        {lead.report_status === 'approved' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>🚩 Data Lỗi</span>}
+                      </div>
+                    </td>
                     <td style={{ padding: '1rem' }}>
                       {lead.assigned_to_name !== '-' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

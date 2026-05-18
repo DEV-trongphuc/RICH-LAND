@@ -195,11 +195,13 @@ switch ($action) {
                 dl.status, 
                 c.name as assigned_to_name, 
                 dr.round_name, 
-                dl.received_at as created_at
+                dl.received_at as created_at,
+                r.status as report_status
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+            LEFT JOIN data_reports r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
             WHERE $dateCondition
             ORDER BY dl.received_at DESC 
             LIMIT $LIMIT

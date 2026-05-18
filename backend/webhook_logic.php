@@ -207,17 +207,6 @@ function getNextConsultantInRound($conn, $roundId) {
     
     if ($cRes->num_rows === 0) {
         error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
-        // Self-healing fallback: Find ANY active consultant in the entire system
-        $fbStmt = $conn->prepare("SELECT id FROM consultants WHERE status = 'active' ORDER BY id ASC LIMIT 1");
-        if ($fbStmt) {
-            $fbStmt->execute();
-            $fbRes = $fbStmt->get_result();
-            if ($fbRes->num_rows > 0) {
-                $fallbackId = $fbRes->fetch_assoc()['id'];
-                $conn->commit();
-                return $fallbackId;
-            }
-        }
         $conn->rollback();
         return null;
     }
@@ -343,10 +332,19 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     $id = $stmt->insert_id;
     if (!$id) {
         // Nếu bị duplicate key và được update, insert_id có thể bằng 0. Ta lấy ID từ DB.
-        $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? OR email = ? LIMIT 1");
-        $sStmt->bind_param("ss", $phone, $email);
-        $sStmt->execute();
-        $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+        $id = 0;
+        if (!empty($phone)) {
+            $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
+            $sStmt->bind_param("s", $phone);
+            $sStmt->execute();
+            $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+        }
+        if (!$id && !empty($email)) {
+            $sStmt = $conn->prepare("SELECT id FROM leads WHERE email = ? LIMIT 1");
+            $sStmt->bind_param("s", $email);
+            $sStmt->execute();
+            $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+        }
     }
     return $id;
 }
@@ -370,20 +368,23 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $types .= 's';
     }
     
-    $whereClause = implode(" OR ", $where);
-    // Find ID first
-    $sStmt = $conn->prepare("SELECT id FROM leads WHERE $whereClause LIMIT 1");
-    if (!empty($phone) && !empty($email)) {
-        $sStmt->bind_param("ss", $phone, $email);
-    } elseif (!empty($phone)) {
+    $id = null;
+    if (!empty($phone)) {
+        $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
         $sStmt->bind_param("s", $phone);
-    } else {
-        $sStmt->bind_param("s", $email);
+        $sStmt->execute();
+        $res = $sStmt->get_result();
+        if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
     }
-    $sStmt->execute();
-    $res = $sStmt->get_result();
-    if ($res->num_rows > 0) {
-        $id = $res->fetch_assoc()['id'];
+    if (!$id && !empty($email)) {
+        $sStmt = $conn->prepare("SELECT id FROM leads WHERE email = ? LIMIT 1");
+        $sStmt->bind_param("s", $email);
+        $sStmt->execute();
+        $res = $sStmt->get_result();
+        if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
+    }
+    
+    if ($id) {
         // NEW-02 fix: Only update assigned_to if we actually have a consultant
         if ($assignedConsultantId) {
             $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = ?, last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");

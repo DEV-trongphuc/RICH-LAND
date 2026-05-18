@@ -34,7 +34,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse }: { isCollapsed: boolea
     };
     fetchPending();
     const interval = setInterval(fetchPending, 60000);
-    return () => clearInterval(interval);
+    window.addEventListener('ticket-resolved', fetchPending);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ticket-resolved', fetchPending);
+    };
   }, [user]);
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
