@@ -479,12 +479,33 @@ switch ($action) {
     case 'test_email':
         $input = json_decode(file_get_contents('php://input'), true);
         $email = $input['email'] ?? '';
+        $type = $input['type'] ?? 'system';
+        
         if (!$email) {
             echo json_encode(['success' => false, 'message' => 'No email provided']);
             break;
         }
+        
         require_once __DIR__ . '/mailer.php';
-        $success = sendEmailNotification($email, "Test Cấu hình Email từ DOMATION", "Kết nối thành công", "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p>");
+        
+        if ($type === 'assignment') {
+            $subject = "Thông báo: Bạn có Data mới (Bản thử nghiệm)";
+            $body = "<p>Chào bạn,</p>
+                     <p>Hệ thống vừa phân bổ một data thử nghiệm cho bạn để kiểm tra tính năng giao số.</p>
+                     <ul>
+                         <li><strong>Họ tên:</strong> Nguyễn Văn Test</li>
+                         <li><strong>SĐT:</strong> 0987654321</li>
+                         <li><strong>Khóa học quan tâm:</strong> Digital Marketing cơ bản</li>
+                     </ul>
+                     <p>Vui lòng xác nhận bạn đã nhận được data này.</p>";
+            $title = "Data Mới Phân Bổ (Test)";
+        } else {
+            $subject = "Test Cấu hình Email từ DOMATION";
+            $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p>";
+            $title = "Kết nối thành công";
+        }
+        
+        $success = sendEmailNotification($email, $subject, $title, $body);
         echo json_encode(['success' => $success]);
         break;
 

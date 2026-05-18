@@ -20,7 +20,7 @@ export const Settings = () => {
   const [sesSenderName, setSesSenderName] = useState('DOMATION TEAM');
   
   const [testEmail, setTestEmail] = useState('');
-  
+  const [testType, setTestType] = useState('system');
   // Collapse state for Input Webhook Code
   const [showInputScript, setShowInputScript] = useState(false);
 
@@ -77,7 +77,7 @@ export const Settings = () => {
     try {
       const json = await fetchAPI('test_email', {
         method: 'POST',
-        body: JSON.stringify({ email: testEmail })
+        body: JSON.stringify({ email: testEmail, type: testType })
       });
       if (json.success) toast.success("Gửi mail test thành công! Vui lòng kiểm tra hộp thư đến.");
       else toast.error("Gửi mail thất bại. Vui lòng kiểm tra lại cấu hình SMTP/AppScript.");
@@ -278,6 +278,16 @@ function sendToDataFlow(e) {
               Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <select 
+                className="form-input" 
+                value={testType} 
+                onChange={e => setTestType(e.target.value)}
+                style={{ padding: '0.75rem', appearance: 'auto', background: 'white' }}
+              >
+                <option value="system">Test Hệ Thống (SMTP / AppScript)</option>
+                <option value="assignment">Test Template Giao Data</option>
+              </select>
+
               <input 
                 className="form-input" 
                 placeholder="Nhập email nhận test..." 
