@@ -51,10 +51,11 @@ export const Integrations = () => {
   const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
   const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [customSyncMins, setCustomSyncMins] = useState<number>(15);
-  const [tempMappings, setTempMappings] = useState<{sheet_col: string, sys_field: string}[]>([
-    { sheet_col: 'Số Điện Thoại', sys_field: 'phone' },
-    { sheet_col: 'Họ và Tên', sys_field: 'name' }
-  ]);
+  const [tempMappings, setTempMappings] = useState<{sheet_col: string, sys_field: string}[]>([]);
+  const [fetchedColumns, setFetchedColumns] = useState<string[]>([]);
+  const [isFetchingColumns, setIsFetchingColumns] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [isFetchingSelectedCols, setIsFetchingSelectedCols] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState('Thông tin Khách hàng:\n- Tên KH: {name}\n- SĐT: {phone}\n- Bằng cấp: {degree}\n- Tiếng Anh: {english}');
   const [isSyncing, setIsSyncing] = useState(false);
   const [fetchedSheets, setFetchedSheets] = useState<string[]>([]);
@@ -176,10 +177,7 @@ export const Integrations = () => {
         setNewSpreadsheetId('');
         setSyncPreset('15p');
         setCustomSyncMins(15);
-        setTempMappings([
-          { sheet_col: 'Số Điện Thoại', sys_field: 'phone' },
-          { sheet_col: 'Họ và Tên', sys_field: 'name' }
-        ]);
+        setTempMappings([]);
         setAddStep(1);
         setShowAddConn(false);
       }
@@ -262,6 +260,52 @@ export const Integrations = () => {
       setSelected(connections[0]);
     }
   }, [connections]);
+
+  useEffect(() => {
+    if (selected) {
+      const fetchSelectedColumns = async () => {
+        setIsFetchingSelectedCols(true);
+        try {
+          const json = await fetchAPI(`fetch_columns&id=${selected.spreadsheet_id}&name=${encodeURIComponent(selected.sheet_name)}`);
+          if (json.success && json.columns) {
+            setSelectedColumns(json.columns);
+            setNewMappingCol(json.columns[0] || '');
+          } else {
+            setSelectedColumns([]);
+          }
+        } catch (e) {
+          setSelectedColumns([]);
+        } finally {
+          setIsFetchingSelectedCols(false);
+        }
+      };
+      fetchSelectedColumns();
+    } else {
+      setSelectedColumns([]);
+    }
+  }, [selected]);
+
+  const handleFetchColumns = async () => {
+    if (!newSpreadsheetId) {
+      toast.error('Vui lòng nhập ID Sheets');
+      return;
+    }
+    setIsFetchingColumns(true);
+    try {
+      const json = await fetchAPI(`fetch_columns&id=${newSpreadsheetId}&name=${encodeURIComponent(newConnName)}`);
+      if (json.success && json.columns && json.columns.length > 0) {
+        setFetchedColumns(json.columns);
+        setNewMappingCol(json.columns[0]);
+        setAddStep(2);
+      } else {
+        toast.error(json.message || 'Không thể lấy được danh sách cột từ Google Sheet. Hãy chắc chắn bạn đã chia sẻ quyền "Người xem" cho Sheet.');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi kết nối: ' + e.message);
+    } finally {
+      setIsFetchingColumns(false);
+    }
+  };
 
   const webhookUrl = (token: string) => `${BASE_WEBHOOK}?token=${token}`;
 
@@ -488,13 +532,25 @@ export const Integrations = () => {
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>Tên cột trên Sheets</label>
-                  <input
-                    className="form-input"
-                    placeholder="VD: Số Điện Thoại KH"
-                    value={newMappingCol}
-                    onChange={e => setNewMappingCol(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddMapping()}
-                  />
+                  {isFetchingSelectedCols ? (
+                    <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
+                      <RefreshCw size={14} className="spin" /> Đang quét cột...
+                    </div>
+                  ) : selectedColumns.length > 0 ? (
+                    <CustomSelect 
+                      options={selectedColumns.map(c => ({ value: c, label: c }))} 
+                      value={newMappingCol} 
+                      onChange={v => setNewMappingCol(String(v))} 
+                    />
+                  ) : (
+                    <input
+                      className="form-input"
+                      placeholder="VD: Số Điện Thoại KH"
+                      value={newMappingCol}
+                      onChange={e => setNewMappingCol(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddMapping()}
+                    />
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>Trường hệ thống</label>
@@ -504,7 +560,7 @@ export const Integrations = () => {
                     onChange={(val) => setNewMappingField(String(val))} 
                   />
                 </div>
-                <button className="btn primary" onClick={handleAddMapping} style={{ flexShrink: 0, height: 42 }}>
+                <button className="btn primary" onClick={handleAddMapping} style={{ flexShrink: 0, height: 42, background: 'var(--color-primary)' }}>
                   <Plus size={16} /> Thêm
                 </button>
               </div>
@@ -657,10 +713,12 @@ export const Integrations = () => {
                 <span onClick={() => setShowAddConn(false)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button 
                   className="btn" 
-                  onClick={() => { if(!newSpreadsheetId) return toast.error('Vui lòng nhập ID Sheets'); setAddStep(2); }}
+                  onClick={handleFetchColumns}
+                  disabled={isFetchingColumns}
                   style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  Kiểm tra kết nối <ChevronRight size={16} />
+                  {isFetchingColumns ? <RefreshCw size={16} className="spin" /> : null}
+                  {isFetchingColumns ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'} <ChevronRight size={16} />
                 </button>
               </div>
             </div>
@@ -683,7 +741,7 @@ export const Integrations = () => {
                   {tempMappings.map((m, idx) => (
                     <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
                       <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>{m.sheet_col}</div>
-                      <div style={{ color: '#f59e0b', fontSize: '0.875rem', fontWeight: 700 }}>{SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field}</div>
+                      <div style={{ color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 700 }}>{SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field}</div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <Trash2 size={14} />
@@ -697,13 +755,21 @@ export const Integrations = () => {
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem' }}>Cột trên Sheets</label>
-                  <input className="form-input" style={{ border: '1px solid #cbd5e1' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
+                  {fetchedColumns.length > 0 ? (
+                    <CustomSelect 
+                      options={fetchedColumns.map(c => ({ value: c, label: c }))} 
+                      value={newMappingCol} 
+                      onChange={v => setNewMappingCol(String(v))} 
+                    />
+                  ) : (
+                    <input className="form-input" style={{ border: '1px solid #cbd5e1' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem' }}>Trường hệ thống</label>
                   <CustomSelect options={SYSTEM_FIELDS} value={newMappingField} onChange={v => setNewMappingField(String(v))} />
                 </div>
-                <button onClick={() => { if(newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField }]); setNewMappingCol(''); } }} className="btn" style={{ background: '#f59e0b', color: 'white', height: 42, padding: '0 1rem' }}>
+                <button onClick={() => { if(newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField }]); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 42, padding: '0 1rem' }}>
                   <Plus size={16} /> Thêm
                 </button>
               </div>

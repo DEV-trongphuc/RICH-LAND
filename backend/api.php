@@ -415,6 +415,44 @@ switch ($action) {
         echo json_encode(['success' => true, 'sheets' => $sheets]);
         break;
 
+    case 'fetch_columns':
+        $sheetId = $_GET['id'] ?? '';
+        $sheetName = $_GET['name'] ?? '';
+        if (empty($sheetId)) {
+            echo json_encode(['success' => false, 'message' => 'Missing ID']);
+            break;
+        }
+        
+        $csvUrl = "https://docs.google.com/spreadsheets/d/" . trim($sheetId) . "/gviz/tq?tqx=out:csv";
+        if (!empty($sheetName)) {
+            $csvUrl .= "&sheet=" . urlencode($sheetName);
+        }
+        
+        $ch = curl_init($csvUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        $csvData = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || empty($csvData)) {
+            echo json_encode(['success' => false, 'message' => 'Failed to fetch spreadsheet columns']);
+            break;
+        }
+        
+        $lines = explode("\n", $csvData);
+        $columns = [];
+        if (!empty($lines[0])) {
+            $row = str_getcsv($lines[0]);
+            $columns = array_map(function($h) { return trim($h, "\" "); }, $row);
+            $columns = array_filter($columns, function($c) { return $c !== ''; });
+            $columns = array_values($columns);
+        }
+        
+        echo json_encode(['success' => true, 'columns' => $columns]);
+        break;
+
     case 'toggle_connection':
         $id = (int)($_GET['id'] ?? 0);
         $active = (int)($_GET['active'] ?? 0);
