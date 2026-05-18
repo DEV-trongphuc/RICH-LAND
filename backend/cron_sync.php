@@ -120,7 +120,7 @@ foreach ($connections as $connItem) {
             if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6) {
                 // Duplicate < 6 months, skip assigning to new round but update last interaction
                 $assignedTo = $crmCheckResult['assignedTo'];
-                $leadId = updateLead($conn, $phone, $email, $assignedTo);
+                $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
                 logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months via cron_sync.');
                 continue;
             }
@@ -143,9 +143,9 @@ foreach ($connections as $connItem) {
 
             // --- 4. Process new Lead and Log Distribution ---
             if ($crmCheckResult['isDuplicate']) {
-                $leadId = updateLead($conn, $phone, $email, $assignedConsultantId);
+                $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
             } else {
-                $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name);
+                $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
             }
 
             logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, 'assigned', 'Assigned via round-robin via cron_sync.');

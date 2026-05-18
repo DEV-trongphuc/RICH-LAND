@@ -118,9 +118,9 @@ switch ($action) {
         break;
     case 'get_stats':
         $today = date('Y-m-d');
-        $q_total = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE DATE(received_at) = '$today'");
-        $q_assigned = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE DATE(received_at) = '$today' AND status='assigned'");
-        $q_dupes = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE DATE(received_at) = '$today' AND status='duplicate'");
+        $q_total = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59'");
+        $q_assigned = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59' AND status='assigned'");
+        $q_dupes = $conn->query("SELECT COUNT(*) as c FROM distribution_logs WHERE received_at >= '$today 00:00:00' AND received_at <= '$today 23:59:59' AND status='duplicate'");
         
         echo json_encode([
             'success' => true,

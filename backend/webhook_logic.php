@@ -144,10 +144,22 @@ function getNextConsultantInRound($conn, $roundId) {
 }
 
 function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note) {
-    $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)");
+    $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) 
+                            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
+                            ON DUPLICATE KEY UPDATE 
+                                last_interaction_date = NOW(),
+                                assigned_to = VALUES(assigned_to)");
     $stmt->bind_param("ssssssi", $phone, $email, $name, $source, $type, $note, $assignedConsultantId);
     $stmt->execute();
-    return $stmt->insert_id;
+    $id = $stmt->insert_id;
+    if (!$id) {
+        // Nếu bị duplicate key và được update, insert_id có thể bằng 0. Ta lấy ID từ DB.
+        $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? OR email = ? LIMIT 1");
+        $sStmt->bind_param("ss", $phone, $email);
+        $sStmt->execute();
+        $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+    }
+    return $id;
 }
 
 function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note) {
