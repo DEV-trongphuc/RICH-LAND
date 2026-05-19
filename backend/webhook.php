@@ -168,10 +168,34 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
 }
 
 // --- 2. Evaluate Dynamic Rules to determine the Target Round ---
-$targetRoundId = evaluateRules($conn, $data, $source, $type);
+$ruleResult = evaluateRules($conn, $data, $source, $type);
+$targetRoundId = null;
 $assignedConsultantId = null;
 $status = 'unassigned';
 $message = 'No matching rule found.';
+
+if (is_array($ruleResult)) {
+    $targetRoundId = $ruleResult['target_round_id'];
+    $inject = $ruleResult['inject'] ?? [];
+    
+    // Áp dụng ghi đè dữ liệu (Inject Fields)
+    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+    foreach ($inject as $k => $v) {
+        if (in_array($k, $standardFields)) {
+            if ($k === 'source') $source = $v;
+            if ($k === 'type') $type = $v;
+            if ($k === 'note') $note = $v;
+            if ($k === 'name') $name = $v;
+            if ($k === 'phone') $phone = normalizePhone($v);
+            if ($k === 'email') $email = trim($v);
+        } else {
+            // Append custom fields to note
+            $note .= "\n[$k]: $v";
+        }
+    }
+} else {
+    $targetRoundId = $ruleResult;
+}
 
 if ($targetRoundId) {
     // --- 3. Round-Robin Assignment ---

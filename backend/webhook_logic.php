@@ -139,15 +139,30 @@ function evaluateRules($conn, $data, $source, $type) {
         if (!empty($row['conditions_json'])) {
             $parsed = json_decode($row['conditions_json'], true);
             if (is_array($parsed) && count($parsed) > 0) {
-                // Ensure array of arrays (backward compatibility for flat arrays)
-                $branches = isset($parsed[0]['col']) ? [$parsed] : $parsed;
+                // Ensure array of objects (backward compatibility for flat arrays or array of arrays)
+                $branches = [];
+                if (isset($parsed[0]['col'])) {
+                    // Legacy: Flat array (single branch)
+                    $branches = [['conditions' => $parsed]];
+                } else if (isset($parsed[0][0]['col'])) {
+                    // Legacy: Array of arrays (multiple branches without inject)
+                    foreach ($parsed as $b) {
+                        $branches[] = ['conditions' => $b];
+                    }
+                } else if (isset($parsed[0]['conditions'])) {
+                    // New format: Array of branch objects
+                    $branches = $parsed;
+                }
                 
                 $isMatch = false;
-                foreach ($branches as $branch) {
-                    if (!is_array($branch) || count($branch) === 0) continue;
+                $matchedBranch = null;
+                
+                foreach ($branches as $branchObj) {
+                    $conds = $branchObj['conditions'] ?? [];
+                    if (!is_array($conds) || count($conds) === 0) continue;
                     
                     $branchMatch = true; // AND logic within branch
-                    foreach ($branch as $cond) {
+                    foreach ($conds as $cond) {
                         if (!isset($cond['col'])) continue;
                         if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'])) {
                             $branchMatch = false;
@@ -157,6 +172,7 @@ function evaluateRules($conn, $data, $source, $type) {
                     
                     if ($branchMatch) {
                         $isMatch = true; // OR logic between branches
+                        $matchedBranch = $branchObj;
                         break; // One branch passed, rule passes
                     }
                 }
@@ -167,7 +183,18 @@ function evaluateRules($conn, $data, $source, $type) {
         }
         
         if ($isMatch) {
-            return $row['target_round_id'];
+            $inject = [];
+            if (isset($matchedBranch['inject']) && !empty($matchedBranch['inject']['enabled']) && !empty($matchedBranch['inject']['fields'])) {
+                foreach ($matchedBranch['inject']['fields'] as $f) {
+                    if (!empty($f['col'])) {
+                        $inject[$f['col']] = $f['val'];
+                    }
+                }
+            }
+            return [
+                'target_round_id' => $row['target_round_id'],
+                'inject' => $inject
+            ];
         }
     }
     

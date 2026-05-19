@@ -204,10 +204,26 @@ foreach ($connections as $connItem) {
             }
 
             // --- 2. Evaluate Dynamic Rules to determine Target Round ---
-            $targetRoundId = evaluateRules($conn, $rowData, $source, $type);
+            $ruleResult = evaluateRules($conn, $rowData, $source, $type);
+            $targetRoundId = null;
             $assignedConsultantId = null;
             $cronStatus = 'unassigned';
             $cronMessage = 'No matching rule found via cron_sync.';
+
+            if (is_array($ruleResult)) {
+                $targetRoundId = $ruleResult['target_round_id'];
+                $inject = $ruleResult['inject'] ?? [];
+                
+                // Áp dụng ghi đè dữ liệu (Inject Fields)
+                if (isset($inject['source'])) $source = $inject['source'];
+                if (isset($inject['type'])) $type = $inject['type'];
+                if (isset($inject['note'])) $note = $inject['note'];
+                if (isset($inject['name'])) $name = $inject['name'];
+                if (isset($inject['phone'])) $phone = normalizePhone($inject['phone']);
+                if (isset($inject['email'])) $email = trim($inject['email']);
+            } else {
+                $targetRoundId = $ruleResult;
+            }
 
             if ($targetRoundId) {
                 // --- 3. Round-Robin Assignment ---

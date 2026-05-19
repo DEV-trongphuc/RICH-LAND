@@ -202,7 +202,7 @@ export const RuleSettings = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
-  const [branches, setBranches] = useState<any[][]>([ [{ col: 'source', op: 'contains', val: '' }] ]);
+  const [branches, setBranches] = useState<any[]>([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
   const [targetRound, setTargetRound] = useState<number | ''>('');
   const [connectionId, setConnectionId] = useState<number | 'all'>('all');
   const [connections, setConnections] = useState<any[]>([]);
@@ -285,7 +285,7 @@ export const RuleSettings = () => {
     }
     setEditingRule(null);
     setConnectionId('all');
-    setBranches([ [{ col: 'source', op: 'contains', val: '' }] ]);
+    setBranches([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
     setTargetRound(rounds[0]?.id || '');
     setIsModalOpen(true);
   };
@@ -296,21 +296,25 @@ export const RuleSettings = () => {
     if (rule.conditions_json) {
       try {
         const parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
-        // Handle legacy flat array vs new array of arrays
         if (Array.isArray(parsed) && parsed.length > 0) {
-          if (!Array.isArray(parsed[0])) {
-            setBranches([parsed]);
-          } else {
+          if (parsed[0].col) {
+            // Legacy flat array
+            setBranches([ { conditions: parsed, inject: { enabled: false, fields: [] } } ]);
+          } else if (Array.isArray(parsed[0])) {
+            // Legacy array of arrays
+            setBranches(parsed.map((b: any) => ({ conditions: b, inject: { enabled: false, fields: [] } })));
+          } else if (parsed[0].conditions) {
+            // New structure
             setBranches(parsed);
           }
         } else {
-          setBranches([ [{ col: 'source', op: 'contains', val: '' }] ]);
+          setBranches([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
         }
       } catch (e) {
-        setBranches([ [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }] ]);
+        setBranches([ { conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } } ]);
       }
     } else {
-      setBranches([ [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }] ]);
+      setBranches([ { conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } } ]);
     }
     setTargetRound(rule.target_round_id);
     setIsModalOpen(true);
@@ -318,10 +322,15 @@ export const RuleSettings = () => {
 
   const handleSaveRule = async () => {
     for (const branch of branches) {
-      if (branch.length === 0) return toast.error('Có nhánh đang trống điều kiện');
-      for (const c of branch) {
+      if (!branch.conditions || branch.conditions.length === 0) return toast.error('Có nhánh đang trống điều kiện');
+      for (const c of branch.conditions) {
         const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
         if (!c.col || !c.op || (!c.val && !isNoValueOp)) return toast.error('Vui lòng nhập đủ thông tin các điều kiện');
+      }
+      if (branch.inject?.enabled && branch.inject.fields) {
+        for (const f of branch.inject.fields) {
+          if (!f.col || !f.val) return toast.error('Vui lòng nhập đủ thông tin trường dữ liệu ghi đè');
+        }
       }
     }
     if (!targetRound) return toast.error('Vui lòng chọn vòng phân bổ');
@@ -331,9 +340,9 @@ export const RuleSettings = () => {
     const payload = {
       id: editingRule?.id,
       connection_id: connectionId === 'all' ? null : connectionId,
-      condition_column: branches[0]?.[0]?.col || '',
-      condition_operator: branches[0]?.[0]?.op || '',
-      condition_value: branches[0]?.[0]?.val || '',
+      condition_column: branches[0]?.conditions?.[0]?.col || '',
+      condition_operator: branches[0]?.conditions?.[0]?.op || '',
+      condition_value: branches[0]?.conditions?.[0]?.val || '',
       conditions_json: branches,
       logical_operator: 'OR',
       target_round_id: targetRound
@@ -518,9 +527,9 @@ export const RuleSettings = () => {
                 </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {branch.map((c: any, i: number) => {
+                  {branch.conditions.map((c: any, i: number) => {
                     const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
-                    const isLast = i === branch.length - 1;
+                    const isLast = i === branch.conditions.length - 1;
                     return (
                       <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', background: 'transparent', padding: '0', position: 'relative' }}>
                         <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -541,7 +550,7 @@ export const RuleSettings = () => {
                               value={c.col}
                               onChange={val => {
                                 const newB = [...branches];
-                                newB[bIndex][i].col = String(val);
+                                newB[bIndex].conditions[i].col = String(val);
                                 setBranches(newB);
                               }}
                               placeholder="Chọn trường..."
@@ -555,7 +564,7 @@ export const RuleSettings = () => {
                               value={c.op}
                               onChange={val => {
                                 const newB = [...branches];
-                                newB[bIndex][i].op = String(val);
+                                newB[bIndex].conditions[i].op = String(val);
                                 setBranches(newB);
                               }}
                             />
@@ -570,7 +579,7 @@ export const RuleSettings = () => {
                                 value={c.val}
                                 onChange={e => {
                                   const newB = [...branches];
-                                  newB[bIndex][i].val = e.target.value;
+                                  newB[bIndex].conditions[i].val = e.target.value;
                                   setBranches(newB);
                                 }}
                               />
@@ -581,21 +590,21 @@ export const RuleSettings = () => {
                                 value={c.val}
                                 onChange={e => {
                                   const newB = [...branches];
-                                  newB[bIndex][i].val = e.target.value;
+                                  newB[bIndex].conditions[i].val = e.target.value;
                                   setBranches(newB);
                                 }}
                               />
                             )}
                           </div>
                         )}
-                        {branch.length > 1 && (
+                        {branch.conditions.length > 1 && (
                           <button
                             type="button"
                             className="btn ghost"
                             style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
                             onClick={() => {
                                const newB = [...branches];
-                               newB[bIndex] = branch.filter((_, idx) => idx !== i);
+                               newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
                                setBranches(newB);
                             }}
                             title="Xóa điều kiện này"
@@ -612,13 +621,87 @@ export const RuleSettings = () => {
                       type="button"
                       onClick={() => {
                          const newB = [...branches];
-                         newB[bIndex].push({ col: 'source', op: 'contains', val: '' });
+                         newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
                          setBranches(newB);
                       }}
                       style={{ background: '#f3e8ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Plus size={14} /> Thêm điều kiện
                     </button>
+                  </div>
+                  
+                  {/* INJECT DATA FIELDS TOGGLE */}
+                  <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed #e2e8f0', paddingTop: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, color: 'var(--color-text)' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={branch.inject?.enabled || false}
+                        onChange={(e) => {
+                          const newB = [...branches];
+                          if (!newB[bIndex].inject) newB[bIndex].inject = { enabled: false, fields: [] };
+                          newB[bIndex].inject.enabled = e.target.checked;
+                          if (e.target.checked && newB[bIndex].inject.fields.length === 0) {
+                             newB[bIndex].inject.fields.push({ col: 'source', val: '' });
+                          }
+                          setBranches(newB);
+                        }}
+                        style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
+                      />
+                      Tự động gán trường dữ liệu (Inject Data)
+                    </label>
+                    
+                    {branch.inject?.enabled && (
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                         {branch.inject.fields.map((f: any, fi: number) => (
+                           <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                             <div style={{ flex: 1 }}>
+                               <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                                 <CustomSelect
+                                   options={[
+                                     { value: 'source', label: 'Nguồn Khách (Source)' },
+                                     { value: 'type', label: 'Loại Khách (Type)' },
+                                     { value: 'note', label: 'Ghi Chú (Note)' },
+                                     { value: 'name', label: 'Tên Khách Hàng (Name)' },
+                                   ]}
+                                   value={f.col}
+                                   onChange={val => {
+                                      const newB = [...branches];
+                                      newB[bIndex].inject.fields[fi].col = String(val);
+                                      setBranches(newB);
+                                   }}
+                                 />
+                               </div>
+                             </div>
+                             <div style={{ flex: 2 }}>
+                               <input
+                                 style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                 placeholder="Giá trị muốn gán tự động..."
+                                 value={f.val}
+                                 onChange={e => {
+                                    const newB = [...branches];
+                                    newB[bIndex].inject.fields[fi].val = e.target.value;
+                                    setBranches(newB);
+                                 }}
+                               />
+                             </div>
+                             <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)' }} onClick={() => {
+                                const newB = [...branches];
+                                newB[bIndex].inject.fields = branch.inject.fields.filter((_: any, idx: number) => idx !== fi);
+                                setBranches(newB);
+                             }}>
+                               <Trash2 size={16} />
+                             </button>
+                           </div>
+                         ))}
+                         <button type="button" className="btn ghost" style={{ alignSelf: 'flex-start', fontSize: '0.8125rem', marginTop: 4 }} onClick={() => {
+                            const newB = [...branches];
+                            newB[bIndex].inject.fields.push({ col: 'source', val: '' });
+                            setBranches(newB);
+                         }}>
+                           <Plus size={14} /> Thêm trường
+                         </button>
+                       </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -628,7 +711,7 @@ export const RuleSettings = () => {
           <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
             <button 
               type="button"
-              onClick={() => setBranches([...branches, [{ col: 'source', op: 'contains', val: '' }]])}
+              onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
               style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
             >
               <Plus size={18} /> Thêm Nhánh Mới
