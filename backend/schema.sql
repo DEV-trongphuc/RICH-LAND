@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 19, 2026 lúc 04:52 AM
+-- Thời gian đã tạo: Th5 19, 2026 lúc 09:14 AM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -33,9 +33,11 @@ CREATE TABLE `accounts` (
   `password_hash` varchar(255) NOT NULL,
   `role` enum('admin','assistant','viewer') DEFAULT 'viewer',
   `name` varchar(255) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL COMMENT 'Email đăng nhập (bắt buộc trừ Super Admin)',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `email` varchar(255) DEFAULT NULL COMMENT 'Email đăng nhập (bắt buộc với admin thường, tùy chọn với Super Admin)',
   `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
-  `created_at` datetime DEFAULT current_timestamp()
+  `is_confirmed` tinyint(1) DEFAULT 0 COMMENT 'Xác nhận Email',
+  `confirm_token` varchar(64) DEFAULT NULL COMMENT 'Token xác nhận Email'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -51,8 +53,8 @@ CREATE TABLE `consultants` (
   `status` enum('active','inactive','leave') DEFAULT 'active',
   `leave_start` date DEFAULT NULL,
   `leave_end` date DEFAULT NULL,
-  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
-  `created_at` datetime DEFAULT current_timestamp()
+  `created_at` datetime DEFAULT current_timestamp(),
+  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -69,7 +71,8 @@ CREATE TABLE `data_reports` (
   `reason` varchar(255) DEFAULT NULL,
   `status` varchar(20) DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
-  `resolved_at` datetime DEFAULT NULL
+  `resolved_at` datetime DEFAULT NULL,
+  `reject_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do từ chối ticket'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -182,6 +185,7 @@ CREATE TABLE `sheet_connections` (
   `id` int(11) NOT NULL,
   `sheet_name` varchar(255) NOT NULL COMMENT 'Tên Sheet hoặc mô tả',
   `spreadsheet_id` varchar(255) DEFAULT NULL COMMENT 'Google Spreadsheet ID (optional)',
+  `connection_type` varchar(20) DEFAULT 'sheets',
   `webhook_token` varchar(64) NOT NULL COMMENT 'Token bảo mật riêng cho từng sheet',
   `is_active` tinyint(1) DEFAULT 1,
   `sync_interval` int(11) DEFAULT 5 COMMENT 'Thời gian đồng bộ (phút)',
@@ -223,7 +227,7 @@ CREATE TABLE `system_settings` (
 
 CREATE TABLE `ticket_notify_settings` (
   `id` int(11) NOT NULL,
-  `account_id` int(11) NOT NULL COMMENT 'ID của tài khoản admin nhận thông báo ticket'
+  `account_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -332,8 +336,7 @@ ALTER TABLE `system_settings`
 --
 ALTER TABLE `ticket_notify_settings`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `idx_account_unique` (`account_id`),
-  ADD KEY `account_id` (`account_id`);
+  ADD UNIQUE KEY `idx_account_unique` (`account_id`);
 
 --
 -- AUTO_INCREMENT cho các bảng đã đổ

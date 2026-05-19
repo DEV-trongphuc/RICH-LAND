@@ -11,13 +11,14 @@ require_once __DIR__ . '/db_connect.php';
  * @param string $text
  * @return bool
  */
-function sendZaloMessage($botToken, $chatId, $text) {
+function sendZaloMessage($botToken, $chatId, $text)
+{
     if (empty($botToken) || empty($chatId) || empty($text)) {
         return false;
     }
 
     $url = "https://bot-api.zaloplatforms.com/bot" . $botToken . "/sendMessage";
-    
+
     $payload = json_encode([
         "chat_id" => $chatId,
         "text" => $text
@@ -28,7 +29,7 @@ function sendZaloMessage($botToken, $chatId, $text) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout 5 giây tránh nghẽn
-    
+
     $result = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -43,7 +44,7 @@ function sendZaloMessage($botToken, $chatId, $text) {
     } else {
         error_log("Zalo Bot HTTP Error: $httpCode - " . $result);
     }
-    
+
     return false;
 }
 
@@ -55,7 +56,8 @@ function sendZaloMessage($botToken, $chatId, $text) {
  * @param string $text
  * @return bool
  */
-function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text) {
+function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text)
+{
     if (empty($botToken) || empty($chatIdsArray) || empty($text)) {
         return false;
     }
@@ -78,7 +80,7 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tránh nghẽn lâu
-        
+
         curl_multi_add_handle($multiHandle, $ch);
         $curlHandles[] = $ch;
     }
@@ -99,14 +101,15 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text) {
         curl_close($ch);
     }
     curl_multi_close($multiHandle);
-    
+
     return true;
 }
 
 /**
  * Gửi thông báo chia Lead mới cho Sale qua Zalo
  */
-function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0) {
+function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0)
+{
     global $conn;
 
     // Lấy config zalo_bot_token từ system_settings
@@ -122,8 +125,9 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 
     // Lấy zalo_chat_id của Sale
     $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-    if (!$stmtConsultant) return false;
-    
+    if (!$stmtConsultant)
+        return false;
+
     $stmtConsultant->bind_param("i", $consultantId);
     $stmtConsultant->execute();
     $res = $stmtConsultant->get_result();
@@ -152,22 +156,71 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
     }
     if (empty($frontendUrl)) {
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
     }
     $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
     $roundLine = !empty($roundName) ? "  • Vòng phân bổ: $roundName\n" : "";
 
     $text = "[ THÔNG BÁO DATA MỚI ]\n\n"
-          . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
-          . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-          . "  • Tên KH: $fName\n"
-          . "  • Số ĐT: $fPhone\n"
-          . "  • Nguồn: $fSource\n"
-          . $roundLine
-          . "\n❖ GHI CHÚ:\n"
-          . "  $fNote\n\n"
-          . "Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+        . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
+        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "  • Tên KH: $fName\n"
+        . "  • Số ĐT: $fPhone\n"
+        . "  • Nguồn: $fSource\n"
+        . $roundLine
+        . "\n❖ GHI CHÚ:\n"
+        . "  $fNote\n\n"
+        . "Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+
+    return sendZaloMessage($botToken, $chatId, $text);
+}
+
+/**
+ * Gửi thông báo nhắc nhở Khách hàng cũ đăng ký lại cho Sale qua Zalo
+ */
+function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+{
+    global $conn;
+
+    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = '';
+    if ($stmt && $stmt->num_rows > 0) {
+        $botToken = $stmt->fetch_assoc()['setting_value'];
+    }
+
+    if (empty($botToken))
+        return false;
+
+    $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    if (!$stmtConsultant)
+        return false;
+
+    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->execute();
+    $res = $stmtConsultant->get_result();
+    $chatId = '';
+    if ($res->num_rows > 0) {
+        $chatId = $res->fetch_assoc()['zalo_chat_id'];
+    }
+
+    if (empty($chatId))
+        return false;
+
+    $fName = !empty($leadName) ? $leadName : "Không có";
+    $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
+    $fSource = !empty($leadSource) ? $leadSource : "Không có";
+    $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    $text = "[ KHÁCH HÀNG ĐĂNG KÝ LẠI - KHÔNG TÍNH VÒNG LEAD]\n\n"
+        . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
+        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "  • Tên KH: $fName\n"
+        . "  • Số ĐT: $fPhone\n"
+        . "  • Nguồn: $fSource\n"
+        . "\n❖ GHI CHÚ MỚI:\n"
+        . "  $fNote\n\n"
+        . "Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
 
     return sendZaloMessage($botToken, $chatId, $text);
 }

@@ -17,19 +17,6 @@ export const ToggleSwitch = ({ checked, onChange, labelActive = 'Đang hoạt đ
       }}
     >
       <div 
-        onClick={() => onChange(true)}
-        style={{
-          padding: '6px 12px', borderRadius: '50px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-          background: checked ? 'var(--color-success-light)' : 'transparent',
-          color: checked ? 'var(--color-success)' : 'var(--color-text-muted)',
-          transition: 'all 0.2s',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}
-      >
-        <div style={{ width: 6, height: 6, borderRadius: '50%', background: checked ? 'var(--color-success)' : 'transparent' }} />
-        {labelActive}
-      </div>
-      <div 
         onClick={() => onChange(false)}
         style={{
           padding: '6px 12px', borderRadius: '50px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
@@ -41,6 +28,19 @@ export const ToggleSwitch = ({ checked, onChange, labelActive = 'Đang hoạt đ
         }}
       >
         {labelInactive}
+      </div>
+      <div 
+        onClick={() => onChange(true)}
+        style={{
+          padding: '6px 12px', borderRadius: '50px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+          background: checked ? 'var(--color-success-light)' : 'transparent',
+          color: checked ? 'var(--color-success)' : 'var(--color-text-muted)',
+          transition: 'all 0.2s',
+          display: 'flex', alignItems: 'center', gap: 6
+        }}
+      >
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: checked ? 'var(--color-success)' : 'transparent' }} />
+        {labelActive}
       </div>
     </div>
   );

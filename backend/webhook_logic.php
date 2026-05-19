@@ -263,7 +263,7 @@ function getNextConsultantInRound($conn, $roundId) {
         // Note: Do NOT update last_assigned_consultant_id here. 
         // Compensation is an out-of-band assignment and shouldn't disrupt the normal round-robin order.
         $conn->commit();
-        return $nextId;
+        return ['id' => $nextId, 'is_compensation' => true];
     }
 
     // === PRIORITY 2: MID-TURN — Đang trong lượt nhận nhiều data, tiếp tục giao cho họ ===
@@ -275,7 +275,7 @@ function getNextConsultantInRound($conn, $roundId) {
         $midStmt->execute();
         // Note: do NOT update last_assigned here — keeps position for proper round-robin next turn
         $conn->commit();
-        return $nextId;
+        return ['id' => $nextId, 'is_compensation' => false];
     }
     
     // === PRIORITY 3: ROUND-ROBIN — Find next consultant by receive_ratio ===
@@ -338,7 +338,7 @@ function getNextConsultantInRound($conn, $roundId) {
     // Commit transaction
     $conn->commit();
     
-    return $nextId;
+    return ['id' => $nextId, 'is_compensation' => false];
 }
 
 function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note) {

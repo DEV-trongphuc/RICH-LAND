@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -18,6 +18,7 @@ export const Accounts = () => {
     password: '',
     name: '',
     email: '',
+    zalo_chat_id: '',
     role: 'viewer'
   });
 
@@ -42,13 +43,13 @@ export const Accounts = () => {
 
   const openAddModal = () => {
     setEditingAccount(null);
-    setFormData({ username: '', password: '', name: '', email: '', role: 'viewer' });
+    setFormData({ username: '', password: '', name: '', email: '', zalo_chat_id: '', role: 'viewer' });
     setModalOpen(true);
   };
 
   const openEditModal = (acc: any) => {
     setEditingAccount(acc);
-    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', role: acc.role });
+    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', zalo_chat_id: acc.zalo_chat_id || '', role: acc.role });
     setModalOpen(true);
   };
 
@@ -104,6 +105,22 @@ export const Accounts = () => {
     setConfirmOpen(false);
   };
 
+  const handleResendConfirm = async (accId: number) => {
+    try {
+      const json = await fetchAPI('resend_confirm_email', {
+        method: 'POST',
+        body: JSON.stringify({ id: accId })
+      });
+      if (json.success) {
+        toast.success('Đã gửi lại link xác thực. Vui lòng kiểm tra email.');
+      } else {
+        toast.error(json.message || 'Lỗi khi gửi email');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
@@ -134,6 +151,7 @@ export const Accounts = () => {
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email đăng nhập</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Zalo Chat ID</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân quyền</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
                 </tr>
@@ -151,7 +169,28 @@ export const Accounts = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Shield size={14} />
                         <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
+                        {acc.email && (
+                          Number(acc.is_confirmed) === 1 ? (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>✅ Đã xác thực</span>
+                          ) : (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>⏳ Chưa xác thực</span>
+                          )
+                        )}
                       </div>
+                      {acc.email && Number(acc.is_confirmed) === 0 && (
+                        <div style={{ marginTop: 6, paddingLeft: 20 }}>
+                          <button onClick={() => handleResendConfirm(acc.id)} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
+                            <Send size={12} style={{ marginRight: 4 }} /> Gửi lại link
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                      {acc.zalo_chat_id ? (
+                        <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                      )}
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>{getRoleBadge(acc.role)}</td>
                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
@@ -224,6 +263,18 @@ export const Accounts = () => {
               required={editingAccount?.id !== 1}
               autoComplete="email"
             />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(tùy chọn)</span></label>
+            <input
+              className="form-input"
+              placeholder="VD: 43521235123551"
+              value={formData.zalo_chat_id}
+              onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
+            />
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              Dùng để nhận thông báo khẩn qua Zalo Bot thay vì nhận Email.
+            </div>
           </div>
           <div className="form-group">
             <label className="form-label">{editingAccount ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>

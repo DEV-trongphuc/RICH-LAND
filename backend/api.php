@@ -672,9 +672,10 @@ switch ($action) {
         $isActive = $input['is_active'] ?? 1;
         $syncInterval = $input['sync_interval'] ?? 15;
         $requireBoth = $input['require_both_contact'] ?? 0;
+        $connectionType = $input['connection_type'] ?? 'sheets';
         
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth);
+        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssiiis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType);
         $stmt->execute();
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -687,9 +688,10 @@ switch ($action) {
         $isActive = $input['is_active'] ?? 1;
         $syncInterval = $input['sync_interval'] ?? 15;
         $requireBoth = $input['require_both_contact'] ?? 0;
+        $connectionType = $input['connection_type'] ?? 'sheets';
         
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=? WHERE id=?");
-        $stmt->bind_param("ssiiii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $id);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=? WHERE id=?");
+        $stmt->bind_param("ssiiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -1136,6 +1138,11 @@ switch ($action) {
             $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
             $updLead->execute();
             
+            // Mark distribution_logs as error
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+            $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
+            $updLog->execute();
+            
             // 4. Increment compensation_count for the consultant in that round
             $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
             $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
@@ -1479,10 +1486,19 @@ switch ($action) {
         echo json_encode(['success' => $success, 'message' => $success ? 'Email đã được gửi thành công!' : 'Gửi email thất bại, kiểm tra cấu hình.']);
         break;
 
+    case 'alter_schema':
+        $sql = "ALTER TABLE sheet_connections ADD COLUMN connection_type VARCHAR(20) DEFAULT 'sheets' AFTER spreadsheet_id";
+        if ($conn->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Schema updated successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Schema update failed: ' . $conn->error]);
+        }
+        break;
+
 
     case 'get_accounts':
         // Include email field for display and ticket notification settings
-        $res = $conn->query("SELECT id, username, name, email, role, created_at FROM accounts ORDER BY created_at DESC");
+        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed FROM accounts ORDER BY created_at DESC");
         $data = [];
         while($row = $res->fetch_assoc()) $data[] = $row;
         echo json_encode(['success' => true, 'data' => $data]);
@@ -1495,6 +1511,7 @@ switch ($action) {
         $name     = trim($input['name'] ?? '');
         $role     = $input['role'] ?? 'viewer';
         $email    = trim($input['email'] ?? '');
+        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
 
         if (empty($username) || empty($password) || empty($name)) {
             echo json_encode(['success' => false, 'message' => 'Tên hiển thị, username và mật khẩu là bắt buộc']);
@@ -1513,8 +1530,8 @@ switch ($action) {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $token = bin2hex(random_bytes(32));
         
-        $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token) VALUES (?, ?, ?, ?, ?, 0, ?)");
-        $stmt->bind_param("ssssss", $username, $hash, $name, $role, $email, $token);
+        $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?)");
+        $stmt->bind_param("sssssss", $username, $hash, $name, $role, $email, $token, $zalo_chat_id);
 
         if ($stmt->execute()) {
             $newId = $conn->insert_id;
@@ -1542,6 +1559,7 @@ switch ($action) {
         $name     = trim($input['name'] ?? '');
         $role     = $input['role'] ?? 'viewer';
         $email    = trim($input['email'] ?? '');
+        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
 
         // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
         if ($id !== 1) {
@@ -1561,11 +1579,11 @@ switch ($action) {
 
         if (!empty($password)) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=? WHERE id=?");
-            $stmt->bind_param("sssssi", $username, $hash, $name, $role, $dbEmail, $id);
+            $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
+            $stmt->bind_param("ssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $id);
         } else {
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=? WHERE id=?");
-            $stmt->bind_param("ssssi", $username, $name, $role, $dbEmail, $id);
+            $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
+            $stmt->bind_param("sssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $id);
         }
 
         if ($stmt->execute()) {
@@ -1585,6 +1603,39 @@ switch ($action) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
+        break;
+
+    case 'resend_confirm_email':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int)($input['id'] ?? 0);
+        
+        $res = $conn->query("SELECT email, name FROM accounts WHERE id=$id");
+        if ($res && $res->num_rows > 0) {
+            $account = $res->fetch_assoc();
+            if (empty($account['email'])) {
+                echo json_encode(['success' => false, 'message' => 'Tài khoản này chưa có email']);
+                break;
+            }
+            
+            $token = bin2hex(random_bytes(32));
+            $stmt = $conn->prepare("UPDATE accounts SET confirm_token = ?, is_confirmed = 0 WHERE id = ?");
+            $stmt->bind_param("si", $token, $id);
+            if ($stmt->execute()) {
+                $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+                $confirmLink = $frontendUrl . "/backend/confirm.php?token=" . $token;
+                
+                require_once 'mailer.php';
+                sendAdminConfirmationEmail($account['email'], $account['name'], $confirmLink);
+                
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Không thể tạo lại token']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản']);
+        }
         break;
 
     // ── TICKET NOTIFICATION SETTINGS ──────────────────────────────────────────
@@ -1962,6 +2013,173 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Gửi thất bại. TVV chưa có Email và chưa liên kết Zalo.']);
+        }
+        break;
+
+    case 'preview_routing':
+        require_once __DIR__ . '/webhook_logic.php';
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $data = $input['data'] ?? [];
+        
+        $phone = normalizePhone($data['phone'] ?? '');
+        $email = $data['email'] ?? '';
+        $name = $data['name'] ?? '';
+        $source = $data['source'] ?? '';
+        $type = $data['type'] ?? '';
+        $note = $data['note'] ?? '';
+        
+        $assignedRoundId = evaluateRules($conn, null, $source, $type, $note, $phone, $email, $name);
+        if (!$assignedRoundId) {
+            echo json_encode(['success' => true, 'round_id' => null, 'consultant' => null, 'message' => 'Không khớp luật nào']);
+            break;
+        }
+        
+        // Find expected consultant without doing any updates
+        $consultant = null;
+        
+        $stmtRound = $conn->prepare("SELECT last_assigned_consultant_id, round_name FROM distribution_rounds WHERE id = ? AND is_active = 1");
+        $stmtRound->bind_param("i", $assignedRoundId);
+        $stmtRound->execute();
+        $resRound = $stmtRound->get_result();
+        
+        if ($resRound->num_rows > 0) {
+            $roundData = $resRound->fetch_assoc();
+            $lastAssignedId = $roundData['last_assigned_consultant_id'];
+            $roundName = $roundData['round_name'];
+            
+            $stmtC = $conn->prepare("SELECT rc.consultant_id, c.name, rc.receive_ratio, rc.data_per_turn, rc.current_turn_remaining 
+                                     FROM round_consultants rc 
+                                     JOIN consultants c ON rc.consultant_id = c.id 
+                                     WHERE rc.round_id = ? AND c.is_active = 1 AND c.status = 'online' 
+                                     ORDER BY rc.consultant_id ASC");
+            $stmtC->bind_param("i", $assignedRoundId);
+            $stmtC->execute();
+            $resC = $stmtC->get_result();
+            
+            $activeConsultants = [];
+            while ($row = $resC->fetch_assoc()) {
+                $activeConsultants[] = $row;
+            }
+            
+            if (count($activeConsultants) > 0) {
+                // Determine next:
+                // If last_assigned has remaining turns, they get it.
+                // Else next person.
+                
+                $nextIndex = 0;
+                $lastIndex = -1;
+                foreach ($activeConsultants as $idx => $c) {
+                    if ($c['consultant_id'] == $lastAssignedId) {
+                        $lastIndex = $idx;
+                        break;
+                    }
+                }
+                
+                if ($lastIndex !== -1) {
+                    $lastC = $activeConsultants[$lastIndex];
+                    if ((int)$lastC['current_turn_remaining'] > 0) {
+                        $consultant = $lastC;
+                    } else {
+                        $nextIndex = ($lastIndex + 1) % count($activeConsultants);
+                        $consultant = $activeConsultants[$nextIndex];
+                    }
+                } else {
+                    $consultant = $activeConsultants[0];
+                }
+                $consultant['round_name'] = $roundName;
+            }
+        }
+        
+        echo json_encode(['success' => true, 'round_id' => $assignedRoundId, 'consultant' => $consultant]);
+        break;
+
+    case 'manual_insert_lead':
+        require_once __DIR__ . '/webhook_logic.php';
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $data = $input['data'] ?? [];
+        $override_round_id = $input['override_round_id'] ?? null;
+        $override_consultant_id = $input['override_consultant_id'] ?? null;
+        
+        $phone = normalizePhone($data['phone'] ?? '');
+        $email = trim($data['email'] ?? '');
+        $name = trim($data['name'] ?? '');
+        $source = trim($data['source'] ?? '');
+        $type = trim($data['type'] ?? '');
+        $note = trim($data['note'] ?? '');
+        
+        if (empty($phone) && empty($email)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email']);
+            break;
+        }
+        
+        $assignedRoundId = $override_round_id;
+        if (!$assignedRoundId) {
+            $assignedRoundId = evaluateRules($conn, null, $source, $type, $note, $phone, $email, $name);
+        }
+        
+        if (!$assignedRoundId) {
+            // Cannot assign
+            $leadId = insertLead($conn, $phone, $email, $name, $source, $type, $note, 'Chưa phân bổ', null, null, null);
+            echo json_encode(['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.']);
+            break;
+        }
+        
+        $consultantId = $override_consultant_id;
+        
+        $conn->begin_transaction();
+        try {
+            // Lock
+            $lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
+            $conn->query("SELECT GET_LOCK('$lockKey', 5)");
+            
+            $isComp = false;
+            if (!$consultantId) {
+                // If override consultant not provided, compute it naturally, but UPDATE the round
+                $assignResult = getNextConsultantInRound($conn, $assignedRoundId);
+                if ($assignResult) {
+                    $consultantId = $assignResult['id'];
+                    $isComp = $assignResult['is_compensation'];
+                }
+            }
+            
+            if ($consultantId) {
+                $status = $isComp ? 'compensation' : 'assigned';
+                $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                
+                // Track CRM logs
+                trackCRMAction($conn, $leadId, "Nhập liệu thủ công từ Admin", "System", "success");
+                
+                $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                $stmtRound->bind_param("i", $assignedRoundId);
+                $stmtRound->execute();
+                $roundName = $stmtRound->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
+                
+                // Log distribution
+                logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, "Nhập liệu thủ công từ Admin");
+                
+                // Track assigned report
+                trackAssignedReport($conn, $assignedRoundId, $consultantId);
+                
+                $conn->commit();
+                $conn->query("SELECT RELEASE_LOCK('$lockKey')");
+                
+                // Fire notification via logic helper
+                notifyConsultant($conn, $consultantId, $phone, $email, $name, $source, $type, $note, $roundName);
+                
+                echo json_encode(['success' => true, 'message' => 'Data đã được giao thành công.']);
+            } else {
+                // Insert unassigned
+                $leadId = insertLead($conn, $phone, $email, $name, $source, $type, $note, 'Chưa phân bổ', null, null, null);
+                $conn->commit();
+                $conn->query("SELECT RELEASE_LOCK('$lockKey')");
+                echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV online nhận.']);
+            }
+        } catch (Exception $e) {
+            $conn->rollback();
+            $conn->query("SELECT RELEASE_LOCK('$lockKey')");
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         break;
 

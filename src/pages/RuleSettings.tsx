@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { fetchAPI } from '../utils/api';
 import { CardSkeleton } from '../components/ui/Skeleton';
 

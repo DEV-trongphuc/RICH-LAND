@@ -61,8 +61,30 @@ if ($connRes->num_rows === 0) {
 $connData = $connRes->fetch_assoc();
 $connectionId = $connData['id'];
 $requirePhone = $connData['require_both_contact'];
+$connectionType = $connData['connection_type'] ?? 'sheets';
 
-// Fetch field mappings
+if ($connectionType === 'landing_page') {
+    // API Landing Page Logic: map standard fields natively, bundle everything else to note
+    $phone = normalizePhone($data['phone'] ?? '');
+    $email = trim($data['email'] ?? '');
+    $name = trim($data['name'] ?? '');
+    $source = trim($data['source'] ?? '');
+    $type = trim($data['type'] ?? '');
+    $note = trim($data['note'] ?? '');
+
+    $standardKeys = ['phone', 'email', 'name', 'source', 'type', 'note', '_meta'];
+    $extraNotes = [];
+    foreach ($data as $key => $val) {
+        if (!in_array($key, $standardKeys) && !is_array($val) && trim((string)$val) !== '') {
+            $extraNotes[] = "$key: $val";
+        }
+    }
+    if (!empty($extraNotes)) {
+        $note = $note . "\n" . implode("\n", $extraNotes);
+        $note = trim($note);
+    }
+} else {
+    // Legacy Google Sheets Logic with manual mappings
 $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
 $mapStmt->bind_param("i", $connectionId);
 $mapStmt->execute();
@@ -102,12 +124,13 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
 
 // normalizePhone is defined in webhook_logic.php (already required above)
 
-$phone = normalizePhone(extractMappedValues($mappings, 'phone', $data));
-$email = extractMappedValues($mappings, 'email', $data);
-$source = extractMappedValues($mappings, 'source', $data);
-$type = extractMappedValues($mappings, 'type', $data);
-$note = extractMappedValues($mappings, 'note', $data);
-$name = extractMappedValues($mappings, 'name', $data);
+    $phone = normalizePhone(extractMappedValues($mappings, 'phone', $data));
+    $email = extractMappedValues($mappings, 'email', $data);
+    $source = extractMappedValues($mappings, 'source', $data);
+    $type = extractMappedValues($mappings, 'type', $data);
+    $note = extractMappedValues($mappings, 'note', $data);
+    $name = extractMappedValues($mappings, 'name', $data);
+}
 
 if ($requirePhone == 1) {
     if (empty($phone)) {
@@ -156,8 +179,20 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     try {
         // Update last interaction
         $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
-        logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months, returned to previous consultant.');
+        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < 6 tháng.');
         $conn->commit();
+
+        // Gửi thông báo nhắc nhở cho Sale cũ
+        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+        $stmtC->bind_param("i", $assignedTo);
+        $stmtC->execute();
+        $cRow = $stmtC->get_result()->fetch_assoc();
+        if ($cRow) {
+            require_once __DIR__ . '/mailer.php';
+            require_once __DIR__ . '/zalo_bot.php';
+            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
+            sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source);
+        }
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lá»—i Database: " . "H? th?ng dang b?n, vui lòng th? l?i sau."]);
@@ -199,10 +234,11 @@ if (is_array($ruleResult)) {
 
 if ($targetRoundId) {
     // --- 3. Round-Robin Assignment ---
-    $assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
-    if ($assignedConsultantId) {
-        $status = 'assigned';
-        $message = 'Assigned via round-robin.';
+    $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+    if ($assignResult) {
+        $assignedConsultantId = $assignResult['id'];
+        $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+        $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
     } else {
         $status = 'pending';
         $message = 'No active consultants in this round.';

@@ -9,7 +9,8 @@ require_once __DIR__ . '/PHPMailer/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-function _getBaseHtml($title, $subtitle, $contentHtml) {
+function _getBaseHtml($title, $subtitle, $contentHtml)
+{
     return '
     <div style="background-color: #f8fafc; padding: 40px 0; font-family: \'Inter\', Helvetica, Arial, sans-serif;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
@@ -27,7 +28,7 @@ function _getBaseHtml($title, $subtitle, $contentHtml) {
             
             <!-- Content -->
             <div style="padding: 40px 30px;">
-                <h2 style="color: #0f172a; font-size: 22px; margin-top: 0; margin-bottom: 24px;">' . $title . '</h2>
+                ' . (!empty($title) ? '<h2 style="color: #0f172a; font-size: 22px; margin-top: 0; margin-bottom: 24px;">' . $title . '</h2>' : '') . '
                 <div style="color: #475569; font-size: 15px; line-height: 1.6;">
                     ' . $contentHtml . '
                 </div>
@@ -45,13 +46,14 @@ function _getBaseHtml($title, $subtitle, $contentHtml) {
     ';
 }
 
-function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '') {
+function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '')
+{
     global $conn;
-    
+
     // Fetch settings
     $res = $conn->query("SELECT * FROM system_settings");
     $settings = [];
-    while($row = $res->fetch_assoc()) {
+    while ($row = $res->fetch_assoc()) {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
 
@@ -61,7 +63,8 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
 
     if ($provider === 'appscript') {
         $url = $settings['appscript_webhook_url'] ?? '';
-        if (empty($url)) return false;
+        if (empty($url))
+            return false;
 
         $payload = json_encode([
             "type" => "custom",
@@ -83,21 +86,21 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
-            $mail->Host       = $settings['ses_host'] ?? '';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $settings['ses_username'] ?? '';
-            $mail->Password   = $settings['ses_password'] ?? '';
+            $mail->Host = $settings['ses_host'] ?? '';
+            $mail->SMTPAuth = true;
+            $mail->Username = $settings['ses_username'] ?? '';
+            $mail->Password = $settings['ses_password'] ?? '';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-            $mail->CharSet    = 'UTF-8';
-            $mail->Timeout    = 5; // Prevent blocking the webhook/cron
+            $mail->Port = 587;
+            $mail->CharSet = 'UTF-8';
+            $mail->Timeout = 5; // Prevent blocking the webhook/cron
 
             $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
             $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
-            
+
             $mail->setFrom($senderEmail, $senderName);
             $mail->addAddress($to);
-            
+
             if (!empty($ccEmailString)) {
                 $ccList = explode(',', $ccEmailString);
                 foreach ($ccList as $cc) {
@@ -110,7 +113,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
 
             $mail->isHTML(true);
             $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
+            $mail->Body = $htmlBody;
 
             $mail->send();
             return true;
@@ -122,9 +125,60 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $leadId = 0, $consultantId = 0, $roundId = 0) {
+function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+{
+    $subject = "Khách hàng cũ đăng ký lại — " . $leadName;
+
+    $fName = !empty($leadName) ? htmlspecialchars($leadName) : 'Không có';
+    $fPhone = !empty($leadPhone) ? htmlspecialchars($leadPhone) : 'Không có';
+    $fSource = !empty($leadSource) ? htmlspecialchars($leadSource) : 'Không có';
+    $fNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : 'Không có';
+
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px; line-height: 1; display: inline-block;">🔄</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Khách hàng đăng ký lại</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Chào <strong>' . htmlspecialchars($consultantName) . '</strong>, một khách hàng cũ của bạn vừa đăng ký lại trên hệ thống.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <p style="color: #0f172a; font-size: 15px; margin: 0 0 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">Thông tin khách hàng</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; width: 140px; color: #64748b;">Tên KH:</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #0f172a;">' . $fName . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Số điện thoại:</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #3b82f6;">' . $fPhone . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Nguồn:</td>
+                    <td style="padding: 8px 0;">' . $fSource . '</td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px 24px; border-radius: 0 12px 12px 0; margin-bottom: 32px;">
+            <p style="color: #92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px;">Ghi chú mới</p>
+            <p style="color: #0f172a; font-size: 14px; line-height: 1.6; margin: 0; font-weight: 500;">' . $fNote . '</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 16px;">Vui lòng liên hệ lại với khách hàng sớm nhất có thể.</p>
+        </div>
+    ';
+
+    sendEmailNotification($consultantEmail, $subject, '', $content, '');
+}
+
+
+function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $leadId = 0, $consultantId = 0, $roundId = 0)
+{
     global $conn;
-    
+
     // Fetch additional fields (email, type) from DB to display completely
     $email = '';
     $type = '';
@@ -139,16 +193,16 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             $type = $row['type'] ?? '';
         }
     }
-    
+
     $roundStr = !empty($roundName) ? " vòng {$roundName}" : "";
     $subject = "Bạn vừa nhận được Lead {$leadName}{$roundStr}";
-    
+
     // Format values nicely for HTML, converting newlines (\n) to <br/> tags
     $formattedNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : '<em>Không có ghi chú</em>';
     $formattedSource = !empty($leadSource) ? nl2br(htmlspecialchars($leadSource)) : '<em>Không có</em>';
     $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
     $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
-    
+
     // BUG-02 fix: Build report URL dynamically from system_settings or server vars
     $frontendUrl = '';
     // 1. Try system_settings table first
@@ -159,7 +213,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     // 2. Fallback: construct from current server HTTP_HOST
     if (empty($frontendUrl)) {
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host  = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         // Strip /backend suffix to get root frontend URL
         $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
     }
@@ -217,7 +271,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             </a>
         </div>
     ';
-    
+
     sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString);
 }
 
@@ -236,13 +290,13 @@ function sendTicketNotificationToAdmins(
     string $roundName = '',
     string $ccEmailString = ''
 ) {
-    $subject      = '🎫 Ticket Mới: Sale báo cáo data lỗi — ' . $leadName;
-    $roundStr     = !empty($roundName) ? htmlspecialchars($roundName) : 'Không rõ';
-    $fReason      = nl2br(htmlspecialchars($reason));
-    $fConsult     = htmlspecialchars($consultantName ?: 'Không rõ');
-    $fLead        = htmlspecialchars($leadName ?: 'Khách hàng ẩn danh');
-    $fPhone       = htmlspecialchars($leadPhone ?: 'Không có');
-    $fAdmin       = htmlspecialchars($toAdminName);
+    $subject = '🎫 Ticket Mới: Sale báo cáo data lỗi — ' . $leadName;
+    $roundStr = !empty($roundName) ? htmlspecialchars($roundName) : 'Không rõ';
+    $fReason = nl2br(htmlspecialchars($reason));
+    $fConsult = htmlspecialchars($consultantName ?: 'Không rõ');
+    $fLead = htmlspecialchars($leadName ?: 'Khách hàng ẩn danh');
+    $fPhone = htmlspecialchars($leadPhone ?: 'Không có');
+    $fAdmin = htmlspecialchars($toAdminName);
 
     $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Một nhân viên tư vấn vừa gửi <strong>báo cáo data lỗi</strong> (Ticket) và cần bạn xem xét.</p><div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">TICKET CHỜ DUYỆT</span></div><div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-left:4px solid #eab308;padding:24px;margin:0 0 24px;border-radius:0 12px 12px 0;"><p style="color:#0f172a;font-size:15px;margin:0 0 16px;font-weight:700;border-bottom:1px solid #fde68a;padding-bottom:10px;">Chi tiết Ticket</p><table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;"><tr><td style="padding:7px 0;font-weight:600;width:160px;color:#64748b;vertical-align:top;">Nhân viên báo cáo:</td><td style="padding:7px 0;font-weight:700;color:#7c3aed;vertical-align:top;">' . $fConsult . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Vòng phân bổ:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $roundStr . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Tên khách hàng:</td><td style="padding:7px 0;font-weight:700;color:#0f172a;vertical-align:top;">' . $fLead . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Số điện thoại:</td><td style="padding:7px 0;font-weight:700;color:#d97706;vertical-align:top;">' . $fPhone . '</td></tr></table></div><div style="background:#fef2f2;border-left:4px solid #ef4444;padding:20px 24px;border-radius:0 12px 12px 0;margin-bottom:28px;"><p style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">Lý do báo cáo</p><p style="color:#0f172a;font-size:15px;line-height:1.7;margin:0;font-weight:500;">' . $fReason . '</p></div><div style="text-align:center;"><p style="color:#64748b;font-size:14px;margin-bottom:12px;">Vui lòng đăng nhập hệ thống để xem xét và xử lý ticket này.</p><div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;display:inline-block;font-size:13px;color:#475569;">Vào mục <strong style="color:#7c3aed;">Quản lý Ticket</strong> để Duyệt hoặc Từ chối báo cáo</div></div>';
 
@@ -261,11 +315,11 @@ function sendWelcomeEmailToSale(
 ) {
     $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation CRM';
     $fName = htmlspecialchars($consultantName ?: 'Bạn');
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #eff6ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">👋</span>
+                <span style="font-size: 32px; line-height: 1; display: inline-block;">👋</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào mừng ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản của bạn đã được thêm vào hệ thống phân bổ Data tự động.</p>
@@ -278,7 +332,7 @@ function sendWelcomeEmailToSale(
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
                 <li>Gửi tin nhắn cho Bot với nội dung mã xác thực của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($consultantId . '-' . $consultantEmail) . '</strong></li>
-                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡 Mẹo: Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 
@@ -294,7 +348,7 @@ function sendWelcomeEmailToSale(
         </p>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, 'Chào mừng gia nhập', $content, '');
+    sendEmailNotification($consultantEmail, $subject, '', $content, '');
 }
 
 /**
@@ -309,11 +363,11 @@ function sendWelcomeEmailToAdminTicket(
 ) {
     $subject = '🎫 Yêu cầu xác thực Zalo Bot nhận thông báo Ticket';
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">🔔</span>
+                <span style="font-size: 32px; line-height: 1; display: inline-block;">🛡️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
@@ -326,7 +380,7 @@ function sendWelcomeEmailToAdminTicket(
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
                 <li>Gửi tin nhắn cho Bot với mã xác thực sau: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($adminId . '-' . $adminEmail) . '</strong></li>
-                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡 Mẹo: Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 
@@ -338,7 +392,7 @@ function sendWelcomeEmailToAdminTicket(
         </div>
     ';
 
-    sendEmailNotification($adminEmail, $subject, 'Xác thực Zalo Ticket', $content, '');
+    sendEmailNotification($adminEmail, $subject, '', $content, '');
 }
 
 /**
@@ -351,11 +405,11 @@ function sendAdminConfirmationEmail(
 ) {
     $subject = 'Vui lòng xác nhận Email để kích hoạt tài khoản Admin';
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #f0f9ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">✉️</span>
+            <div style="width: 64px; height: 64px; background: #ecfdf5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <span style="font-size: 32px; line-height: 1; display: inline-block;">✉️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống CRM.</p>
@@ -371,7 +425,7 @@ function sendAdminConfirmationEmail(
         </div>
     ';
 
-    sendEmailNotification($adminEmail, $subject, 'Xác nhận Email', $content, '');
+    sendEmailNotification($adminEmail, $subject, '', $content, '');
 }
 
 /**
@@ -383,7 +437,7 @@ function sendAdminAddedToTicketEmail(
 ) {
     $subject = 'Bạn đã được thêm quyền xử lý Ticket';
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
@@ -414,11 +468,11 @@ function sendQuickMessageEmailToSale(
     $subject = 'Tin nhắn từ Quản trị viên';
     $fName = htmlspecialchars($consultantName ?: 'Tư vấn viên');
     $safeMsg = nl2br(htmlspecialchars($message));
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">💬</span>
+                <span style="font-size: 32px; line-height: 1; display: inline-block;">💬</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn có một tin nhắn mới từ Quản trị viên.</p>
@@ -431,7 +485,7 @@ function sendQuickMessageEmailToSale(
         </div>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, 'Tin Nhắn Nhanh', $content, '');
+    sendEmailNotification($consultantEmail, $subject, '', $content, '');
 }
 
 /**
@@ -446,7 +500,7 @@ function sendDailyReportEmailToAdmins(
 ) {
     $subject = 'Báo cáo Tổng kết Ngày - ' . date('d/m/Y');
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
-    
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">

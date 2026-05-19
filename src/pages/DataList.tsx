@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus, PenTool } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
@@ -122,6 +122,81 @@ export const DataList = () => {
     setIsReassigning(false);
   };
 
+  // Manual Add states
+  const [showManualAdd, setShowManualAdd] = useState(false);
+  const [manualData, setManualData] = useState({ name: '', phone: '', email: '', source: '', type: '', note: '' });
+  const [previewCons, setPreviewCons] = useState<any>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [overrideConsId, setOverrideConsId] = useState<string>('');
+  
+  const previewTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!showManualAdd) return;
+    
+    // Debounce preview
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    
+    if (manualData.phone.length < 8 && !manualData.email) {
+      setPreviewCons(null);
+      setOverrideConsId('');
+      return;
+    }
+    
+    previewTimerRef.current = setTimeout(async () => {
+      setIsPreviewing(true);
+      try {
+        const json = await fetchAPI('preview_routing', {
+          method: 'POST',
+          body: JSON.stringify({ data: manualData })
+        });
+        if (json.success) {
+          setPreviewCons(json);
+          // If we override, we might want to clear override if rules change, but let's leave it manual
+        }
+      } catch (e: any) {
+        // ignore network error on preview
+      }
+      setIsPreviewing(false);
+    }, 500);
+    
+  }, [manualData, showManualAdd]);
+
+  const handleManualSubmit = async () => {
+    if (!manualData.phone && !manualData.email) {
+      toast.error('Vui lòng nhập SĐT hoặc Email');
+      return;
+    }
+    setIsSubmittingManual(true);
+    try {
+      const payload = {
+        data: manualData,
+        override_round_id: previewCons?.round_id,
+        override_consultant_id: overrideConsId ? Number(overrideConsId) : previewCons?.consultant?.consultant_id
+      };
+      
+      const json = await fetchAPI('manual_insert_lead', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      if (json.success) {
+        toast.success(json.message || 'Thêm thành công!');
+        setShowManualAdd(false);
+        setManualData({ name: '', phone: '', email: '', source: '', type: '', note: '' });
+        setPreviewCons(null);
+        setOverrideConsId('');
+        fetchLeads();
+      } else {
+        toast.error(json.message || 'Thêm thất bại');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsSubmittingManual(false);
+  };
+
   const ITEMS_PER_PAGE = 50;
 
   const handleRefresh = () => {
@@ -175,7 +250,10 @@ export const DataList = () => {
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
+      case 'compensation': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>;
+      case 'error': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Bị Lỗi</span>;
       case 'pending': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>;
+      case 'reminder': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>;
       case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
       case 'rule_6_month': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>;
       default: return null;
@@ -193,6 +271,9 @@ export const DataList = () => {
           <p className="page-subtitle">Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn outline" onClick={() => setShowManualAdd(true)} style={{ padding: '0 1rem', background: '#f8fafc', borderColor: '#e2e8f0', color: '#334155' }}>
+            <Plus size={16} /> <span className="hidden sm:inline">Thêm Data</span>
+          </button>
           <button className="btn outline" onClick={handleRefresh} style={{ padding: '0 0.875rem' }}>
             <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} /> <span className="hidden sm:inline">Làm mới</span>
           </button>
@@ -237,10 +318,12 @@ export const DataList = () => {
             options={[
               { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
               { value: 'assigned', label: 'Đã chia' },
+              { value: 'compensation', label: 'Data Bù' },
               { value: 'pending', label: 'Chờ chia' },
+              { value: 'reminder', label: 'Nhắc lại' },
               { value: 'duplicate', label: 'Trùng lặp' },
               { value: 'rule_6_month', label: 'Quy định 6 tháng' },
-              { value: 'error', label: 'Lỗi / Không xác định' }
+              { value: 'error', label: 'Bị Lỗi' }
             ]}
             value={statusFilter}
             onChange={val => updateParams('status', val.toString())}
@@ -433,123 +516,223 @@ export const DataList = () => {
           setReassignConsId('');
         }}
         title="Chi tiết Khách hàng"
-        width="600px"
+        width="850px"
       >
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'white' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <Avatar name={selectedLead.name} size={48} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+              {/* Cột Trái: Chi Tiết */}
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
-                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
-              </div>
-            </div>
-
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Số điện thoại</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.phone}</div>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.email}</div>
-              </div>
-            </div>
-
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
-                <div>{getStatusBadge(selectedLead.status)}</div>
-              </div>
-            </div>
-
-            <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Ghi chú / Khác:</span>
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{selectedLead.note ? selectedLead.note : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}</span>
-                </div>
-              </div>
-            </div>
-
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>Thông tin Phân bổ</h3>
-            
-            {selectedLead.assigned_to_name !== '-' ? (
-              <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <Avatar name={selectedLead.assigned_to_name} size={24} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <Avatar name={selectedLead.name} size={48} />
                   <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
                   </div>
                 </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Số điện thoại</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.phone}</div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.email}</div>
+                  </div>
+                </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
+                    <div>{getStatusBadge(selectedLead.status)}</div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Ghi chú / Khác:</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{selectedLead.note ? selectedLead.note : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cột Phải: Phân bổ */}
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>Thông tin Phân bổ</h3>
                 
-                <div style={{ display: 'flex', gap: '2rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> Vòng chia</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
+                {selectedLead.assigned_to_name !== '-' ? (
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <Avatar name={selectedLead.assigned_to_name} size={24} />
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> Vòng chia</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Clock size={12} /> Thời gian nhận</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Clock size={12} /> Thời gian nhận</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
+                ) : (
+                  <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    Chưa có thông tin phân bổ cho Khách hàng này.
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                Chưa có thông tin phân bổ cho Khách hàng này.
-              </div>
-            )}
+                )}
 
-            {/* Reassignment section */}
-            <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên (Không ảnh hưởng vòng xoay)
-              </h4>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
-                Hệ thống sẽ cập nhật người tiếp nhận và tự động gửi email thông báo cho TVV mới mà không làm thay đổi hay gián đoạn thứ tự quay vòng chia số của Vòng.
-              </p>
-              <div className="responsive-flex-row" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <CustomSelect 
-                    options={[
-                      { value: '', label: '-- Chọn Tư vấn viên --' },
-                      ...consultants.map(c => ({
-                        value: c.id.toString(),
-                        label: c.name,
-                        avatar: ''
-                      }))
-                    ]}
-                    value={reassignConsId}
-                    onChange={val => setReassignConsId(val.toString())}
-                    showAvatars={true}
-                    searchable={true}
-                    width="100%"
-                    direction="up"
-                  />
+                {/* Reassignment section */}
+                <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên
+                  </h4>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
+                    Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <CustomSelect 
+                      options={[
+                        { value: '', label: '-- Chọn Tư vấn viên --' },
+                        ...consultants.map(c => ({
+                          value: c.id.toString(),
+                          label: c.name,
+                          avatar: ''
+                        }))
+                      ]}
+                      value={reassignConsId}
+                      onChange={val => setReassignConsId(val.toString())}
+                      showAvatars={true}
+                      searchable={true}
+                      width="100%"
+                      direction="up"
+                    />
+                    <button 
+                      className="btn primary" 
+                      onClick={handleReassign}
+                      disabled={isReassigning || !reassignConsId}
+                      style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
+                    >
+                      {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
+                      Xác nhận giao
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  className="btn primary responsive-btn-full" 
-                  onClick={handleReassign}
-                  disabled={isReassigning || !reassignConsId}
-                  style={{ height: 38, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700 }}
-                >
-                  {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
-                  Xác nhận giao
-                </button>
               </div>
             </div>
             
           </div>
         )}
+      </CustomModal>
+
+      {/* Manual Add Modal */}
+      <CustomModal
+        isOpen={showManualAdd}
+        onClose={() => setShowManualAdd(false)}
+        title="Thêm Data Thủ Công"
+        width="650px"
+      >
+        <div style={{ padding: '1.5rem', background: 'white' }}>
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Họ tên</label>
+              <input className="form-input" placeholder="VD: Nguyễn Văn A" value={manualData.name} onChange={e => setManualData({...manualData, name: e.target.value})} />
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Số điện thoại (*)</label>
+              <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({...manualData, phone: e.target.value})} />
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
+              <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({...manualData, email: e.target.value})} />
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Nguồn (Source)</label>
+              <input className="form-input" placeholder="VD: FB_Ads" value={manualData.source} onChange={e => setManualData({...manualData, source: e.target.value})} />
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Loại (Type)</label>
+              <input className="form-input" placeholder="VD: Mua nhà" value={manualData.type} onChange={e => setManualData({...manualData, type: e.target.value})} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Ghi chú</label>
+              <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder="Ghi chú thêm (Hỗ trợ nhiều dòng)..." value={manualData.note} onChange={e => setManualData({...manualData, note: e.target.value})} />
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, border: '1px solid #e2e8f0', marginTop: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview (Tự động dự báo)
+            </h4>
+            
+            {isPreviewing ? (
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>Đang kiểm tra...</div>
+            ) : !previewCons ? (
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>Nhập SĐT hoặc Email để xem trước vòng chia.</div>
+            ) : previewCons.round_id === null ? (
+              <div style={{ color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 600 }}>Không khớp với luật chia nào. (Data sẽ lưu trạng thái Chưa phân bổ)</div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.875rem' }}>
+                    Sẽ rơi vào Vòng: <strong style={{ color: 'var(--color-primary)' }}>{previewCons.consultant?.round_name || 'Vòng ' + previewCons.round_id}</strong>
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, background: 'white', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar name={previewCons.consultant?.name || '?'} size={32} />
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sale dự kiến nhận</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || 'Không có ai online'}</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ width: 180 }}>
+                    <CustomSelect 
+                      options={[
+                        { value: '', label: '-- Chọn để ép (Override) --' },
+                        ...consultants.map(c => ({
+                          value: c.id.toString(),
+                          label: c.name
+                        }))
+                      ]}
+                      value={overrideConsId}
+                      onChange={val => setOverrideConsId(val.toString())}
+                      width="100%"
+                      direction="up"
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
+                  * Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <button className="btn outline" onClick={() => setShowManualAdd(false)}>Hủy</button>
+          <button className="btn primary" onClick={handleManualSubmit} disabled={isSubmittingManual || (!manualData.phone && !manualData.email)} style={{ background: 'var(--color-primary)' }}>
+            {isSubmittingManual ? 'Đang lưu...' : 'Lưu & Giao Data'}
+          </button>
+        </div>
       </CustomModal>
 
       <style>{`

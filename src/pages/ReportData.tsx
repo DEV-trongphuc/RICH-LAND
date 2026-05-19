@@ -72,14 +72,6 @@ export const ReportData = () => {
       .finally(() => setLoadingCtx(false));
   }, []);
 
-  // Allow native scrolling for this full-page component
-  useEffect(() => {
-    const root = document.getElementById('root');
-    if (root) root.style.overflow = 'auto';
-    return () => {
-      if (root) root.style.overflow = 'hidden';
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

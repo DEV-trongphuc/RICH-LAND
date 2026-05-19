@@ -114,7 +114,7 @@ export const Settings = () => {
   }
 
   const providerOptions = [
-    { value: 'appscript', label: 'Google Apps Script (Miễn phí, Tùy biến cao)' },
+    { value: 'appscript', label: 'Google Apps Script (Miễn phí, nên dùng nếu dưới 500 mail/ngày)' },
     { value: 'ses', label: 'Amazon SES (Chuyên nghiệp, SMTP)' }
   ];
 
@@ -178,9 +178,9 @@ export const Settings = () => {
                 </h4>
                 
                 <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Mã Code Apps Script Tổng Hợp (Copy 1 lần duy nhất)</label>
+                  <label className="form-label">Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)</label>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                    Mã dưới đây <strong>bao gồm cả tính năng Gửi Email và Đẩy Data</strong>. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới. Để đẩy Data tự động, hãy cài thêm Trigger "OnEdit" cho hàm <code style={{fontFamily:'monospace'}}>sendToDataFlow</code>.
+                    Mã dưới đây dùng để kích hoạt tính năng <strong>Gửi Email</strong> qua Google. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.
                   </p>
                   
                   {/* Collapsible Script Block */}
@@ -199,12 +199,9 @@ export const Settings = () => {
                         fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5 
                       }}>
 {`// ==========================================
-// ĐOẠN MÃ TỔNG HỢP (COPY 1 LẦN DUY NHẤT)
+// ĐOẠN MÃ XỬ LÝ GỬI EMAIL (DEPLOY AS WEB APP)
 // ==========================================
 
-const CRM_WEBHOOK_URL = "https://open.domation.net/sale_data/webhook.php";
-
-// 1. NHẬN YÊU CẦU GỬI MAIL TỪ CRM (Deploy as Web App)
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -221,33 +218,6 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({"success": false}))
       .setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-// 2. GỬI DATA TỪ SHEET VỀ CRM (Cài đặt Trigger: OnEdit / OnChange)
-function sendToDataFlow(e) {
-  if (!e) return;
-  const sheet = e.source.getActiveSheet();
-  const row = e.range.getRow();
-  if (row === 1) return; // Bỏ qua dòng tiêu đề
-
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const rowData = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  const payload = {
-    _meta: { spreadsheet_id: e.source.getId(), sheet_name: sheet.getName() },
-    data: {}
-  };
-  
-  headers.forEach((header, i) => {
-    if (header) payload.data[header] = rowData[i];
-  });
-  
-  UrlFetchApp.fetch(CRM_WEBHOOK_URL, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  });
 }`}
                       </pre>
                     )}
