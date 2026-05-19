@@ -77,7 +77,7 @@ export const Login = () => {
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '100px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '1.5rem' }}>
               <span style={{ display: 'flex', width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>HỆ THỐNG ĐANG HOẠT ĐỘNG</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>HỆ THỐNG AUTO CHIA DATA LOGIC</span>
             </div>
             <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
               DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
@@ -88,6 +88,17 @@ export const Login = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'linear-gradient(to right, rgba(0,104,255,0.1), rgba(0,104,255,0.02))', padding: '16px', borderRadius: '16px', border: '1px solid rgba(0,104,255,0.3)', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,104,255,0.15)' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, background: '#0068ff', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderBottomLeftRadius: '12px', letterSpacing: '0.5px' }}>NỔI BẬT</div>
+              <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(0,104,255,0.6)', boxShadow: '0 4px 16px rgba(0,104,255,0.4)', marginTop: '2px' }}>
+                <img src="https://s120-ava-talk.zadn.vn/0/1/e/7/1/120/e932faecd85ad36444b8a9d41eb73bb7.jpg" alt="Zalo Bot" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div style={{ paddingTop: '2px' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '6px', color: '#60a5fa' }}>Tích Hợp Zalo Bot</h3>
+                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5 }}>Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.</p>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
               <div style={{ background: 'rgba(99,102,241,0.2)', padding: '10px', borderRadius: '12px', color: '#818cf8' }}>
                 <Share2 size={24} />
@@ -105,16 +116,6 @@ export const Login = () => {
               <div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Thông Báo Email Tức Thì</h3>
                 <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Gửi email cảnh báo data trùng lặp, data mới, và thông báo kết quả duyệt ticket ngay lập tức.</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '12px' }}>
-                <img src="https://stc-zmp.zdn.vn/zbot-platform-docs/images/logo.png" alt="Zalo Bot" style={{ width: 24, height: 24, objectFit: 'contain' }} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Tích Hợp Zalo Bot</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.</p>
               </div>
             </div>
 
