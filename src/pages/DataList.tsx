@@ -705,7 +705,7 @@ export const DataList = () => {
                     <Avatar name={previewCons.consultant?.name || '?'} size={32} />
                     <div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sale dự kiến nhận</div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || 'Không có ai online'}</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || 'Không có TVV hoạt động'}</div>
                     </div>
                   </div>
                   

@@ -435,3 +435,104 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
     $stmt->execute();
 }
 
+/**
+ * Simulate getNextConsultantInRound WITHOUT updating the database.
+ * Used for previewing who will receive the lead.
+ */
+function simulateNextConsultantInRound($conn, $roundId) {
+    // 1. Get round info without FOR UPDATE
+    $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1");
+    $stmt->bind_param("i", $roundId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    
+    if ($res->num_rows === 0) {
+        return null; // Round not found or inactive
+    }
+    
+    $roundInfo = $res->fetch_assoc();
+    $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
+    
+    // 2. Get active consultants with ALL rules
+    $cStmt = $conn->prepare("
+        SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+               rc.data_per_turn, rc.current_turn_remaining, c.name, c.zalo_chat_id, c.email
+        FROM round_consultants rc 
+        JOIN consultants c ON rc.consultant_id = c.id 
+        WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' 
+        ORDER BY c.id ASC
+    ");
+    $cStmt->bind_param("i", $roundId);
+    $cStmt->execute();
+    $cRes = $cStmt->get_result();
+    
+    if ($cRes->num_rows === 0) {
+        return null;
+    }
+    
+    $consultants = [];
+    $compensatedConsultant = null;
+    $midTurnConsultant = null;
+    
+    while ($row = $cRes->fetch_assoc()) {
+        $consultants[] = $row;
+        // Priority 1: Compensation
+        if (empty($compensatedConsultant) && intval($row['compensation_count']) > 0) {
+            $compensatedConsultant = $row;
+        }
+        // Priority 2: Mid-turn
+        if (empty($midTurnConsultant) && intval($row['current_turn_remaining']) > 0) {
+            $midTurnConsultant = $row;
+        }
+    }
+    
+    // === PRIORITY 1: COMPENSATION ===
+    if ($compensatedConsultant) {
+        return $compensatedConsultant;
+    }
+
+    // === PRIORITY 2: MID-TURN ===
+    if ($midTurnConsultant) {
+        return $midTurnConsultant;
+    }
+    
+    // === PRIORITY 3: ROUND-ROBIN ===
+    $nextIdx = 0;
+    if ($lastAssignedId) {
+        foreach ($consultants as $i => $c) {
+            if ($c['id'] == $lastAssignedId) {
+                $nextIdx = ($i + 1) % count($consultants);
+                break;
+            }
+        }
+    }
+    
+    $startIdx = $nextIdx;
+    $chosenConsultant = null;
+    
+    // Simulate skip tracking
+    $simulatedConsultants = $consultants;
+    
+    do {
+        $candidate = $simulatedConsultants[$nextIdx];
+        $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
+        $skipCount = (int)($candidate['skip_count'] ?? 0);
+        
+        if ($ratio == 1 || $skipCount >= $ratio - 1) {
+            $chosenConsultant = $candidate;
+            break;
+        } else {
+            // locally increment skip_count
+            $simulatedConsultants[$nextIdx]['skip_count'] = $skipCount + 1;
+            $nextIdx = ($nextIdx + 1) % count($simulatedConsultants);
+        }
+    } while ($nextIdx != $startIdx);
+    
+    // Fallback
+    if (!$chosenConsultant) {
+        $chosenConsultant = $consultants[$startIdx];
+    }
+    
+    return $chosenConsultant;
+}
+

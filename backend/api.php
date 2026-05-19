@@ -2031,65 +2031,43 @@ switch ($action) {
         $type = $data['type'] ?? '';
         $note = $data['note'] ?? '';
         
-        $assignedRoundId = evaluateRules($conn, null, $source, $type, $note, $phone, $email, $name);
+        $ruleResult = evaluateRules($conn, $data, $source, $type);
+        $assignedRoundId = null;
+
+        if (is_array($ruleResult)) {
+            $assignedRoundId = $ruleResult['target_round_id'];
+        } else {
+            $assignedRoundId = $ruleResult;
+        }
+
         if (!$assignedRoundId) {
             echo json_encode(['success' => true, 'round_id' => null, 'consultant' => null, 'message' => 'Không khớp luật nào']);
             break;
         }
         
-        // Find expected consultant without doing any updates
+        // Find expected consultant using the new simulation logic
         $consultant = null;
+        $simulated = simulateNextConsultantInRound($conn, $assignedRoundId);
         
-        $stmtRound = $conn->prepare("SELECT last_assigned_consultant_id, round_name FROM distribution_rounds WHERE id = ? AND is_active = 1");
-        $stmtRound->bind_param("i", $assignedRoundId);
-        $stmtRound->execute();
-        $resRound = $stmtRound->get_result();
-        
-        if ($resRound->num_rows > 0) {
-            $roundData = $resRound->fetch_assoc();
-            $lastAssignedId = $roundData['last_assigned_consultant_id'];
-            $roundName = $roundData['round_name'];
+        if ($simulated) {
+            // Re-format to match frontend expectations
+            $consultant = [
+                'consultant_id' => $simulated['id'],
+                'name' => $simulated['name'],
+                'receive_ratio' => $simulated['receive_ratio'],
+                'data_per_turn' => $simulated['data_per_turn'],
+                'current_turn_remaining' => $simulated['current_turn_remaining']
+            ];
             
-            $stmtC = $conn->prepare("SELECT rc.consultant_id, c.name, rc.receive_ratio, rc.data_per_turn, rc.current_turn_remaining 
-                                     FROM round_consultants rc 
-                                     JOIN consultants c ON rc.consultant_id = c.id 
-                                     WHERE rc.round_id = ? AND c.is_active = 1 AND c.status = 'online' 
-                                     ORDER BY rc.consultant_id ASC");
-            $stmtC->bind_param("i", $assignedRoundId);
-            $stmtC->execute();
-            $resC = $stmtC->get_result();
-            
-            $activeConsultants = [];
-            while ($row = $resC->fetch_assoc()) {
-                $activeConsultants[] = $row;
-            }
-            
-            if (count($activeConsultants) > 0) {
-                // Determine next:
-                // If last_assigned has remaining turns, they get it.
-                // Else next person.
-                
-                $nextIndex = 0;
-                $lastIndex = -1;
-                foreach ($activeConsultants as $idx => $c) {
-                    if ($c['consultant_id'] == $lastAssignedId) {
-                        $lastIndex = $idx;
-                        break;
-                    }
-                }
-                
-                if ($lastIndex !== -1) {
-                    $lastC = $activeConsultants[$lastIndex];
-                    if ((int)$lastC['current_turn_remaining'] > 0) {
-                        $consultant = $lastC;
-                    } else {
-                        $nextIndex = ($lastIndex + 1) % count($activeConsultants);
-                        $consultant = $activeConsultants[$nextIndex];
-                    }
-                } else {
-                    $consultant = $activeConsultants[0];
-                }
-                $consultant['round_name'] = $roundName;
+            // Add round name
+            $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+            $stmtR->bind_param("i", $assignedRoundId);
+            $stmtR->execute();
+            $rRes = $stmtR->get_result();
+            if ($rRes->num_rows > 0) {
+                $consultant['round_name'] = $rRes->fetch_assoc()['round_name'];
+            } else {
+                $consultant['round_name'] = 'Không rõ';
             }
         }
         
@@ -2176,8 +2154,34 @@ switch ($action) {
                 $conn->commit();
                 $conn->query("SELECT RELEASE_LOCK('$lockKey')");
                 
-                // Fire notification via logic helper
-                notifyConsultant($conn, $consultantId, $phone, $email, $name, $source, $type, $note, $roundName);
+                // Fire notification using Mailer and Zalo
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+                
+                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                $stmtC->bind_param("i", $consultantId);
+                $stmtC->execute();
+                $cRes = $stmtC->get_result();
+                if ($cRes->num_rows > 0) {
+                    $c = $cRes->fetch_assoc();
+                    $ccEmails = '';
+                    $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
+                    $stmtQ->bind_param("i", $assignedRoundId);
+                    $stmtQ->execute();
+                    $qRound = $stmtQ->get_result();
+                    if ($qRound && $qRound->num_rows > 0) {
+                        $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                    }
+
+                    $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+                    
+                    sendLeadAssignedEmailToSale(
+                        $c['email'], $c['name'], $fName, $phone ?: '', $note ?: '', $source ?: '', $ccEmails, $roundName, $leadId, $consultantId, $assignedRoundId
+                    );
+                    sendLeadAssignedZaloMessageToSale(
+                        $consultantId, $c['name'], $fName, $phone ?: '', $note ?: '', $source ?: '', $roundName, $leadId, $assignedRoundId
+                    );
+                }
                 
                 echo json_encode(['success' => true, 'message' => 'Data đã được giao thành công.']);
             } else {
@@ -2185,7 +2189,7 @@ switch ($action) {
                 $leadId = insertLead($conn, $phone, $email, $name, $source, $type, $note, 'Chưa phân bổ', null, null, null);
                 $conn->commit();
                 $conn->query("SELECT RELEASE_LOCK('$lockKey')");
-                echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV online nhận.']);
+                echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.']);
             }
         } catch (Exception $e) {
             $conn->rollback();
