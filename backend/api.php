@@ -1180,7 +1180,7 @@ switch ($action) {
                               <p>Chào $cName,</p>
                               <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công.</p>
                               <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
-                sendEmail($consultant['email'], $cName, $emailSubj, $emailBody);
+                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
             }
             
             echo json_encode(['success' => true]);
@@ -1264,7 +1264,7 @@ switch ($action) {
                               <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên từ chối.</p>
                               <p><strong>Lý do từ chối:</strong> $reject_reason</p>
                               <p>Bạn sẽ không được nhận Data đền bù cho trường hợp này.</p>";
-                sendEmail($consultant['email'], $cName, $emailSubj, $emailBody);
+                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
             }
             
             echo json_encode(['success' => true]);

@@ -265,7 +265,13 @@ foreach ($connections as $connItem) {
                 $cRes = $cStmt->get_result();
                 if ($cRes->num_rows > 0) {
                     $c = $cRes->fetch_assoc();
+                    
+                    // Gửi Email
                     sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+                    
+                    // Gửi Zalo Message (Đồng bộ Đa Kênh)
+                    require_once __DIR__ . '/zalo_bot.php';
+                    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
                 }
                 $syncedCount++;
             }

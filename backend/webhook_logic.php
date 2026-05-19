@@ -316,6 +316,9 @@ function getNextConsultantInRound($conn, $roundId) {
 
 function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note) {
     $phone = normalizePhone($phone);
+    if ($phone === '') $phone = null;
+    $email = trim($email) === '' ? null : trim($email);
+    
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) 
                             VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
                             ON DUPLICATE KEY UPDATE 
