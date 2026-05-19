@@ -1,6 +1,7 @@
 import { Menu, Search, Command } from 'lucide-react';
 
 export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
+  const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   return (
     <header style={{
       height: 66,
@@ -54,6 +55,22 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+        {isDemo && (
+          <div className="responsive-hide-mobile" style={{
+            background: 'linear-gradient(to right, #f59e0b, #d97706)',
+            color: 'white',
+            padding: '4px 10px',
+            borderRadius: 20,
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            boxShadow: '0 2px 8px rgba(217, 119, 6, 0.2)'
+          }}>
+            DEMO MODE
+          </div>
+        )}
         <div style={{
           display: 'flex',
           alignItems: 'center',

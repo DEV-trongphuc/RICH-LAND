@@ -4,6 +4,13 @@ require_once 'zalo_bot.php';
 
 // Hàm chạy báo cáo hàng ngày
 function runDailyReportCron($conn) {
+    // 0. Auto-resume consultants whose leave has ended
+    $conn->query("
+        UPDATE consultants 
+        SET status = 'active', leave_start = NULL, leave_end = NULL 
+        WHERE status = 'leave' AND leave_end IS NOT NULL AND leave_end < CURDATE()
+    ");
+
     $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token')");
     $settings = [];
     if ($settingRes) {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 type User = {
   username: string;
@@ -25,19 +25,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('domation_token');
   });
 
-  const login = (newToken: string, newUser: User) => {
+  const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('domation_token', newToken);
     localStorage.setItem('domation_user', JSON.stringify(newUser));
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('domation_token');
     localStorage.removeItem('domation_user');
-  };
+    localStorage.removeItem('DOMATION_DEMO_MODE');
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout }}>

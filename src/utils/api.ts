@@ -1,9 +1,18 @@
 const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
+import { processMockRequest } from './mockEngine';
 
 // BUG-11 fix: Guard against multiple concurrent 401 redirects
 let _isRedirectingToLogin = false;
 
 export async function fetchAPI(action: string, options: RequestInit = {}, retries = 2) {
+  if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    let payload;
+    if (options.body) {
+      try { payload = JSON.parse(options.body as string); } catch (e) {}
+    }
+    return processMockRequest(action, payload);
+  }
+
   const token = localStorage.getItem('domation_token');
   
   const headers: Record<string, string> = {
@@ -79,6 +88,14 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
  * KHÔNG gửi token, KHÔNG redirect về /login khi lỗi
  */
 export async function fetchPublicAPI(action: string, options: RequestInit = {}) {
+  if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    let payload;
+    if (options.body) {
+      try { payload = JSON.parse(options.body as string); } catch (e) {}
+    }
+    return processMockRequest(action, payload);
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),

@@ -90,10 +90,23 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
                   parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
                 }
                 
-                // Convert to array of arrays if legacy format
-                const branches = (Array.isArray(parsed) && parsed.length > 0 && !Array.isArray(parsed[0])) ? [parsed] : parsed;
+                // Normalize to new structure: { conditions: [...] }
+                let normalizedBranches = [];
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  if (parsed[0].col) {
+                    normalizedBranches = [{ conditions: parsed }];
+                  } else if (Array.isArray(parsed[0])) {
+                    normalizedBranches = parsed.map(b => ({ conditions: b }));
+                  } else if (parsed[0].conditions) {
+                    normalizedBranches = parsed;
+                  } else {
+                    normalizedBranches = [{ conditions: [] }];
+                  }
+                } else {
+                  normalizedBranches = [{ conditions: [] }];
+                }
 
-                return branches.map((branch: any[], bIndex: number) => (
+                return normalizedBranches.map((branch: any, bIndex: number) => (
                   <div key={bIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {bIndex > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -103,7 +116,7 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
                       </div>
                     )}
                     <div style={{ background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 8 }}>
-                      {branch.map((c: any, i: number) => (
+                      {(branch.conditions || []).map((c: any, i: number) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: i > 0 ? '0.5rem' : 0 }}>
                           {i > 0 && (
                             <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-text-muted)', color: 'white', padding: '2px 6px', borderRadius: 4 }}>

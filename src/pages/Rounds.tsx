@@ -758,8 +758,8 @@ export const Rounds = () => {
                             <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} color="var(--color-text-muted)" /> {r.lead_name} - <span style={{ color: 'var(--color-primary)' }}>{r.lead_phone}</span></span>
                             <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> Sale: {r.consultant_name}</span>
                           </div>
-                          <div style={{ color: 'var(--color-danger)', fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
-                            🚨 Lý do: {r.reason}
+                          <div style={{ color: 'var(--color-danger)', fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                            Lý do: {r.reason}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
                             Báo cáo lúc: {new Date(r.created_at).toLocaleString('vi-VN')}
@@ -768,10 +768,10 @@ export const Rounds = () => {
                         
                         {r.status === 'pending' ? (
                           <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <button onClick={() => handleReportAction(r.id, 'approve')} disabled={isActioning === r.id} className="btn primary sm" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' }}>
+                            <button onClick={() => handleReportAction(r.id, 'approve')} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
                               {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
                             </button>
-                            <button onClick={() => handleReportAction(r.id, 'reject')} disabled={isActioning === r.id} className="btn outline sm">Từ chối</button>
+                            <button onClick={() => handleReportAction(r.id, 'reject')} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>Từ chối</button>
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? '#dcfce7' : '#f1f5f9', padding: '6px 12px', borderRadius: 20 }}>

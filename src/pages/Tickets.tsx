@@ -323,7 +323,7 @@ export const Tickets = () => {
               </thead>
               <tbody>
                 {filteredReports.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: r.status === 'pending' ? 'rgba(239, 68, 68, 0.02)' : 'transparent' }}>
+                  <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent' }}>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Avatar name={r.lead_name} size={36} color="#7c3aed" />
@@ -359,7 +359,7 @@ export const Tickets = () => {
                           background: r.status === 'pending' ? '#fef3c7' : r.status === 'approved' ? '#d1fae5' : '#f3f4f6',
                           color: r.status === 'pending' ? '#b45309' : r.status === 'approved' ? '#065f46' : '#6b7280'
                         }}>
-                          {r.status === 'pending' ? '⏳ Chờ duyệt' : r.status === 'approved' ? '✅ Đã duyệt' : '❌ Từ chối'}
+                          {r.status === 'pending' ? 'Chờ duyệt' : r.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
                         </div>
                         {r.status === 'rejected' && r.reject_reason && (
                           <div style={{ fontSize: '0.75rem', color: '#dc2626', background: '#fee2e2', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
@@ -376,8 +376,10 @@ export const Tickets = () => {
                               <Bell size={14} />
                             </button>
                           )}
-                          <button onClick={() => openRejectModal(r.id)} disabled={isActioning === r.id} className="btn ghost sm" style={{ color: 'var(--color-text-muted)' }}>Từ chối</button>
-                          <button onClick={() => handleReportApprove(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}>
+                          <button onClick={() => openRejectModal(r.id)} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                            Từ chối
+                          </button>
+                          <button onClick={() => handleReportApprove(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
                             {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
                           </button>
                         </div>

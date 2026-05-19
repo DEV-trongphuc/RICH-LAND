@@ -6,6 +6,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
+
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'var(--color-bg)', overflow: 'hidden' }}>
       <Sidebar 
@@ -19,6 +21,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           if (window.innerWidth <= 1024) setIsMobileSidebarOpen(true);
           else setIsSidebarCollapsed(!isSidebarCollapsed);
         }} />
+
         <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: '2rem 3rem', position: 'relative', zIndex: 10 }}>
           <div style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
             {children}

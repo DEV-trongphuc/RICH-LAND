@@ -17,6 +17,7 @@ const DataList = lazy(() => import('./pages/DataList').then(module => ({ default
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Accounts = lazy(() => import('./pages/Accounts').then(module => ({ default: module.Accounts })));
 const ReportData = lazy(() => import('./pages/ReportData').then(module => ({ default: module.ReportData })));
+const DemoEntry = lazy(() => import('./pages/DemoEntry').then(module => ({ default: module.DemoEntry })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -50,6 +51,7 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/report-data" element={<ReportData />} />
+              <Route path="/demo" element={<DemoEntry />} />
               
               {/* Admin only routes */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
