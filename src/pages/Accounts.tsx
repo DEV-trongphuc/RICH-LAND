@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -26,6 +27,11 @@ export const Accounts = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [checkingDelete, setCheckingDelete] = useState(false);
+  const [usageInfo, setUsageInfo] = useState<any>(null);
+  const [replacementId, setReplacementId] = useState<number | null>(null);
+  const [showReplacementModal, setShowReplacementModal] = useState(false);
 
   const fetchAccounts = async () => {
     try {
@@ -87,6 +93,28 @@ export const Accounts = () => {
     setIsSaving(false);
   };
 
+  const triggerDeleteFlow = async (id: number) => {
+    setDeleteId(id);
+    setCheckingDelete(true);
+    try {
+      const json = await fetchAPI(`check_delete_account&id=${id}`);
+      if (json.success) {
+        if (json.in_use) {
+          setUsageInfo(json);
+          setReplacementId(json.other_admins.length > 0 ? json.other_admins[0].id : null);
+          setShowReplacementModal(true);
+        } else {
+          setConfirmOpen(true);
+        }
+      } else {
+        toast.error(json.message || 'Lỗi khi kiểm tra tài khoản');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi kiểm tra: ' + e.message);
+    }
+    setCheckingDelete(false);
+  };
+
   const handleDelete = async () => {
     if (!deleteId || isDeleting) return;
     setIsDeleting(true);
@@ -103,6 +131,24 @@ export const Accounts = () => {
     }
     setIsDeleting(false);
     setConfirmOpen(false);
+  };
+
+  const handleDeleteWithReplacement = async () => {
+    if (!deleteId || !replacementId || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const json = await fetchAPI(`delete_account&id=${deleteId}&replacement_id=${replacementId}`);
+      if (json.success) {
+        toast.success('Đã chuyển giao cấu hình và xóa tài khoản thành công!');
+        fetchAccounts();
+        setShowReplacementModal(false);
+      } else {
+        toast.error(json.message || 'Lỗi khi xóa');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsDeleting(false);
   };
 
   const handleResendConfirm = async (accId: number) => {
@@ -199,7 +245,13 @@ export const Accounts = () => {
                           <Edit3 size={16} />
                         </button>
                         {acc.id !== 1 && (
-                          <button onClick={() => { setDeleteId(acc.id); setConfirmOpen(true); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-danger)' }} title="Xóa">
+                          <button
+                            onClick={() => triggerDeleteFlow(acc.id)}
+                            disabled={checkingDelete && deleteId === acc.id}
+                            className="btn ghost"
+                            style={{ padding: 8, color: 'var(--color-danger)' }}
+                            title="Xóa"
+                          >
                             <Trash2 size={16} />
                           </button>
                         )}
@@ -322,6 +374,82 @@ export const Accounts = () => {
         message="Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này không thể hoàn tác và user sẽ không thể đăng nhập được nữa." 
         confirmText="Xóa vĩnh viễn" 
       />
+
+      {showReplacementModal && typeof document !== 'undefined' && createPortal(
+        <div className="overlay-backdrop" onClick={() => setShowReplacementModal(false)}>
+          <div
+            className="card"
+            style={{ width: '100%', maxWidth: 500, animation: 'slideUp 0.2s ease-out', display: 'flex', flexDirection: 'column' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-danger)' }}>
+                <Shield size={20} /> Yêu cầu Chuyển giao Vai trò
+              </h3>
+              <button type="button" onClick={() => setShowReplacementModal(false)} style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                Tài khoản này hiện đang đóng vai trò quan trọng trong hệ thống:
+              </p>
+              
+              <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                {usageInfo?.usage.fallback && (
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-danger)' }} />
+                    Đang nhận Lead mặc định (Fallback Admin)
+                  </li>
+                )}
+                {usageInfo?.usage.ticket && (
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-danger)' }} />
+                    Đang đăng ký nhận thông báo Tickets
+                  </li>
+                )}
+              </ul>
+
+              {usageInfo?.other_admins && usageInfo.other_admins.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Chọn Admin thay thế để chuyển giao cấu hình:</label>
+                  <CustomSelect
+                    options={usageInfo.other_admins.map((a: any) => ({
+                      value: a.id,
+                      label: `${a.name} (${a.email || a.username})`
+                    }))}
+                    value={replacementId || ''}
+                    onChange={val => setReplacementId(Number(val))}
+                    width="100%"
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    Hệ thống sẽ tự động cập nhật cấu hình Fallback / Ticket sang Admin được chọn và thực hiện xóa tài khoản cũ.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, border: '1px dashed rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', fontSize: '0.8125rem', lineHeight: '1.4' }}>
+                  Không tìm thấy Admin khác trong hệ thống để thay thế. Vui lòng tạo một tài khoản Admin mới trước khi xóa tài khoản này.
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
+              <button type="button" className="btn outline" style={{ flex: 1 }} onClick={() => setShowReplacementModal(false)}>Hủy bỏ</button>
+              <button
+                type="button"
+                className="btn primary"
+                style={{ flex: 1, background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                disabled={isDeleting || !replacementId}
+                onClick={handleDeleteWithReplacement}
+              >
+                {isDeleting ? 'Đang xóa...' : 'Chuyển giao & Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

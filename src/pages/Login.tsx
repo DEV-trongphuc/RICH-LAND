@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, Lock, Mail, Share2, Bell, BarChart3 } from 'lucide-react';
@@ -10,6 +10,51 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  const handleGoogleLoginResponse = async (response: any) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('https://open.domation.net/sale_data/api.php?action=login_google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const json = await res.json();
+      if (json.success) {
+        login(json.token, json.user);
+        navigate('/');
+      } else {
+        setError(json.message || 'Đăng nhập Google thất bại');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ xác thực Google. Vui lòng thử lại.');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let intervalId: any;
+    
+    const initGoogle = () => {
+      if ((window as any).google?.accounts?.id) {
+        (window as any).google.accounts.id.initialize({
+          client_id: '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com',
+          callback: handleGoogleLoginResponse
+        });
+        (window as any).google.accounts.id.renderButton(
+          document.getElementById('google-signin-btn'),
+          { theme: 'outline', size: 'large', width: 320, text: 'signin_with', shape: 'rectangular' }
+        );
+        clearInterval(intervalId);
+      }
+    };
+
+    initGoogle();
+    intervalId = setInterval(initGoogle, 500);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +255,16 @@ export const Login = () => {
             {loading ? 'Đang xác thực...' : <><LogIn size={18} /> Đăng nhập</>}
           </button>
         </form>
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          <span style={{ padding: '0 0.75rem', fontWeight: 500 }}>Hoặc đăng nhập bằng</span>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div id="google-signin-btn" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}></div>
+        </div>
       </div>
       </div>
       <style>{`

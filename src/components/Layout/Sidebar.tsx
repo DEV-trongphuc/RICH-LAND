@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { fetchAPI } from '../../utils/api';
@@ -80,10 +80,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       >
       {/* Logo Area */}
       <div style={{
-        height: 72,
+        height: 92,
         display: 'flex',
         alignItems: 'center',
-        padding: isCollapsed ? '0' : '0 1.25rem',
+        padding: isCollapsed ? '20px 0 0 0' : '20px 1.25rem 0 1.25rem',
         gap: '0.875rem',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         flexShrink: 0,
@@ -92,10 +92,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       }}>
         {/* Logo Icon */}
         <div style={{
-          width: 36, height: 36, borderRadius: 10,
+          width: 42, height: 42, borderRadius: '50%',
           background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', overflow: 'hidden'
+          flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.2)', overflow: 'hidden',
+          border: '2px solid rgba(255,255,255,0.9)'
         }}>
           <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -103,7 +104,65 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         </div>
 
         {!isCollapsed && (
-          <span style={{ fontSize: '1.1rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', flex: 1, letterSpacing: '-0.02em' }}>DOMATION</span>
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+            <span style={{ fontSize: '1.45rem', fontWeight: 900, whiteSpace: 'nowrap', color: 'white', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+              DOMATION
+            </span>
+            <span style={{
+              fontSize: '0.625rem',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              background: 'linear-gradient(135deg, #d8b4fe 0%, #c084fc 50%, #a855f7 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginTop: '4px',
+              whiteSpace: 'nowrap'
+            }}>
+              / DATA AUTOMATION
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Action Button */}
+      <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {isCollapsed ? (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+            style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            title="Thêm Data Nhanh"
+          >
+            <Plus size={20} />
+          </button>
+        ) : (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+            style={{
+              width: '100%', height: 44, borderRadius: '12px',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.5)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.4)';
+            }}
+          >
+            <Plus size={18} /> Thêm Data Nhanh
+          </button>
         )}
       </div>
 

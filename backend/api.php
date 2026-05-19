@@ -91,7 +91,7 @@ $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login and test_email
 // Public endpoints (no auth required)
-$publicActions = ['login', 'test_email', 'submit_report', 'get_report_context'];
+$publicActions = ['login', 'login_google', 'test_email', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -113,6 +113,7 @@ if (!in_array($action, $publicActions)) {
         'add_account',
         'edit_account',
         'delete_account',
+        'check_delete_account',
         'save_settings',
         'get_settings',
         'add_consultant',
@@ -193,6 +194,90 @@ switch ($action) {
             }
         }
         echo json_encode(['success' => false, 'message' => 'Email hoặc mật khẩu không chính xác']);
+        break;
+
+    case 'login_google':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $credential = $input['credential'] ?? '';
+
+        if (empty($credential)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin xác thực Google']);
+            break;
+        }
+
+        // Verify ID token via Google Tokeninfo API
+        $url = "https://oauth2.googleapis.com/tokeninfo?id_token=" . urlencode($credential);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            echo json_encode(['success' => false, 'message' => 'Token xác thực Google không hợp lệ hoặc đã hết hạn']);
+            break;
+        }
+
+        $googleData = json_decode($response, true);
+        $googleEmail = trim($googleData['email'] ?? '');
+        $googleAud = $googleData['aud'] ?? '';
+
+        $expectedClientId = '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com';
+        if ($googleAud !== $expectedClientId) {
+            echo json_encode(['success' => false, 'message' => 'Client ID không hợp lệ']);
+            break;
+        }
+
+        if (empty($googleEmail)) {
+            echo json_encode(['success' => false, 'message' => 'Không thể lấy email từ tài khoản Google']);
+            break;
+        }
+
+        // Find user by email
+        $stmt = $conn->prepare("SELECT * FROM accounts WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $googleEmail);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        if ($res->num_rows > 0) {
+            $user = $res->fetch_assoc();
+            
+            // Auto confirm email if not already
+            if ((int)$user['is_confirmed'] === 0) {
+                $stmtConfirm = $conn->prepare("UPDATE accounts SET is_confirmed = 1 WHERE id = ?");
+                $stmtConfirm->bind_param("i", $user['id']);
+                $stmtConfirm->execute();
+            }
+
+            $payload = [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'email' => $user['email'] ?? '',
+                'role' => $user['role'],
+                'exp' => time() + 86400
+            ];
+            $token = create_jwt($payload, $JWT_SECRET);
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'username' => $user['username'],
+                    'email' => $user['email'] ?? '',
+                    'role' => $user['role'],
+                    'name' => $user['name']
+                ]
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => "Email '$googleEmail' chưa được đăng ký trong hệ thống. Vui lòng liên hệ Admin."
+            ]);
+        }
         break;
     case 'get_stats':
         $todayStr = date('Y-m-d');
@@ -1685,16 +1770,145 @@ switch ($action) {
         }
         break;
 
+    case 'check_delete_account':
+        $id = (int)($_GET['id'] ?? 0);
+        
+        // 1. Check fallback_type and fallback_admin_id
+        $isFallback = false;
+        $stmtFb = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
+        $stmtFb->execute();
+        $resFb = $stmtFb->get_result();
+        $fbType = $resFb->fetch_assoc()['setting_value'] ?? 'round';
+        
+        if ($fbType === 'admin') {
+            $stmtFbAdmin = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_admin_id' LIMIT 1");
+            $stmtFbAdmin->execute();
+            $resFbAdmin = $stmtFbAdmin->get_result();
+            $fbAdminId = (int)($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
+            if ($fbAdminId === $id) {
+                $isFallback = true;
+            }
+        }
+        
+        // 2. Check ticket_notify_settings
+        $isTicket = false;
+        $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
+        $stmtTick->bind_param("i", $id);
+        $stmtTick->execute();
+        $resTick = $stmtTick->get_result();
+        if ($resTick && $resTick->fetch_assoc()['cnt'] > 0) {
+            $isTicket = true;
+        }
+        
+        // 3. Fetch other admins (role = 'admin' and id != $id)
+        $otherAdmins = [];
+        $stmtOther = $conn->prepare("SELECT id, name, username, email FROM accounts WHERE role = 'admin' AND id != ?");
+        $stmtOther->bind_param("i", $id);
+        $stmtOther->execute();
+        $resOther = $stmtOther->get_result();
+        if ($resOther) {
+            while ($row = $resOther->fetch_assoc()) {
+                $otherAdmins[] = $row;
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'in_use' => ($isFallback || $isTicket),
+            'usage' => [
+                'fallback' => $isFallback,
+                'ticket' => $isTicket
+            ],
+            'other_admins' => $otherAdmins
+        ]);
+        break;
+
     case 'delete_account':
         $id = (int) ($_GET['id'] ?? 0);
         if ($id === 1) { // Prevent deleting default super admin
             echo json_encode(['success' => false, 'message' => 'Không thể xóa tài khoản Super Admin']);
             break;
         }
-        $stmt = $conn->prepare("DELETE FROM accounts WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+
+        $replacementId = (int) ($_GET['replacement_id'] ?? $_POST['replacement_id'] ?? 0);
+
+        // Check if in use
+        $isFallback = false;
+        $stmtFb = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
+        $stmtFb->execute();
+        $resFb = $stmtFb->get_result();
+        $fbType = $resFb->fetch_assoc()['setting_value'] ?? 'round';
+        
+        if ($fbType === 'admin') {
+            $stmtFbAdmin = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_admin_id' LIMIT 1");
+            $stmtFbAdmin->execute();
+            $resFbAdmin = $stmtFbAdmin->get_result();
+            $fbAdminId = (int)($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
+            if ($fbAdminId === $id) {
+                $isFallback = true;
+            }
+        }
+        
+        $isTicket = false;
+        $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
+        $stmtTick->bind_param("i", $id);
+        $stmtTick->execute();
+        $resTick = $stmtTick->get_result();
+        if ($resTick && $resTick->fetch_assoc()['cnt'] > 0) {
+            $isTicket = true;
+        }
+
+        if (($isFallback || $isTicket) && $replacementId <= 0) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Tài khoản đang nhận fallback hoặc ticket, yêu cầu chọn admin thay thế trước khi xóa.'
+            ]);
+            break;
+        }
+
+        $conn->begin_transaction();
+        try {
+            if ($replacementId > 0) {
+                // Verify replacement is admin
+                $stmtVerify = $conn->prepare("SELECT id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                $stmtVerify->bind_param("i", $replacementId);
+                $stmtVerify->execute();
+                if ($stmtVerify->get_result()->num_rows === 0) {
+                    throw new Exception("Admin thay thế không hợp lệ");
+                }
+
+                // Transfer fallback
+                if ($isFallback) {
+                    $stmtUpdFb = $conn->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'fallback_admin_id'");
+                    $stmtUpdFb->bind_param("s", $replacementId);
+                    $stmtUpdFb->execute();
+                }
+
+                // Transfer ticket notify settings
+                if ($isTicket) {
+                    // Delete old admin from ticket notify
+                    $stmtDelT = $conn->prepare("DELETE FROM ticket_notify_settings WHERE account_id = ?");
+                    $stmtDelT->bind_param("i", $id);
+                    $stmtDelT->execute();
+
+                    // Insert replacement if not already in there
+                    $stmtInsT = $conn->prepare("INSERT IGNORE INTO ticket_notify_settings (account_id) VALUES (?)");
+                    $stmtInsT->bind_param("i", $replacementId);
+                    $stmtInsT->execute();
+                }
+            }
+
+            // Finally, delete the account
+            $stmtDelAcc = $conn->prepare("DELETE FROM accounts WHERE id = ?");
+            $stmtDelAcc->bind_param("i", $id);
+            $stmtDelAcc->execute();
+
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
+        }
         break;
 
     case 'resend_confirm_email':
