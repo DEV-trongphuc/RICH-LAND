@@ -3,6 +3,7 @@ import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshC
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -129,6 +130,7 @@ export const DataList = () => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [overrideConsId, setOverrideConsId] = useState<string>('');
+  const [compensateSkipped, setCompensateSkipped] = useState(true);
   
   const previewTimerRef = useRef<any>(null);
 
@@ -173,7 +175,9 @@ export const DataList = () => {
       const payload = {
         data: manualData,
         override_round_id: previewCons?.round_id,
-        override_consultant_id: overrideConsId ? Number(overrideConsId) : previewCons?.consultant?.consultant_id
+        override_consultant_id: overrideConsId ? Number(overrideConsId) : null,
+        compensate_skipped: compensateSkipped,
+        skipped_consultant_id: previewCons?.consultant?.consultant_id
       };
       
       const json = await fetchAPI('manual_insert_lead', {
@@ -187,6 +191,7 @@ export const DataList = () => {
         setManualData({ name: '', phone: '', email: '', source: '', type: '', note: '' });
         setPreviewCons(null);
         setOverrideConsId('');
+        setCompensateSkipped(true);
         fetchLeads();
       } else {
         toast.error(json.message || 'Thêm thất bại');
@@ -723,6 +728,20 @@ export const DataList = () => {
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
                   * Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.
                 </div>
+                
+                {overrideConsId && overrideConsId !== String(previewCons.consultant?.consultant_id) && previewCons.consultant && (
+                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <ToggleSwitch 
+                      checked={compensateSkipped}
+                      onChange={setCompensateSkipped}
+                      labelActive="Bật Bù Data"
+                      labelInactive="Không"
+                    />
+                    <div style={{ fontSize: '0.8125rem', color: '#854d0e', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+                      Trả 1 Data lại cho <strong style={{ color: '#713f12', margin: '0 4px' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

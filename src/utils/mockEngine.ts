@@ -78,6 +78,16 @@ export const processMockRequest = async (action: string, payload?: any): Promise
     case 'reject_report':
       return { success: true, message: 'Đã từ chối (Demo)' };
 
+    case 'preview_routing':
+      return { 
+        success: true, 
+        round_id: 1, 
+        consultant: { consultant_id: 1, name: 'Hải Đăng', round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads' } 
+      };
+
+    case 'manual_insert_lead':
+      return { success: true, message: 'Đã thêm thành công (Demo)' };
+
     // Default catch-all for POST actions
     case 'add_consultant':
     case 'edit_consultant':

@@ -2103,6 +2103,8 @@ switch ($action) {
         $data = $input['data'] ?? [];
         $override_round_id = $input['override_round_id'] ?? null;
         $override_consultant_id = $input['override_consultant_id'] ?? null;
+        $compensate_skipped = filter_var($input['compensate_skipped'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $skipped_consultant_id = $input['skipped_consultant_id'] ?? null;
         
         $phone = normalizePhone($data['phone'] ?? '');
         $email = trim($data['email'] ?? '');
@@ -2143,6 +2145,13 @@ switch ($action) {
                 if ($assignResult) {
                     $consultantId = $assignResult['id'];
                     $isComp = $assignResult['is_compensation'];
+                }
+            } else {
+                // If overridden, check if we need to compensate the skipped consultant
+                if ($compensate_skipped && $skipped_consultant_id) {
+                    $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                    $stmtComp->bind_param("ii", $assignedRoundId, $skipped_consultant_id);
+                    $stmtComp->execute();
                 }
             }
             
