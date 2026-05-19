@@ -28,7 +28,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
       let logs = [...MOCK_DB.logs];
       if (payload?.search) {
         const s = payload.search.toLowerCase();
-        logs = logs.filter(l => l.customer_name.toLowerCase().includes(s) || l.customer_phone.includes(s));
+        logs = logs.filter(l => l.lead_name.toLowerCase().includes(s) || l.phone.includes(s));
       }
       if (payload?.status) {
         logs = logs.filter(l => l.status === payload.status);
