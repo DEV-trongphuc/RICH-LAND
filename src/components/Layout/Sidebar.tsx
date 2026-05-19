@@ -21,6 +21,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [pendingTickets, setPendingTickets] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Poll pending ticket count every 60s
   useEffect(() => {
@@ -60,18 +61,23 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           onClick={onMobileClose}
         />
       )}
-    <aside className={`responsive-sidebar ${isMobileOpen ? 'responsive-sidebar-open' : ''}`} style={{
-      width: isCollapsed ? 72 : 260,
-      background: '#1e1246',
-      color: 'white',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      flexShrink: 0,
-      position: 'relative',
-      zIndex: 20,
-      boxShadow: '4px 0 24px rgba(0,0,0,0.12)'
-    }}>
+      <aside 
+        className={`responsive-sidebar ${isMobileOpen ? 'responsive-sidebar-open' : ''}`} 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          width: isCollapsed ? 72 : 260,
+          background: '#1e1246',
+          color: 'white',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 50,
+          boxShadow: '4px 0 24px rgba(0,0,0,0.12)'
+        }}
+      >
       {/* Logo Area */}
       <div style={{
         height: 72,
@@ -110,7 +116,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           width: 24, height: 24, borderRadius: '50%', background: 'white', color: '#1e1246',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', zIndex: 200, border: '1px solid rgba(0,0,0,0.1)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
+          opacity: isHovered || isCollapsed ? 1 : 0,
+          visibility: isHovered || isCollapsed ? 'visible' : 'hidden',
+          pointerEvents: isHovered || isCollapsed ? 'auto' : 'none'
         }}
       >
         <ChevronLeft size={14} style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
