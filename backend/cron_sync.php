@@ -235,11 +235,13 @@ foreach ($connections as $connItem) {
 
             if ($targetRoundId) {
                 // --- 3. Round-Robin Assignment ---
-                $assignedConsultantId = getNextConsultantInRound($conn, $targetRoundId);
-                if ($assignedConsultantId) {
-                    $cronStatus = 'assigned';
-                    $cronMessage = 'Assigned via round-robin via cron_sync.';
+                $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+                if ($assignResult) {
+                    $assignedConsultantId = $assignResult['id'];
+                    $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                    $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
                 } else {
+                    $assignedConsultantId = null;
                     $cronStatus = 'pending';
                     $cronMessage = 'No active consultants in this round via cron_sync.';
                 }
@@ -268,7 +270,7 @@ foreach ($connections as $connItem) {
             }
 
             // Only notify sale when successfully assigned
-            if ($cronStatus === 'assigned' && !empty($leadId)) {
+            if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId)) {
                 // Notify Sale (mailer.php already loaded above)
                 $ccEmails = '';
                 $roundName = '';

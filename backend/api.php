@@ -2109,6 +2109,16 @@ switch ($action) {
         }
         
         $consultantId = $override_consultant_id;
+        $isComp = false;
+        
+        if (!$consultantId) {
+            // Compute it naturally before starting api transaction to prevent implicit MySQL Commit conflicts
+            $assignResult = getNextConsultantInRound($conn, $assignedRoundId);
+            if ($assignResult) {
+                $consultantId = $assignResult['id'];
+                $isComp = $assignResult['is_compensation'];
+            }
+        }
         
         $conn->begin_transaction();
         try {
@@ -2116,15 +2126,7 @@ switch ($action) {
             $lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
             $conn->query("SELECT GET_LOCK('$lockKey', 5)");
             
-            $isComp = false;
-            if (!$consultantId) {
-                // If override consultant not provided, compute it naturally, but UPDATE the round
-                $assignResult = getNextConsultantInRound($conn, $assignedRoundId);
-                if ($assignResult) {
-                    $consultantId = $assignResult['id'];
-                    $isComp = $assignResult['is_compensation'];
-                }
-            } else {
+            if ($override_consultant_id) {
                 // If overridden, check if we need to compensate the skipped consultant
                 if ($compensate_skipped && $skipped_consultant_id) {
                     $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
