@@ -39,10 +39,10 @@ $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
 $stmt = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
 } else {
     http_response_code(401);
@@ -232,10 +232,39 @@ if (is_array($ruleResult)) {
     $targetRoundId = $ruleResult;
 }
 
+$isFallbackAdmin = false;
+$fallbackAdminData = null;
+$fallbackCcEmails = '';
+
 if (!$targetRoundId) {
-    $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
-    if ($fbStmt && $fbStmt->num_rows > 0) {
-        $fbRoundId = (int)$fbStmt->fetch_assoc()['setting_value'];
+    $fbSettings = [];
+    $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+    if ($fbRes) {
+        while ($row = $fbRes->fetch_assoc()) {
+            $fbSettings[$row['setting_key']] = $row['setting_value'];
+        }
+    }
+    
+    $fbType = $fbSettings['fallback_type'] ?? 'round';
+    $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+    
+    if ($fbType === 'admin') {
+        $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
+        if ($fbAdminId > 0) {
+            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+            $admStmt->bind_param("i", $fbAdminId);
+            $admStmt->execute();
+            $admRes = $admStmt->get_result();
+            if ($admRes->num_rows > 0) {
+                $fallbackAdminData = $admRes->fetch_assoc();
+                $isFallbackAdmin = true;
+                $status = 'assigned';
+                $message = 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
+                $fallbackCcEmails = $fbCc;
+            }
+        }
+    } else {
+        $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
         if ($fbRoundId > 0) {
             $targetRoundId = $fbRoundId;
             $message = 'No matching rule found. Routed to fallback round.';
@@ -306,30 +335,57 @@ if (function_exists('fastcgi_finish_request')) {
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/zalo_bot.php';
 
-$ccEmails = '';
-$roundName = '';
-if ($targetRoundId) {
-    $stmtQ = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
-    $stmtQ->bind_param("i", $targetRoundId);
-    $stmtQ->execute();
-    $qRound = $stmtQ->get_result();
-    if ($qRound && $qRound->num_rows > 0) {
-        $rData = $qRound->fetch_assoc();
-        $ccEmails = $rData['cc_emails'] ?? '';
-        $roundName = $rData['round_name'] ?? '';
+if ($isFallbackAdmin && $fallbackAdminData) {
+    sendLeadAssignedEmailToSale(
+        $fallbackAdminData['email'], 
+        $fallbackAdminData['name'], 
+        $name, 
+        $phone, 
+        $note, 
+        $source, 
+        $fallbackCcEmails, 
+        'Fallback Admin', 
+        $leadId, 
+        0, 
+        0
+    );
+    if (!empty($fallbackAdminData['zalo_chat_id'])) {
+        sendLeadAssignedZaloMessageToAdmin(
+            $fallbackAdminData['zalo_chat_id'], 
+            $fallbackAdminData['name'], 
+            $name, 
+            $phone, 
+            $note, 
+            $source
+        );
+    }
+} else {
+    $ccEmails = '';
+    $roundName = '';
+    if ($targetRoundId) {
+        $stmtQ = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+        $stmtQ->bind_param("i", $targetRoundId);
+        $stmtQ->execute();
+        $qRound = $stmtQ->get_result();
+        if ($qRound && $qRound->num_rows > 0) {
+            $rData = $qRound->fetch_assoc();
+            $ccEmails = $rData['cc_emails'] ?? '';
+            $roundName = $rData['round_name'] ?? '';
+        }
+    }
+
+    $stmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+    $stmt->bind_param("i", $assignedConsultantId);
+    $stmt->execute();
+    $cRes = $stmt->get_result();
+    if ($cRes->num_rows > 0) {
+        $c = $cRes->fetch_assoc();
+        sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
+        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
     }
 }
 
-$stmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-$stmt->bind_param("i", $assignedConsultantId);
-$stmt->execute();
-$cRes = $stmt->get_result();
-if ($cRes->num_rows > 0) {
-    $c = $cRes->fetch_assoc();
-    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
-    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
-}
-
 $conn->close();
+
 
 

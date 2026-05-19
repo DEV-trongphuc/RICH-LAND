@@ -36,11 +36,22 @@ export const Settings = () => {
   const [rounds, setRounds] = useState<any[]>([]);
   const [fallbackRoundId, setFallbackRoundId] = useState('');
 
+  // Fallback direct Admin + CC config
+  const [fallbackType, setFallbackType] = useState('round');
+  const [fallbackAdminId, setFallbackAdminId] = useState('');
+  const [fallbackCcEmail, setFallbackCcEmail] = useState('');
+  const [accounts, setAccounts] = useState<any[]>([]);
+
   const fetchSettings = async () => {
     try {
       const roundsJson = await fetchAPI('get_rounds');
       if (roundsJson.success) {
         setRounds(roundsJson.data || []);
+      }
+
+      const accountsJson = await fetchAPI('get_accounts');
+      if (accountsJson.success) {
+        setAccounts(accountsJson.data || []);
       }
       
       const json = await fetchAPI('get_settings');
@@ -58,6 +69,9 @@ export const Settings = () => {
         if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
         if (json.data.zalo_daily_report_time) setZaloDailyReportTime(json.data.zalo_daily_report_time);
         if (json.data.fallback_round_id) setFallbackRoundId(json.data.fallback_round_id);
+        if (json.data.fallback_type) setFallbackType(json.data.fallback_type);
+        if (json.data.fallback_admin_id) setFallbackAdminId(json.data.fallback_admin_id);
+        if (json.data.fallback_cc_email) setFallbackCcEmail(json.data.fallback_cc_email);
       }
     } catch (e) {
       console.error(e);
@@ -84,7 +98,10 @@ export const Settings = () => {
       zalo_webhook_secret: zaloWebhookSecret,
       zalo_bot_link: zaloBotLink,
       zalo_daily_report_time: zaloDailyReportTime,
-      fallback_round_id: fallbackRoundId
+      fallback_round_id: fallbackRoundId,
+      fallback_type: fallbackType,
+      fallback_admin_id: fallbackAdminId,
+      fallback_cc_email: fallbackCcEmail
     };
     
     try {
@@ -99,6 +116,7 @@ export const Settings = () => {
     }
     setSaving(false);
   };
+
 
   const handleTestEmail = async () => {
     if (!testEmail) return toast.error("Vui lòng nhập Email người nhận test.");
@@ -124,7 +142,19 @@ export const Settings = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
-      <div className="page-header" style={{ marginBottom: '2rem' }}>
+      <div className="page-header" style={{ 
+        position: 'sticky', 
+        top: '-2rem', 
+        zIndex: 90, 
+        background: 'var(--color-bg)', 
+        paddingTop: '1.5rem', 
+        paddingBottom: '1rem', 
+        borderBottom: '1px solid var(--color-border)', 
+        marginBottom: '2rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Settings2 size={24} color="var(--color-primary)" /> Cài đặt Hệ thống
@@ -279,7 +309,7 @@ function doPost(e) {
             )}
           </div>
           {/* Cấu hình Zalo Bot */}
-          <div className="card" style={{ padding: '1.5rem', borderTop: '4px solid #0068ff' }}>
+          <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
@@ -355,38 +385,138 @@ function doPost(e) {
           </div>
 
           {/* Fallback Round Config Card */}
-          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem', borderTop: '4px solid #ef4444' }}>
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                 <Zap size={16} />
               </span>
-              Vòng phân bổ mặc định (Fallback)
+              Cấu hình Xử lý Fallback (Khi không khớp luật)
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong> (hoặc khi nhập tay không khớp luật), 
-              hệ thống sẽ tự động chuyển dữ liệu đó vào Vòng phân bổ mặc định này thay vì để trạng thái "Chưa phân bổ".
+              Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong>, hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.
             </p>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Chọn Vòng phân bổ mặc định</label>
-              <CustomSelect 
-                options={[
-                  { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
-                  ...rounds.map(r => ({
-                    value: r.id.toString(),
-                    label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
-                  }))
-                ]}
-                value={fallbackRoundId}
-                onChange={val => setFallbackRoundId(val.toString())}
-                width="100%"
-              />
+            {/* Selector for Fallback Type */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <label 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '6px', 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  border: fallbackType === 'round' ? '2px solid #ef4444' : '1px solid var(--color-border)', 
+                  background: fallbackType === 'round' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                  <input 
+                    type="radio" 
+                    name="fallbackType" 
+                    value="round" 
+                    checked={fallbackType === 'round'} 
+                    onChange={() => setFallbackType('round')}
+                    style={{ accentColor: '#ef4444', margin: 0 }}
+                  />
+                  Phân bổ theo Vòng mặc định
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                  Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.
+                </span>
+              </label>
+
+              <label 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '6px', 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  border: fallbackType === 'admin' ? '2px solid #ef4444' : '1px solid var(--color-border)', 
+                  background: fallbackType === 'admin' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                  <input 
+                    type="radio" 
+                    name="fallbackType" 
+                    value="admin" 
+                    checked={fallbackType === 'admin'} 
+                    onChange={() => setFallbackType('admin')}
+                    style={{ accentColor: '#ef4444', margin: 0 }}
+                  />
+                  Giao thẳng cho Admin + CC
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                  Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.
+                </span>
+              </label>
             </div>
+
+            {fallbackType === 'round' ? (
+              <div style={{ animation: 'fadeIn 0.3s' }}>
+                <label className="form-label">Chọn Vòng phân bổ mặc định</label>
+                <CustomSelect 
+                  options={[
+                    { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
+                    ...rounds.map(r => ({
+                      value: r.id.toString(),
+                      label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
+                    }))
+                  ]}
+                  value={fallbackRoundId}
+                  onChange={val => setFallbackRoundId(val.toString())}
+                  width="100%"
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+                <div>
+                  <label className="form-label">Chọn tài khoản Admin nhận data</label>
+                  <CustomSelect 
+                    options={[
+                      { value: '', label: '-- Chọn Admin nhận data --' },
+                      ...accounts.filter(a => a.role === 'admin').map(a => ({
+                        value: a.id.toString(),
+                        label: `${a.name} (${a.email})`
+                      }))
+                    ]}
+                    value={fallbackAdminId}
+                    onChange={val => setFallbackAdminId(val.toString())}
+                    width="100%"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Địa chỉ Email CC khi xảy ra Fallback</label>
+                  <input 
+                    className="form-input" 
+                    placeholder="Ví dụ: manager@company.com, admin@company.com" 
+                    value={fallbackCcEmail}
+                    onChange={e => setFallbackCcEmail(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Ngăn cách nhiều email bằng dấu phẩy. Hệ thống sẽ gửi bản sao thông báo data fallback về các email này.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right Column: Testing */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '1.5rem', 
+          position: 'sticky', 
+          top: '6rem', 
+          alignSelf: 'start' 
+        }}>
           <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Send size={18} color="var(--color-primary)" /> Gửi Test Email

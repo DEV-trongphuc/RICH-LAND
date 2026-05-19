@@ -224,3 +224,39 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 
     return sendZaloMessage($botToken, $chatId, $text);
 }
+
+/**
+ * Gửi thông báo chia Lead fallback trực tiếp cho Admin qua Zalo
+ */
+function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+{
+    global $conn;
+
+    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = '';
+    if ($stmt && $stmt->num_rows > 0) {
+        $botToken = $stmt->fetch_assoc()['setting_value'];
+    }
+
+    if (empty($botToken) || empty($adminChatId)) {
+        return false;
+    }
+
+    $fName = !empty($leadName) ? $leadName : "Không có";
+    $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
+    $fSource = !empty($leadSource) ? $leadSource : "Không có";
+    $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    $text = "[ THÔNG BÁO DATA FALLBACK ]\n\n"
+        . "Chào Quản trị viên $adminName, hệ thống vừa phân bổ trực tiếp cho bạn 1 data bị fallback:\n\n"
+        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "  • Tên KH: $fName\n"
+        . "  • Số ĐT: $fPhone\n"
+        . "  • Nguồn: $fSource\n"
+        . "\n❖ GHI CHÚ:\n"
+        . "  $fNote\n\n"
+        . "Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.";
+
+    return sendZaloMessage($botToken, $adminChatId, $text);
+}
+

@@ -73,10 +73,10 @@ export const Tickets = () => {
   const submitReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectingId || !rejectReason.trim()) return;
-    
+
     setIsActioning(rejectingId);
     setRejectModalOpen(false);
-    
+
     try {
       const res = await fetchAPI('reject_report', {
         method: 'POST',
@@ -154,7 +154,7 @@ export const Tickets = () => {
             <TicketIcon size={28} color="var(--color-primary)" /> Ticket Lỗi Data
           </h1>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Quản lý và xét duyệt các báo cáo Data lỗi từ Tư vấn viên
+            Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -209,7 +209,7 @@ export const Tickets = () => {
 
         {/* Sale filter */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <CustomSelect 
+          <CustomSelect
             options={[
               { value: '', label: 'Tất cả Sale', icon: <Users size={16} /> },
               ...consultantOptions.map(name => ({
@@ -372,7 +372,7 @@ export const Tickets = () => {
                       {r.status === 'pending' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={() => { setQuickMessageTarget({id: r.consultant_id, name: r.consultant_name}); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={() => { setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
                               <Bell size={14} />
                             </button>
                           )}
@@ -386,7 +386,7 @@ export const Tickets = () => {
                       ) : (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={() => { setQuickMessageTarget({id: r.consultant_id, name: r.consultant_name}); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={() => { setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
                               <Bell size={14} />
                             </button>
                           )}
@@ -441,9 +441,9 @@ export const Tickets = () => {
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]</p>
             <div className="form-group">
               <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <textarea 
-                className="form-input" 
-                placeholder="Nhập nội dung cần thông báo cho Sale..." 
+              <textarea
+                className="form-input"
+                placeholder="Nhập nội dung cần thông báo cho Sale..."
                 value={quickMessageText}
                 onChange={e => setQuickMessageText(e.target.value)}
                 required
@@ -520,7 +520,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
               Admin đầu tiên nhận email <strong>To:</strong> — Các admin còn lại nhận <strong>CC:</strong>. Admin phải có email mới có thể được chọn.
             </p>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
               {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').map((acc: any) => {
                 const isSelected = selectedIds.includes(acc.id);

@@ -231,6 +231,9 @@ foreach ($connections as $connItem) {
             $assignedConsultantId = null;
             $cronStatus = 'unassigned';
             $cronMessage = 'No matching rule found via cron_sync.';
+            $isFallbackAdmin = false;
+            $fallbackAdminData = null;
+            $fallbackCcEmails = '';
 
             if (is_array($ruleResult)) {
                 $targetRoundId = $ruleResult['target_round_id'];
@@ -253,6 +256,42 @@ foreach ($connections as $connItem) {
                 }
             } else {
                 $targetRoundId = $ruleResult;
+            }
+
+            if (!$targetRoundId) {
+                $fbSettings = [];
+                $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+                if ($fbRes) {
+                    while ($row = $fbRes->fetch_assoc()) {
+                        $fbSettings[$row['setting_key']] = $row['setting_value'];
+                    }
+                }
+                
+                $fbType = $fbSettings['fallback_type'] ?? 'round';
+                $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                
+                if ($fbType === 'admin') {
+                    $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
+                    if ($fbAdminId > 0) {
+                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                        $admStmt->bind_param("i", $fbAdminId);
+                        $admStmt->execute();
+                        $admRes = $admStmt->get_result();
+                        if ($admRes->num_rows > 0) {
+                            $fallbackAdminData = $admRes->fetch_assoc();
+                            $isFallbackAdmin = true;
+                            $cronStatus = 'assigned';
+                            $cronMessage = 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
+                            $fallbackCcEmails = $fbCc;
+                        }
+                    }
+                } else {
+                    $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
+                    if ($fbRoundId > 0) {
+                        $targetRoundId = $fbRoundId;
+                        $cronMessage = 'No matching rule found. Routed to fallback round.';
+                    }
+                }
             }
 
             if ($targetRoundId) {
@@ -291,8 +330,34 @@ foreach ($connections as $connItem) {
                 continue;
             }
 
-            // Only notify sale when successfully assigned
-            if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId)) {
+            // Notifications
+            if ($isFallbackAdmin && $fallbackAdminData && !empty($leadId)) {
+                sendLeadAssignedEmailToSale(
+                    $fallbackAdminData['email'], 
+                    $fallbackAdminData['name'], 
+                    $name, 
+                    $phone, 
+                    $note, 
+                    $source, 
+                    $fallbackCcEmails, 
+                    'Fallback Admin', 
+                    $leadId, 
+                    0, 
+                    0
+                );
+                if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                    require_once __DIR__ . '/zalo_bot.php';
+                    sendLeadAssignedZaloMessageToAdmin(
+                        $fallbackAdminData['zalo_chat_id'], 
+                        $fallbackAdminData['name'], 
+                        $name, 
+                        $phone, 
+                        $note, 
+                        $source
+                    );
+                }
+                $syncedCount++;
+            } else if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId) && $assignedConsultantId) {
                 // Notify Sale (mailer.php already loaded above)
                 $ccEmails = '';
                 $roundName = '';

@@ -110,7 +110,7 @@ export const ReportData = () => {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '5px 14px', borderRadius: 20, marginBottom: 10 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
             <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem', fontWeight: 600 }}>
-              Báo cáo Data lỗi{params.isTest ? ' (Thử nghiệm)' : ''}
+              BÁO CÁO DATA{params.isTest ? ' (Thử nghiệm)' : ''}
             </span>
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', margin: 0, textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
