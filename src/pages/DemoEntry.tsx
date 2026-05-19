@@ -27,7 +27,7 @@ export const DemoEntry: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
+    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white', position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
       <Loader2 size={48} className="spin" style={{ color: '#3b82f6', marginBottom: 20 }} />
       <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>Khởi tạo môi trường Demo...</h2>
       <p style={{ color: '#94a3b8' }}>Đang nạp dữ liệu ảo và chuẩn bị giao diện.</p>
