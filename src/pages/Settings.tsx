@@ -168,16 +168,16 @@ export const Settings = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
             <CardSkeleton height={220} /><CardSkeleton height={160} />
           </div>
-          <div style={{ flex: 1 }}><CardSkeleton height={200} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}><CardSkeleton height={200} /></div>
         </div>
       ) : (
-      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+      <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
         {/* Left Column */}
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
           
           <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
@@ -397,7 +397,7 @@ function doPost(e) {
             </p>
 
             {/* Selector for Fallback Type */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <label 
                 style={{ 
                   display: 'flex', 
@@ -515,7 +515,9 @@ function doPost(e) {
           gap: '1.5rem', 
           position: 'sticky', 
           top: '6rem', 
-          alignSelf: 'start' 
+          alignSelf: 'start',
+          minWidth: 0,
+          width: '100%'
         }}>
           <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>

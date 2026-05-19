@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ComposedChart
+  Tooltip, ResponsiveContainer, ComposedChart,
+  PieChart, Pie, Cell, Legend, BarChart
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -136,7 +137,7 @@ export const Dashboard = () => {
   return (
     <div style={{ animation: 'slideUp 0.3s ease-out' }}>
       {/* Header */}
-      <div className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Tổng quan Phân bổ Data</h1>
           <p className="page-subtitle">Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.</p>
@@ -181,16 +182,16 @@ export const Dashboard = () => {
               onClick={() => navigate(`/data?status=${card.statusValue}&date=${encodeURIComponent(dateFilter)}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span className="stat-label" style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>{card.label}</span>
-                <div style={{ color: card.color, opacity: 0.8 }}><Icon size={20} /></div>
+                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>{card.label}</span>
+                <div className="stat-icon" style={{ color: card.color, opacity: 0.8 }}><Icon size={20} /></div>
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div className="stat-value" style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)' }}>{card.value}</div>
+                <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)' }}>{card.value}</div>
                 <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`} style={{ marginTop: 'auto' }}>
                   {card.up !== false ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                   {card.change || '+0%'}
-                  <span style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>so với hôm qua</span>
+                  <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>so với hôm qua</span>
                 </div>
               </div>
             </div>
@@ -320,7 +321,9 @@ export const Dashboard = () => {
             </div>
           ))}
         </div>
+
       ) : (
+      <>
       <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
         {/* Top Consultants */}
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
@@ -372,6 +375,75 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* NEW ROW: Source Stats & Error Stats */}
+      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        {/* Source Pie Chart */}
+        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+              <GitBranch size={18} color="#8b5cf6" /> Tỷ lệ Nguồn Data
+            </h3>
+          </div>
+          <div style={{ flex: 1, minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {stats?.sourceStats && stats.sourceStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={stats.sourceStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stats.sourceStats.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ color: '#1e293b', fontWeight: 600 }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.75rem' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+            )}
+          </div>
+        </div>
+
+        {/* Error Tickets by TVV (Horizontal Bar Chart) */}
+        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+              <AlertTriangle size={18} color="#ef4444" /> Thống kê lỗi Ticket / TVV
+            </h3>
+          </div>
+          <div style={{ flex: 1, minHeight: 260 }}>
+            {stats?.errorStats && stats.errorStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={stats.errorStats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text)' }} width={120} />
+                  <Tooltip 
+                    cursor={{ fill: 'var(--color-bg)' }}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ color: '#ef4444', fontWeight: 600 }}
+                  />
+                  <Bar dataKey="errors" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={16} name="Số lỗi" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào báo lỗi</div>
+            )}
+          </div>
+        </div>
+      </div>
+      </>
       )}{/* end stats ternary */}
       {/* Date Picker Modal */}
       <CustomModal 

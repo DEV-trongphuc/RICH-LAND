@@ -29,6 +29,7 @@ export const DataList = () => {
   const statusFilter = searchParams.get('status') || 'all';
   const dateFilter = searchParams.get('date') || 'all';
   const consultantFilter = searchParams.get('consultant') || 'all';
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,8 +214,15 @@ export const DataList = () => {
         </div>
       </div>
 
+      {/* Mobile Filter Toggle */}
+      <div className="mobile-only" style={{ marginBottom: '1rem' }}>
+        <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
+          <Filter size={16} /> {showMobileFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+        </button>
+      </div>
+
       {/* Filters */}
-      <div className="responsive-filter-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexShrink: 0, flexWrap: 'wrap' }}>
+      <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexShrink: 0, flexWrap: 'wrap' }}>
         <div className="responsive-filter-item" style={{ position: 'relative', width: 300 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
           <input 
@@ -450,7 +458,7 @@ export const DataList = () => {
       >
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'white' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
               {/* Cột Trái: Chi Tiết */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>

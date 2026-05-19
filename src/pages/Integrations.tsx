@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -28,6 +28,13 @@ type Connection = {
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   last_sync_at?: string;
+  stats?: {
+    total: number;
+    assigned: number;
+    duplicate: number;
+    reminder: number;
+    error: number;
+  };
 };
 
 type Mapping = {
@@ -178,6 +185,9 @@ export const Integrations = () => {
     }
   };
 
+  // Sync mode state
+  const [syncMode, setSyncMode] = useState<'all'|'new_only'>('all');
+
   const handleAddConnection = async () => {
     let finalInterval = 15;
     if (syncPreset === '5p') finalInterval = 5;
@@ -191,7 +201,8 @@ export const Integrations = () => {
       spreadsheet_id: newSpreadsheetId,
       webhook_token: generateToken(),
       is_active: 1,
-      sync_interval: finalInterval
+      sync_interval: finalInterval,
+      sync_mode: syncMode
     };
     
     if (isSaving) return;
@@ -217,6 +228,7 @@ export const Integrations = () => {
         setNewSpreadsheetId('');
         setSyncPreset('15p');
         setCustomSyncMins(15);
+        setSyncMode('all');
         setTempMappings([]);
         setAddStep(1);
         setShowAddConn(false);
@@ -410,9 +422,9 @@ export const Integrations = () => {
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 66px - 3rem)', minHeight: 0, animation: 'fadeIn 0.3s' }}>
+      <div className="responsive-flex-row responsive-height-auto" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 66px - 3rem)', minHeight: 0, animation: 'fadeIn 0.3s' }}>
         {/* LEFT PANEL: Sheet connections list */}
-      <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className="responsive-filter-item" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
           <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Quản lý các nguồn đổ Data</p>
@@ -582,6 +594,27 @@ export const Integrations = () => {
                   </button>
                 </div>
               </div>
+
+              {/* STATS SECTION */}
+              {selected.stats && (
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 20, border: '1px solid var(--color-border)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <Target size={14} color="var(--color-text-muted)" /> {selected.stats.total} Tổng
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <CheckCircle2 size={14} /> {selected.stats.assigned} Đã chia
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <Copy size={14} /> {selected.stats.duplicate} Trùng
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <RefreshCw size={14} /> {selected.stats.reminder} Nhắc lại
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <AlertCircle size={14} /> {selected.stats.error} Lỗi
+                  </div>
+                </div>
+              )}
 
               {selected.spreadsheet_id && (
                 <div style={{ marginTop: '1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -972,6 +1005,38 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       <div style={{ fontSize: '0.65rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="sync_mode" 
+                      checked={syncMode === 'all'} 
+                      onChange={() => setSyncMode('all')} 
+                      style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Quét toàn bộ Data hiện có</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hút toàn bộ dữ liệu đang có sẵn trên Sheets vào CRM (Mặc định).</div>
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="sync_mode" 
+                      checked={syncMode === 'new_only'} 
+                      onChange={() => setSyncMode('new_only')} 
+                      style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ quét Data mới (Bỏ qua Data cũ)</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hệ thống sẽ chạy ngầm đánh dấu bỏ qua toàn bộ dòng cũ. Chỉ những dòng được thêm vào SAU KHI kết nối mới được hút vào CRM.</div>
+                    </div>
+                  </label>
                 </div>
               </div>
 

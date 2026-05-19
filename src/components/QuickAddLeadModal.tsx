@@ -121,7 +121,7 @@ export const QuickAddLeadModal = () => {
       title="Thêm Data Thủ Công"
       width="650px"
     >
-      <div style={{ padding: '1.5rem', background: 'white' }}>
+      <div style={{ padding: '0 0 1.25rem 0', background: 'white' }}>
         <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Họ tên</label>
@@ -236,7 +236,7 @@ export const QuickAddLeadModal = () => {
           )}
         </div>
       </div>
-      <div style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+      <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>
         <button className="btn outline" onClick={() => setIsOpen(false)}>Hủy</button>
         <button className="btn primary" onClick={handleManualSubmit} disabled={isSubmittingManual || (!manualData.phone && !manualData.email)} style={{ background: 'var(--color-primary)' }}>
           {isSubmittingManual ? 'Đang lưu...' : 'Lưu & Giao Data'}

@@ -18,6 +18,7 @@ export const Tickets = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -148,7 +149,7 @@ export const Tickets = () => {
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <TicketIcon size={28} color="var(--color-primary)" /> Ticket Lỗi Data
@@ -190,8 +191,15 @@ export const Tickets = () => {
         </div>
       </div>
 
+      {/* Mobile Filter Toggle */}
+      <div className="mobile-only" style={{ marginBottom: '1rem' }}>
+        <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
+          <Filter size={16} /> {showMobileFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+        </button>
+      </div>
+
       {/* ── Filter bar: Sale + Date ── */}
-      <div style={{
+      <div className={!showMobileFilters ? 'hide-on-mobile' : ''} style={{
         display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
         padding: '14px 18px',
         background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
@@ -310,7 +318,7 @@ export const Tickets = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>

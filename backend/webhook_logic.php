@@ -70,6 +70,7 @@ function checkCRMInteraction($conn, $phone, $email) {
     
     $stmt->execute();
     $res = $stmt->get_result();
+    $stmt->close();
     
     if ($res->num_rows > 0) {
         $row = $res->fetch_assoc();
@@ -98,23 +99,25 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val) {
     elseif ($col === 'type') $dataVal = $type;
     else $dataVal = $data[$col] ?? '';
     
-    $dataVal = strtolower($dataVal);
-    $val = strtolower($val);
+    $dataVal = mb_strtolower($dataVal, 'UTF-8');
+    $val = mb_strtolower($val, 'UTF-8');
     $op = strtolower($op);
     
     switch ($op) {
         case 'contains':
-            return strpos($dataVal, $val) !== false;
+            return mb_strpos($dataVal, $val) !== false;
         case 'not_contains':
-            return strpos($dataVal, $val) === false;
+            return mb_strpos($dataVal, $val) === false;
         case 'equals':
             return $dataVal === $val;
         case 'not_equals':
             return $dataVal !== $val;
         case 'starts_with':
-            return strpos($dataVal, $val) === 0;
+            return mb_strpos($dataVal, $val) === 0;
         case 'ends_with':
-            return substr($dataVal, -strlen($val)) === $val;
+            $valLen = mb_strlen($val, 'UTF-8');
+            if ($valLen === 0) return true;
+            return mb_substr($dataVal, -$valLen, null, 'UTF-8') === $val;
         case 'is_empty':
             return trim($dataVal) === '';
         case 'is_not_empty':
@@ -130,9 +133,18 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val) {
 }
 
 function evaluateRules($conn, $data, $source, $type) {
-    $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator FROM routing_rules ORDER BY priority ASC");
+    static $rulesCache = null;
+    if ($rulesCache === null) {
+        $rulesCache = [];
+        $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator FROM routing_rules ORDER BY priority ASC");
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rulesCache[] = $row;
+            }
+        }
+    }
     
-    while ($row = $result->fetch_assoc()) {
+    foreach ($rulesCache as $row) {
         $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');
         $isMatch = false;
 
@@ -218,6 +230,7 @@ function getNextConsultantInRound($conn, $roundId) {
     
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
+    $stmt->close();
     
     // 2. Get active consultants with ALL rules (include data_per_turn, current_turn_remaining)
     $cStmt = $conn->prepare("
@@ -234,6 +247,7 @@ function getNextConsultantInRound($conn, $roundId) {
     
     if ($cRes->num_rows === 0) {
         error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
+        $cStmt->close();
         $conn->rollback();
         return null;
     }
@@ -260,6 +274,8 @@ function getNextConsultantInRound($conn, $roundId) {
         $compStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count - 1, skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
         $compStmt->bind_param("ii", $roundId, $nextId);
         $compStmt->execute();
+        $compStmt->close();
+        if (isset($cStmt)) $cStmt->close();
         // Note: Do NOT update last_assigned_consultant_id here. 
         // Compensation is an out-of-band assignment and shouldn't disrupt the normal round-robin order.
         $conn->commit();
@@ -273,6 +289,8 @@ function getNextConsultantInRound($conn, $roundId) {
         $midStmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = current_turn_remaining - 1 WHERE round_id = ? AND consultant_id = ?");
         $midStmt->bind_param("ii", $roundId, $nextId);
         $midStmt->execute();
+        $midStmt->close();
+        if (isset($cStmt)) $cStmt->close();
         // Note: do NOT update last_assigned here — keeps position for proper round-robin next turn
         $conn->commit();
         return ['id' => $nextId, 'is_compensation' => false];
@@ -328,12 +346,18 @@ function getNextConsultantInRound($conn, $roundId) {
         $remaining = $dataPerTurn - 1;
         $setTurnStmt->bind_param("iii", $remaining, $roundId, $nextId);
         $setTurnStmt->execute();
+        $setTurnStmt->close();
     }
     
     // Update last_assigned for round-robin tracking
     $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
     $updStmt->bind_param("ii", $nextId, $roundId);
     $updStmt->execute();
+    $updStmt->close();
+    
+    if (isset($skipResetStmt)) $skipResetStmt->close();
+    if (isset($skipIncrStmt)) $skipIncrStmt->close();
+    if (isset($cStmt)) $cStmt->close();
     
     // Commit transaction
     $conn->commit();
@@ -341,13 +365,13 @@ function getNextConsultantInRound($conn, $roundId) {
     return ['id' => $nextId, 'is_compensation' => false];
 }
 
-function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note) {
+function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null) {
     $phone = normalizePhone($phone);
     if ($phone === '') $phone = null;
     $email = trim($email) === '' ? null : trim($email);
     
-    $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to) 
-                            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
+    $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
+                            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)
                             ON DUPLICATE KEY UPDATE 
                                 name = IF(VALUES(name) != '' AND name = '', VALUES(name), name),
                                 email = IF(VALUES(email) != '' AND email = '', VALUES(email), email),
@@ -355,10 +379,12 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
                                 type = VALUES(type),
                                 note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n', VALUES(note)))),
                                 last_interaction_date = NOW(),
-                                assigned_to = VALUES(assigned_to)");
-    $stmt->bind_param("ssssssi", $phone, $email, $name, $source, $type, $note, $assignedConsultantId);
+                                assigned_to = VALUES(assigned_to),
+                                connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id)");
+    $stmt->bind_param("ssssssii", $phone, $email, $name, $source, $type, $note, $assignedConsultantId, $connectionId);
     $stmt->execute();
     $id = $stmt->insert_id;
+    $stmt->close();
     if (!$id) {
         // Nếu bị duplicate key và được update, insert_id có thể bằng 0. Ta lấy ID từ DB.
         $id = 0;
@@ -367,18 +393,20 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
             $sStmt->bind_param("s", $phone);
             $sStmt->execute();
             $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+            $sStmt->close();
         }
         if (!$id && !empty($email)) {
             $sStmt = $conn->prepare("SELECT id FROM leads WHERE email = ? LIMIT 1");
             $sStmt->bind_param("s", $email);
             $sStmt->execute();
             $id = $sStmt->get_result()->fetch_assoc()['id'] ?? 0;
+            $sStmt->close();
         }
     }
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note) {
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null) {
     $phone = normalizePhone($phone);
     if (empty($phone) && empty($email)) return null;
     
@@ -404,6 +432,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $sStmt->execute();
         $res = $sStmt->get_result();
         if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
+        $sStmt->close();
     }
     if (!$id && !empty($email)) {
         $sStmt = $conn->prepare("SELECT id FROM leads WHERE email = ? LIMIT 1");
@@ -411,19 +440,21 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $sStmt->execute();
         $res = $sStmt->get_result();
         if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
+        $sStmt->close();
     }
     
     if ($id) {
         // NEW-02 fix: Only update assigned_to if we actually have a consultant
         if ($assignedConsultantId) {
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");
-            $uStmt->bind_param("ssssii", $source, $type, $note, $note, $assignedConsultantId, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), assigned_to = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
+            $uStmt->bind_param("ssssiiii", $source, $type, $note, $note, $assignedConsultantId, $connectionId, $connectionId, $id);
         } else {
             // Don't overwrite assigned_to when lead is pending/unassigned
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW() WHERE id = ?");
-            $uStmt->bind_param("ssssi", $source, $type, $note, $note, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
+            $uStmt->bind_param("ssssiii", $source, $type, $note, $note, $connectionId, $connectionId, $id);
         }
         $uStmt->execute();
+        $uStmt->close();
         return $id;
     }
     return null;
@@ -433,6 +464,7 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
     $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
     $stmt->execute();
+    $stmt->close();
 }
 
 /**

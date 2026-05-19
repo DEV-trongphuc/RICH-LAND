@@ -167,6 +167,24 @@ export const Accounts = () => {
     }
   };
 
+  const handleUnlinkZalo = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?')) return;
+    try {
+      const json = await fetchAPI('unlink_zalo', {
+        method: 'POST',
+        body: JSON.stringify({ id, type: 'account' })
+      });
+      if (json.success) {
+        toast.success('Đã hủy liên kết Zalo thành công!');
+        fetchAccounts();
+      } else {
+        toast.error(json.message || 'Lỗi khi hủy liên kết');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
@@ -175,14 +193,14 @@ export const Accounts = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <UserCog size={28} color="var(--color-primary)" /> Quản lý Tài khoản
           </h1>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Quản trị hệ thống và phân quyền truy cập cho nhân viên.</p>
         </div>
-        <button onClick={openAddModal} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', fontSize: '0.875rem' }}>
+        <button onClick={openAddModal} className="btn primary responsive-btn-full" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', fontSize: '0.875rem' }}>
           <Plus size={18} /> Thêm tài khoản
         </button>
       </div>
@@ -191,7 +209,7 @@ export const Accounts = () => {
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu...</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-wrap mobile-card-table">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
@@ -205,21 +223,21 @@ export const Accounts = () => {
               <tbody>
                 {accounts.map(acc => (
                   <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
-                    <td style={{ padding: '1rem 1.5rem' }}>
+                    <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Avatar name={acc.name} size={36} />
                         <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{acc.name}</div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                    <td data-label="Email đăng nhập" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Shield size={14} />
                         <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
                         {acc.email && (
                           Number(acc.is_confirmed) === 1 ? (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>✅ Đã xác thực</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Đã xác thực</span>
                           ) : (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>⏳ Chưa xác thực</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Chưa xác thực</span>
                           )
                         )}
                       </div>
@@ -231,15 +249,33 @@ export const Accounts = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                    <td data-label="Zalo Chat ID" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                       {acc.zalo_chat_id ? (
-                        <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
+                          <button
+                            onClick={() => handleUnlinkZalo(acc.id)}
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: '#fee2e2',
+                              color: '#ef4444',
+                              border: 'none',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                            title="Hủy liên kết Zalo"
+                          >
+                            Hủy
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>{getRoleBadge(acc.role)}</td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                    <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>{getRoleBadge(acc.role)}</td>
+                    <td data-label="Thao tác" className="col-actions" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
                           <Edit3 size={16} />
@@ -379,7 +415,7 @@ export const Accounts = () => {
         <div className="overlay-backdrop" onClick={() => setShowReplacementModal(false)}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 500, animation: 'slideUp 0.2s ease-out', display: 'flex', flexDirection: 'column' }}
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', animation: 'slideUp 0.2s ease-out', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -391,7 +427,7 @@ export const Accounts = () => {
               </button>
             </div>
 
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                 Tài khoản này hiện đang đóng vai trò quan trọng trong hệ thống:
               </p>

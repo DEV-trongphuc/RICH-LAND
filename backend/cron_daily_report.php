@@ -2,8 +2,14 @@
 require_once 'db_connect.php';
 require_once 'zalo_bot.php';
 
-// Hàm chạy báo cáo hàng ngày
 function runDailyReportCron($conn) {
+    // --- PREVENT CONCURRENT EXECUTION ---
+    $lockFile = __DIR__ . '/cron_daily_report.lock';
+    $lockFp = fopen($lockFile, 'w');
+    if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+        return; // Already running
+    }
+    
     // 0. Auto-resume consultants whose leave has ended
     $conn->query("
         UPDATE consultants 

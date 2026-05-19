@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 19, 2026 lúc 09:14 AM
+-- Thời gian đã tạo: Th5 19, 2026 lúc 10:42 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -137,7 +137,25 @@ CREATE TABLE `leads` (
   `note` mediumtext DEFAULT NULL,
   `last_interaction_date` datetime DEFAULT NULL,
   `assigned_to` int(11) DEFAULT NULL,
-  `created_at` datetime DEFAULT current_timestamp()
+  `created_at` datetime DEFAULT current_timestamp(),
+  `connection_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `mail_queue`
+--
+
+CREATE TABLE `mail_queue` (
+  `id` int(11) NOT NULL,
+  `to_email` varchar(255) NOT NULL,
+  `cc_email` varchar(255) DEFAULT NULL,
+  `subject` varchar(255) NOT NULL,
+  `body_html` longtext NOT NULL,
+  `status` enum('pending','sent','failed') DEFAULT 'pending',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `sent_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

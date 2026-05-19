@@ -221,7 +221,7 @@ export const Rounds = () => {
 
   return (
     <div style={{ animation: 'slideUp 0.3s ease-out' }}>
-      <div className="page-header" style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Zap size={24} color="var(--color-primary)" />

@@ -290,11 +290,10 @@ $conn->begin_transaction();
 try {
     if ($crmCheckResult['isDuplicate']) {
         // Existed but older than 6 months -> new assignment
-        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
+        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId);
     } else {
-        $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
+        $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);
     }
-
     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message);
     $conn->commit();
 } catch (Exception $e) {

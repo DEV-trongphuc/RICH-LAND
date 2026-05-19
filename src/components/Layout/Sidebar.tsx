@@ -203,6 +203,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 to={href}
                 end={end}
                 title={isCollapsed ? name : undefined}
+                onClick={() => {
+                  if (onMobileClose) onMobileClose();
+                }}
                 style={({ isActive }) => ({
                   display: 'flex', alignItems: 'center', gap: '0.875rem',
                   padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',

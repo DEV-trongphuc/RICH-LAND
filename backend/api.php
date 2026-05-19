@@ -140,7 +140,8 @@ if (!in_array($action, $publicActions)) {
         'reassign_lead',
         'force_sync',
         'get_ticket_settings',
-        'save_ticket_settings' // Ticket notification config
+        'save_ticket_settings', // Ticket notification config
+        'unlink_zalo'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -207,13 +208,13 @@ switch ($action) {
 
         // Verify ID token via Google Tokeninfo API
         $url = "https://oauth2.googleapis.com/tokeninfo?id_token=" . urlencode($credential);
-        
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -246,9 +247,9 @@ switch ($action) {
 
         if ($res->num_rows > 0) {
             $user = $res->fetch_assoc();
-            
+
             // Auto confirm email if not already
-            if ((int)$user['is_confirmed'] === 0) {
+            if ((int) $user['is_confirmed'] === 0) {
                 $stmtConfirm = $conn->prepare("UPDATE accounts SET is_confirmed = 1 WHERE id = ?");
                 $stmtConfirm->bind_param("i", $user['id']);
                 $stmtConfirm->execute();
@@ -428,9 +429,10 @@ switch ($action) {
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             WHERE $dateCondition $sqlFilters
             ORDER BY dl.received_at DESC
-        ");
+        ", MYSQLI_USE_RESULT);
 
         if ($res) {
+            $rowCount = 0;
             while ($row = $res->fetch_assoc()) {
                 fputcsv($output, [
                     $row['id'],
@@ -444,6 +446,12 @@ switch ($action) {
                     str_replace("\n", " ", $row['note']), // Tránh vỡ form CSV
                     $row['received_at']
                 ]);
+                
+                $rowCount++;
+                if ($rowCount % 500 === 0) {
+                    if (ob_get_level() > 0) ob_flush();
+                    flush();
+                }
             }
         }
         fclose($output);
@@ -565,6 +573,45 @@ switch ($action) {
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        }
+        break;
+
+    case 'unlink_zalo':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        $type = $input['type'] ?? ''; // 'consultant' or 'account'
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+            break;
+        }
+
+        if ($type === 'consultant') {
+            $stmt = $conn->prepare("UPDATE consultants SET zalo_chat_id = NULL WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute()) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Zalo']);
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+            }
+        } else if ($type === 'account') {
+            $stmt = $conn->prepare("UPDATE accounts SET zalo_chat_id = NULL WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute()) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Zalo']);
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Loại tài khoản không hợp lệ']);
         }
         break;
 
@@ -827,10 +874,59 @@ switch ($action) {
 
     case 'get_connections':
         $res = $conn->query("SELECT * FROM sheet_connections ORDER BY created_at DESC");
-        $data = [];
-        while ($row = $res->fetch_assoc())
-            $data[] = $row;
-        echo json_encode(['success' => true, 'data' => $data]);
+        $conns = [];
+        while ($row = $res->fetch_assoc()) {
+            $row['stats'] = [
+                'total' => 0,
+                'assigned' => 0,
+                'duplicate' => 0,
+                'reminder' => 0,
+                'error' => 0
+            ];
+            $conns[] = $row;
+        }
+
+        // Fetch stats grouped by connection_id for the last 30 days to prevent full table join bottleneck
+        $statsRes = $conn->query("
+            SELECT 
+                l.connection_id,
+                l.source,
+                COUNT(DISTINCT l.id) as total_leads,
+                SUM(CASE WHEN dl.status = 'assigned' THEN 1 ELSE 0 END) as assigned_count,
+                SUM(CASE WHEN dl.status = 'duplicate' THEN 1 ELSE 0 END) as duplicate_count,
+                SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_count,
+                SUM(CASE WHEN dl.status = 'error' THEN 1 ELSE 0 END) as error_count
+            FROM leads l
+            LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+            WHERE (l.connection_id IS NOT NULL OR l.source IS NOT NULL)
+              AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY l.connection_id, l.source
+        ");
+
+        $sourceStats = [];
+        if ($statsRes) {
+            while ($row = $statsRes->fetch_assoc()) {
+                $sourceStats[] = $row; // Store all rows instead of keying by source
+            }
+        }
+
+        foreach ($conns as &$c) {
+            $src = $c['sheet_name'];
+            $connId = $c['id'];
+
+            // Sum up all matching stats (either by connection_id, or by fallback source if connection_id is null)
+            foreach ($sourceStats as $stat) {
+                if ($stat['connection_id'] == $connId || (empty($stat['connection_id']) && !empty($stat['source']) && $stat['source'] == $src)) {
+                    $c['stats']['total'] += (int) $stat['total_leads'];
+                    $c['stats']['assigned'] += (int) $stat['assigned_count'];
+                    $c['stats']['duplicate'] += (int) $stat['duplicate_count'];
+                    $c['stats']['reminder'] += (int) $stat['reminder_count'];
+                    $c['stats']['error'] += (int) $stat['error_count'];
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $conns]);
         break;
 
     case 'add_connection':
@@ -838,13 +934,14 @@ switch ($action) {
         $name = $input['sheet_name'] ?? '';
         $spreadsheetId = $input['spreadsheet_id'] ?? '';
         $webhookToken = $input['webhook_token'] ?? '';
-        $isActive = $input['is_active'] ?? 1;
-        $syncInterval = $input['sync_interval'] ?? 15;
-        $requireBoth = $input['require_both_contact'] ?? 0;
+        $isActive = (int) ($input['is_active'] ?? 1);
+        $syncInterval = (int) ($input['sync_interval'] ?? 15);
+        $requireBoth = (int) ($input['require_both_contact'] ?? 0);
         $connectionType = $input['connection_type'] ?? 'sheets';
+        $syncMode = $input['sync_mode'] ?? 'all';
 
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssiiis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType);
+        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)");
+        $stmt->bind_param("sssiiiss", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode);
         $stmt->execute();
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -854,13 +951,14 @@ switch ($action) {
         $id = (int) ($input['id'] ?? 0);
         $name = $input['sheet_name'] ?? '';
         $spreadsheetId = $input['spreadsheet_id'] ?? '';
-        $isActive = $input['is_active'] ?? 1;
-        $syncInterval = $input['sync_interval'] ?? 15;
-        $requireBoth = $input['require_both_contact'] ?? 0;
+        $isActive = (int) ($input['is_active'] ?? 1);
+        $syncInterval = (int) ($input['sync_interval'] ?? 15);
+        $requireBoth = (int) ($input['require_both_contact'] ?? 0);
         $connectionType = $input['connection_type'] ?? 'sheets';
+        $syncMode = $input['sync_mode'] ?? 'all';
 
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=? WHERE id=?");
-        $stmt->bind_param("ssiiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $id);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=? WHERE id=?");
+        $stmt->bind_param("ssiiissi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -969,9 +1067,11 @@ switch ($action) {
         $row = fgetcsv($stream);
         if ($row !== FALSE) {
             $columns = array_map(function ($h) {
-                return trim($h ?? '', "\" "); }, $row);
+                return trim($h ?? '', "\" ");
+            }, $row);
             $columns = array_filter($columns, function ($c) {
-                return $c !== ''; });
+                return $c !== '';
+            });
             $columns = array_values($columns);
         }
         fclose($stream);
@@ -1358,7 +1458,7 @@ switch ($action) {
             // Thông báo qua Email
             if (!empty($consultant['email'])) {
                 require_once __DIR__ . '/mailer.php';
-                $emailSubj = "[Domation CRM] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
                 $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
                               <p>Chào $cName,</p>
                               <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công.</p>
@@ -1441,7 +1541,7 @@ switch ($action) {
             // Thông báo qua Email
             if (!empty($consultant['email'])) {
                 require_once __DIR__ . '/mailer.php';
-                $emailSubj = "[Domation CRM] Ticket Lỗi Data Bị Từ Chối - $lName";
+                $emailSubj = "[Domation DATA] Ticket Lỗi Data Bị Từ Chối - $lName";
                 $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
                               <p>Chào $cName,</p>
                               <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên từ chối.</p>
@@ -1771,25 +1871,25 @@ switch ($action) {
         break;
 
     case 'check_delete_account':
-        $id = (int)($_GET['id'] ?? 0);
-        
+        $id = (int) ($_GET['id'] ?? 0);
+
         // 1. Check fallback_type and fallback_admin_id
         $isFallback = false;
         $stmtFb = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
         $stmtFb->execute();
         $resFb = $stmtFb->get_result();
         $fbType = $resFb->fetch_assoc()['setting_value'] ?? 'round';
-        
+
         if ($fbType === 'admin') {
             $stmtFbAdmin = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_admin_id' LIMIT 1");
             $stmtFbAdmin->execute();
             $resFbAdmin = $stmtFbAdmin->get_result();
-            $fbAdminId = (int)($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
+            $fbAdminId = (int) ($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
             if ($fbAdminId === $id) {
                 $isFallback = true;
             }
         }
-        
+
         // 2. Check ticket_notify_settings
         $isTicket = false;
         $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
@@ -1799,7 +1899,7 @@ switch ($action) {
         if ($resTick && $resTick->fetch_assoc()['cnt'] > 0) {
             $isTicket = true;
         }
-        
+
         // 3. Fetch other admins (role = 'admin' and id != $id)
         $otherAdmins = [];
         $stmtOther = $conn->prepare("SELECT id, name, username, email FROM accounts WHERE role = 'admin' AND id != ?");
@@ -1811,7 +1911,7 @@ switch ($action) {
                 $otherAdmins[] = $row;
             }
         }
-        
+
         echo json_encode([
             'success' => true,
             'in_use' => ($isFallback || $isTicket),
@@ -1838,17 +1938,17 @@ switch ($action) {
         $stmtFb->execute();
         $resFb = $stmtFb->get_result();
         $fbType = $resFb->fetch_assoc()['setting_value'] ?? 'round';
-        
+
         if ($fbType === 'admin') {
             $stmtFbAdmin = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_admin_id' LIMIT 1");
             $stmtFbAdmin->execute();
             $resFbAdmin = $stmtFbAdmin->get_result();
-            $fbAdminId = (int)($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
+            $fbAdminId = (int) ($resFbAdmin->fetch_assoc()['setting_value'] ?? 0);
             if ($fbAdminId === $id) {
                 $isFallback = true;
             }
         }
-        
+
         $isTicket = false;
         $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
         $stmtTick->bind_param("i", $id);
@@ -2171,6 +2271,44 @@ switch ($action) {
             ];
             $j++;
         }
+        // Query Source Ratio (fallback to l.source if sc.sheet_name is null)
+        $sourceSql = "SELECT COALESCE(sc.sheet_name, l.source) as source, COUNT(dl.id) as count 
+                      FROM distribution_logs dl 
+                      JOIN leads l ON dl.lead_id = l.id
+                      LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+                      WHERE $dateCondition 
+                      GROUP BY COALESCE(sc.sheet_name, l.source) ORDER BY count DESC";
+        $sourceResRaw = $conn->query($sourceSql);
+        $sourceStats = [];
+        if ($sourceResRaw) {
+            $colors = ['#8b5cf6', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+            $i = 0;
+            while ($row = $sourceResRaw->fetch_assoc()) {
+                $sourceStats[] = [
+                    'name' => $row['source'] ?: 'Không xác định',
+                    'value' => (int) $row['count'],
+                    'color' => $colors[$i % count($colors)]
+                ];
+                $i++;
+            }
+        }
+
+        // Query Error Stats by Consultant
+        $errorSql = "SELECT c.name, COUNT(dl.id) as count 
+                     FROM distribution_logs dl 
+                     JOIN consultants c ON dl.assigned_to = c.id
+                     WHERE $dateCondition AND dl.status = 'error'
+                     GROUP BY c.id ORDER BY count DESC";
+        $errorResRaw = $conn->query($errorSql);
+        $errorStats = [];
+        if ($errorResRaw) {
+            while ($row = $errorResRaw->fetch_assoc()) {
+                $errorStats[] = [
+                    'name' => $row['name'],
+                    'errors' => (int) $row['count']
+                ];
+            }
+        }
 
         echo json_encode([
             'success' => true,
@@ -2185,7 +2323,9 @@ switch ($action) {
                 'errors_change' => $calcChange($statsRes['errors'], $prevStatsRes['errors']),
                 'chartData' => $chartData,
                 'topConsultants' => $topConsultants,
-                'roundRatio' => $roundRatio
+                'roundRatio' => $roundRatio,
+                'sourceStats' => $sourceStats,
+                'errorStats' => $errorStats
             ]
         ]);
         break;

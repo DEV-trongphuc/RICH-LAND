@@ -18,6 +18,27 @@ $conn->set_charset("utf8mb4");
 // BUG-FIX: Đảm bảo MySQL chạy cùng múi giờ với PHP để hàm NOW(), CURDATE() thống kê chính xác
 $conn->query("SET time_zone = '+07:00'");
 
+// Global helper: Cache system_settings in memory to prevent N+1 Query bottlenecks during cron/webhook loops
+if (!function_exists('get_system_setting')) {
+    function get_system_setting($conn, $key = null) {
+        static $settings_cache = null;
+        if ($settings_cache === null) {
+            $settings_cache = [];
+            $res = $conn->query("SELECT setting_key, setting_value FROM system_settings");
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $settings_cache[$row['setting_key']] = $row['setting_value'];
+                }
+            }
+        }
+        if ($key === null) {
+            return $settings_cache;
+        }
+        return $settings_cache[$key] ?? '';
+    }
+}
+
+
 $runMigration = true;
 $checkSettings = $conn->query("SHOW TABLES LIKE 'system_settings'");
 if ($checkSettings && $checkSettings->num_rows > 0) {
@@ -121,6 +142,18 @@ if ($runMigration) {
     $chkIdxLeadTime = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_created_at'");
     if ($chkIdxLeadTime && $chkIdxLeadTime->num_rows === 0) {
         $conn->query("ALTER TABLE leads ADD INDEX `idx_created_at` (`created_at`)");
+    }
+
+    // Auto-migrate: ensure connection_id column exists in leads
+    $checkColConn = $conn->query("SHOW COLUMNS FROM leads LIKE 'connection_id'");
+    if ($checkColConn && $checkColConn->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN connection_id INT DEFAULT NULL");
+    }
+
+    // leads connection_id index
+    $chkIdxConn = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_connection_id'");
+    if ($chkIdxConn && $chkIdxConn->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD INDEX `idx_connection_id` (`connection_id`)");
     }
 
     // distribution_logs lead_id index

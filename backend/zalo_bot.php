@@ -113,28 +113,29 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
     global $conn;
 
     // Lấy config zalo_bot_token từ system_settings
-    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-    $botToken = '';
-    if ($stmt && $stmt->num_rows > 0) {
-        $botToken = $stmt->fetch_assoc()['setting_value'];
-    }
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
 
     if (empty($botToken)) {
         return false; // Chưa cấu hình Zalo Bot
     }
 
-    // Lấy zalo_chat_id của Sale
-    $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-    if (!$stmtConsultant)
-        return false;
-
-    $stmtConsultant->bind_param("i", $consultantId);
-    $stmtConsultant->execute();
-    $res = $stmtConsultant->get_result();
-    $chatId = '';
-    if ($res->num_rows > 0) {
-        $row = $res->fetch_assoc();
-        $chatId = $row['zalo_chat_id'];
+    // Lấy zalo_chat_id của Sale có dùng cache
+    static $chatIdCache = [];
+    if (isset($chatIdCache[$consultantId])) {
+        $chatId = $chatIdCache[$consultantId];
+    } else {
+        $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+        if (!$stmtConsultant) return false;
+        
+        $stmtConsultant->bind_param("i", $consultantId);
+        $stmtConsultant->execute();
+        $res = $stmtConsultant->get_result();
+        $chatId = '';
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $chatId = $row['zalo_chat_id'];
+        }
+        $chatIdCache[$consultantId] = $chatId;
     }
 
     if (empty($chatId)) {
@@ -149,11 +150,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
     $fNote = !empty($leadNote) ? $leadNote : "Không có";
 
     // Build Report URL
-    $frontendUrl = '';
-    $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
-    if ($urlSetting && $urlSetting->num_rows > 0) {
-        $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
-    }
+    $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
     if (empty($frontendUrl)) {
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -183,29 +180,30 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 {
     global $conn;
 
-    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-    $botToken = '';
-    if ($stmt && $stmt->num_rows > 0) {
-        $botToken = $stmt->fetch_assoc()['setting_value'];
-    }
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
 
     if (empty($botToken))
         return false;
 
-    $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-    if (!$stmtConsultant)
-        return false;
-
-    $stmtConsultant->bind_param("i", $consultantId);
-    $stmtConsultant->execute();
-    $res = $stmtConsultant->get_result();
-    $chatId = '';
-    if ($res->num_rows > 0) {
-        $chatId = $res->fetch_assoc()['zalo_chat_id'];
+    // Lấy zalo_chat_id của Sale có dùng cache
+    static $chatIdCache = [];
+    if (isset($chatIdCache[$consultantId])) {
+        $chatId = $chatIdCache[$consultantId];
+    } else {
+        $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+        if (!$stmtConsultant) return false;
+        
+        $stmtConsultant->bind_param("i", $consultantId);
+        $stmtConsultant->execute();
+        $res = $stmtConsultant->get_result();
+        $chatId = '';
+        if ($res->num_rows > 0) {
+            $chatId = $res->fetch_assoc()['zalo_chat_id'];
+        }
+        $chatIdCache[$consultantId] = $chatId;
     }
 
-    if (empty($chatId))
-        return false;
+    if (empty($chatId)) return false;
 
     $fName = !empty($leadName) ? $leadName : "Không có";
     $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
@@ -232,11 +230,7 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
 {
     global $conn;
 
-    $stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-    $botToken = '';
-    if ($stmt && $stmt->num_rows > 0) {
-        $botToken = $stmt->fetch_assoc()['setting_value'];
-    }
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
 
     if (empty($botToken) || empty($adminChatId)) {
         return false;

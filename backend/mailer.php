@@ -47,25 +47,33 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
     ';
 }
 
-function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '')
+function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = false)
 {
     global $conn;
 
-    // Fetch settings
-    $res = $conn->query("SELECT * FROM system_settings");
-    $settings = [];
-    while ($row = $res->fetch_assoc()) {
-        $settings[$row['setting_key']] = $row['setting_value'];
+    $htmlBody = _getBaseHtml($title, "", $content);
+
+    if (!$sync) {
+        // Xóa tính năng gửi đồng bộ để chống kẹt tiến trình (Bottleneck)
+        // Thay vào đó, lưu vào bảng mail_queue để tiến trình ngầm (cron_mailer.php) xử lý
+        $stmt = $conn->prepare("INSERT INTO mail_queue (to_email, cc_email, subject, body_html, status) VALUES (?, ?, ?, ?, 'pending')");
+        if ($stmt) {
+            $stmt->bind_param("ssss", $to, $ccEmailString, $subject, $htmlBody);
+            $result = $stmt->execute();
+            $stmt->close();
+            return $result;
+        }
+        return false;
     }
 
+    // --- SYNCHRONOUS SEND (For test_email ONLY) ---
+    // Fetch settings globally using cached function to prevent N+1 queries
+    $settings = get_system_setting($conn);
     $provider = $settings['email_provider'] ?? 'appscript';
-
-    $htmlBody = _getBaseHtml($title, "", $content);
 
     if ($provider === 'appscript') {
         $url = $settings['appscript_webhook_url'] ?? '';
-        if (empty($url))
-            return false;
+        if (empty($url)) return false;
 
         $payload = json_encode([
             "type" => "custom",
@@ -79,7 +87,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Prevent blocking the webhook/cron
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); 
         $result = curl_exec($ch);
         curl_close($ch);
         return true;
@@ -94,7 +102,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             $mail->CharSet = 'UTF-8';
-            $mail->Timeout = 5; // Prevent blocking the webhook/cron
+            $mail->Timeout = 15; 
 
             $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
             $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
@@ -329,7 +337,7 @@ function sendWelcomeEmailToSale(
     string $consultantName,
     string $zaloBotLink
 ) {
-    $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation CRM';
+    $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation DATA';
     $fName = htmlspecialchars($consultantName ?: 'Bạn');
 
     $content = '
@@ -347,8 +355,8 @@ function sendWelcomeEmailToSale(
             </p>
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
-                <li>Gửi tin nhắn cho Bot với nội dung mã xác thực của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($consultantId . '-' . $consultantEmail) . '</strong></li>
-                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
+                <li>Gửi tin nhắn cho Bot với mã số ID của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . $consultantId . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Chỉ cần copy mã ID ở trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 
@@ -395,8 +403,8 @@ function sendWelcomeEmailToAdminTicket(
             </p>
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
-                <li>Gửi tin nhắn cho Bot với mã xác thực sau: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($adminId . '-' . $adminEmail) . '</strong></li>
-                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
+                <li>Gửi tin nhắn cho Bot với mã số ID của bạn: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . $adminId . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Chỉ cần copy mã ID ở trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 

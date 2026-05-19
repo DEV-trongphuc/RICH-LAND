@@ -113,6 +113,24 @@ export const Consultants = () => {
     setConfirmDeleteOpen(false);
   };
 
+  const handleUnlinkZalo = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không?')) return;
+    try {
+      const json = await fetchAPI('unlink_zalo', {
+        method: 'POST',
+        body: JSON.stringify({ id, type: 'consultant' })
+      });
+      if (json.success) {
+        toast.success('Đã hủy liên kết Zalo thành công!');
+        fetchUsers();
+      } else {
+        toast.error(json.message || 'Lỗi khi hủy liên kết');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+  };
+
   const handleSendQuickMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickMessageText.trim() || !quickMessageTarget) return;
@@ -141,14 +159,14 @@ export const Consultants = () => {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text)' }}>Quản lý Tư vấn viên</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+          <h1 className="page-title">Quản lý Tư vấn viên</h1>
+          <p className="page-subtitle">
             Danh sách nhân sự tiếp nhận và xử lý data từ hệ thống
           </p>
         </div>
-        <button onClick={openAddModal} className="btn primary" style={{ fontSize: '0.875rem' }}>
+        <button onClick={openAddModal} className="btn primary responsive-btn-full">
           <Plus size={16} /> Thêm TVV
         </button>
       </div>
@@ -214,13 +232,34 @@ export const Consultants = () => {
                     <td style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{u.email}</td>
                     <td>
                       {u.zalo_chat_id ? (
-                        <span style={{ 
-                          display: 'inline-flex', alignItems: 'center', gap: 6, 
-                          padding: '4px 10px', borderRadius: 20, 
-                          background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
-                        }}>
-                          <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ 
+                            display: 'inline-flex', alignItems: 'center', gap: 6, 
+                            padding: '4px 10px', borderRadius: 20, 
+                            background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
+                          }}>
+                            <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
+                          </span>
+                          <button
+                            onClick={() => handleUnlinkZalo(u.id)}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              background: '#fee2e2',
+                              color: '#ef4444',
+                              border: 'none',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 2
+                            }}
+                            title="Hủy liên kết Zalo"
+                          >
+                            Hủy
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ 
                           display: 'inline-flex', alignItems: 'center', gap: 6, 
@@ -282,7 +321,7 @@ export const Consultants = () => {
         <div className="overlay-backdrop" onClick={() => setModalOpen(false)}>
           <div 
             className="card"
-            style={{ width: '100%', maxWidth: 500, animation: 'slideUp 0.2s ease-out' }} 
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} 
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -294,8 +333,8 @@ export const Consultants = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSave}>
-              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14}/> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <input 
@@ -419,7 +458,7 @@ export const Consultants = () => {
       {/* Quick Message Modal */}
       {quickMessageOpen && quickMessageTarget && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setQuickMessageOpen(false)}>
-          <div className="card" style={{ width: '100%', maxWidth: 400, animation: 'slideUp 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: '100%', maxWidth: 400, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <MessageCircle size={20} fill="#0068ff" color="white" />
@@ -429,8 +468,8 @@ export const Consultants = () => {
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSendQuickMessage}>
-              <div style={{ padding: '1.25rem' }}>
+            <form onSubmit={handleSendQuickMessage} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
                 <div className="form-group">
                   <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <textarea 

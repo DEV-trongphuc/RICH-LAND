@@ -4,6 +4,18 @@
 
 require_once __DIR__ . '/db_connect.php';
 
+// Đặt thời gian thực thi không giới hạn để tránh timeout khi xử lý file lớn hoặc gửi nhiều Email/Zalo
+set_time_limit(0);
+
+// --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
+$lockFile = __DIR__ . '/cron_sync.lock';
+$lockFp = fopen($lockFile, 'w');
+if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running. Exiting.\n";
+    exit(0);
+}
+// --- END PREVENT CONCURRENT EXECUTION ---
+
 // Ensure sheet_sync_records table exists
 $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
     connection_id INT,
@@ -17,6 +29,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
 require_once __DIR__ . '/webhook_logic.php'; // We will extract routing logic into a separate file or just redefine them if not too complex. But better to extract.
 // BUG-03 fix: require_once mailer NGOÀI vòng lặp, tránh kiểm tra filesystem mỗi iteration
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/zalo_bot.php';
 
 if (!function_exists('logSync')) {
     function logSync($msg) {
@@ -121,8 +134,8 @@ foreach ($connections as $connItem) {
             throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode");
         }
 
-        // Parse CSV robustly using in-memory stream to handle newlines within quotes correctly
-        $stream = fopen("php://temp", "r+");
+        // Parse CSV data using php://temp to prevent RAM exhaustion (writes to disk if > 2MB)
+        $stream = fopen('php://temp', 'r+');
         fwrite($stream, $csvData);
         rewind($stream);
 
@@ -139,6 +152,9 @@ foreach ($connections as $connItem) {
         while ($hRow = $existingHashesRes->fetch_assoc()) {
             $hashMap[$hRow['row_hash']] = true;
         }
+
+        // Check if this connection requires Silent Sync (First run of 'new_only' mode)
+        $isSilentSync = (!empty($connItem['sync_mode']) && $connItem['sync_mode'] === 'new_only' && empty($connItem['is_initialized']));
 
         // Prepare record statement once
         $recordStmt = $conn->prepare("INSERT IGNORE INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
@@ -166,6 +182,15 @@ foreach ($connections as $connItem) {
             // O(1) Memory check instead of DB query
             if (isset($hashMap[$rowHash])) {
                 continue; // Row is EXACTLY same as before, skip completely!
+            }
+
+            if ($isSilentSync) {
+                // Lần đầu tiên chạy với tùy chọn "Chỉ quét Data mới": 
+                // Chỉ đánh dấu hash để các lần sau bỏ qua dòng này, tuyệt đối không chia số.
+                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                $recordStmt->execute();
+                $hashMap[$rowHash] = true;
+                continue; // Chuyển sang dòng tiếp theo
             }
 
             // Extract fields based on mapping — BUG-13/14 fix: normalizePhone now canonical
@@ -211,13 +236,16 @@ foreach ($connections as $connItem) {
                 }
                 
                 // Notify the old consultant (Align with webhook)
-                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                $stmtC->bind_param("i", $assignedTo);
-                $stmtC->execute();
-                $cRow = $stmtC->get_result()->fetch_assoc();
+                static $consultantCache = [];
+                if (!isset($consultantCache[$assignedTo])) {
+                    $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                    $stmtC->bind_param("i", $assignedTo);
+                    $stmtC->execute();
+                    $consultantCache[$assignedTo] = $stmtC->get_result()->fetch_assoc();
+                }
+                $cRow = $consultantCache[$assignedTo];
+                
                 if ($cRow) {
-                    require_once __DIR__ . '/mailer.php';
-                    require_once __DIR__ . '/zalo_bot.php';
                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
                     sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source);
                 }
@@ -259,13 +287,7 @@ foreach ($connections as $connItem) {
             }
 
             if (!$targetRoundId) {
-                $fbSettings = [];
-                $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
-                if ($fbRes) {
-                    while ($row = $fbRes->fetch_assoc()) {
-                        $fbSettings[$row['setting_key']] = $row['setting_value'];
-                    }
-                }
+                $fbSettings = get_system_setting($conn);
                 
                 $fbType = $fbSettings['fallback_type'] ?? 'round';
                 $fbCc = $fbSettings['fallback_cc_email'] ?? '';
@@ -273,12 +295,17 @@ foreach ($connections as $connItem) {
                 if ($fbType === 'admin') {
                     $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
                     if ($fbAdminId > 0) {
-                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
-                        $admStmt->bind_param("i", $fbAdminId);
-                        $admStmt->execute();
-                        $admRes = $admStmt->get_result();
-                        if ($admRes->num_rows > 0) {
-                            $fallbackAdminData = $admRes->fetch_assoc();
+                        static $fallbackAdminCache = [];
+                        if (!isset($fallbackAdminCache[$fbAdminId])) {
+                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                            $admStmt->bind_param("i", $fbAdminId);
+                            $admStmt->execute();
+                            $admRes = $admStmt->get_result();
+                            $fallbackAdminCache[$fbAdminId] = ($admRes->num_rows > 0) ? $admRes->fetch_assoc() : null;
+                        }
+                        
+                        $fallbackAdminData = $fallbackAdminCache[$fbAdminId];
+                        if ($fallbackAdminData) {
                             $isFallbackAdmin = true;
                             $cronStatus = 'assigned';
                             $cronMessage = 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
@@ -312,9 +339,9 @@ foreach ($connections as $connItem) {
             $conn->begin_transaction();
             try {
                 if ($crmCheckResult['isDuplicate']) {
-                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note);
+                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id']);
                 } else {
-                    $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note);
+                    $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                 }
                 logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
                 
@@ -362,34 +389,45 @@ foreach ($connections as $connItem) {
                 $ccEmails = '';
                 $roundName = '';
                 if ($targetRoundId) {
-                    $qRoundStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
-                    $qRoundStmt->bind_param("i", $targetRoundId);
-                    $qRoundStmt->execute();
-                    $qRound = $qRoundStmt->get_result();
-                    if ($qRound && $qRound->num_rows > 0) {
-                        $rRow = $qRound->fetch_assoc();
-                        $ccEmails = $rRow['cc_emails'] ?? '';
-                        $roundName = $rRow['round_name'] ?? '';
+                    static $roundCache = [];
+                    if (!isset($roundCache[$targetRoundId])) {
+                        $rStmt = $conn->prepare("SELECT cc_emails, round_name FROM distribution_rounds WHERE id = ?");
+                        $rStmt->bind_param("i", $targetRoundId);
+                        $rStmt->execute();
+                        $rRes = $rStmt->get_result();
+                        $roundCache[$targetRoundId] = ($rRes->num_rows > 0) ? $rRes->fetch_assoc() : null;
+                    }
+                    if ($roundCache[$targetRoundId]) {
+                        $ccEmails = $roundCache[$targetRoundId]['cc_emails'] ?? '';
+                        $roundName = $roundCache[$targetRoundId]['round_name'] ?? '';
                     }
                 }
-                $cStmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                $cStmt->bind_param("i", $assignedConsultantId);
-                $cStmt->execute();
-                $cRes = $cStmt->get_result();
-                if ($cRes->num_rows > 0) {
-                    $c = $cRes->fetch_assoc();
-                    
+                
+                static $assignedConsultantCache = [];
+                if (!isset($assignedConsultantCache[$assignedConsultantId])) {
+                    $stmtC2 = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ?");
+                    $stmtC2->bind_param("i", $assignedConsultantId);
+                    $stmtC2->execute();
+                    $assignedConsultantCache[$assignedConsultantId] = $stmtC2->get_result()->fetch_assoc();
+                }
+                $c = $assignedConsultantCache[$assignedConsultantId];
+                
+                if ($c) {
                     // Gửi Email
                     sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
                     
                     // Gửi Zalo Message (Đồng bộ Đa Kênh)
-                    require_once __DIR__ . '/zalo_bot.php';
                     sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
                 }
                 $syncedCount++;
             }
         }
         fclose($stream);
+
+        if ($isSilentSync) {
+            $conn->query("UPDATE sheet_connections SET is_initialized = 1 WHERE id = " . $connItem['id']);
+            logSync("Silent Sync completed for Connection ID {$connItem['id']}. Hashed existing rows, skipped distribution.");
+        }
 
         logSync("Finished Connection ID {$connItem['id']}. Synced $syncedCount new leads.");
 
