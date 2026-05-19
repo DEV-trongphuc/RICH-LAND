@@ -4,9 +4,14 @@ interface ToggleSwitchProps {
   onChange: (checked: boolean) => void;
   labelActive?: string;
   labelInactive?: string;
+  variant?: 'success' | 'primary';
 }
 
-export const ToggleSwitch = ({ checked, onChange, labelActive = 'Đang hoạt động', labelInactive = 'Tạm dừng' }: ToggleSwitchProps) => {
+export const ToggleSwitch = ({ checked, onChange, labelActive = 'Đang hoạt động', labelInactive = 'Tạm dừng', variant = 'success' }: ToggleSwitchProps) => {
+  const activeBg = variant === 'primary' ? 'var(--color-primary-light)' : 'var(--color-success-light)';
+  const activeColor = variant === 'primary' ? 'var(--color-primary)' : 'var(--color-success)';
+  const activeDotBg = variant === 'primary' ? 'var(--color-primary)' : 'var(--color-success)';
+
   return (
     <div 
       style={{ 
@@ -33,13 +38,13 @@ export const ToggleSwitch = ({ checked, onChange, labelActive = 'Đang hoạt đ
         onClick={() => onChange(true)}
         style={{
           padding: '6px 12px', borderRadius: '50px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-          background: checked ? 'var(--color-success-light)' : 'transparent',
-          color: checked ? 'var(--color-success)' : 'var(--color-text-muted)',
+          background: checked ? activeBg : 'transparent',
+          color: checked ? activeColor : 'var(--color-text-muted)',
           transition: 'all 0.2s',
           display: 'flex', alignItems: 'center', gap: 6
         }}
       >
-        <div style={{ width: 6, height: 6, borderRadius: '50%', background: checked ? 'var(--color-success)' : 'transparent' }} />
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: checked ? activeDotBg : 'transparent' }} />
         {labelActive}
       </div>
     </div>

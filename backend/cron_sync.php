@@ -192,13 +192,35 @@ foreach ($connections as $connItem) {
             if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
                 // Duplicate < 6 months, skip assigning to new round but update last interaction
                 $assignedTo = $crmCheckResult['assignedTo'];
-                $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
-                logDistribution($conn, $leadId, $assignedTo, null, 'duplicate', 'Duplicate < 6 months via cron_sync.');
                 
-                // Record hash so we don't spam duplicate logs on next run
-                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
-                $recordStmt->execute();
-                $hashMap[$rowHash] = true;
+                $conn->begin_transaction();
+                try {
+                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
+                    logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < 6 tháng via cron_sync.');
+                    
+                    // Record hash so we don't spam duplicate logs on next run
+                    $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                    $recordStmt->execute();
+                    $hashMap[$rowHash] = true;
+                    
+                    $conn->commit();
+                } catch (Exception $txE) {
+                    $conn->rollback();
+                    logSync("Transaction failed for duplicate row: " . $txE->getMessage());
+                    continue;
+                }
+                
+                // Notify the old consultant (Align with webhook)
+                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                $stmtC->bind_param("i", $assignedTo);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                if ($cRow) {
+                    require_once __DIR__ . '/mailer.php';
+                    require_once __DIR__ . '/zalo_bot.php';
+                    sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
+                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source);
+                }
                 
                 continue;
             }

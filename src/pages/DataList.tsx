@@ -3,7 +3,6 @@ import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshC
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
-import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -695,34 +694,56 @@ export const DataList = () => {
             ) : (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: '0.875rem' }}>
-                    Sẽ rơi vào Vòng: <strong style={{ color: 'var(--color-primary)' }}>{previewCons.consultant?.round_name || 'Vòng ' + previewCons.round_id}</strong>
+                  <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                    Sẽ rơi vào Vòng: <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || 'Vòng ' + previewCons.round_id}</strong>
+                    {previewCons.is_fallback && (
+                      <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#fee2e2', color: '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+                        Vòng mặc định (Fallback)
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, background: 'white', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ background: 'white', padding: '12px', borderRadius: 12, border: '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Dòng 1: Sale dự kiến nhận */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={previewCons.consultant?.name || '?'} size={32} />
                     <div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sale dự kiến nhận</div>
                       <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || 'Không có TVV hoạt động'}</div>
                     </div>
                   </div>
-                  
-                  <div style={{ width: 180 }}>
-                    <CustomSelect 
-                      options={[
-                        { value: '', label: '-- Chọn để ép (Override) --' },
-                        ...consultants.map(c => ({
-                          value: c.id.toString(),
-                          label: c.name
-                        }))
-                      ]}
-                      value={overrideConsId}
-                      onChange={val => setOverrideConsId(val.toString())}
-                      width="100%"
-                      direction="up"
-                    />
+
+                  <hr style={{ border: 0, borderTop: '1px dashed #e2e8f0', margin: 0 }} />
+
+                  {/* Dòng 2: Chỉ định Sale nhận (Override) */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {(() => {
+                      const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
+                      return (
+                        <>
+                          <Avatar name={selectedForceCons?.name || '?'} size={32} />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chỉ định Sale nhận (Ép lượt)</div>
+                            <div style={{ maxWidth: 240 }}>
+                              <CustomSelect 
+                                options={[
+                                  { value: '', label: '-- Chọn để ép (Override) --' },
+                                  ...consultants.map(c => ({
+                                    value: c.id.toString(),
+                                    label: c.name
+                                  }))
+                                ]}
+                                value={overrideConsId}
+                                onChange={val => setOverrideConsId(val.toString())}
+                                width="100%"
+                                direction="up"
+                              />
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
@@ -730,15 +751,15 @@ export const DataList = () => {
                 </div>
                 
                 {overrideConsId && overrideConsId !== String(previewCons.consultant?.consultant_id) && previewCons.consultant && (
-                  <div style={{ marginTop: 12, padding: '10px 12px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <ToggleSwitch 
-                      checked={compensateSkipped}
-                      onChange={setCompensateSkipped}
-                      labelActive="Bật Bù Data"
-                      labelInactive="Không"
-                    />
-                    <div style={{ fontSize: '0.8125rem', color: '#854d0e', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                      Trả 1 Data lại cho <strong style={{ color: '#713f12', margin: '0 4px' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
+                  <div style={{ marginTop: 12, padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: '0.8125rem', color: '#854d0e', fontWeight: 600 }}>
+                        Trả lại data cho <strong style={{ color: '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
+                      </div>
+                      <div 
+                        className={`custom-toggle ${compensateSkipped ? 'active' : ''}`}
+                        onClick={() => setCompensateSkipped(!compensateSkipped)}
+                      />
                     </div>
                   </div>
                 )}

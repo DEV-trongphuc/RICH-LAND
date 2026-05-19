@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -32,8 +32,17 @@ export const Settings = () => {
   const [zaloBotLink, setZaloBotLink] = useState('');
   const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
 
+  // Fallback round config
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [fallbackRoundId, setFallbackRoundId] = useState('');
+
   const fetchSettings = async () => {
     try {
+      const roundsJson = await fetchAPI('get_rounds');
+      if (roundsJson.success) {
+        setRounds(roundsJson.data || []);
+      }
+      
       const json = await fetchAPI('get_settings');
       if (json.success && json.data) {
         if (json.data.email_provider) setProvider(json.data.email_provider);
@@ -48,6 +57,7 @@ export const Settings = () => {
         if (json.data.zalo_webhook_secret) setZaloWebhookSecret(json.data.zalo_webhook_secret);
         if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
         if (json.data.zalo_daily_report_time) setZaloDailyReportTime(json.data.zalo_daily_report_time);
+        if (json.data.fallback_round_id) setFallbackRoundId(json.data.fallback_round_id);
       }
     } catch (e) {
       console.error(e);
@@ -73,7 +83,8 @@ export const Settings = () => {
       zalo_bot_token: zaloBotToken,
       zalo_webhook_secret: zaloWebhookSecret,
       zalo_bot_link: zaloBotLink,
-      zalo_daily_report_time: zaloDailyReportTime
+      zalo_daily_report_time: zaloDailyReportTime,
+      fallback_round_id: fallbackRoundId
     };
     
     try {
@@ -105,13 +116,6 @@ export const Settings = () => {
     setTesting(false);
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
-        <Activity size={32} className="spin" />
-      </div>
-    );
-  }
 
   const providerOptions = [
     { value: 'appscript', label: 'Google Apps Script (Miễn phí, nên dùng nếu dưới 500 mail/ngày)' },
@@ -347,6 +351,36 @@ function doPost(e) {
               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
                 Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
               </p>
+            </div>
+          </div>
+
+          {/* Fallback Round Config Card */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem', borderTop: '4px solid #ef4444' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
+                <Zap size={16} />
+              </span>
+              Vòng phân bổ mặc định (Fallback)
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong> (hoặc khi nhập tay không khớp luật), 
+              hệ thống sẽ tự động chuyển dữ liệu đó vào Vòng phân bổ mặc định này thay vì để trạng thái "Chưa phân bổ".
+            </p>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Chọn Vòng phân bổ mặc định</label>
+              <CustomSelect 
+                options={[
+                  { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
+                  ...rounds.map(r => ({
+                    value: r.id.toString(),
+                    label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
+                  }))
+                ]}
+                value={fallbackRoundId}
+                onChange={val => setFallbackRoundId(val.toString())}
+                width="100%"
+              />
             </div>
           </div>
         </div>

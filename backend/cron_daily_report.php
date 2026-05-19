@@ -92,12 +92,18 @@ function runDailyReportCron($conn) {
             $msg .= "❖ BÁO CÁO LỖI (TICKET):\n";
             $msg .= "  • Tổng ticket phát sinh: $totalTicket\n";
             
+            // Collect all Admin Zalo chat IDs for parallel execution
+            $adminChatIds = [];
             foreach ($admins as $adm) {
-                // Gửi Zalo
-                if (!empty($botToken) && !empty($adm['zalo_chat_id'])) {
-                    sendZaloMessage($botToken, $adm['zalo_chat_id'], $msg);
+                if (!empty($adm['zalo_chat_id'])) {
+                    $adminChatIds[] = $adm['zalo_chat_id'];
                 }
-                
+            }
+            if (!empty($botToken) && !empty($adminChatIds)) {
+                sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
+            }
+            
+            foreach ($admins as $adm) {
                 // Gửi Email
                 if (!empty($adm['email'])) {
                     sendDailyReportEmailToAdmins(

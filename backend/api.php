@@ -458,9 +458,15 @@ switch ($action) {
                                LEFT JOIN round_consultants rc ON r.id = rc.round_id
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
                                GROUP BY r.id");
+        $fbRoundId = 0;
+        $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+        if ($fbStmt && $fbStmt->num_rows > 0) {
+            $fbRoundId = (int)$fbStmt->fetch_assoc()['setting_value'];
+        }
         $data = [];
         $roundIds = [];
         while($row = $res->fetch_assoc()) {
+            $row['is_fallback'] = ((int)$row['id'] === $fbRoundId);
             $cIds = $row['consultant_ids'] ? explode(',', $row['consultant_ids']) : [];
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];
             
@@ -548,6 +554,15 @@ switch ($action) {
                     $stmtC->execute();
                 }
             }
+            
+            $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if ($is_fallback) {
+                $fbStmt = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('fallback_round_id', ?)");
+                $fbRoundIdStr = (string)$roundId;
+                $fbStmt->bind_param("s", $fbRoundIdStr);
+                $fbStmt->execute();
+            }
+            
             $conn->commit();
             echo json_encode(['success' => true, 'id' => $roundId]);
         } catch (Exception $e) {
@@ -618,6 +633,22 @@ switch ($action) {
                 }
             }
             
+            $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if ($is_fallback) {
+                $fbStmt = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('fallback_round_id', ?)");
+                $fbRoundIdStr = (string)$id;
+                $fbStmt->bind_param("s", $fbRoundIdStr);
+                $fbStmt->execute();
+            } else {
+                $chkStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+                if ($chkStmt && $chkStmt->num_rows > 0) {
+                    $currFb = $chkStmt->fetch_assoc()['setting_value'];
+                    if ((int)$currFb === $id) {
+                        $conn->query("DELETE FROM system_settings WHERE setting_key = 'fallback_round_id'");
+                    }
+                }
+            }
+            
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -633,8 +664,11 @@ switch ($action) {
             $id = (int)($_GET['id'] ?? 0);
             
             // Check if round has any distribution logs
-            $checkLog = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE round_id=$id");
-            if ($checkLog && $checkLog->fetch_assoc()['cnt'] > 0) {
+            $checkLog = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE round_id = ?");
+            $checkLog->bind_param("i", $id);
+            $checkLog->execute();
+            $logCount = (int)($checkLog->get_result()->fetch_assoc()['cnt'] ?? 0);
+            if ($logCount > 0) {
                 throw new Exception("Vòng này đã phân bổ Data, không thể xóa để bảo toàn thống kê. Vui lòng chuyển sang Ngừng hoạt động.");
             }
             
@@ -649,6 +683,15 @@ switch ($action) {
             $stmt = $conn->prepare("DELETE FROM distribution_rounds WHERE id=?");
             $stmt->bind_param("i", $id);
             $stmt->execute();
+            
+            $chkStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+            if ($chkStmt && $chkStmt->num_rows > 0) {
+                $currFb = $chkStmt->fetch_assoc()['setting_value'];
+                if ((int)$currFb === $id) {
+                    $conn->query("DELETE FROM system_settings WHERE setting_key = 'fallback_round_id'");
+                }
+            }
+            
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -1609,7 +1652,10 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $id = (int)($input['id'] ?? 0);
         
-        $res = $conn->query("SELECT email, name FROM accounts WHERE id=$id");
+        $stmtAcc = $conn->prepare("SELECT email, name FROM accounts WHERE id = ?");
+        $stmtAcc->bind_param("i", $id);
+        $stmtAcc->execute();
+        $res = $stmtAcc->get_result();
         if ($res && $res->num_rows > 0) {
             $account = $res->fetch_assoc();
             if (empty($account['email'])) {
@@ -2040,6 +2086,17 @@ switch ($action) {
             $assignedRoundId = $ruleResult;
         }
 
+        $isFallback = false;
+        if (!$assignedRoundId) {
+            $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+            if ($fbStmt && $fbStmt->num_rows > 0) {
+                $assignedRoundId = (int)$fbStmt->fetch_assoc()['setting_value'];
+                if ($assignedRoundId > 0) {
+                    $isFallback = true;
+                }
+            }
+        }
+
         if (!$assignedRoundId) {
             echo json_encode(['success' => true, 'round_id' => null, 'consultant' => null, 'message' => 'Không khớp luật nào']);
             break;
@@ -2071,7 +2128,7 @@ switch ($action) {
             }
         }
         
-        echo json_encode(['success' => true, 'round_id' => $assignedRoundId, 'consultant' => $consultant]);
+        echo json_encode(['success' => true, 'round_id' => $assignedRoundId, 'consultant' => $consultant, 'is_fallback' => $isFallback]);
         break;
 
     case 'manual_insert_lead':
@@ -2097,13 +2154,48 @@ switch ($action) {
         }
         
         $assignedRoundId = $override_round_id;
+        $inject = [];
+        $isFallback = false;
         if (!$assignedRoundId) {
-            $assignedRoundId = evaluateRules($conn, null, $source, $type, $note, $phone, $email, $name);
+            $ruleResult = evaluateRules($conn, $data, $source, $type);
+            if (is_array($ruleResult)) {
+                $assignedRoundId = $ruleResult['target_round_id'];
+                $inject = $ruleResult['inject'] ?? [];
+            } else {
+                $assignedRoundId = $ruleResult;
+            }
+        }
+
+        if (!$assignedRoundId) {
+            $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+            if ($fbStmt && $fbStmt->num_rows > 0) {
+                $assignedRoundId = (int)$fbStmt->fetch_assoc()['setting_value'];
+                if ($assignedRoundId > 0) {
+                    $isFallback = true;
+                }
+            }
+        }
+        
+        // If rule matched and there are inject fields, apply them!
+        if (!empty($inject)) {
+            $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+            foreach ($inject as $k => $v) {
+                if (in_array($k, $standardFields)) {
+                    if ($k === 'source') $source = $v;
+                    if ($k === 'type') $type = $v;
+                    if ($k === 'note') $note = $v;
+                    if ($k === 'name') $name = $v;
+                    if ($k === 'phone') $phone = normalizePhone($v);
+                    if ($k === 'email') $email = trim($v);
+                } else {
+                    $note .= "\n[$k]: $v";
+                }
+            }
         }
         
         if (!$assignedRoundId) {
             // Cannot assign
-            $leadId = insertLead($conn, $phone, $email, $name, $source, $type, $note, 'Chưa phân bổ', null, null, null);
+            $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
             echo json_encode(['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.']);
             break;
         }
@@ -2140,7 +2232,7 @@ switch ($action) {
                 $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
                 
                 // Track CRM logs
-                trackCRMAction($conn, $leadId, "Nhập liệu thủ công từ Admin", "System", "success");
+                trackCRMAction($conn, $leadId, $isFallback ? "Nhập liệu thủ công (Phân bổ qua Vòng mặc định)" : "Nhập liệu thủ công từ Admin", "System", "success");
                 
                 $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
                 $stmtRound->bind_param("i", $assignedRoundId);
@@ -2148,7 +2240,7 @@ switch ($action) {
                 $roundName = $stmtRound->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
                 
                 // Log distribution
-                logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, "Nhập liệu thủ công từ Admin");
+                logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin");
                 
                 // Track assigned report
                 trackAssignedReport($conn, $assignedRoundId, $consultantId);
@@ -2188,7 +2280,7 @@ switch ($action) {
                 echo json_encode(['success' => true, 'message' => 'Data đã được giao thành công.']);
             } else {
                 // Insert unassigned
-                $leadId = insertLead($conn, $phone, $email, $name, $source, $type, $note, 'Chưa phân bổ', null, null, null);
+                $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
                 $conn->commit();
                 $conn->query("SELECT RELEASE_LOCK('$lockKey')");
                 echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.']);

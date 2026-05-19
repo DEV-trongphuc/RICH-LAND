@@ -195,7 +195,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         }
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lá»—i Database: " . "H? th?ng dang b?n, vui lòng th? l?i sau."]);
+        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
         exit();
     }
     echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < 6 months."]);
@@ -232,6 +232,17 @@ if (is_array($ruleResult)) {
     $targetRoundId = $ruleResult;
 }
 
+if (!$targetRoundId) {
+    $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
+    if ($fbStmt && $fbStmt->num_rows > 0) {
+        $fbRoundId = (int)$fbStmt->fetch_assoc()['setting_value'];
+        if ($fbRoundId > 0) {
+            $targetRoundId = $fbRoundId;
+            $message = 'No matching rule found. Routed to fallback round.';
+        }
+    }
+}
+
 if ($targetRoundId) {
     // --- 3. Round-Robin Assignment ---
     $assignResult = getNextConsultantInRound($conn, $targetRoundId);
@@ -259,7 +270,7 @@ try {
     $conn->commit();
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Lá»—i Database: " . "H? th?ng dang b?n, vui lòng th? l?i sau."]);
+    echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
     exit();
 }
 

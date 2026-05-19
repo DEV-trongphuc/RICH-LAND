@@ -40,7 +40,8 @@ export const Rounds = () => {
     selected_users: [] as number[],
     starting_consultant_id: null as number | null,
     ratios: {} as Record<string, number>,
-    data_per_turns: {} as Record<string, number>
+    data_per_turns: {} as Record<string, number>,
+    is_fallback: false
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -92,7 +93,7 @@ export const Rounds = () => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {} });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, is_fallback: false });
     setModalOpen(true);
   };
 
@@ -111,7 +112,8 @@ export const Rounds = () => {
       selected_users: matchedIds,
       starting_consultant_id: r.next_consultant_id ? parseInt(r.next_consultant_id) : null,
       ratios: r.ratios || {},
-      data_per_turns: r.data_per_turns || {}
+      data_per_turns: r.data_per_turns || {},
+      is_fallback: !!r.is_fallback
     });
     setModalOpen(true);
     fetchReports(r.id);
@@ -299,7 +301,14 @@ export const Rounds = () => {
                         <Zap size={18} color={color} />
                       </div>
                       <div>
-                        <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)' }}>{r.round_name}</h3>
+                        <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {r.round_name}
+                          {r.is_fallback && (
+                            <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>
+                              Mặc định
+                            </span>
+                          )}
+                        </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
@@ -377,7 +386,14 @@ export const Rounds = () => {
                 </div>
                 
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{r.round_name}</h3>
+                  <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {r.round_name}
+                    {r.is_fallback && (
+                      <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>
+                        Mặc định
+                      </span>
+                    )}
+                  </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
@@ -583,6 +599,21 @@ export const Rounds = () => {
           </p>
         </div>
       )}
+
+      <div className="form-group" style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+            <Zap size={14} color="var(--color-primary)" /> Đặt làm Vòng phân bổ mặc định (Fallback)
+          </label>
+          <div 
+            className={`custom-toggle ${formData.is_fallback ? 'active' : ''}`}
+            onClick={() => setFormData({ ...formData, is_fallback: !formData.is_fallback })}
+          />
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+          Nếu dữ liệu mới không khớp bất kỳ quy luật chia nào, hệ thống sẽ tự động phân phối vào vòng này. Chỉ có duy nhất 1 vòng được đặt làm mặc định.
+        </p>
+      </div>
     </div>
 
     {/* RIGHT COLUMN */}

@@ -353,7 +353,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
                                 email = IF(VALUES(email) != '' AND email = '', VALUES(email), email),
                                 source = VALUES(source),
                                 type = VALUES(type),
-                                note = VALUES(note),
+                                note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n', VALUES(note)))),
                                 last_interaction_date = NOW(),
                                 assigned_to = VALUES(assigned_to)");
     $stmt->bind_param("ssssssi", $phone, $email, $name, $source, $type, $note, $assignedConsultantId);
@@ -416,11 +416,11 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     if ($id) {
         // NEW-02 fix: Only update assigned_to if we actually have a consultant
         if ($assignedConsultantId) {
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), '\n', ?)), last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), assigned_to = ? WHERE id = ?");
             $uStmt->bind_param("ssssii", $source, $type, $note, $note, $assignedConsultantId, $id);
         } else {
             // Don't overwrite assigned_to when lead is pending/unassigned
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), '\n', ?)), last_interaction_date = NOW() WHERE id = ?");
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW() WHERE id = ?");
             $uStmt->bind_param("ssssi", $source, $type, $note, $note, $id);
         }
         $uStmt->execute();

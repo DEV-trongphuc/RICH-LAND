@@ -11,6 +11,8 @@ use PHPMailer\PHPMailer\Exception;
 
 function _getBaseHtml($title, $subtitle, $contentHtml)
 {
+    $headerSub = !empty($title) ? mb_strtoupper($title, 'UTF-8') : 'HỆ THỐNG PHÂN BỔ DATA TỰ ĐỘNG';
+    
     return '
     <div style="background-color: #f8fafc; padding: 40px 0; font-family: \'Inter\', Helvetica, Arial, sans-serif;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
@@ -18,17 +20,16 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #eab308, #ea580c); padding: 40px 20px; text-align: center;">
                 <div style="margin-bottom: 16px; text-align: center;">
-                    <div style="display: inline-block; background: rgba(255,255,255,0.2); border-radius: 50%; padding: 12px; width: 48px; height: 48px;">
-                        <img src="https://automation.ideas.edu.vn/imgs/ICON.png" alt="Domation Logo" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" />
+                    <div style="display: inline-block; background: rgba(255,255,255,0.25); border-radius: 50%; width: 56px; height: 56px; line-height: 56px; text-align: center; vertical-align: middle;">
+                        <span style="font-size: 28px; line-height: 56px; vertical-align: middle;">🤖</span>
                     </div>
                 </div>
                 <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: 2px; text-align: center;">DOMATION</h1>
-                <p style="color: rgba(255,255,255,0.95); font-size: 13px; margin: 8px 0 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">Hệ Thống Phân Bổ Data Tự Động</p>
+                <p style="color: rgba(255,255,255,0.95); font-size: 14px; margin: 8px 0 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; text-align: center;">' . $headerSub . '</p>
             </div>
             
             <!-- Content -->
             <div style="padding: 40px 30px;">
-                ' . (!empty($title) ? '<h2 style="color: #0f172a; font-size: 22px; margin-top: 0; margin-bottom: 24px;">' . $title . '</h2>' : '') . '
                 <div style="color: #475569; font-size: 15px; line-height: 1.6;">
                     ' . $contentHtml . '
                 </div>
@@ -136,8 +137,8 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px; line-height: 1; display: inline-block;">🔄</span>
+            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">🔄</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Khách hàng đăng ký lại</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Chào <strong>' . htmlspecialchars($consultantName) . '</strong>, một khách hàng cũ của bạn vừa đăng ký lại trên hệ thống.</p>
@@ -182,15 +183,30 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     // Fetch additional fields (email, type) from DB to display completely
     $email = '';
     $type = '';
-    $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ?");
-    if ($stmt) {
-        $stmt->bind_param("s", $leadPhone);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        if ($res->num_rows > 0) {
-            $row = $res->fetch_assoc();
-            $email = $row['email'] ?? '';
-            $type = $row['type'] ?? '';
+    if ($leadId > 0) {
+        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                $email = $row['email'] ?? '';
+                $type = $row['type'] ?? '';
+            }
+        }
+    } else {
+        // Fallback by phone if ID not provided
+        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ?");
+        if ($stmt) {
+            $stmt->bind_param("s", $leadPhone);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                $email = $row['email'] ?? '';
+                $type = $row['type'] ?? '';
+            }
         }
     }
 
@@ -318,8 +334,8 @@ function sendWelcomeEmailToSale(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #eff6ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px; line-height: 1; display: inline-block;">👋</span>
+            <div style="width: 64px; height: 64px; background: #eff6ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">👋</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào mừng ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản của bạn đã được thêm vào hệ thống phân bổ Data tự động.</p>
@@ -366,8 +382,8 @@ function sendWelcomeEmailToAdminTicket(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px; line-height: 1; display: inline-block;">🛡️</span>
+            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">🛡️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
@@ -408,8 +424,8 @@ function sendAdminConfirmationEmail(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #ecfdf5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px; line-height: 1; display: inline-block;">✉️</span>
+            <div style="width: 64px; height: 64px; background: #ecfdf5; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">✉️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống CRM.</p>
@@ -440,8 +456,8 @@ function sendAdminAddedToTicketEmail(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">🎫</span>
+            <div style="width: 64px; height: 64px; background: #fffbeb; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">🎫</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
@@ -471,8 +487,8 @@ function sendQuickMessageEmailToSale(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px; line-height: 1; display: inline-block;">💬</span>
+            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">💬</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn có một tin nhắn mới từ Quản trị viên.</p>
@@ -503,8 +519,8 @@ function sendDailyReportEmailToAdmins(
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                <span style="font-size: 32px;">📊</span>
+            <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">📊</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của Hệ thống CRM.</p>
