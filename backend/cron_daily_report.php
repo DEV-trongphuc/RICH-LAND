@@ -12,11 +12,12 @@ function runDailyReportCron($conn) {
         }
     }
 
-    $reportTime = $settings['zalo_daily_report_time'] ?? '';
+    $reportTime = $settings['zalo_daily_report_time'] ?? '17:00';
+    if (empty($reportTime)) $reportTime = '17:00';
     $lastRunDate = $settings['last_daily_report_date'] ?? '';
     $botToken = $settings['zalo_bot_token'] ?? '';
 
-    if (empty($reportTime) || empty($botToken)) {
+    if (empty($botToken)) {
         return;
     }
 
@@ -35,6 +36,7 @@ function runDailyReportCron($conn) {
             FROM distribution_logs dl 
             JOIN consultants c ON dl.assigned_to = c.id 
             WHERE dl.received_at >= CURDATE() AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            AND dl.status IN ('assigned', 'compensation', 'error')
             GROUP BY c.id
         ");
         

@@ -1756,9 +1756,10 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int)$row['cnt'];
                 $statsRes['total'] += $cnt;
-                if ($status === 'assigned') $statsRes['distributed'] += $cnt;
-                else if ($status === 'duplicate') $statsRes['duplicates'] += $cnt;
+                if ($status === 'assigned' || $status === 'compensation') $statsRes['distributed'] += $cnt;
+                else if ($status === 'duplicate' || $status === 'reminder') $statsRes['duplicates'] += $cnt;
                 else if ($status === 'error') $statsRes['errors'] += $cnt;
+                else if ($status === 'rule_6_month') $statsRes['distributed'] += $cnt;
             }
         }
 
@@ -1771,9 +1772,10 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int)$row['cnt'];
                 $prevStatsRes['total'] += $cnt;
-                if ($status === 'assigned') $prevStatsRes['distributed'] += $cnt;
-                else if ($status === 'duplicate') $prevStatsRes['duplicates'] += $cnt;
+                if ($status === 'assigned' || $status === 'compensation') $prevStatsRes['distributed'] += $cnt;
+                else if ($status === 'duplicate' || $status === 'reminder') $prevStatsRes['duplicates'] += $cnt;
                 else if ($status === 'error') $prevStatsRes['errors'] += $cnt;
+                else if ($status === 'rule_6_month') $prevStatsRes['distributed'] += $cnt;
             }
         }
 
@@ -1809,7 +1811,7 @@ switch ($action) {
         $topConsultantsSql = "SELECT c.name, COUNT(dl.id) as data_count 
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateCondition AND dl.status='assigned' 
+                              WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month') 
                               GROUP BY c.id ORDER BY data_count DESC";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $topConsultants = [];
@@ -1831,7 +1833,7 @@ switch ($action) {
         $roundRatioSql = "SELECT dr.round_name, COUNT(dl.id) as count 
                           FROM distribution_logs dl 
                           JOIN distribution_rounds dr ON dl.round_id = dr.id 
-                          WHERE $dateCondition AND dl.status='assigned' 
+                          WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month') 
                           GROUP BY dr.id ORDER BY count DESC";
         $roundRatioRes = $conn->query($roundRatioSql);
         $roundRatio = [];

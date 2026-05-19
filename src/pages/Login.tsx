@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Lock, Mail } from 'lucide-react';
+import { LogIn, Lock, Mail, Share2, Bell, BarChart3, CheckCircle2 } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -43,19 +43,104 @@ export const Login = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--color-bg)',
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+      position: 'relative',
+      overflow: 'hidden',
       padding: '2rem'
     }}>
+      {/* Decorative Background Elements */}
       <div style={{
+        position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw',
+        background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%)',
+        borderRadius: '50%', filter: 'blur(60px)', animation: 'float 10s ease-in-out infinite'
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw',
+        background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, rgba(0,0,0,0) 70%)',
+        borderRadius: '50%', filter: 'blur(80px)', animation: 'float 15s ease-in-out infinite reverse'
+      }} />
+      
+      <div style={{
+        position: 'relative',
+        zIndex: 10,
         width: '100%',
-        maxWidth: 400,
-        background: 'var(--color-surface)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-xl)',
-        padding: '2.5rem',
-        border: '1px solid var(--color-border)',
-        animation: 'slideUp 0.4s ease-out'
+        maxWidth: 1100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4rem',
+        flexWrap: 'wrap'
       }}>
+        
+        {/* Left Side: Features Info */}
+        <div style={{ flex: '1 1 400px', color: 'white', animation: 'slideRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '100px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '1.5rem' }}>
+              <span style={{ display: 'flex', width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>HỆ THỐNG ĐANG HOẠT ĐỘNG</span>
+            </div>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
+              DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
+            </h1>
+            <p style={{ fontSize: '1.125rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: 480 }}>
+              Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(99,102,241,0.2)', padding: '10px', borderRadius: '12px', color: '#818cf8' }}>
+                <Share2 size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Chia Data Thông Minh</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Tự động phân bổ data theo vòng lặp, xử lý chống trùng lặp và đền bù data lỗi chính xác 100%.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(56,189,248,0.2)', padding: '10px', borderRadius: '12px', color: '#38bdf8' }}>
+                <Bell size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Thông Báo Email Tức Thì</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Gửi email cảnh báo data trùng lặp, data mới, và thông báo kết quả duyệt ticket ngay lập tức.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '12px' }}>
+                <img src="https://stc-zmp.zdn.vn/zbot-platform-docs/images/logo.png" alt="Zalo Bot" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Tích Hợp Zalo Bot</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(244,114,182,0.2)', padding: '10px', borderRadius: '12px', color: '#f472b6' }}>
+                <BarChart3 size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Báo Cáo & Thống Kê</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Báo cáo thống kê tự động gửi hàng ngày theo khung giờ tùy chọn, đo lường chính xác hiệu suất Sale và chất lượng Data.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Login Form */}
+        <div style={{
+          flex: '0 1 400px',
+          width: '100%',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1) inset',
+          padding: '3rem 2.5rem',
+          animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
             width: 64, height: 64, margin: '0 auto 1rem', borderRadius: 16,
@@ -67,8 +152,8 @@ export const Login = () => {
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>DOMATION CRM</h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4 }}>Đăng nhập để quản lý Hệ thống</p>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>Đăng Nhập</h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4 }}>Vui lòng đăng nhập để tiếp tục</p>
         </div>
 
         {error && (
@@ -85,11 +170,11 @@ export const Login = () => {
           <div>
             <label className="form-label">Email đăng nhập</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
+              <Mail size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
               <input
                 type="email"
-                className="form-input"
-                style={{ paddingLeft: 40 }}
+                className="form-input login-input"
+                style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="VD: ten@domation.net"
@@ -102,11 +187,11 @@ export const Login = () => {
           <div>
             <label className="form-label">Mật khẩu</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
+              <Lock size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
               <input 
                 type="password" 
-                className="form-input" 
-                style={{ paddingLeft: 40 }}
+                className="form-input login-input" 
+                style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu"
@@ -117,18 +202,55 @@ export const Login = () => {
 
           <button 
             type="submit" 
-            className="btn primary" 
-            style={{ width: '100%', padding: '0.875rem', marginTop: '0.5rem', fontSize: '1rem' }}
+            className="login-btn" 
+            style={{ width: '100%', padding: '0 1.5rem', height: 48, marginTop: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             disabled={loading}
           >
             {loading ? 'Đang xác thực...' : <><LogIn size={18} /> Đăng nhập</>}
           </button>
         </form>
       </div>
+      </div>
       <style>{`
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(40px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideRight {
+          from { opacity: 0; transform: translateX(-40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes float {
+          0% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-30px) scale(1.05); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        .login-input {
+          transition: all 0.2s ease;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+        }
+        .login-input:focus {
+          background: #fff;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+        }
+        .login-btn {
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        }
+        .login-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(99,102,241,0.4);
+        }
+        .login-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
       `}</style>
     </div>

@@ -93,9 +93,10 @@ export const ReportData = () => {
   // ── Full-screen wrapper ──────────────────────────────────────────────────────
   return (
     <div style={{
-      width: '100%', minHeight: '100vh',
+      width: '100%', height: '100vh',
       background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
-      display: 'flex', flexDirection: 'column', position: 'relative'
+      display: 'flex', flexDirection: 'column', position: 'relative',
+      overflow: 'hidden'
     }}>
       {/* Blobs */}
       <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />

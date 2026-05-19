@@ -2,6 +2,6 @@ import { useEffect } from 'react';
 
 export function useDocumentTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} | DOMATION CRM`;
+    document.title = `${title} | DOMATION DATA`;
   }, [title]);
 }

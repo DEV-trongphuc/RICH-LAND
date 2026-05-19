@@ -169,7 +169,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
             // Gửi phản hồi chung
             if ($linkedAny) {
-                $msg = "[ HỆ THỐNG DOMATION CRM ]\n\n"
+                $msg = "[ HỆ THỐNG DOMATION DATA ]\n\n"
                      . "Liên kết Zalo thành công tài khoản:\n";
                 foreach ($successMessages as $sm) {
                     $msg .= "  • $sm\n";
@@ -186,7 +186,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             sendZaloMessage($botToken, $chatId, $errMsg);
         } else {
             // Tin nhắn không phải email, hướng dẫn lại
-            $guideMsg = "[ HỆ THỐNG DOMATION CRM ]\n\n"
+            $guideMsg = "[ HỆ THỐNG DOMATION DATA ]\n\n"
                       . "Chào $fromName!\n"
                       . "Để liên kết tài khoản nhận Data tự động, vui lòng soạn tin nhắn theo cú pháp:\n\n"
                       . "[ID của bạn]-[Email của bạn]\n\n"
