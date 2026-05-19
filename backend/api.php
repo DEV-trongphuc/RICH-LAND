@@ -370,6 +370,7 @@ switch ($action) {
         $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("ssss", $name, $email, $status, $zalo_chat_id);
         $stmt->execute();
+        $newId = $conn->insert_id;
 
         // Gửi Email Welcome kèm link Zalo Bot
         require_once 'mailer.php';
@@ -379,7 +380,7 @@ switch ($action) {
             $row = $settingStmt->fetch_assoc();
             if (!empty($row['setting_value'])) $botLink = $row['setting_value'];
         }
-        sendWelcomeEmailToSale($email, $name, $botLink);
+        sendWelcomeEmailToSale($newId, $email, $name, $botLink);
 
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -1447,6 +1448,28 @@ switch ($action) {
             ';
             
             $success = sendEmailNotification($email, $subject, "Có Data Mới Về!", $content);
+        } else if ($type === 'zalo_sale') {
+            sendWelcomeEmailToSale(99, $email, "Sale Test", "https://zalo.me/1185588456243371597");
+            $success = true;
+        } else if ($type === 'zalo_admin') {
+            sendWelcomeEmailToAdminTicket(1, $email, "Admin Test", "https://zalo.me/1185588456243371597");
+            $success = true;
+        } else if ($type === 'ticket_admin') {
+            sendTicketNotificationToAdmins($email, "Admin Test", "Khách Nguyễn Văn A", "0912345678", "Gọi không nghe máy, khách chặn số", "Sale Test", "Vòng A");
+            $success = true;
+        } else if ($type === 'ticket_sale_success') {
+            sendQuickMessageEmailToSale($email, "Sale Test", "Admin đã duyệt Ticket của bạn cho khách hàng Nguyễn Văn A. Bạn đã được cộng lại 1 Data vào vòng phân bổ tiếp theo.");
+            $success = true;
+        } else if ($type === 'ticket_sale_fail') {
+            sendQuickMessageEmailToSale($email, "Sale Test", "Admin ĐÃ TỪ CHỐI Ticket của bạn cho khách hàng Nguyễn Văn A. Lý do: Số điện thoại vẫn đổ chuông bình thường.");
+            $success = true;
+        } else if ($type === 'admin_confirm') {
+            sendAdminConfirmationEmail($email, "Admin Test", "https://open.domation.net/confirm?token=123456");
+            $success = true;
+        } else if ($type === 'daily_report') {
+            $statsHtml = "<li>Sale Test 1: <b>15</b> data</li><li>Sale Test 2: <b>12</b> data</li>";
+            sendDailyReportEmailToAdmins($email, "Admin Test", 27, $statsHtml, 3);
+            $success = true;
         } else {
             $subject = "Test Cấu hình Email từ DOMATION";
             $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p><p style='color:#64748b;font-size:14px;'>Gửi lúc: " . date('d/m/Y H:i:s') . "</p>";
@@ -1599,13 +1622,16 @@ switch ($action) {
                 
                 $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
                 $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+                $stmtLink = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link' LIMIT 1");
+                $botLink = $stmtLink->fetch_assoc()['setting_value'] ?? 'https://zalo.me/1185588456243371597';
                 
                 $idsStr = implode(',', $adminIds);
-                $resAdmins = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($idsStr)");
+                $resAdmins = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($idsStr)");
                 if ($resAdmins) {
                     while ($admin = $resAdmins->fetch_assoc()) {
                         if (!empty($admin['email'])) {
-                            sendAdminAddedToTicketEmail($admin['email'], $admin['name']);
+                            sendWelcomeEmailToAdminTicket($admin['id'], $admin['email'], $admin['name'], $botLink);
                         }
                         if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
                             $zName = $admin['name'] ?: 'Quản trị viên';

@@ -254,6 +254,7 @@ function sendTicketNotificationToAdmins(
  * Gui email chao mung va huong dan xac thuc Zalo Bot khi them Sale moi
  */
 function sendWelcomeEmailToSale(
+    int $consultantId,
     string $consultantEmail,
     string $consultantName,
     string $zaloBotLink
@@ -276,7 +277,8 @@ function sendWelcomeEmailToSale(
             </p>
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
-                <li>Gửi tin nhắn cho Bot với nội dung chính là Email của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;">' . htmlspecialchars($consultantEmail) . '</strong></li>
+                <li>Gửi tin nhắn cho Bot với nội dung mã xác thực của bạn: <br/><strong style="color: #0068ff; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($consultantId . '-' . $consultantEmail) . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡 Mẹo: Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 
@@ -300,6 +302,7 @@ function sendWelcomeEmailToSale(
  * Gui email moi Admin xac thuc Zalo Bot khi ho duoc chon nhan thong bao Ticket
  */
 function sendWelcomeEmailToAdminTicket(
+    int $adminId,
     string $adminEmail,
     string $adminName,
     string $zaloBotLink
@@ -322,7 +325,8 @@ function sendWelcomeEmailToAdminTicket(
             </p>
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
-                <li>Gửi tin nhắn cho Bot với nội dung là Email của bạn: <br/><strong style="color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">' . htmlspecialchars($adminEmail) . '</strong></li>
+                <li>Gửi tin nhắn cho Bot với mã xác thực sau: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . htmlspecialchars($adminId . '-' . $adminEmail) . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡 Mẹo: Hãy copy dòng mã trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 

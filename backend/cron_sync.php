@@ -215,12 +215,20 @@ foreach ($connections as $connItem) {
                 $inject = $ruleResult['inject'] ?? [];
                 
                 // Áp dụng ghi đè dữ liệu (Inject Fields)
-                if (isset($inject['source'])) $source = $inject['source'];
-                if (isset($inject['type'])) $type = $inject['type'];
-                if (isset($inject['note'])) $note = $inject['note'];
-                if (isset($inject['name'])) $name = $inject['name'];
-                if (isset($inject['phone'])) $phone = normalizePhone($inject['phone']);
-                if (isset($inject['email'])) $email = trim($inject['email']);
+                $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+                foreach ($inject as $k => $v) {
+                    if (in_array($k, $standardFields)) {
+                        if ($k === 'source') $source = $v;
+                        if ($k === 'type') $type = $v;
+                        if ($k === 'note') $note = $v;
+                        if ($k === 'name') $name = $v;
+                        if ($k === 'phone') $phone = normalizePhone($v);
+                        if ($k === 'email') $email = trim($v);
+                    } else {
+                        // Append custom fields to note
+                        $note .= "\n[$k]: $v";
+                    }
+                }
             } else {
                 $targetRoundId = $ruleResult;
             }

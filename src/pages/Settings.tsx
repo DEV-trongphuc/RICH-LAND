@@ -394,7 +394,14 @@ function sendToDataFlow(e) {
               <CustomSelect 
                 options={[
                   { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
-                  { value: 'assignment', label: 'Test Template Giao Data' }
+                  { value: 'assignment', label: 'Test Template Giao Data' },
+                  { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
+                  { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
+                  { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
+                  { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
+                  { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
+                  { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
+                  { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
                 ]}
                 value={testType}
                 onChange={val => setTestType(val.toString())}

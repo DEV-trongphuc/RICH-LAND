@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { fetchAPI } from '../utils/api';
 import { CardSkeleton } from '../components/ui/Skeleton';
 
@@ -632,67 +633,114 @@ export const RuleSettings = () => {
                   
                   {/* INJECT DATA FIELDS TOGGLE */}
                   <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed #e2e8f0', paddingTop: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, color: 'var(--color-text)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={branch.inject?.enabled || false}
-                        onChange={(e) => {
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: branch.inject?.enabled ? '1rem' : 0 }}>
+                      <div 
+                        onClick={() => {
                           const newB = [...branches];
                           if (!newB[bIndex].inject) newB[bIndex].inject = { enabled: false, fields: [] };
-                          newB[bIndex].inject.enabled = e.target.checked;
-                          if (e.target.checked && newB[bIndex].inject.fields.length === 0) {
+                          const isEnabled = !newB[bIndex].inject.enabled;
+                          newB[bIndex].inject.enabled = isEnabled;
+                          if (isEnabled && newB[bIndex].inject.fields.length === 0) {
                              newB[bIndex].inject.fields.push({ col: 'source', val: '' });
                           }
                           setBranches(newB);
                         }}
-                        style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
-                      />
-                      Tự động gán trường dữ liệu (Inject Data)
-                    </label>
+                        style={{
+                          width: 44,
+                          height: 24,
+                          borderRadius: 24,
+                          background: branch.inject?.enabled ? '#10b981' : '#cbd5e1',
+                          position: 'relative',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                          flexShrink: 0
+                        }}
+                      >
+                        <div style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          position: 'absolute',
+                          top: 2,
+                          left: branch.inject?.enabled ? 22 : 2,
+                          transition: 'left 0.2s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                        }} />
+                      </div>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Tự động gán trường dữ liệu (Inject Data)</span>
+                    </div>
                     
                     {branch.inject?.enabled && (
-                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                         {branch.inject.fields.map((f: any, fi: number) => (
-                           <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                             <div style={{ flex: 1 }}>
-                               <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                         {branch.inject.fields.map((f: any, fi: number) => {
+                           const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
+                           return (
+                             <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                               <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
                                  <CustomSelect
                                    options={[
                                      { value: 'source', label: 'Nguồn Khách (Source)' },
                                      { value: 'type', label: 'Loại Khách (Type)' },
                                      { value: 'note', label: 'Ghi Chú (Note)' },
                                      { value: 'name', label: 'Tên Khách Hàng (Name)' },
+                                     { value: 'custom_trigger', label: 'Tùy chỉnh (Custom Key)...' }
                                    ]}
-                                   value={f.col}
+                                   value={isCustomMode ? 'custom_trigger' : f.col}
                                    onChange={val => {
                                       const newB = [...branches];
-                                      newB[bIndex].inject.fields[fi].col = String(val);
+                                      if (val === 'custom_trigger') {
+                                         newB[bIndex].inject.fields[fi].isCustom = true;
+                                         if (['source', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
+                                             newB[bIndex].inject.fields[fi].col = '';
+                                         }
+                                      } else {
+                                         newB[bIndex].inject.fields[fi].isCustom = false;
+                                         newB[bIndex].inject.fields[fi].col = String(val);
+                                      }
                                       setBranches(newB);
                                    }}
                                  />
                                </div>
+                               
+                               {isCustomMode && (
+                                 <div style={{ flex: 1, minWidth: 120 }}>
+                                   <input
+                                     style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                     placeholder="Tên trường custom (vd: utm_source)..."
+                                     value={f.col}
+                                     onChange={e => {
+                                        const newB = [...branches];
+                                        newB[bIndex].inject.fields[fi].col = e.target.value;
+                                        setBranches(newB);
+                                     }}
+                                   />
+                                 </div>
+                               )}
+                               
+                               <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
+                                 <input
+                                   style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                   placeholder="Giá trị muốn gán tự động..."
+                                   value={f.val}
+                                   onChange={e => {
+                                      const newB = [...branches];
+                                      newB[bIndex].inject.fields[fi].val = e.target.value;
+                                      setBranches(newB);
+                                   }}
+                                 />
+                               </div>
+                               
+                               <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: '6px' }} onClick={() => {
+                                  const newB = [...branches];
+                                  newB[bIndex].inject.fields = branch.inject.fields.filter((_: any, idx: number) => idx !== fi);
+                                  setBranches(newB);
+                               }}>
+                                 <Trash2 size={16} />
+                               </button>
                              </div>
-                             <div style={{ flex: 2 }}>
-                               <input
-                                 style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
-                                 placeholder="Giá trị muốn gán tự động..."
-                                 value={f.val}
-                                 onChange={e => {
-                                    const newB = [...branches];
-                                    newB[bIndex].inject.fields[fi].val = e.target.value;
-                                    setBranches(newB);
-                                 }}
-                               />
-                             </div>
-                             <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)' }} onClick={() => {
-                                const newB = [...branches];
-                                newB[bIndex].inject.fields = branch.inject.fields.filter((_: any, idx: number) => idx !== fi);
-                                setBranches(newB);
-                             }}>
-                               <Trash2 size={16} />
-                             </button>
-                           </div>
-                         ))}
+                           );
+                         })}
                          <button type="button" className="btn ghost" style={{ alignSelf: 'flex-start', fontSize: '0.8125rem', marginTop: 4 }} onClick={() => {
                             const newB = [...branches];
                             newB[bIndex].inject.fields.push({ col: 'source', val: '' });
