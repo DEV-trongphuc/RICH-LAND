@@ -566,3 +566,27 @@ function sendDailyReportEmailToAdmins(
 
     sendEmailNotification($adminEmail, $subject, 'Báo Cáo Hàng Ngày', $content, '');
 }
+
+function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $roundName, $amount) {
+    if (empty($consultantEmail)) return;
+
+    $subject = "[Domation DATA] Thông báo Bù Data - Vòng: $roundName";
+    $title = "BẠN VỪA ĐƯỢC BÙ DATA";
+    
+    $content = '
+        <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border-left: 4px solid #4f46e5; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 14px; color: #3730a3;"><strong>THÔNG BÁO TỪ QUẢN TRỊ VIÊN</strong></p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
+                Xin chào <strong>' . htmlspecialchars($consultantName) . '</strong>,
+            </p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
+                Quản trị viên vừa cập nhật bù thêm <strong>' . (int)$amount . ' data</strong> cho bạn tại vòng: <strong>' . htmlspecialchars($roundName) . '</strong>.
+            </p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
+                Khi hệ thống nhận được khách hàng mới thỏa mãn điều kiện của vòng này, data sẽ được ưu tiên phân bổ thêm cho bạn để bù lại số lượng trên.
+            </p>
+        </div>
+    ';
+
+    sendEmailNotification($consultantEmail, $subject, $title, $content, '');
+}

@@ -235,15 +235,15 @@ export const Tickets = () => {
         </div>
 
         {/* Date from */}
-        <div className="mobile-flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 130 }}>
+        <div className="mobile-flex-wrap mobile-flex-1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: 130 }}>
             <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateFrom ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
+              className="mobile-w-full"
               style={{
-                width: '100%',
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
                 borderRadius: 10,
                 border: '1.5px solid',
@@ -259,14 +259,14 @@ export const Tickets = () => {
             />
           </div>
           <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>→</span>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 130 }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: 130 }}>
             <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateTo ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
+              className="mobile-w-full"
               style={{
-                width: '100%',
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
                 borderRadius: 10,
                 border: '1.5px solid',

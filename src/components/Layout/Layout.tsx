@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { QuickAddLeadModal } from '../QuickAddLeadModal';
+import { ProfileModal } from '../ProfileModal';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -28,6 +29,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </main>
       </div>
       <QuickAddLeadModal />
+      <ProfileModal />
     </div>
   );
 };

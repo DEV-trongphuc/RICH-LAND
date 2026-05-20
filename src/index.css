@@ -82,6 +82,12 @@
   .mobile-flex-wrap {
     flex-wrap: wrap !important;
   }
+  .mobile-flex-1 {
+    flex: 1 !important;
+  }
+  .mobile-w-full {
+    width: 100% !important;
+  }
   
   .mobile-round-actions {
     flex-wrap: wrap !important;

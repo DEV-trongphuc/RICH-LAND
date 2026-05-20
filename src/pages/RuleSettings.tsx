@@ -26,13 +26,13 @@ const OP_LABELS: Record<string, string> = {
   ends_with: 'Kết thúc bằng',
   is_empty: 'Trống (Không có dữ liệu)',
   is_not_empty: 'Không trống (Có dữ liệu)',
-  date_before: 'Ngày trước (Nhỏ hơn ngày)',
-  date_after: 'Ngày sau (Lớn hơn ngày)',
-  date_equals: 'Chính xác ngày'
+  date_before: 'Ngày trước (Nhỏ hơn ngày) (YYYY-MM-DD)',
+  date_after: 'Ngày sau (Lớn hơn ngày) (YYYY-MM-DD)',
+  date_equals: 'Chính xác ngày (YYYY-MM-DD)'
 };
 
 // Sortable Item Component
-const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: number, onEdit: (r: any) => void, onDelete: (id: number) => void }) => {
+const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
   const style = {
@@ -136,7 +136,7 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
                               <span style={{
                                 background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem'
                               }}>
-                                "{c.val}"
+                                "{c.col === 'connection_id' ? (connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val) : c.val}"
                               </span>
                             )}
                           </div>
@@ -402,7 +402,8 @@ export const RuleSettings = () => {
     const baseFields = [
       { value: 'source', label: 'Nguồn Data (Hệ thống)' },
       { value: 'type', label: 'Loại Data (Hệ thống)' },
-      { value: 'note', label: 'Ghi Chú (Hệ thống)' }
+      { value: 'note', label: 'Ghi Chú (Hệ thống)' },
+      { value: 'connection_id', label: 'Tích hợp (Sheet/Webhook)' }
     ];
     if (connectionId !== 'all') {
       const conn = connections.find(c => Number(c.id) === Number(connectionId));
@@ -426,9 +427,9 @@ export const RuleSettings = () => {
     { value: 'ends_with', label: 'Kết thúc bằng' },
     { value: 'is_empty', label: 'Trống (Không có dữ liệu)' },
     { value: 'is_not_empty', label: 'Không trống (Có dữ liệu)' },
-    { value: 'date_before', label: 'Ngày trước (Nhỏ hơn ngày)' },
-    { value: 'date_after', label: 'Ngày sau (Lớn hơn ngày)' },
-    { value: 'date_equals', label: 'Chính xác ngày' }
+    { value: 'date_before', label: 'Ngày trước (Nhỏ hơn ngày) (YYYY-MM-DD)' },
+    { value: 'date_after', label: 'Ngày sau (Lớn hơn ngày) (YYYY-MM-DD)' },
+    { value: 'date_equals', label: 'Chính xác ngày (YYYY-MM-DD)' }
   ];
 
   return (
@@ -486,7 +487,7 @@ export const RuleSettings = () => {
               <SortableContext items={rules.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 {rules.map((rule, idx) => (
                   <SortableRuleItem
-                    key={rule.id} rule={rule} idx={idx}
+                    key={rule.id} rule={rule} idx={idx} connections={connections}
                     onEdit={openEditModal}
                     onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
                   />
@@ -593,6 +594,19 @@ export const RuleSettings = () => {
                                 onChange={e => {
                                   const newB = [...branches];
                                   newB[bIndex].conditions[i].val = e.target.value;
+                                  setBranches(newB);
+                                }}
+                              />
+                            ) : c.col === 'connection_id' ? (
+                              <CustomSelect
+                                options={[
+                                  { value: '', label: 'Chọn Sheet tích hợp...' },
+                                  ...connections.map(conn => ({ value: String(conn.id), label: conn.sheet_name }))
+                                ]}
+                                value={c.val}
+                                onChange={v => {
+                                  const newB = [...branches];
+                                  newB[bIndex].conditions[i].val = String(v);
                                   setBranches(newB);
                                 }}
                               />

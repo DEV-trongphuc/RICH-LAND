@@ -163,8 +163,9 @@ export const Consultants = () => {
     setIsSendingMsg(false);
   };
 
-  const activeCount  = users.filter(u => u.status === 'active').length;
-  const leaveCount   = users.filter(u => u.status === 'leave').length;
+  const activeCount   = users.filter(u => u.status === 'active').length;
+  const leaveCount    = users.filter(u => u.status === 'leave').length;
+  const inactiveCount = users.filter(u => u.status === 'inactive').length;
 
   return (
     <div>
@@ -182,7 +183,7 @@ export const Consultants = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="responsive-grid-3 mobile-stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         <div className="stat-card hover-lift">
           <div className="stat-label">Tổng TVV</div>
           <div className="stat-value">{users.length}</div>
@@ -194,6 +195,10 @@ export const Consultants = () => {
         <div className="stat-card hover-lift">
           <div className="stat-label" style={{ color: 'var(--color-warning)' }}>Đang nghỉ phép</div>
           <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{leaveCount}</div>
+        </div>
+        <div className="stat-card hover-lift">
+          <div className="stat-label" style={{ color: 'var(--color-danger)' }}>Ngừng hoạt động</div>
+          <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{inactiveCount}</div>
         </div>
       </div>
 

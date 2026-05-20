@@ -151,6 +151,15 @@ if (!in_array($action, $publicActions)) {
 } else {
     $decodedUser = null; // Public actions have no user context
 }
+function logAdminAction($conn, $accountId, $action, $details = []) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    $detailsJson = json_encode($details, JSON_UNESCAPED_UNICODE);
+    $stmt = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("isss", $accountId, $action, $detailsJson, $ip);
+        $stmt->execute();
+    }
+}
 
 switch ($action) {
     case 'login':
@@ -173,6 +182,16 @@ switch ($action) {
         if ($res->num_rows > 0) {
             $user = $res->fetch_assoc();
             if (password_verify($password, $user['password_hash'])) {
+                
+                // Update last_login
+                $upd = $conn->prepare("UPDATE accounts SET last_login = NOW() WHERE id = ?");
+                if ($upd) {
+                    $upd->bind_param("i", $user['id']);
+                    $upd->execute();
+                }
+
+                logAdminAction($conn, $user['id'], 'LOGIN', ['message' => 'User logged in successfully']);
+
                 $payload = [
                     'id' => $user['id'],
                     'username' => $user['username'],
@@ -845,12 +864,48 @@ switch ($action) {
             $compensations = $input['compensations'] ?? [];
 
             if ($roundId > 0 && !empty($compensations)) {
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+
+                // Fetch round name
+                $rStmt = $conn->prepare("SELECT name, round_name FROM distribution_rounds WHERE id = ?");
+                $rStmt->bind_param("i", $roundId);
+                $rStmt->execute();
+                $rRes = $rStmt->get_result();
+                $roundRow = $rRes->fetch_assoc();
+                $roundName = $roundRow ? ($roundRow['name'] ?: $roundRow['round_name']) : "Vòng ID $roundId";
+
+                $stmtFetch = $conn->prepare("
+                    SELECT rc.compensation_count, c.name, c.email
+                    FROM round_consultants rc
+                    JOIN consultants c ON rc.consultant_id = c.id
+                    WHERE rc.round_id = ? AND rc.consultant_id = ?
+                ");
+
                 $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = ? WHERE round_id = ? AND consultant_id = ?");
                 foreach ($compensations as $cid => $compCount) {
                     $c = (int) $cid;
                     $count = max(0, (int) $compCount);
-                    $stmtComp->bind_param("iii", $count, $roundId, $c);
-                    $stmtComp->execute();
+
+                    $stmtFetch->bind_param("ii", $roundId, $c);
+                    $stmtFetch->execute();
+                    $fRes = $stmtFetch->get_result();
+                    
+                    if ($fRow = $fRes->fetch_assoc()) {
+                        $oldCount = (int) $fRow['compensation_count'];
+                        $delta = $count - $oldCount;
+                        
+                        $stmtComp->bind_param("iii", $count, $roundId, $c);
+                        $stmtComp->execute();
+
+                        if ($delta > 0) {
+                            sendCompensationAddedEmailToSale($fRow['email'], $fRow['name'], $roundName, $delta);
+                            sendCompensationAddedZaloMessageToSale($c, $fRow['name'], $roundName, $delta);
+                        }
+                    } else {
+                        $stmtComp->bind_param("iii", $count, $roundId, $c);
+                        $stmtComp->execute();
+                    }
                 }
             }
             $conn->commit();
@@ -1898,6 +1953,54 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);
+        }
+        break;
+
+    case 'update_profile':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $name = $input['name'] ?? '';
+        $email = $input['email'] ?? '';
+        $userId = $decodedUser['id'];
+
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên không được để trống']);
+            break;
+        }
+
+        $upd = $conn->prepare("UPDATE accounts SET name = ?, email = ? WHERE id = ?");
+        $upd->bind_param("ssi", $name, $email, $userId);
+        if ($upd->execute()) {
+            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'email' => $email]);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);
+        }
+        break;
+
+    case 'change_password':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $old_pass = $input['old_password'] ?? '';
+        $new_pass = $input['new_password'] ?? '';
+        $userId = $decodedUser['id'];
+
+        $stmt = $conn->prepare("SELECT password_hash FROM accounts WHERE id = ?");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        if ($row = $res->fetch_assoc()) {
+            if (password_verify($old_pass, $row['password_hash'])) {
+                $hash = password_hash($new_pass, PASSWORD_DEFAULT);
+                $upd = $conn->prepare("UPDATE accounts SET password_hash = ? WHERE id = ?");
+                $upd->bind_param("si", $hash, $userId);
+                $upd->execute();
+                logAdminAction($conn, $userId, 'CHANGE_PASSWORD', []);
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Mật khẩu cũ không chính xác']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản']);
         }
         break;
 

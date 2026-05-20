@@ -263,7 +263,7 @@ foreach ($connections as $connItem) {
             }
 
             // --- 2. Evaluate Dynamic Rules to determine Target Round ---
-            $ruleResult = evaluateRules($conn, $rowData, $source, $type);
+            $ruleResult = evaluateRules($conn, $rowData, $source, $type, $connId);
             $targetRoundId = null;
             $assignedConsultantId = null;
             $cronStatus = 'unassigned';

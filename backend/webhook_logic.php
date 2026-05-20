@@ -146,10 +146,11 @@ function checkCRMInteraction($conn, $phone, $email) {
     ];
 }
 
-function evaluateSingleCondition($data, $source, $type, $col, $op, $val) {
+function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null) {
     $dataVal = '';
     if ($col === 'source') $dataVal = $source;
     elseif ($col === 'type') $dataVal = $type;
+    elseif ($col === 'connection_id') $dataVal = (string)$connId;
     else $dataVal = $data[$col] ?? '';
     
     $dataVal = mb_strtolower($dataVal, 'UTF-8');
@@ -185,11 +186,11 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val) {
     return false;
 }
 
-function evaluateRules($conn, $data, $source, $type) {
+function evaluateRules($conn, $data, $source, $type, $connId = null) {
     static $rulesCache = null;
     if ($rulesCache === null) {
         $rulesCache = [];
-        $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator FROM routing_rules ORDER BY priority ASC");
+        $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator, connection_id FROM routing_rules ORDER BY priority ASC");
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $rulesCache[] = $row;
@@ -198,6 +199,11 @@ function evaluateRules($conn, $data, $source, $type) {
     }
     
     foreach ($rulesCache as $row) {
+        // Skip rule if it is bound to a specific connection_id and it doesn't match the incoming connection
+        if (!empty($row['connection_id']) && $row['connection_id'] != $connId) {
+            continue;
+        }
+
         $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');
         $isMatch = false;
 
@@ -229,7 +235,7 @@ function evaluateRules($conn, $data, $source, $type) {
                     $branchMatch = true; // AND logic within branch
                     foreach ($conds as $cond) {
                         if (!isset($cond['col'])) continue;
-                        if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'])) {
+                        if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connId)) {
                             $branchMatch = false;
                             break; // One condition failed, entire branch fails
                         }
@@ -244,7 +250,7 @@ function evaluateRules($conn, $data, $source, $type) {
             }
         } else {
             // Legacy format fallback
-            $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value']);
+            $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value'], $connId);
         }
         
         if ($isMatch) {
