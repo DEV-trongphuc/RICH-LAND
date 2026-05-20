@@ -127,7 +127,7 @@ export const Login = () => {
       }}>
         
         {/* Left Side: Features Info */}
-        <div style={{ flex: '1 1 400px', color: 'white', animation: 'slideRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="features-panel" style={{ flex: '1 1 400px', color: 'white', animation: 'slideRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '100px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '1.5rem' }}>
               <span style={{ display: 'flex', width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
@@ -250,6 +250,7 @@ export const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu"
+                autoComplete="current-password"
                 required
               />
             </div>
@@ -316,6 +317,11 @@ export const Login = () => {
         .login-btn:disabled {
           opacity: 0.7;
           cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+          .features-panel {
+            display: none !important;
+          }
         }
       `}</style>
     </div>
