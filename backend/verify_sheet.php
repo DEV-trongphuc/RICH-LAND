@@ -272,25 +272,34 @@ if ($connItem) {
                 $dupCheckMonths = 6;
             }
 
-            if ($crmCheck['isDuplicate']) {
-                $leadId = '';
-                $assignedName = '';
-                $lDetail = $getLeadDetailLocal($conn, $phone, $email);
-                if ($lDetail) {
-                    $leadId = $lDetail['id'];
-                    $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
-                }
-
-                if ($crmCheck['monthsSinceLastInteraction'] < $dupCheckMonths) {
-                    $msg = "Khách hàng TRÙNG trong CRM (Tương tác cuối cách đây " . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng < hạn định " . $dupCheckMonths . " tháng). Sẽ gửi nhắc nhở cho Sale: " . $assignedName;
-                    $cls = 'table-info';
+            if (!empty($connItem['is_silent'])) {
+                if ($crmCheck['isDuplicate']) {
+                    $msg = "Khách hàng TRÙNG trong CRM (Chỉ đồng bộ thông tin/ghi chú mới, KHÔNG định tuyến chia số hay gửi nhắc nhở).";
                 } else {
-                    $msg = "Khách hàng TRÙNG trong CRM nhưng đã quá hạn định check trùng (" . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng >= " . $dupCheckMonths . " tháng). Sẽ chia mới cho Sale tiếp theo.";
+                    $msg = "Dòng dữ liệu MỚI HOÀN TOÀN (Chỉ đồng bộ thông tin vào leads, KHÔNG định tuyến chia số).";
+                }
+                $cls = 'table-primary';
+            } else {
+                if ($crmCheck['isDuplicate']) {
+                    $leadId = '';
+                    $assignedName = '';
+                    $lDetail = $getLeadDetailLocal($conn, $phone, $email);
+                    if ($lDetail) {
+                        $leadId = $lDetail['id'];
+                        $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
+                    }
+
+                    if ($crmCheck['monthsSinceLastInteraction'] < $dupCheckMonths) {
+                        $msg = "Khách hàng TRÙNG trong CRM (Tương tác cuối cách đây " . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng < hạn định " . $dupCheckMonths . " tháng). Sẽ gửi nhắc nhở cho Sale: " . $assignedName;
+                        $cls = 'table-info';
+                    } else {
+                        $msg = "Khách hàng TRÙNG trong CRM nhưng đã quá hạn định check trùng (" . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng >= " . $dupCheckMonths . " tháng). Sẽ chia mới cho Sale tiếp theo.";
+                        $cls = 'table-primary';
+                    }
+                } else {
+                    $msg = "Dòng dữ liệu MỚI HOÀN TOÀN. Sẽ tiến hành đồng bộ và định tuyến chia số.";
                     $cls = 'table-primary';
                 }
-            } else {
-                $msg = "Dòng dữ liệu MỚI HOÀN TOÀN. Sẽ tiến hành đồng bộ và định tuyến chia số.";
-                $cls = 'table-primary';
             }
 
             $diagnosticRows[] = [
