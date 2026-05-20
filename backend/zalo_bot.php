@@ -269,11 +269,11 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $chatId = $resC->fetch_assoc()['zalo_chat_id'];
     if (!$chatId) return false;
 
-    $msg = "⚡ <b>THÔNG BÁO BÙ DATA</b> ⚡\n";
-    $msg .= "Xin chào <b>$consultantName</b>,\n\n";
-    $msg .= "Quản trị viên vừa cập nhật bù thêm <b>$amount data</b> cho bạn tại vòng: <b>$roundName</b>.\n\n";
+    $msg = "[ THÔNG BÁO BÙ DATA ]\n\n";
+    $msg .= "Xin chào $consultantName,\n\n";
+    $msg .= "Quản trị viên vừa cập nhật bù thêm $amount data cho bạn tại vòng: $roundName.\n\n";
     $msg .= "Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n";
-    $msg .= "Trân trọng,\n<b>Hệ thống Quản lý Domation DATA</b>";
+    $msg .= "Trân trọng,\nHệ thống Quản lý Domation DATA";
 
     return sendZaloMessage($botToken, $chatId, $msg);
 }
