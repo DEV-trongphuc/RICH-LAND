@@ -320,7 +320,7 @@ export const Accounts = () => {
                 </thead>
                 <tbody>
                   {accounts.map(acc => (
-                    <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
+                    <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
                       <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <Avatar name={acc.name} size={36} />
@@ -447,15 +447,40 @@ export const Accounts = () => {
                 </thead>
                 <tbody>
                   {logs.map(log => {
-                    let parsedDetails = '';
-                    try {
-                      const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
-                      parsedDetails = JSON.stringify(detailsObj, null, 2);
-                    } catch {
-                      parsedDetails = log.details || '';
-                    }
+                    const renderLogDetails = (detailsRaw: any) => {
+                      try {
+                        const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
+                        if (!details || Object.keys(details).length === 0) {
+                          return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Không có chi tiết</span>;
+                        }
+                        if (details.message && Object.keys(details).length === 1) {
+                          return <span>{details.message}</span>;
+                        }
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '300px', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                            {Object.entries(details).map(([key, val]) => {
+                              let displayVal = '';
+                              if (typeof val === 'object' && val !== null) {
+                                displayVal = JSON.stringify(val);
+                              } else {
+                                displayVal = String(val);
+                              }
+                              return (
+                                <div key={key} style={{ display: 'flex', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{key}:</span>
+                                  <span style={{ color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={displayVal}>{displayVal}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      } catch {
+                        return <span style={{ fontFamily: 'monospace' }}>{String(detailsRaw || '')}</span>;
+                      }
+                    };
+
                     return (
-                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
+                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
                         <td data-label="Thời gian" style={{ padding: '1rem 1.5rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
@@ -483,8 +508,8 @@ export const Accounts = () => {
                             {log.action}
                           </span>
                         </td>
-                        <td data-label="Chi tiết" style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: '300px', overflowX: 'auto' }}>
-                          {parsedDetails}
+                        <td data-label="Chi tiết" style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                          {renderLogDetails(log.details)}
                         </td>
                         <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                           {log.ip_address}

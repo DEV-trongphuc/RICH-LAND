@@ -524,8 +524,9 @@ switch ($action) {
                 $botLink = $row['setting_value'];
         }
         sendWelcomeEmailToSale($newId, $email, $name, $botLink, true);
+        logAdminAction($conn, $decodedUser['id'], 'ADD_CONSULTANT', ['id' => $newId, 'name' => $name, 'email' => $email, 'status' => $status]);
 
-        echo json_encode(['success' => true, 'id' => $conn->insert_id]);
+        echo json_encode(['success' => true, 'id' => $newId]);
         break;
 
     case 'edit_consultant':
@@ -560,7 +561,9 @@ switch ($action) {
         }
         $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=? WHERE id=?");
         $stmt->bind_param("ssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -588,6 +591,7 @@ switch ($action) {
             $stmtD3 = $conn->prepare("DELETE FROM consultants WHERE id = ?");
             $stmtD3->bind_param("i", $id);
             $stmtD3->execute();
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_CONSULTANT', ['id' => $id]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -611,6 +615,7 @@ switch ($action) {
             if ($stmt) {
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute()) {
+                    logAdminAction($conn, $decodedUser['id'], 'UNLINK_ZALO_CONSULTANT', ['id' => $id]);
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Zalo']);
@@ -623,6 +628,7 @@ switch ($action) {
             if ($stmt) {
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute()) {
+                    logAdminAction($conn, $decodedUser['id'], 'UNLINK_ZALO_ACCOUNT', ['id' => $id]);
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Zalo']);
@@ -757,6 +763,7 @@ switch ($action) {
                 $conn->query("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('fallback_type', 'round')");
             }
 
+            logAdminAction($conn, $decodedUser['id'], 'ADD_ROUND', ['id' => $roundId, 'round_name' => $name, 'consultants' => $consultants]);
             $conn->commit();
             echo json_encode(['success' => true, 'id' => $roundId]);
         } catch (Exception $e) {
@@ -847,6 +854,7 @@ switch ($action) {
                 }
             }
 
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_ROUND', ['id' => $id, 'round_name' => $name, 'consultants' => $consultants]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -908,6 +916,7 @@ switch ($action) {
                     }
                 }
             }
+            logAdminAction($conn, $decodedUser['id'], 'UPDATE_COMPENSATIONS', ['round_id' => $roundId, 'compensations' => $compensations]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -950,6 +959,7 @@ switch ($action) {
                 }
             }
 
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_ROUND', ['id' => $id]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -1030,7 +1040,9 @@ switch ($action) {
 
         $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, email_template, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
         $stmt->bind_param("sssiiissis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $emailTemplate);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $conn->insert_id, 'sheet_name' => $name]);
+        }
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
 
@@ -1049,7 +1061,9 @@ switch ($action) {
 
         $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, email_template=? WHERE id=?");
         $stmt->bind_param("ssiiissisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $emailTemplate, $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1073,6 +1087,7 @@ switch ($action) {
             $stmt = $conn->prepare("DELETE FROM sheet_connections WHERE id=?");
             $stmt->bind_param("i", $id);
             $stmt->execute();
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_CONNECTION', ['id' => $id]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -1174,7 +1189,9 @@ switch ($action) {
         $active = (int) ($_GET['active'] ?? 0);
         $stmt = $conn->prepare("UPDATE sheet_connections SET is_active=? WHERE id=?");
         $stmt->bind_param("ii", $active, $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONNECTION', ['id' => $id, 'is_active' => $active]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1183,7 +1200,9 @@ switch ($action) {
         $require = (int) ($_GET['require'] ?? 0);
         $stmt = $conn->prepare("UPDATE sheet_connections SET require_both_contact=? WHERE id=?");
         $stmt->bind_param("ii", $require, $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'TOGGLE_REQUIRE_BOTH', ['id' => $id, 'require_both_contact' => $require]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1227,6 +1246,8 @@ switch ($action) {
                     throw new Exception($stmt->error);
                 }
             }
+            $newRuleId = $conn->insert_id;
+            logAdminAction($conn, $decodedUser['id'], 'ADD_RULE', ['id' => $newRuleId, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             // Self-healing attempt 2: maybe the constraint name is different
@@ -1238,6 +1259,8 @@ switch ($action) {
                     $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY " . $fkName);
                     // Retry again
                     $stmt->execute();
+                    $newRuleId = $conn->insert_id;
+                    logAdminAction($conn, $decodedUser['id'], 'ADD_RULE', ['id' => $newRuleId, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
                     echo json_encode(['success' => true]);
                     break;
                 }
@@ -1250,7 +1273,9 @@ switch ($action) {
         $id = (int) ($_GET['id'] ?? 0);
         $stmt = $conn->prepare("DELETE FROM routing_rules WHERE id=?");
         $stmt->bind_param("i", $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_RULE', ['id' => $id]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1284,6 +1309,7 @@ switch ($action) {
                     throw new Exception($stmt->error);
                 }
             }
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_RULE', ['id' => $id, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             // Self-healing attempt 2: maybe the constraint name is different
@@ -1295,6 +1321,7 @@ switch ($action) {
                     $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY " . $fkName);
                     // Retry again
                     $stmt->execute();
+                    logAdminAction($conn, $decodedUser['id'], 'EDIT_RULE', ['id' => $id, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
                     echo json_encode(['success' => true]);
                     break;
                 }
@@ -1315,6 +1342,7 @@ switch ($action) {
                 $stmt->bind_param("ii", $priority, $id);
                 $stmt->execute();
             }
+            logAdminAction($conn, $decodedUser['id'], 'REORDER_RULES', ['order' => $order]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -1576,6 +1604,7 @@ switch ($action) {
             $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
             $updComp->execute();
 
+            logAdminAction($conn, $decodedUser['id'], 'APPROVE_REPORT', ['report_id' => $report_id, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id']]);
             $conn->commit();
 
             // Lấy thông tin Sale & Lead để gửi thông báo
@@ -1657,6 +1686,7 @@ switch ($action) {
             $stmt->bind_param("si", $reject_reason, $report_id);
             $stmt->execute();
 
+            logAdminAction($conn, $decodedUser['id'], 'REJECT_REPORT', ['report_id' => $report_id, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id'], 'reject_reason' => $reject_reason]);
             $conn->commit();
 
             // Lấy thông tin Sale & Lead để gửi thông báo
@@ -1726,7 +1756,9 @@ switch ($action) {
         $custom_label = $input['custom_label'] ?? null;
         $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field, custom_label) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("isss", $conn_id, $sheet_col, $sys_field, $custom_label);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'ADD_MAPPING', ['connection_id' => $conn_id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1738,7 +1770,9 @@ switch ($action) {
         $custom_label = $input['custom_label'] ?? null;
         $stmt = $conn->prepare("UPDATE field_mappings SET sheet_column=?, system_field=?, custom_label=? WHERE id=?");
         $stmt->bind_param("sssi", $sheet_col, $sys_field, $custom_label, $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_MAPPING', ['id' => $id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1746,7 +1780,9 @@ switch ($action) {
         $id = (int) ($_GET['id'] ?? 0);
         $stmt = $conn->prepare("DELETE FROM field_mappings WHERE id=?");
         $stmt->bind_param("i", $id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_MAPPING', ['id' => $id]);
+        }
         echo json_encode(['success' => true]);
         break;
 
@@ -1774,6 +1810,7 @@ switch ($action) {
             $stmt->bind_param("ss", $k, $v);
             $stmt->execute();
         }
+        logAdminAction($conn, $decodedUser['id'], 'SAVE_SETTINGS', ['keys' => array_keys($input)]);
         echo json_encode(['success' => true]);
         break;
 
@@ -1993,6 +2030,7 @@ switch ($action) {
 
             require_once 'mailer.php';
             sendAdminConfirmationEmail($email, $name, $confirmLink);
+            logAdminAction($conn, $decodedUser['id'], 'ADD_ACCOUNT', ['id' => $newId, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
 
             echo json_encode(['success' => true, 'id' => $newId]);
         } else {
@@ -2036,6 +2074,7 @@ switch ($action) {
         }
 
         if ($stmt->execute()) {
+            logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);
@@ -2223,6 +2262,7 @@ switch ($action) {
             $stmtDelAcc->bind_param("i", $id);
             $stmtDelAcc->execute();
 
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_ACCOUNT', ['id' => $id]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -2381,6 +2421,8 @@ switch ($action) {
                 }
             }
 
+            logAdminAction($conn, $decodedUser['id'], 'SAVE_TICKET_SETTINGS', ['admin_ids' => $adminIds]);
+            $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
@@ -2396,6 +2438,7 @@ switch ($action) {
             $argv = ['cron_sync.php', $id];
             require __DIR__ . '/cron_sync.php';
             $output = ob_get_clean();
+            logAdminAction($conn, $decodedUser['id'], 'FORCE_SYNC', ['connection_id' => $id]);
             echo json_encode(['success' => true, 'output' => $output]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid ID']);
@@ -2659,6 +2702,14 @@ switch ($action) {
             $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
             $stmtU2->execute();
 
+            logAdminAction($conn, $decodedUser['id'], 'REASSIGN_LEAD', [
+                'log_id' => $log_id,
+                'lead_id' => $lead_id,
+                'lead_name' => $log_data['lead_name'],
+                'phone' => $log_data['phone'],
+                'new_consultant_id' => $new_consultant_id,
+                'new_consultant_name' => $new_cons_name
+            ]);
             $conn->commit();
 
             // 3. Send email to new consultant (NEW-05 fix: include round_name and IDs in email)

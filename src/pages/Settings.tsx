@@ -237,8 +237,8 @@ export const Settings = () => {
         {/* Left Column */}
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
           
-          {activeTab === 'mail' && (
-          <div className="card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: activeTab === 'mail' ? 'block' : 'none', animation: activeTab === 'mail' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
               <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
             </h3>
@@ -367,11 +367,11 @@ function doPost(e) {
               </div>
             )}
           </div>
-          )}
+          </div>
 
           {/* Cấu hình Zalo Bot */}
-          {activeTab === 'zalo' && (
-          <div className="card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: activeTab === 'zalo' ? 'block' : 'none', animation: activeTab === 'zalo' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
@@ -431,11 +431,11 @@ function doPost(e) {
               </p>
             </div>
           </div>
-          )}
+          </div>
 
           {/* ===== TAB: BÁO CÁO NGÀY ===== */}
-          {activeTab === 'report' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s' }}>
+          <div style={{ display: activeTab === 'report' ? 'block' : 'none' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: activeTab === 'report' ? 'fadeIn 0.2s ease-out' : 'none' }}>
 
             {/* Giờ gửi */}
             <div className="card" style={{ padding: '1.5rem' }}>
@@ -575,11 +575,10 @@ function doPost(e) {
               )}
             </div>
           </div>
-          )}
+          </div>
 
           {/* Fallback & Blacklist Configs (Processing Tab) */}
-          {activeTab === 'processing' && (
-          <>
+          <div style={{ display: activeTab === 'processing' ? 'block' : 'none', animation: activeTab === 'processing' ? 'fadeIn 0.2s ease-out' : 'none' }}>
           <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
@@ -779,8 +778,7 @@ function doPost(e) {
               </div>
             </div>
           </div>
-          </>
-          )}
+          </div>
         </div>
 
         {/* Right Column: Testing */}

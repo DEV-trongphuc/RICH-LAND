@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
@@ -41,6 +41,69 @@ const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('admin' | 'assistant
   );
 };
 
+// AppTabs wrapper to keep page DOMs alive and avoid unmount/remount loading screens
+const AppTabs = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  // Track which paths have been visited to lazy-load their components (code-split)
+  const [visitedPaths, setVisitedPaths] = useState<string[]>([currentPath]);
+
+  useEffect(() => {
+    if (!visitedPaths.includes(currentPath)) {
+      setVisitedPaths(prev => [...prev, currentPath]);
+    }
+  }, [currentPath, visitedPaths]);
+
+  // Route protection mapping
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts'];
+  const isAdminPath = adminPaths.includes(currentPath);
+
+  if (isAdminPath && user?.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* User Pages */}
+      <div style={{ display: currentPath === '/' ? 'block' : 'none' }}>
+        {visitedPaths.includes('/') && <Dashboard />}
+      </div>
+      <div style={{ display: currentPath === '/data' ? 'block' : 'none' }}>
+        {visitedPaths.includes('/data') && <DataList />}
+      </div>
+
+      {/* Admin Pages */}
+      {user?.role === 'admin' && (
+        <>
+          <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/consultants') && <Consultants />}
+          </div>
+          <div style={{ display: currentPath === '/rounds' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/rounds') && <Rounds />}
+          </div>
+          <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/tickets') && <Tickets />}
+          </div>
+          <div style={{ display: currentPath === '/rules' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/rules') && <RuleSettings />}
+          </div>
+          <div style={{ display: currentPath === '/integrations' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/integrations') && <Integrations />}
+          </div>
+          <div style={{ display: currentPath === '/settings' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/settings') && <Settings />}
+          </div>
+          <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/accounts') && <Accounts />}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -55,19 +118,19 @@ export default function App() {
               
               {/* Admin only routes */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/consultants" element={<Consultants />} />
-                <Route path="/rounds" element={<Rounds />} />
-                <Route path="/tickets" element={<Tickets />} />
-                <Route path="/rules" element={<RuleSettings />} />
-                <Route path="/integrations" element={<Integrations />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/consultants" element={<AppTabs />} />
+                <Route path="/rounds" element={<AppTabs />} />
+                <Route path="/tickets" element={<AppTabs />} />
+                <Route path="/rules" element={<AppTabs />} />
+                <Route path="/integrations" element={<AppTabs />} />
+                <Route path="/settings" element={<AppTabs />} />
+                <Route path="/accounts" element={<AppTabs />} />
               </Route>
 
               {/* All authenticated users */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/data" element={<DataList />} />
+                <Route path="/" element={<AppTabs />} />
+                <Route path="/data" element={<AppTabs />} />
               </Route>
             </Routes>
           </Suspense>
