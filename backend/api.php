@@ -2684,7 +2684,7 @@ switch ($action) {
         $type = $data['type'] ?? '';
         $note = $data['note'] ?? '';
 
-        $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'landing_page');
+        $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'manual');
         $assignedRoundId = null;
 
         if (is_array($ruleResult)) {
@@ -2804,7 +2804,7 @@ switch ($action) {
         $fallbackCcEmails = '';
 
         if (!$assignedRoundId) {
-            $ruleResult = evaluateRules($conn, $data, $source, $type);
+            $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'manual');
             if (is_array($ruleResult)) {
                 $assignedRoundId = $ruleResult['target_round_id'];
                 $inject = $ruleResult['inject'] ?? [];

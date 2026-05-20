@@ -204,6 +204,7 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             $ruleConnId = (int)$row['connection_id'];
             if ($ruleConnId === -1 && $connectionType !== 'sheets') continue;
             if ($ruleConnId === -2 && $connectionType !== 'landing_page') continue;
+            if ($ruleConnId === -3 && $connectionType !== 'manual') continue;
             if ($ruleConnId > 0 && $ruleConnId != $connId) continue;
         }
 

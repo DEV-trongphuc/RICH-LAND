@@ -521,9 +521,10 @@ export const RuleSettings = () => {
             <label className="form-label">Áp dụng cho Nguồn (Connection)</label>
             <CustomSelect
               options={[
-                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API)' },
+                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API & Nhập tay)' },
                 { value: -1, label: 'Tất cả các Google Sheets' },
                 { value: -2, label: 'Tất cả các API / Landing Pages' },
+                { value: -3, label: 'Chỉ Data Nhập tay (Thêm Data Nhanh)' },
                 ...connections.map(c => ({ value: c.id, label: c.sheet_name }))
               ]}
               value={connectionId}
