@@ -333,6 +333,7 @@ function getNextConsultantInRound($conn, $roundId) {
     $res = $stmt->get_result();
     
     if ($res->num_rows === 0) {
+        $stmt->close();
         return null; // Round not found or inactive
     }
     

@@ -48,7 +48,7 @@ export const SalePortal = () => {
   const [search, setSearch] = useState(getInitialSearch());
   const [roundId, setRoundId] = useState('');
   const [saleIdFilter, setSaleIdFilter] = useState('');
-  const [dateMode, setDateMode] = useState('all'); // all, today, yesterday, custom
+  const [dateMode, setDateMode] = useState('this_month'); // all, today, yesterday, custom
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomDate, setShowCustomDate] = useState(false);

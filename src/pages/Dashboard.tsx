@@ -22,7 +22,7 @@ export const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('Hôm nay');
+  const [dateFilter, setDateFilter] = useState('Tháng này');
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');

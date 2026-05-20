@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -352,12 +352,24 @@ export const Accounts = () => {
                       </td>
                       <td data-label="Zalo Chat ID" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                         {acc.zalo_chat_id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title={acc.zalo_chat_id}>
+                            <span style={{ 
+                              display: 'inline-flex', alignItems: 'center', gap: 6, 
+                              padding: '4px 10px', borderRadius: 20, 
+                              background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
+                            }}>
+                              <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
+                            </span>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                            <span style={{ 
+                              display: 'inline-flex', alignItems: 'center', gap: 6, 
+                              padding: '4px 10px', borderRadius: 20, 
+                              background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                            }}>
+                              Chưa liên kết
+                            </span>
                             {acc.email && (
                               zaloRemindedId === acc.id ? (
                                 <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>

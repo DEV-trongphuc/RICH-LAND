@@ -27,7 +27,7 @@ export const DataList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
-  const dateFilter = searchParams.get('date') || 'all';
+  const dateFilter = searchParams.get('date') || 'this_month';
   const consultantFilter = searchParams.get('consultant') || 'all';
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -39,7 +39,7 @@ export const DataList = () => {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'all')}`);
+      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'this_month')}`);
       if (json.success) {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
