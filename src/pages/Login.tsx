@@ -33,19 +33,28 @@ export const Login = () => {
     setLoading(false);
   };
 
+  const googleBtnRef = React.useRef<HTMLDivElement>(null);
+  const renderedRef = React.useRef(false);
+
   useEffect(() => {
     let intervalId: any;
     
     const initGoogle = () => {
-      if ((window as any).google?.accounts?.id) {
+      if (renderedRef.current) {
+        clearInterval(intervalId);
+        return;
+      }
+      
+      if ((window as any).google?.accounts?.id && googleBtnRef.current) {
         (window as any).google.accounts.id.initialize({
           client_id: '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com',
           callback: handleGoogleLoginResponse
         });
         (window as any).google.accounts.id.renderButton(
-          document.getElementById('google-signin-btn'),
+          googleBtnRef.current,
           { theme: 'outline', size: 'large', width: 320, text: 'signin_with', shape: 'rectangular' }
         );
+        renderedRef.current = true;
         clearInterval(intervalId);
       }
     };
@@ -263,7 +272,7 @@ export const Login = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div id="google-signin-btn" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}></div>
+          <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', minHeight: 44 }}></div>
         </div>
       </div>
       </div>
