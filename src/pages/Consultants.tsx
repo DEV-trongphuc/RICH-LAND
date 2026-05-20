@@ -27,6 +27,9 @@ export const Consultants = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [unlinkId, setUnlinkId] = useState<number | null>(null);
+  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
   
   // Quick message state
   const [quickMessageOpen, setQuickMessageOpen] = useState(false);
@@ -113,12 +116,17 @@ export const Consultants = () => {
     setConfirmDeleteOpen(false);
   };
 
-  const handleUnlinkZalo = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không?')) return;
+  const confirmUnlinkZalo = (id: number) => {
+    setUnlinkId(id);
+    setUnlinkConfirmOpen(true);
+  };
+
+  const handleUnlinkZalo = async () => {
+    if (!unlinkId) return;
     try {
       const json = await fetchAPI('unlink_zalo', {
         method: 'POST',
-        body: JSON.stringify({ id, type: 'consultant' })
+        body: JSON.stringify({ id: unlinkId, type: 'consultant' })
       });
       if (json.success) {
         toast.success('Đã hủy liên kết Zalo thành công!');
@@ -129,6 +137,8 @@ export const Consultants = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setUnlinkConfirmOpen(false);
+    setUnlinkId(null);
   };
 
   const handleSendQuickMessage = async (e: React.FormEvent) => {
@@ -283,7 +293,7 @@ export const Consultants = () => {
                           </button>
                         )}
                         {u.zalo_chat_id && (
-                          <button onClick={() => handleUnlinkZalo(u.id)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                          <button onClick={() => confirmUnlinkZalo(u.id)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
                             <Link2Off size={16} />
                           </button>
                         )}
@@ -489,6 +499,15 @@ export const Consultants = () => {
         title="Cảnh báo Xóa Tư vấn viên" 
         message="Bạn có chắc chắn muốn xóa tư vấn viên này không? CHÚ Ý: Nếu TVV này đã từng nhận Data, việc xóa sẽ làm hỏng báo cáo thống kê. Thay vào đó, bạn nên chuyển trạng thái của TVV sang 'Ngừng hoạt động' hoặc 'Nghỉ phép'." 
         confirmText="Xóa vĩnh viễn" 
+      />
+
+      <ConfirmModal 
+        isOpen={unlinkConfirmOpen} 
+        onClose={() => setUnlinkConfirmOpen(false)} 
+        onConfirm={handleUnlinkZalo} 
+        title="Hủy liên kết Zalo Bot" 
+        message="Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không? Hệ thống sẽ ngừng gửi data và mọi thông báo qua Zalo cho tài khoản này ngay lập tức." 
+        confirmText="Hủy liên kết" 
       />
     </div>
   );

@@ -49,15 +49,15 @@ import { fetchAPI } from '../utils/api';
 
 const generateToken = () => 'tok_' + Math.random().toString(36).slice(2, 10);
 
-const generateDefaultTemplate = (mappings: {sheet_col: string; sys_field: string; custom_label?: string}[]) => {
+const generateDefaultTemplate = (mappings: { sheet_col: string; sys_field: string; custom_label?: string }[]) => {
   if (mappings.length === 0) {
     return 'Thông tin Khách hàng:\n- Họ Tên: {name}\n- Số Điện Thoại: {phone}';
   }
-  
+
   let lines = ['Thông tin Khách hàng:'];
   const mappedSystemFields = Array.from(new Set(mappings.map(m => m.sys_field)));
   const order = ['name', 'phone', 'email', 'source', 'type', 'note'];
-  
+
   order.forEach(field => {
     if (mappedSystemFields.includes(field)) {
       const fieldMapping = SYSTEM_FIELDS.find(f => f.value === field);
@@ -65,7 +65,7 @@ const generateDefaultTemplate = (mappings: {sheet_col: string; sys_field: string
       lines.push(`- ${label}: {${field}}`);
     }
   });
-  
+
   return lines.join('\n');
 };
 
@@ -73,11 +73,11 @@ export const Integrations = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selected, setSelected] = useState<Connection | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingMapping, setIsSavingMapping] = useState(false);
-  
+
   // Modal states
   const [showAddConn, setShowAddConn] = useState(false);
   const [addStep, setAddStep] = useState(1);
@@ -85,7 +85,7 @@ export const Integrations = () => {
   const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
   const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [customSyncMins, setCustomSyncMins] = useState<number>(15);
-  const [tempMappings, setTempMappings] = useState<{sheet_col: string, sys_field: string, custom_label?: string}[]>([]);
+  const [tempMappings, setTempMappings] = useState<{ sheet_col: string, sys_field: string, custom_label?: string }[]>([]);
   const [fetchedColumns, setFetchedColumns] = useState<string[]>([]);
   const [isFetchingColumns, setIsFetchingColumns] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -94,7 +94,7 @@ export const Integrations = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [fetchedSheets, setFetchedSheets] = useState<string[]>([]);
   const [isFetchingSheets, setIsFetchingSheets] = useState(false);
-  
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
@@ -186,7 +186,7 @@ export const Integrations = () => {
   };
 
   // Sync mode state
-  const [syncMode, setSyncMode] = useState<'all'|'new_only'>('all');
+  const [syncMode, setSyncMode] = useState<'all' | 'new_only'>('all');
 
   const handleAddConnection = async () => {
     let finalInterval = 15;
@@ -204,10 +204,10 @@ export const Integrations = () => {
       sync_interval: finalInterval,
       sync_mode: syncMode
     };
-    
+
     if (isSaving) return;
     setIsSaving(true);
-    
+
     try {
       const json = await fetchAPI('add_connection', {
         method: 'POST',
@@ -217,10 +217,10 @@ export const Integrations = () => {
         // Add mappings
         const connId = json.id;
         for (const m of tempMappings) {
-           await fetchAPI('add_mapping', {
-             method: 'POST',
-             body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field, custom_label: m.custom_label })
-           });
+          await fetchAPI('add_mapping', {
+            method: 'POST',
+            body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field, custom_label: m.custom_label })
+          });
         }
         fetchData();
         toast.success('Đã thêm kết nối thành công');
@@ -248,10 +248,10 @@ export const Integrations = () => {
       sync_interval: 0,
       connection_type: 'landing_page'
     };
-    
+
     if (isSaving) return;
     setIsSaving(true);
-    
+
     try {
       const json = await fetchAPI('add_connection', {
         method: 'POST',
@@ -288,24 +288,24 @@ export const Integrations = () => {
     if (!newMappingCol.trim() || !selected || isSavingMapping) return;
     setIsSavingMapping(true);
     try {
-        const action = editingMappingId ? 'edit_mapping' : 'add_mapping';
-        const payload = editingMappingId 
-          ? { id: editingMappingId, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel }
-          : { connection_id: selected.id, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel };
-        
-        const json = await fetchAPI(action, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-        if (json.success) {
-            fetchData();
-            setNewMappingCol('');
-            setNewMappingCustomLabel('');
-            setEditingMappingId(null);
-            toast.success(editingMappingId ? 'Đã cập nhật mapping' : 'Đã thêm mapping');
-        }
+      const action = editingMappingId ? 'edit_mapping' : 'add_mapping';
+      const payload = editingMappingId
+        ? { id: editingMappingId, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel }
+        : { connection_id: selected.id, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel };
+
+      const json = await fetchAPI(action, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (json.success) {
+        fetchData();
+        setNewMappingCol('');
+        setNewMappingCustomLabel('');
+        setEditingMappingId(null);
+        toast.success(editingMappingId ? 'Đã cập nhật mapping' : 'Đã thêm mapping');
+      }
     } catch (e: any) {
-        toast.error('Lỗi: ' + e.message);
+      toast.error('Lỗi: ' + e.message);
     }
     setIsSavingMapping(false);
   };
@@ -320,25 +320,25 @@ export const Integrations = () => {
   const handleDeleteMapping = async (mappingId: number) => {
     if (!selected) return;
     try {
-        await fetchAPI(`delete_mapping&id=${mappingId}`);
-        toast.success('Đã xóa mapping');
-        fetchData();
+      await fetchAPI(`delete_mapping&id=${mappingId}`);
+      toast.success('Đã xóa mapping');
+      fetchData();
     } catch (e: any) {
-        toast.error('Lỗi: ' + e.message);
+      toast.error('Lỗi: ' + e.message);
     }
   };
 
   // Actual API call to toggle the connection state
   const doToggleActive = async (conn: Connection) => {
     try {
-        const newActive = !conn.is_active;
-        const json = await fetchAPI(`toggle_connection&id=${conn.id}&active=${newActive ? 1 : 0}`);
-        if (json.success) {
-            toast.success(newActive ? 'Kết nối đã được bật lại' : 'Kết nối đã tạm dừng');
-            fetchData();
-        }
+      const newActive = !conn.is_active;
+      const json = await fetchAPI(`toggle_connection&id=${conn.id}&active=${newActive ? 1 : 0}`);
+      if (json.success) {
+        toast.success(newActive ? 'Kết nối đã được bật lại' : 'Kết nối đã tạm dừng');
+        fetchData();
+      }
     } catch (e: any) {
-        toast.error('Lỗi: ' + e.message);
+      toast.error('Lỗi: ' + e.message);
     }
   };
 
@@ -355,14 +355,14 @@ export const Integrations = () => {
 
   const handleToggleRequireBoth = async (conn: any) => {
     try {
-        const newRequire = conn.require_both_contact ? 0 : 1;
-        const json = await fetchAPI(`toggle_require_both&id=${conn.id}&require=${newRequire}`);
-        if (json.success) {
-            toast.success(newRequire ? 'Đã bật yêu cầu Số Điện Thoại' : 'Đã tắt yêu cầu Số Điện Thoại');
-            fetchData();
-        }
+      const newRequire = conn.require_both_contact ? 0 : 1;
+      const json = await fetchAPI(`toggle_require_both&id=${conn.id}&require=${newRequire}`);
+      if (json.success) {
+        toast.success(newRequire ? 'Đã bật yêu cầu Số Điện Thoại' : 'Đã tắt yêu cầu Số Điện Thoại');
+        fetchData();
+      }
     } catch (e: any) {
-        toast.error('Lỗi: ' + e.message);
+      toast.error('Lỗi: ' + e.message);
     }
   };
 
@@ -424,280 +424,280 @@ export const Integrations = () => {
     <>
       <div className="responsive-flex-row responsive-height-auto" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 66px - 3rem)', minHeight: 0, animation: 'fadeIn 0.3s' }}>
         {/* LEFT PANEL: Sheet connections list */}
-      <div className="responsive-filter-item" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Quản lý các nguồn đổ Data</p>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={() => setShowAddConn(true)} className="btn outline" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
-            <FileSpreadsheet size={16} /> Thêm kết nối Sheets
-          </button>
-          <button onClick={() => setShowAddApi(true)} className="btn primary" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10, background: 'var(--color-primary)' }}>
-            <Zap size={16} /> Thêm API Landing Page
-          </button>
-        </div>
-
-        <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
-          {connections.length === 0 ? (
-            <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', margin: '1rem 0' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: 'var(--shadow-sm)' }}>
-                <Link2 size={24} color="var(--color-text-muted)" />
-              </div>
-              <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>Chưa có tích hợp</h4>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Thêm kết nối Sheets đầu tiên của bạn.</p>
-            </div>
-          ) : connections.map(conn => (
-            <div
-              key={conn.id}
-              onClick={() => setSelected(conn)}
-              style={{
-                background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                border: `1px solid ${selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                borderRadius: 12, padding: '0.875rem 1rem', cursor: 'pointer', transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden'
-              }}
-            >
-              {selected?.id === conn.id && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
-                border: selected?.id === conn.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
-              }}>
-                {conn.connection_type === 'landing_page' ? (
-                  <Zap size={20} color={selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-                ) : (
-                  <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: selected?.id === conn.id ? 1 : 0.6 }} alt="Google Sheets" />
-                )}
-              </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {conn.sheet_name}
-                </p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                  {(conn.mappings || []).length} cột đã map
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: conn.is_active ? 'var(--color-success)' : 'var(--color-border)' }} />
-                <ChevronRight size={14} color="var(--color-text-muted)" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* RIGHT PANEL: Selected sheet config */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {!selected ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              <Webhook size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Chọn một kết nối Sheets để cấu hình</p>
-              <p style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>hoặc tạo kết nối mới ở cột trái</p>
-            </div>
+        <div className="responsive-filter-item" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
+            <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Quản lý các nguồn đổ Data</p>
           </div>
-        ) : (
-          <>
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
-                  </div>
-                  <div>
-                    {selected.spreadsheet_id ? (
-                      <a
-                        href={`https://docs.google.com/spreadsheets/d/${selected.spreadsheet_id}/edit`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Mở Google Sheets"
-                        style={{
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          color: 'var(--color-text)',
-                          transition: 'color 0.2s ease',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.color = '#16a34a';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.color = 'var(--color-text)';
-                        }}
-                      >
-                        <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                          {selected.sheet_name}
-                          <ExternalLink size={14} style={{ color: 'inherit' }} />
-                        </h2>
-                      </a>
-                    ) : (
-                      <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {selected.sheet_name}
-                      </h2>
-                    )}
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      Token: <code style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{selected.webhook_token}</code>
-                    </p>
-                  </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {selected.last_sync_at && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      Lần cuối: {new Date(selected.last_sync_at).toLocaleString('vi-VN')}
-                    </div>
-                  )}
-                  {selected.connection_type !== 'landing_page' && (
-                    <button
-                      className="btn outline"
-                      style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
-                      disabled={isSyncing}
-                      onClick={async () => {
-                        setIsSyncing(true);
-                        try {
-                          const res = await fetchAPI(`force_sync&id=${selected.id}`);
-                          if (res.success) {
-                            toast.success('Đã đồng bộ dữ liệu thủ công!');
-                            fetchData(); // Refresh to update last_sync_at on screen
-                          } else {
-                            toast.error('Đồng bộ thất bại: ' + (res.message || ''));
-                          }
-                        } catch (e: any) {
-                          toast.error('Lỗi kết nối: ' + e.message);
-                        }
-                        setIsSyncing(false);
-                      }}
-                    >
-                      <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
-                    </button>
-                  )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={() => setShowAddConn(true)} className="btn outline" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
+              <FileSpreadsheet size={16} /> Thêm kết nối Sheets
+            </button>
+            <button onClick={() => setShowAddApi(true)} className="btn primary" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10, background: 'var(--color-primary)' }}>
+              <Zap size={16} /> Thêm API Landing Page
+            </button>
+          </div>
 
-                  <ToggleSwitch 
-                    checked={selected.is_active} 
-                    onChange={() => handleToggleActive(selected)}
-                  />
-                  <button
-                    onClick={() => { setDeleteId(selected.id); setIsConfirmOpen(true); }}
-                    style={{ padding: 8, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
-                    onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
-                    onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+          <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
+            {connections.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', margin: '1rem 0' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: 'var(--shadow-sm)' }}>
+                  <Link2 size={24} color="var(--color-text-muted)" />
                 </div>
+                <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>Chưa có tích hợp</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Thêm kết nối Sheets đầu tiên của bạn.</p>
               </div>
-
-              {/* STATS SECTION */}
-              {selected.stats && (
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 20, border: '1px solid var(--color-border)', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <Target size={14} color="var(--color-text-muted)" /> {selected.stats.total} Tổng
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <CheckCircle2 size={14} /> {selected.stats.assigned} Đã chia
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <Copy size={14} /> {selected.stats.duplicate} Trùng
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <RefreshCw size={14} /> {selected.stats.reminder} Nhắc lại
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <AlertCircle size={14} /> {selected.stats.error} Lỗi
-                  </div>
+            ) : connections.map(conn => (
+              <div
+                key={conn.id}
+                onClick={() => setSelected(conn)}
+                style={{
+                  background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  border: `1px solid ${selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  borderRadius: 12, padding: '0.875rem 1rem', cursor: 'pointer', transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden'
+                }}
+              >
+                {selected?.id === conn.id && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                  border: selected?.id === conn.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
+                }}>
+                  {conn.connection_type === 'landing_page' ? (
+                    <Zap size={20} color={selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+                  ) : (
+                    <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: selected?.id === conn.id ? 1 : 0.6 }} alt="Google Sheets" />
+                  )}
                 </div>
-              )}
-
-              {selected.spreadsheet_id && (
-                <div style={{ marginTop: '1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }}></span>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-success)', fontWeight: 600 }}>Cronjob Sync đang hoạt động với ID: {selected.spreadsheet_id}</span>
-                </div>
-              )}
-
-              {selected.connection_type !== 'landing_page' && (
-                <div style={{ marginTop: '1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                  <span style={{ flex: 1, padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {webhookUrl(selected.webhook_token)}
-                  </span>
-                  <button onClick={() => handleCopyWebhook(selected)} className="btn primary sm" style={{ borderRadius: 8, flexShrink: 0, margin: '4px' }}>
-                    {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy URL'}
-                  </button>
-                </div>
-              )}
-
-              <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    Yêu cầu bắt buộc có Số Điện Thoại
-                  </h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Nếu bật, dòng dữ liệu trên Sheets phải có <strong>Số Điện Thoại (Phone)</strong> mới được đồng bộ vào hệ thống.
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {conn.sheet_name}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {(conn.mappings || []).length} cột đã map
                   </p>
                 </div>
-                <div 
-                  onClick={() => handleToggleRequireBoth(selected)}
-                  style={{
-                    width: 44, height: 24, borderRadius: 24, cursor: 'pointer', position: 'relative',
-                    background: selected.require_both_contact ? 'var(--color-success)' : 'var(--color-border)',
-                    transition: 'background 0.3s'
-                  }}
-                >
-                  <div style={{
-                    width: 18, height: 18, borderRadius: '50%', background: 'white',
-                    position: 'absolute', top: 3, left: selected.require_both_contact ? 23 : 3,
-                    transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: conn.is_active ? 'var(--color-success)' : 'var(--color-border)' }} />
+                  <ChevronRight size={14} color="var(--color-text-muted)" />
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            {selected.connection_type === 'landing_page' ? (
+        {/* RIGHT PANEL: Selected sheet config */}
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {!selected ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                <Webhook size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                <p style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Chọn một kết nối Sheets để cấu hình</p>
+                <p style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>hoặc tạo kết nối mới ở cột trái</p>
+              </div>
+            </div>
+          ) : (
+            <>
               <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
+                    </div>
+                    <div>
+                      {selected.spreadsheet_id ? (
+                        <a
+                          href={`https://docs.google.com/spreadsheets/d/${selected.spreadsheet_id}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Mở Google Sheets"
+                          style={{
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: 'var(--color-text)',
+                            transition: 'color 0.2s ease',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.color = '#16a34a';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.color = 'var(--color-text)';
+                          }}
+                        >
+                          <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                            {selected.sheet_name}
+                            <ExternalLink size={14} style={{ color: 'inherit' }} />
+                          </h2>
+                        </a>
+                      ) : (
+                        <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {selected.sheet_name}
+                        </h2>
+                      )}
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                        Token: <code style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '1px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{selected.webhook_token}</code>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {selected.last_sync_at && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        Lần cuối: {new Date(selected.last_sync_at).toLocaleString('vi-VN')}
+                      </div>
+                    )}
+                    {selected.connection_type !== 'landing_page' && (
+                      <button
+                        className="btn outline"
+                        style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
+                        disabled={isSyncing}
+                        onClick={async () => {
+                          setIsSyncing(true);
+                          try {
+                            const res = await fetchAPI(`force_sync&id=${selected.id}`);
+                            if (res.success) {
+                              toast.success('Đã đồng bộ dữ liệu thủ công!');
+                              fetchData(); // Refresh to update last_sync_at on screen
+                            } else {
+                              toast.error('Đồng bộ thất bại: ' + (res.message || ''));
+                            }
+                          } catch (e: any) {
+                            toast.error('Lỗi kết nối: ' + e.message);
+                          }
+                          setIsSyncing(false);
+                        }}
+                      >
+                        <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+                      </button>
+                    )}
+
+                    <ToggleSwitch
+                      checked={selected.is_active}
+                      onChange={() => handleToggleActive(selected)}
+                    />
+                    <button
+                      onClick={() => { setDeleteId(selected.id); setIsConfirmOpen(true); }}
+                      style={{ padding: 8, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
+                      onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
+                      onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* STATS SECTION */}
+                {selected.stats && (
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 20, border: '1px solid var(--color-border)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                      <Target size={14} color="var(--color-text-muted)" /> {selected.stats.total} Tổng
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', color: '#059669', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                      <CheckCircle2 size={14} /> {selected.stats.assigned} Đã chia
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                      <Copy size={14} /> {selected.stats.duplicate} Trùng
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                      <RefreshCw size={14} /> {selected.stats.reminder} Nhắc lại
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                      <AlertCircle size={14} /> {selected.stats.error} Lỗi
+                    </div>
+                  </div>
+                )}
+
+                {selected.spreadsheet_id && (
+                  <div style={{ marginTop: '1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }}></span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-success)', fontWeight: 600 }}>Cronjob Sync đang hoạt động với ID: {selected.spreadsheet_id}</span>
+                  </div>
+                )}
+
+                {selected.connection_type !== 'landing_page' && (
+                  <div style={{ marginTop: '1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                    <span style={{ flex: 1, padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {webhookUrl(selected.webhook_token)}
+                    </span>
+                    <button onClick={() => handleCopyWebhook(selected)} className="btn primary sm" style={{ borderRadius: 8, flexShrink: 0, margin: '4px' }}>
+                      {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy URL'}
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Zap size={16} color="var(--color-primary)" /> Tích hợp API Landing Page
-                    </h3>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Nhúng đoạn mã sau vào Landing Page của bạn (HTML hoặc Script)
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      Yêu cầu bắt buộc có Số Điện Thoại
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Nếu bật, dòng dữ liệu trên Sheets phải có <strong>Số Điện Thoại (Phone)</strong> mới được đồng bộ vào hệ thống.
                     </p>
                   </div>
-                </div>
-                
-                <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                  <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
-                    <strong>Cơ chế tự động gom Ghi chú:</strong>
-                    <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
-                      <li>Hệ thống tự nhận các key chuẩn: <code>phone, email, name, source, type</code></li>
-                      <li><strong>Tất cả các key khác</strong> (VD: <code>utm_campaign, chieu_cao</code>) sẽ tự động được gộp lại và lưu vào trường <strong>Ghi Chú (note)</strong>.</li>
-                    </ul>
+                  <div
+                    onClick={() => handleToggleRequireBoth(selected)}
+                    style={{
+                      width: 44, height: 24, borderRadius: 24, cursor: 'pointer', position: 'relative',
+                      background: selected.require_both_contact ? 'var(--color-success)' : 'var(--color-border)',
+                      transition: 'background 0.3s'
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: 3, left: selected.require_both_contact ? 23 : 3,
+                      transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
                   </div>
                 </div>
+              </div>
 
-                <div style={{ position: 'relative', background: '#1e293b', padding: '1rem', borderRadius: 8, overflowX: 'auto', border: '1px solid #334155' }}>
-                  <button 
-                    onClick={() => {
-                      const code = `// Gửi dữ liệu bằng JS fetch API (JSON)\nfetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "Landing_X",\n    tuoi: 25,\n    nhu_cau: "Tư vấn gấp"\n  })\n});`;
-                      navigator.clipboard.writeText(code);
-                      setCopiedId(selected.id);
-                      setTimeout(() => setCopiedId(null), 2000);
-                    }}
-                    style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: 6, fontSize: '0.75rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy Code'}
-                  </button>
-                  <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.8125rem', fontFamily: 'monospace', marginTop: 12 }}>
-{`// Gửi dữ liệu bằng JS fetch API (JSON)
+              {selected.connection_type === 'landing_page' ? (
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Zap size={16} color="var(--color-primary)" /> Tích hợp API Landing Page
+                      </h3>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        Nhúng đoạn mã sau vào Landing Page của bạn (HTML hoặc Script)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+                      <strong>Cơ chế tự động gom Ghi chú:</strong>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                        <li>Hệ thống tự nhận các key chuẩn: <code>phone, email, name, source, type</code></li>
+                        <li><strong>Tất cả các key khác</strong> (VD: <code>utm_campaign, chieu_cao</code>) sẽ tự động được gộp lại và lưu vào trường <strong>Ghi Chú (note)</strong>.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div style={{ position: 'relative', background: '#1e293b', padding: '1rem', borderRadius: 8, overflowX: 'auto', border: '1px solid #334155' }}>
+                    <button
+                      onClick={() => {
+                        const code = `// Gửi dữ liệu bằng JS fetch API (JSON)\nfetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "Landing_X",\n    tuoi: 25,\n    nhu_cau: "Tư vấn gấp"\n  })\n});`;
+                        navigator.clipboard.writeText(code);
+                        setCopiedId(selected.id);
+                        setTimeout(() => setCopiedId(null), 2000);
+                      }}
+                      style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: 6, fontSize: '0.75rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy Code'}
+                    </button>
+                    <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.8125rem', fontFamily: 'monospace', marginTop: 12 }}>
+                      {`// Gửi dữ liệu bằng JS fetch API (JSON)
 fetch("${webhookUrl(selected.webhook_token)}", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -710,198 +710,198 @@ fetch("${webhookUrl(selected.webhook_token)}", {
     nhu_cau: "Tư vấn gấp"
   })
 });`}
-                  </pre>
-                </div>
-              </div>
-            ) : (
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Tag size={16} color="var(--color-primary)" /> Mapping Cột cho <em style={{ fontStyle: 'normal', color: 'var(--color-primary)' }}>{selected.sheet_name}</em>
-                    </h3>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Ánh xạ tên cột trên Google Sheets này sang trường dữ liệu của hệ thống
-                    </p>
+                    </pre>
                   </div>
                 </div>
+              ) : (
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Tag size={16} color="var(--color-primary)" /> Mapping Cột cho <em style={{ fontStyle: 'normal', color: 'var(--color-primary)' }}>{selected.sheet_name}</em>
+                      </h3>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        Ánh xạ tên cột trên Google Sheets này sang trường dữ liệu của hệ thống
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Add Mapping Row at the TOP */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
-                  <div style={{ flex: '1 1 200px' }}>
-                    <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên cột trên Sheets</label>
-                    {isFetchingSelectedCols ? (
-                      <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
-                        <RefreshCw size={14} className="spin" /> Đang quét cột...
-                      </div>
-                    ) : selectedColumns.length > 0 ? (
-                      <CustomSelect 
-                        options={selectedColumns.map(c => ({ value: c, label: c }))} 
-                        value={newMappingCol} 
-                        onChange={v => setNewMappingCol(String(v))} 
+                  {/* Add Mapping Row at the TOP */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên cột trên Sheets</label>
+                      {isFetchingSelectedCols ? (
+                        <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
+                          <RefreshCw size={14} className="spin" /> Đang quét cột...
+                        </div>
+                      ) : selectedColumns.length > 0 ? (
+                        <CustomSelect
+                          options={selectedColumns.map(c => ({ value: c, label: c }))}
+                          value={newMappingCol}
+                          onChange={v => setNewMappingCol(String(v))}
+                        />
+                      ) : (
+                        <input
+                          className="form-input"
+                          placeholder="VD: Số Điện Thoại KH"
+                          value={newMappingCol}
+                          onChange={e => setNewMappingCol(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
+                        />
+                      )}
+                    </div>
+                    <div style={{ flex: '1 1 180px' }}>
+                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Trường hệ thống</label>
+                      <CustomSelect
+                        options={SYSTEM_FIELDS}
+                        value={newMappingField}
+                        onChange={(val) => setNewMappingField(String(val))}
                       />
-                    ) : (
+                    </div>
+                    <div style={{ flex: '1 1 220px' }}>
+                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
                       <input
                         className="form-input"
-                        placeholder="VD: Số Điện Thoại KH"
-                        value={newMappingCol}
-                        onChange={e => setNewMappingCol(e.target.value)}
+                        placeholder="VD: Khung giờ tư vấn"
+                        value={newMappingCustomLabel}
+                        onChange={e => setNewMappingCustomLabel(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
                       />
-                    )}
-                  </div>
-                  <div style={{ flex: '1 1 180px' }}>
-                    <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Trường hệ thống</label>
-                    <CustomSelect 
-                      options={SYSTEM_FIELDS} 
-                      value={newMappingField} 
-                      onChange={(val) => setNewMappingField(String(val))} 
-                    />
-                  </div>
-                  <div style={{ flex: '1 1 220px' }}>
-                    <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
-                    <input
-                      className="form-input"
-                      placeholder="VD: Khung giờ tư vấn"
-                      value={newMappingCustomLabel}
-                      onChange={e => setNewMappingCustomLabel(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                    <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
-                      {isSavingMapping ? 'Đang lưu...' : (editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>)}
-                    </button>
-                    {editingMappingId && (
-                      <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>
-                        Hủy
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                        {isSavingMapping ? 'Đang lưu...' : (editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>)}
                       </button>
-                    )}
+                      {editingMappingId && (
+                        <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>
+                          Hủy
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+                      <strong>Mẹo cấu hình:</strong> Bạn có thể map <strong>nhiều cột trên Sheets</strong> vào <strong>cùng 1 trường hệ thống</strong> (ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!
+                    </p>
+                  </div>
+
+                  {/* Mappings Table BELOW */}
+                  <div className="table-wrap" style={{ marginBottom: '1rem' }}>
+                    <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                      <colgroup>
+                        <col style={{ width: '45%' }} />
+                        <col style={{ width: '25%' }} />
+                        <col style={{ width: '22%' }} />
+                        <col style={{ width: '8%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th>Tên cột trên Google Sheets</th>
+                          <th>Trường hiển thị trong Email</th>
+                          <th>Trường hệ thống</th>
+                          <th style={{ width: 60 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selected.mappings || []).map(m => (
+                          <tr key={m.id}>
+                            <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span
+                                title={m.sheet_column}
+                                style={{
+                                  fontFamily: 'monospace',
+                                  background: 'var(--color-bg)',
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  fontSize: '0.875rem',
+                                  border: '1px solid var(--color-border)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                  verticalAlign: 'middle'
+                                }}
+                              >
+                                {m.sheet_column}
+                              </span>
+                            </td>
+                            <td>
+                              {m.custom_label ? (
+                                <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600 }}>
+                                  {m.custom_label}
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
+                                  Để mặc định (Tên cột)
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
+                                {SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  setEditingMappingId(m.id);
+                                  setNewMappingCol(m.sheet_column);
+                                  setNewMappingField(m.system_field);
+                                  setNewMappingCustomLabel(m.custom_label || '');
+                                }}
+                                title="Chỉnh sửa mapping"
+                                style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', background: editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent' }}
+                                onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-warning)'); (e.currentTarget.style.background = 'var(--color-warning-light)'); }}
+                                onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent'); }}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMapping(m.id)}
+                                title="Xóa mapping"
+                                style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
+                                onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
+                                onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {(selected.mappings || []).length === 0 && (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                              Chưa có mapping nào. Hãy thêm cột ở trên.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
+              )}
 
-                <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                  <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
-                    <strong>Mẹo cấu hình:</strong> Bạn có thể map <strong>nhiều cột trên Sheets</strong> vào <strong>cùng 1 trường hệ thống</strong> (ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!
-                  </p>
-                </div>
-
-                {/* Mappings Table BELOW */}
-                <div className="table-wrap" style={{ marginBottom: '1rem' }}>
-                  <table style={{ tableLayout: 'fixed', width: '100%' }}>
-                    <colgroup>
-                      <col style={{ width: '45%' }} />
-                      <col style={{ width: '25%' }} />
-                      <col style={{ width: '22%' }} />
-                      <col style={{ width: '8%' }} />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th>Tên cột trên Google Sheets</th>
-                        <th>Trường hiển thị trong Email</th>
-                        <th>Trường hệ thống</th>
-                        <th style={{ width: 60 }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selected.mappings || []).map(m => (
-                        <tr key={m.id}>
-                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <span 
-                              title={m.sheet_column}
-                              style={{ 
-                                fontFamily: 'monospace', 
-                                background: 'var(--color-bg)', 
-                                padding: '4px 10px', 
-                                borderRadius: 6, 
-                                fontSize: '0.875rem', 
-                                border: '1px solid var(--color-border)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: 'inline-block',
-                                maxWidth: '100%',
-                                verticalAlign: 'middle'
-                              }}
-                            >
-                              {m.sheet_column}
-                            </span>
-                          </td>
-                          <td>
-                            {m.custom_label ? (
-                              <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600 }}>
-                                {m.custom_label}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-                                Để mặc định (Tên cột)
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
-                              {SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
-                            <button
-                              onClick={() => {
-                                setEditingMappingId(m.id);
-                                setNewMappingCol(m.sheet_column);
-                                setNewMappingField(m.system_field);
-                                setNewMappingCustomLabel(m.custom_label || '');
-                              }}
-                              title="Chỉnh sửa mapping"
-                              style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', background: editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent' }}
-                              onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-warning)'); (e.currentTarget.style.background = 'var(--color-warning-light)'); }}
-                              onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent'); }}
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMapping(m.id)}
-                              title="Xóa mapping"
-                              style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
-                              onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
-                              onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {(selected.mappings || []).length === 0 && (
-                        <tr>
-                          <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
-                            Chưa có mapping nào. Hãy thêm cột ở trên.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
 
-    <CustomModal 
-        isOpen={showAddConn} 
-        onClose={() => { setShowAddConn(false); setAddStep(1); }} 
+      <CustomModal
+        isOpen={showAddConn}
+        onClose={() => { setShowAddConn(false); setAddStep(1); }}
         title="Kết nối Google Sheets"
         width="700px"
       >
         <div style={{ padding: '1.5rem', background: 'white' }}>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 16, left: 0, right: 0, height: 1, background: '#e2e8f0', zIndex: 0 }}></div>
             {[1, 2, 3].map(step => (
-              <div key={step} style={{ 
-                width: 32, height: 32, borderRadius: '50%', 
+              <div key={step} style={{
+                width: 32, height: 32, borderRadius: '50%',
                 background: addStep >= step ? 'var(--color-primary)' : '#f8fafc',
                 color: addStep >= step ? 'white' : '#94a3b8',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -980,7 +980,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
                   <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>(?) Cơ chế hoạt động?</span>
                 </div>
-                
+
                 <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                   {[
                     { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
@@ -989,10 +989,10 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
                     { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
                   ].map(preset => (
-                    <div 
+                    <div
                       key={preset.id}
                       onClick={() => setSyncPreset(preset.id as any)}
-                      style={{ 
+                      style={{
                         border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
                         background: syncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
                         borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
@@ -1012,11 +1012,11 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="sync_mode" 
-                      checked={syncMode === 'all'} 
-                      onChange={() => setSyncMode('all')} 
+                    <input
+                      type="radio"
+                      name="sync_mode"
+                      checked={syncMode === 'all'}
+                      onChange={() => setSyncMode('all')}
                       style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
                     />
                     <div>
@@ -1025,11 +1025,11 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     </div>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="sync_mode" 
-                      checked={syncMode === 'new_only'} 
-                      onChange={() => setSyncMode('new_only')} 
+                    <input
+                      type="radio"
+                      name="sync_mode"
+                      checked={syncMode === 'new_only'}
+                      onChange={() => setSyncMode('new_only')}
                       style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
                     />
                     <div>
@@ -1045,8 +1045,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   <div style={{ width: 140 }}>
                     <label className="form-label" style={{ fontWeight: 800, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Số phút tùy chỉnh</label>
                     <div style={{ position: 'relative' }}>
-                      <input 
-                        type="number" min={1} className="form-input" 
+                      <input
+                        type="number" min={1} className="form-input"
                         value={customSyncMins} onChange={e => setCustomSyncMins(Number(e.target.value))}
                         style={{ border: 'none', fontWeight: 700, fontSize: '1rem' }}
                       />
@@ -1061,8 +1061,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
               <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
                 <span onClick={() => setShowAddConn(false)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
-                <button 
-                  className="btn" 
+                <button
+                  className="btn"
                   onClick={handleFetchColumns}
                   disabled={isFetchingColumns}
                   style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
@@ -1078,7 +1078,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Cấu hình Trường dữ liệu</h2>
-                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Ánh xạ các cột trên Google Sheets của bạn vào hệ thống CRM.</p>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Domation DATA.</p>
               </div>
 
               {/* Add Mapping Row at the TOP */}
@@ -1086,10 +1086,10 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 <div style={{ flex: '1 1 180px' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Cột trên Sheets</label>
                   {fetchedColumns.length > 0 ? (
-                    <CustomSelect 
-                      options={fetchedColumns.map(c => ({ value: c, label: c }))} 
-                      value={newMappingCol} 
-                      onChange={v => setNewMappingCol(String(v))} 
+                    <CustomSelect
+                      options={fetchedColumns.map(c => ({ value: c, label: c }))}
+                      value={newMappingCol}
+                      onChange={v => setNewMappingCol(String(v))}
                     />
                   ) : (
                     <input className="form-input" style={{ border: '1px solid #cbd5e1' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
@@ -1109,7 +1109,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     onChange={e => setNewMappingCustomLabel(e.target.value)}
                   />
                 </div>
-                <button onClick={() => { if(newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField, custom_label: newMappingCustomLabel }]); setNewMappingCustomLabel(''); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 38, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                <button onClick={() => { if (newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField, custom_label: newMappingCustomLabel }]); setNewMappingCustomLabel(''); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 38, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
                   <Plus size={16} /> Thêm
                 </button>
               </div>
@@ -1125,12 +1125,12 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {tempMappings.map((m, idx) => (
                     <div key={idx} className="responsive-mapping-row" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
-                      <div 
+                      <div
                         title={m.sheet_col}
-                        style={{ 
-                          fontFamily: 'monospace', 
-                          fontSize: '0.875rem', 
-                          color: '#0f172a', 
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.875rem',
+                          color: '#0f172a',
                           fontWeight: 600,
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
@@ -1184,8 +1184,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               <div>
                 <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung (Hỗ trợ biến)</label>
                 <div style={{ position: 'relative' }}>
-                  <textarea 
-                    className="form-input" 
+                  <textarea
+                    className="form-input"
                     style={{ minHeight: 150, background: '#f8fafc', border: '1px solid #cbd5e1', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem' }}
                     value={emailTemplate}
                     onChange={e => setEmailTemplate(e.target.value)}
@@ -1212,7 +1212,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         </div>
       </CustomModal>
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleDeleteConnection}

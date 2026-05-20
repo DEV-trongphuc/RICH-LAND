@@ -33,6 +33,9 @@ export const Accounts = () => {
   const [replacementId, setReplacementId] = useState<number | null>(null);
   const [showReplacementModal, setShowReplacementModal] = useState(false);
 
+  const [unlinkId, setUnlinkId] = useState<number | null>(null);
+  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+
   const fetchAccounts = async () => {
     try {
       const json = await fetchAPI('get_accounts');
@@ -167,12 +170,17 @@ export const Accounts = () => {
     }
   };
 
-  const handleUnlinkZalo = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?')) return;
+  const confirmUnlinkZalo = (id: number) => {
+    setUnlinkId(id);
+    setUnlinkConfirmOpen(true);
+  };
+
+  const handleUnlinkZalo = async () => {
+    if (!unlinkId) return;
     try {
       const json = await fetchAPI('unlink_zalo', {
         method: 'POST',
-        body: JSON.stringify({ id, type: 'account' })
+        body: JSON.stringify({ id: unlinkId, type: 'account' })
       });
       if (json.success) {
         toast.success('Đã hủy liên kết Zalo thành công!');
@@ -183,6 +191,8 @@ export const Accounts = () => {
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setUnlinkConfirmOpen(false);
+    setUnlinkId(null);
   };
 
   const getRoleBadge = (role: string) => {
@@ -265,7 +275,7 @@ export const Accounts = () => {
                     <td data-label="Thao tác" className="col-actions" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         {acc.zalo_chat_id && (
-                          <button onClick={() => handleUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                          <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
                             <Link2Off size={16} />
                           </button>
                         )}
@@ -401,6 +411,15 @@ export const Accounts = () => {
         title="Xóa Tài khoản" 
         message="Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này không thể hoàn tác và user sẽ không thể đăng nhập được nữa." 
         confirmText="Xóa vĩnh viễn" 
+      />
+
+      <ConfirmModal 
+        isOpen={unlinkConfirmOpen} 
+        onClose={() => setUnlinkConfirmOpen(false)} 
+        onConfirm={handleUnlinkZalo} 
+        title="Hủy liên kết Zalo Bot" 
+        message="Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không? Hệ thống sẽ ngừng gửi mọi thông báo qua Zalo cho tài khoản này ngay lập tức." 
+        confirmText="Hủy liên kết" 
       />
 
       {showReplacementModal && typeof document !== 'undefined' && createPortal(

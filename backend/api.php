@@ -446,10 +446,11 @@ switch ($action) {
                     str_replace("\n", " ", $row['note']), // Tránh vỡ form CSV
                     $row['received_at']
                 ]);
-                
+
                 $rowCount++;
                 if ($rowCount % 500 === 0) {
-                    if (ob_get_level() > 0) ob_flush();
+                    if (ob_get_level() > 0)
+                        ob_flush();
                     flush();
                 }
             }
@@ -846,8 +847,8 @@ switch ($action) {
             if ($roundId > 0 && !empty($compensations)) {
                 $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = ? WHERE round_id = ? AND consultant_id = ?");
                 foreach ($compensations as $cid => $compCount) {
-                    $c = (int)$cid;
-                    $count = max(0, (int)$compCount);
+                    $c = (int) $cid;
+                    $count = max(0, (int) $compCount);
                     $stmtComp->bind_param("iii", $count, $roundId, $c);
                     $stmtComp->execute();
                 }
@@ -1356,7 +1357,7 @@ switch ($action) {
                             . "  • Khách hàng: $leadName ($leadPhone)\n\n"
                             . "❖ LÝ DO LỖI:\n"
                             . "  $reason\n\n"
-                            . "Vui lòng đăng nhập hệ thống CRM để duyệt hoặc từ chối Ticket này.";
+                            . "Vui lòng đăng nhập hệ thống Domation DATA để duyệt hoặc từ chối Ticket này.";
 
                         $adminChatIds = [];
                         foreach ($allAdmins as $adm) {
@@ -2129,7 +2130,7 @@ switch ($action) {
                             $zName = $admin['name'] ?: 'Quản trị viên';
                             $zaloMsg = "[ PHÂN QUYỀN TICKET ]\n\n"
                                 . "Chào $zName,\n"
-                                . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống CRM.\n\n"
+                                . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Domation DATA.\n\n"
                                 . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
                             sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
                         }

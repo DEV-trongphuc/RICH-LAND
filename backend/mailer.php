@@ -11,7 +11,7 @@ use PHPMailer\PHPMailer\Exception;
 
 function _getBaseHtml($title, $subtitle, $contentHtml)
 {
-    $headerSub = !empty($title) ? mb_strtoupper($title, 'UTF-8') : 'HỆ THỐNG PHÂN BỔ DATA TỰ ĐỘNG';
+    $headerSub = !empty($title) ? mb_strtoupper($title, 'UTF-8') : 'DATA ROUTING ENGINE';
 
     return '
     <div style="background-color: #f8fafc; padding: 40px 0; font-family: \'Inter\', Helvetica, Arial, sans-serif;">
@@ -73,7 +73,8 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
 
     if ($provider === 'appscript') {
         $url = $settings['appscript_webhook_url'] ?? '';
-        if (empty($url)) return false;
+        if (empty($url))
+            return false;
 
         $payload = json_encode([
             "type" => "custom",
@@ -87,7 +88,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15); 
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         $result = curl_exec($ch);
         curl_close($ch);
         return true;
@@ -102,7 +103,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             $mail->CharSet = 'UTF-8';
-            $mail->Timeout = 15; 
+            $mail->Timeout = 15;
 
             $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
             $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
@@ -347,7 +348,7 @@ function sendWelcomeEmailToSale(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">👋</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào mừng ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản của bạn đã được thêm vào hệ thống phân bổ Data tự động.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản của bạn đã được thêm vào DATA ROUTING ENGINE.</p>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -438,7 +439,7 @@ function sendAdminConfirmationEmail(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">✉️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống CRM.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống Domation DATA.</p>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
@@ -533,7 +534,7 @@ function sendDailyReportEmailToAdmins(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">📊</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của Hệ thống CRM.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của hệ thống Domation DATA.</p>
         </div>
 
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">

@@ -206,6 +206,13 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 }
             }
 
+            // Xử lý trùng lặp Email giữa Sale và Admin
+            if ($sale && $admin && $targetType === '') {
+                $errorMsg = "[ HỆ THỐNG DOMATION DATA ]\n\nEmail này đang được dùng cho cả tài khoản Quản trị viên và Tư vấn viên.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID thay vì Email để xác thực:\n\n- Nếu bạn muốn liên kết Admin: Gửi A + Mã ID (Ví dụ: A" . $admin['id'] . ")\n- Nếu bạn muốn liên kết Tư vấn viên: Gửi Mã ID (Ví dụ: " . $sale['id'] . ")";
+                sendZaloMessage($botToken, $chatId, $errorMsg);
+                exit;
+            }
+
             if (!$sale && !$admin) {
                 $info = $userId > 0 ? "ID: $userId" : "";
                 if (!empty($email)) {
