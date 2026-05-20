@@ -96,12 +96,12 @@ if ($connItem) {
             $params = [];
             $types = '';
             if (!empty($phone)) {
-                $where[] = "phone = ?";
+                $where[] = "l.phone = ?";
                 $params[] = $phone;
                 $types .= 's';
             }
             if (!empty($email)) {
-                $where[] = "email = ?";
+                $where[] = "l.email = ?";
                 $params[] = $email;
                 $types .= 's';
             }
