@@ -201,11 +201,18 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
     foreach ($rulesCache as $row) {
         // Skip rule if it is bound to a specific connection_id and it doesn't match the incoming connection
         if (!empty($row['connection_id'])) {
-            $ruleConnId = (int)$row['connection_id'];
-            if ($ruleConnId === -1 && $connectionType !== 'sheets') continue;
-            if ($ruleConnId === -2 && $connectionType !== 'landing_page') continue;
-            if ($ruleConnId === -3 && $connectionType !== 'manual') continue;
-            if ($ruleConnId > 0 && $ruleConnId != $connId) continue;
+            $ruleConnIds = array_map('trim', explode(',', (string)$row['connection_id']));
+            $isMatched = false;
+            
+            foreach ($ruleConnIds as $ruleConnIdStr) {
+                $ruleConnId = (int)$ruleConnIdStr;
+                if ($ruleConnId === -1 && $connectionType === 'sheets') { $isMatched = true; break; }
+                if ($ruleConnId === -2 && $connectionType === 'landing_page') { $isMatched = true; break; }
+                if ($ruleConnId === -3 && $connectionType === 'manual') { $isMatched = true; break; }
+                if ($ruleConnId > 0 && $ruleConnId == $connId) { $isMatched = true; break; }
+            }
+            
+            if (!$isMatched) continue;
         }
 
         $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');

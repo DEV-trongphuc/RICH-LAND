@@ -32,7 +32,7 @@ const OP_LABELS: Record<string, string> = {
 };
 
 // Sortable Item Component
-const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void }) => {
+const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisabled }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
   const style = {
@@ -55,9 +55,15 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete }: { rule: 
           padding: '1rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           minWidth: '60px'
         }}>
-          <button {...attributes} {...listeners} style={{ cursor: 'grab', padding: '4px', color: 'var(--color-text-muted)' }}>
-            <GripVertical size={20} />
-          </button>
+          {!isDragDisabled ? (
+            <button {...attributes} {...listeners} style={{ cursor: 'grab', padding: '4px', color: 'var(--color-text-muted)' }}>
+              <GripVertical size={20} />
+            </button>
+          ) : (
+            <div style={{ padding: '4px', color: 'var(--color-border-light)' }}>
+              <GripVertical size={20} />
+            </div>
+          )}
           <div style={{
             width: 30, height: 30, borderRadius: '50%', background: 'white', border: '1px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)',
@@ -70,44 +76,51 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete }: { rule: 
         {/* Content */}
         <div className="mobile-flex-wrap" style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ flex: 1 }}>
-            {(() => {
-              if (rule.connection_id === null) {
-                return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    <Globe size={14} color="#6366f1" /> Nguồn: Tất cả mọi kết nối (Sheet & API & Nhập tay)
-                  </span>
-                );
-              }
-              if (Number(rule.connection_id) === -1) {
-                return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    <FileSpreadsheet size={14} color="#10b981" /> Nguồn: Tất cả các Google Sheets
-                  </span>
-                );
-              }
-              if (Number(rule.connection_id) === -2) {
-                return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    <Zap size={14} color="#f59e0b" /> Nguồn: Tất cả các API / Landing Pages
-                  </span>
-                );
-              }
-              if (Number(rule.connection_id) === -3) {
-                return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    <Keyboard size={14} color="#ec4899" /> Nguồn: Chỉ Data Nhập tay (Thêm Data Nhanh)
-                  </span>
-                );
-              }
-              if (rule.connection_id && rule.sheet_name) {
-                return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {rule.sheet_name}
-                  </span>
-                );
-              }
-              return null;
-            })()}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {(() => {
+                if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
+                      <Globe size={14} color="#6366f1" /> Nguồn: Tất cả mọi kết nối (Sheet & API & Nhập tay)
+                    </span>
+                  );
+                }
+                
+                const cIds = rule.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
+                return cIds.map((cId: number) => {
+                  if (cId === -1) {
+                    return (
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
+                        <FileSpreadsheet size={14} color="#10b981" /> Nguồn: Tất cả các Google Sheets
+                      </span>
+                    );
+                  }
+                  if (cId === -2) {
+                    return (
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
+                        <Zap size={14} color="#f59e0b" /> Nguồn: Tất cả các API / Landing Pages
+                      </span>
+                    );
+                  }
+                  if (cId === -3) {
+                    return (
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
+                        <Keyboard size={14} color="#ec4899" /> Nguồn: Chỉ Data Nhập tay (Thêm Data Nhanh)
+                      </span>
+                    );
+                  }
+                  const conn = connections.find(c => Number(c.id) === cId);
+                  if (conn) {
+                    return (
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
+                        <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {conn.sheet_name}
+                      </span>
+                    );
+                  }
+                  return null;
+                });
+              })()}
+            </div>
             
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Điều kiện kích hoạt</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -250,8 +263,9 @@ export const RuleSettings = () => {
   // Form states
   const [branches, setBranches] = useState<any[]>([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
   const [targetRound, setTargetRound] = useState<number | ''>('');
-  const [connectionId, setConnectionId] = useState<number | 'all'>('all');
+  const [connectionId, setConnectionId] = useState<any[]>(['all']);
   const [connections, setConnections] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<number | 'all' | null>('all');
 
   const fetchConnections = async () => {
     try {
@@ -330,7 +344,16 @@ export const RuleSettings = () => {
       return;
     }
     setEditingRule(null);
-    setConnectionId('all');
+    
+    // Pre-fill connection based on active filter
+    if (activeFilter !== 'all' && activeFilter !== null) {
+      setConnectionId([activeFilter]);
+    } else if (activeFilter === null) {
+      setConnectionId(['all']);
+    } else {
+      setConnectionId(['all']);
+    }
+    
     setBranches([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
     setTargetRound(rounds[0]?.id || '');
     setIsModalOpen(true);
@@ -338,7 +361,13 @@ export const RuleSettings = () => {
 
   const openEditModal = (rule: any) => {
     setEditingRule(rule);
-    setConnectionId(rule.connection_id ? Number(rule.connection_id) : 'all');
+    
+    let initialConns = ['all'];
+    if (rule.connection_id !== null && rule.connection_id !== '') {
+      initialConns = rule.connection_id.toString().split(',').map((v: string) => Number(v.trim()));
+    }
+    setConnectionId(initialConns);
+
     if (rule.conditions_json) {
       try {
         const parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
@@ -385,7 +414,7 @@ export const RuleSettings = () => {
     setIsSaving(true);
     const payload = {
       id: editingRule?.id,
-      connection_id: connectionId === 'all' ? null : connectionId,
+      connection_id: connectionId.includes('all') ? 'all' : connectionId.join(','),
       condition_column: branches[0]?.conditions?.[0]?.col || '',
       condition_operator: branches[0]?.conditions?.[0]?.op || '',
       condition_value: branches[0]?.conditions?.[0]?.val || '',
@@ -441,8 +470,8 @@ export const RuleSettings = () => {
       { value: 'email', label: 'Email (Hệ thống)' },
       { value: 'connection_id', label: 'Tích hợp (Sheet/Webhook)' }
     ];
-    if (connectionId !== 'all') {
-      const conn = connections.find(c => Number(c.id) === Number(connectionId));
+    if (!connectionId.includes('all') && connectionId.length === 1) {
+      const conn = connections.find(c => Number(c.id) === Number(connectionId[0]));
       if (conn && conn.mappings) {
         const customFields = conn.mappings.map((m: any) => ({
           value: m.sheet_column,
@@ -468,6 +497,15 @@ export const RuleSettings = () => {
     { value: 'date_equals', label: 'Chính xác ngày (YYYY-MM-DD)' }
   ];
 
+  const filteredRules = rules.filter(r => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === null) return r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
+    
+    if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') return false;
+    const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
+    return cIds.includes(activeFilter);
+  });
+
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <div className="page-header" style={{ marginBottom: '2rem' }}>
@@ -485,7 +523,7 @@ export const RuleSettings = () => {
       <div style={{
         background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(124, 58, 237, 0.1) 100%)',
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
-        borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '2rem'
+        borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem'
       }}>
         <div style={{
           background: 'white',
@@ -503,31 +541,58 @@ export const RuleSettings = () => {
         </div>
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>Lọc theo nguồn:</div>
+        <div style={{ width: 320 }}>
+          <CustomSelect
+            options={[
+              { value: 'all', label: 'Hiển thị tất cả Quy tắc', icon: <Filter size={14} color="#64748b" /> },
+              { value: 'null', label: 'Chỉ các Quy tắc "Tất cả mọi kết nối"', icon: <Globe size={14} color="#6366f1" /> },
+              { value: -1, label: 'Chỉ nhóm "Tất cả các Google Sheets"', icon: <FileSpreadsheet size={14} color="#10b981" /> },
+              { value: -2, label: 'Chỉ nhóm "Tất cả API / Landing Pages"', icon: <Zap size={14} color="#f59e0b" /> },
+              { value: -3, label: 'Chỉ nhóm "Data Nhập tay"', icon: <Keyboard size={14} color="#ec4899" /> },
+              ...connections.map(c => ({ value: c.id, label: `Nguồn: ${c.sheet_name}`, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
+            ]}
+            value={activeFilter === null ? 'null' : activeFilter.toString()}
+            onChange={(v) => setActiveFilter(v === 'all' ? 'all' : (v === 'null' ? null : Number(v)))}
+          />
+        </div>
+        {activeFilter !== 'all' && (
+          <div style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Filter size={14} /> Chế độ lọc đang bật. Kéo thả thứ tự tạm khóa.
+          </div>
+        )}
+      </div>
+
       <div className="card" style={{ overflow: 'visible', paddingBottom: '2rem' }}>
         {loading ? (
           <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[1,2,3].map(i => <CardSkeleton key={i} height={90} />)}
           </div>
-        ) : rules.length === 0 ? (
+        ) : filteredRules.length === 0 ? (
           <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
               <Filter size={32} color="var(--color-text-muted)" />
             </div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Quy tắc Định tuyến nào</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thêm quy tắc đầu tiên để hệ thống tự động phân loại và chuyển tiếp dữ liệu đến đúng vòng phân bổ.</p>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Không tìm thấy Quy tắc nào</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thử thay đổi bộ lọc hoặc thêm quy tắc mới.</p>
             <button className="btn primary" onClick={openAddModal}><Plus size={18} /> Thêm Quy tắc</button>
           </div>
         ) : (
           <div style={{ padding: '0.5rem' }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={rules.map(r => r.id)} strategy={verticalListSortingStrategy}>
-                {rules.map((rule, idx) => (
-                  <SortableRuleItem
-                    key={rule.id} rule={rule} idx={idx} connections={connections}
-                    onEdit={openEditModal}
-                    onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
-                  />
-                ))}
+              <SortableContext items={filteredRules.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                {filteredRules.map((rule) => {
+                  const originalIdx = rules.findIndex(r => r.id === rule.id);
+                  return (
+                    <SortableRuleItem
+                      key={rule.id} rule={rule} idx={originalIdx} connections={connections}
+                      onEdit={openEditModal}
+                      onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
+                      isDragDisabled={activeFilter !== 'all'}
+                    />
+                  );
+                })}
               </SortableContext>
             </DndContext>
             <div style={{ padding: '0 1rem', marginTop: '1rem' }}>
@@ -553,15 +618,16 @@ export const RuleSettings = () => {
           <div>
             <label className="form-label">Áp dụng cho Nguồn (Connection)</label>
             <CustomSelect
+              multiple
               options={[
-                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API & Nhập tay)' },
-                { value: -1, label: 'Tất cả các Google Sheets' },
-                { value: -2, label: 'Tất cả các API / Landing Pages' },
-                { value: -3, label: 'Chỉ Data Nhập tay (Thêm Data Nhanh)' },
-                ...connections.map(c => ({ value: c.id, label: c.sheet_name }))
+                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API & Nhập tay)', icon: <Globe size={14} color="#6366f1" /> },
+                { value: -1, label: 'Tất cả các Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> },
+                { value: -2, label: 'Tất cả các API / Landing Pages', icon: <Zap size={14} color="#f59e0b" /> },
+                { value: -3, label: 'Chỉ Data Nhập tay (Thêm Data Nhanh)', icon: <Keyboard size={14} color="#ec4899" /> },
+                ...connections.map(c => ({ value: c.id, label: c.sheet_name, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
               ]}
               value={connectionId}
-              onChange={(v) => setConnectionId(v === 'all' ? 'all' : Number(v))}
+              onChange={(v) => setConnectionId(v)}
             />
           </div>
 

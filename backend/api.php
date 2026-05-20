@@ -1184,10 +1184,9 @@ switch ($action) {
         break;
 
     case 'get_rules':
-        $res = $conn->query("SELECT rr.*, r.round_name, sc.sheet_name 
+        $res = $conn->query("SELECT rr.*, r.round_name 
                                FROM routing_rules rr 
                                LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id 
-                               LEFT JOIN sheet_connections sc ON rr.connection_id = sc.id
                                ORDER BY rr.priority ASC");
         $data = [];
         while ($row = $res->fetch_assoc())
@@ -1204,10 +1203,13 @@ switch ($action) {
             $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
             $logical_operator = $input['logical_operator'] ?? 'AND';
             $target = (int) ($input['target_round_id'] ?? 0);
-            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
+            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (string) $input['connection_id'] : null;
+
+            // Ensure column can store comma-separated values
+            $conn->query("ALTER TABLE routing_rules MODIFY connection_id VARCHAR(255) NULL");
 
             $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id, conditions_json, logical_operator) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("isssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
+            $stmt->bind_param("ssssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
             
             if (!$stmt->execute()) {
                 // If it's a foreign key constraint error due to negative IDs
@@ -1258,10 +1260,13 @@ switch ($action) {
             $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
             $logical_operator = $input['logical_operator'] ?? 'AND';
             $target = (int) ($input['target_round_id'] ?? 0);
-            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
+            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (string) $input['connection_id'] : null;
+
+            // Ensure column can store comma-separated values
+            $conn->query("ALTER TABLE routing_rules MODIFY connection_id VARCHAR(255) NULL");
 
             $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=?, conditions_json=?, logical_operator=? WHERE id=?");
-            $stmt->bind_param("isssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
+            $stmt->bind_param("ssssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
             
             if (!$stmt->execute()) {
                 // If it's a foreign key constraint error due to negative IDs
@@ -2966,7 +2971,6 @@ switch ($action) {
                 // Insert unassigned in leads (since fallback admin is in accounts, not consultants)
                 $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
 
-                trackCRMAction($conn, $leadId, "Nhập liệu thủ công (Chuyển thẳng Admin Fallback)", "System", "success");
                 logDistribution($conn, $leadId, null, null, 'assigned', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name']);
 
                 $conn->commit();
@@ -3006,9 +3010,6 @@ switch ($action) {
                 $status = $isComp ? 'compensation' : 'assigned';
                 $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
 
-                // Track CRM logs
-                trackCRMAction($conn, $leadId, $isFallback ? "Nhập liệu thủ công (Phân bổ qua Vòng mặc định)" : "Nhập liệu thủ công từ Admin", "System", "success");
-
                 $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
                 $stmtRound->bind_param("i", $assignedRoundId);
                 $stmtRound->execute();
@@ -3018,7 +3019,10 @@ switch ($action) {
                 logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin");
 
                 // Track assigned report
-                trackAssignedReport($conn, $assignedRoundId, $consultantId);
+                $today = date('Y-m-d');
+                $stmtStats = $conn->prepare("INSERT INTO daily_reports (date, round_id, consultant_id, total_assigned) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE total_assigned = total_assigned + 1");
+                $stmtStats->bind_param("sii", $today, $assignedRoundId, $consultantId);
+                $stmtStats->execute();
 
                 $conn->commit();
                 $conn->query("SELECT RELEASE_LOCK('$lockKey')");

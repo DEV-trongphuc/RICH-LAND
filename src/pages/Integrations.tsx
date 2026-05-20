@@ -524,7 +524,7 @@ export const Integrations = () => {
                     {conn.sheet_name}
                   </p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                    {(conn.mappings || []).length} cột đã map
+                    {conn.connection_type === 'landing_page' ? 'Nhận Data qua API' : `${(conn.mappings || []).length} cột đã map`}
                   </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

@@ -14,14 +14,15 @@ export interface SelectOption {
 
 interface CustomSelectProps {
   options: SelectOption[];
-  value: string | number | null;
-  onChange: (value: string | number) => void;
+  value: any;
+  onChange: (value: any) => void;
   placeholder?: string;
   label?: string;
   searchable?: boolean;
   showAvatars?: boolean;
   width?: string | number;
   direction?: 'up' | 'down';
+  multiple?: boolean;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -33,7 +34,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   searchable = false,
   showAvatars = false,
   width,
-  direction = 'down'
+  direction = 'down',
+  multiple = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -49,11 +51,53 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const selectedOption = options.find(opt => opt.value == value);
+  const selectedOption = multiple ? null : options.find(opt => opt.value == value);
   const filtered = searchable ? options.filter(o => 
     o.label.toLowerCase().includes(search.toLowerCase()) || 
     (o.sublabel && o.sublabel.toLowerCase().includes(search.toLowerCase()))
   ) : options;
+
+  const isSelected = (val: string | number) => {
+    if (multiple) {
+      return Array.isArray(value) && value.includes(val);
+    }
+    return value == val;
+  };
+
+  const handleSelect = (val: string | number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (multiple) {
+      const arr = Array.isArray(value) ? [...value] : [];
+      if (val === 'all') {
+        onChange(['all']);
+      } else {
+        const newArr = arr.includes(val) ? arr.filter(v => v !== val) : [...arr.filter(v => v !== 'all'), val];
+        if (newArr.length === 0) onChange(['all']);
+        else onChange(newArr);
+      }
+    } else {
+      onChange(val);
+      setIsOpen(false);
+      setSearch('');
+    }
+  };
+
+  const renderTriggerContent = () => {
+    if (multiple) {
+      const arr = Array.isArray(value) ? value : [];
+      if (arr.length === 0 || arr.includes('all')) return <span className={styles.triggerContent}><span style={{display: 'flex'}}>{options[0]?.icon}</span>Tất cả (Sheet & API & Nhập tay)</span>;
+      const selectedOpts = options.filter(o => arr.includes(o.value));
+      if (selectedOpts.length === 1) return <span className={styles.triggerContent}>{!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}{selectedOpts[0].label}</span>;
+      return <span className={styles.triggerContent}>Đã chọn ({selectedOpts.length} nguồn)</span>;
+    }
+    return selectedOption ? (
+      <span className={styles.triggerContent}>
+        {showAvatars && <Avatar src={selectedOption.avatar} name={selectedOption.label} size="sm" />}
+        {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
+        {selectedOption.label}
+      </span>
+    ) : placeholder;
+  };
 
   return (
     <div className={styles.wrapper} ref={containerRef} style={{ width }}>
@@ -62,14 +106,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className={selectedOption ? styles.selectedValue : styles.placeholder}>
-          {selectedOption ? (
-            <span className={styles.triggerContent}>
-              {showAvatars && <Avatar src={selectedOption.avatar} name={selectedOption.label} size="sm" />}
-              {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
-              {selectedOption.label}
-            </span>
-          ) : placeholder}
+        <span className={(multiple && Array.isArray(value) && value.length > 0) || selectedOption ? styles.selectedValue : styles.placeholder}>
+          {renderTriggerContent()}
         </span>
         <ChevronDown size={16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
       </div>
@@ -106,13 +144,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
               {filtered.length > 0 ? filtered.map((option) => (
                 <div 
                   key={option.value}
-                  className={`${styles.option} ${value == option.value ? styles.optionSelected : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange(option.value);
-                    setIsOpen(false);
-                    setSearch('');
-                  }}
+                  className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''}`}
+                  onClick={(e) => handleSelect(option.value, e)}
                 >
                   <div className={styles.optionLabel}>
                     {showAvatars ? (
@@ -125,7 +158,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                       {option.sublabel && <span className={styles.optionSublabel}>{option.sublabel}</span>}
                     </div>
                   </div>
-                  {value == option.value && <Check size={14} className={styles.checkIcon} />}
+                  {isSelected(option.value) && <Check size={14} className={styles.checkIcon} />}
                 </div>
               )) : (
                 <div className={styles.empty}>Không tìm thấy</div>
