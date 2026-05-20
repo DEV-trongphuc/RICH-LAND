@@ -45,7 +45,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 10) {
+        if ($dbVer >= 99) {
             $runMigration = false;
         }
     }
