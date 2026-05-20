@@ -68,7 +68,7 @@ const SortableRuleItem = ({ rule, idx, onEdit, onDelete }: { rule: any, idx: num
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div className="mobile-flex-wrap" style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ flex: 1 }}>
             {rule.connection_id && rule.sheet_name && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>

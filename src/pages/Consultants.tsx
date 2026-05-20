@@ -182,7 +182,7 @@ export const Consultants = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="responsive-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-3 mobile-stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         <div className="stat-card hover-lift">
           <div className="stat-label">Tổng TVV</div>
           <div className="stat-value">{users.length}</div>
@@ -200,7 +200,7 @@ export const Consultants = () => {
       {/* Table */}
       <div className="card" style={{ overflow: 'hidden' }}>
         <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-          <table>
+          <table className="mobile-table-compact">
             <thead>
               <tr>
                 <th>Tên TVV</th>

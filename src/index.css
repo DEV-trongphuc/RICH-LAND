@@ -61,6 +61,47 @@
   
   .mobile-only { display: block !important; }
   .hide-on-mobile { display: none !important; }
+
+  /* --- NEW MOBILE FIXES --- */
+  .mobile-stat-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  .mobile-stat-grid-3 .stat-label {
+    font-size: 0.6rem !important;
+  }
+  .mobile-stat-grid-3 .stat-value {
+    font-size: 1.1rem !important;
+  }
+
+  .mobile-table-compact th, .mobile-table-compact td {
+    padding: 0.75rem 0.5rem !important;
+    white-space: nowrap !important;
+  }
+
+  .mobile-flex-wrap {
+    flex-wrap: wrap !important;
+  }
+  
+  .mobile-round-actions {
+    flex-wrap: wrap !important;
+  }
+  
+  .mobile-filter-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    justify-content: flex-start !important;
+  }
+  .mobile-filter-tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .mobile-filter-tabs::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+  }
 }
 
 .mobile-only { display: none; }

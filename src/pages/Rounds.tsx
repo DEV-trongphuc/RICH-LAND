@@ -271,7 +271,7 @@ export const Rounds = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {/* View Toggle */}
           <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: 4, borderRadius: 'var(--radius-md)' }}>
             <button
@@ -477,15 +477,15 @@ export const Rounds = () => {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button className="btn outline sm" onClick={() => openEditModal(r)}>
-                    <Edit3 size={14} /> Sửa
+                <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem' }}>
+                    <Edit3 size={16} /> Sửa
                   </button>
-                  <button className="btn primary sm" onClick={() => openCompModal(r)}>
-                    <Zap size={14} /> Bù Data
+                  <button onClick={() => openCompModal(r)} className="btn primary" style={{ flex: 1, padding: '0.625rem' }}>
+                    <Zap size={16} /> Bù Data
                   </button>
-                  <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', padding: '0 0.5rem' }}>
-                    <Trash2 size={14} />
+                  <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline danger" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>

@@ -158,7 +158,7 @@ export const Tickets = () => {
             Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="mobile-filter-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {FILTER_TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveFilter(tab.key as any)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
               {tab.label} {tab.key !== 'all' && `(${reports.filter(r => r.status === tab.key).length})`}
@@ -235,14 +235,15 @@ export const Tickets = () => {
         </div>
 
         {/* Date from */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <div className="mobile-flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 130 }}>
             <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateFrom ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
               style={{
+                width: '100%',
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
                 borderRadius: 10,
                 border: '1.5px solid',
@@ -258,13 +259,14 @@ export const Tickets = () => {
             />
           </div>
           <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>→</span>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 130 }}>
             <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateTo ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
               style={{
+                width: '100%',
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
                 borderRadius: 10,
                 border: '1.5px solid',
@@ -319,7 +321,7 @@ export const Tickets = () => {
           </div>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thông tin Lead</th>
