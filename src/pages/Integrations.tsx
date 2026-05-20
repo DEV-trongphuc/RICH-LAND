@@ -555,7 +555,11 @@ export const Integrations = () => {
                       width: 44, height: 44, borderRadius: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
-                      <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
+                      {selected.connection_type === 'landing_page' ? (
+                        <Zap size={24} color="var(--color-primary)" />
+                      ) : (
+                        <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
+                      )}
                     </div>
                     <div>
                       {selected.spreadsheet_id ? (
