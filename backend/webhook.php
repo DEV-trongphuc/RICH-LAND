@@ -210,7 +210,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
 }
 
 // --- 2. Evaluate Dynamic Rules to determine the Target Round ---
-$ruleResult = evaluateRules($conn, $data, $source, $type, $connId);
+$ruleResult = evaluateRules($conn, $data, $source, $type, $connId, $connectionType);
 $targetRoundId = null;
 $assignedConsultantId = null;
 $status = 'unassigned';

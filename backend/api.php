@@ -2684,7 +2684,7 @@ switch ($action) {
         $type = $data['type'] ?? '';
         $note = $data['note'] ?? '';
 
-        $ruleResult = evaluateRules($conn, $data, $source, $type);
+        $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'landing_page');
         $assignedRoundId = null;
 
         if (is_array($ruleResult)) {

@@ -186,7 +186,7 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
     return false;
 }
 
-function evaluateRules($conn, $data, $source, $type, $connId = null) {
+function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets') {
     static $rulesCache = null;
     if ($rulesCache === null) {
         $rulesCache = [];
@@ -200,8 +200,11 @@ function evaluateRules($conn, $data, $source, $type, $connId = null) {
     
     foreach ($rulesCache as $row) {
         // Skip rule if it is bound to a specific connection_id and it doesn't match the incoming connection
-        if (!empty($row['connection_id']) && $row['connection_id'] != $connId) {
-            continue;
+        if (!empty($row['connection_id'])) {
+            $ruleConnId = (int)$row['connection_id'];
+            if ($ruleConnId === -1 && $connectionType !== 'sheets') continue;
+            if ($ruleConnId === -2 && $connectionType !== 'landing_page') continue;
+            if ($ruleConnId > 0 && $ruleConnId != $connId) continue;
         }
 
         $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');

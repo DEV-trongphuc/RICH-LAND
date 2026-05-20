@@ -403,6 +403,9 @@ export const RuleSettings = () => {
       { value: 'source', label: 'Nguồn Data (Hệ thống)' },
       { value: 'type', label: 'Loại Data (Hệ thống)' },
       { value: 'note', label: 'Ghi Chú (Hệ thống)' },
+      { value: 'name', label: 'Họ và Tên (Hệ thống)' },
+      { value: 'phone', label: 'Số điện thoại (Hệ thống)' },
+      { value: 'email', label: 'Email (Hệ thống)' },
       { value: 'connection_id', label: 'Tích hợp (Sheet/Webhook)' }
     ];
     if (connectionId !== 'all') {
@@ -515,10 +518,12 @@ export const RuleSettings = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
           <div>
-            <label className="form-label">Áp dụng cho Sheet</label>
+            <label className="form-label">Áp dụng cho Nguồn (Connection)</label>
             <CustomSelect
               options={[
-                { value: 'all', label: 'Tất cả các Sheet kết nối' },
+                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API)' },
+                { value: -1, label: 'Tất cả các Google Sheets' },
+                { value: -2, label: 'Tất cả các API / Landing Pages' },
                 ...connections.map(c => ({ value: c.id, label: c.sheet_name }))
               ]}
               value={connectionId}

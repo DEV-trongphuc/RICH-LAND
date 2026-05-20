@@ -223,10 +223,33 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     $subject = "Bạn vừa nhận được Lead {$leadName}{$roundStr}";
 
     // Format values nicely for HTML, converting newlines (\n) to <br/> tags
-    $formattedNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : '<em>Không có ghi chú</em>';
     $formattedSource = !empty($leadSource) ? nl2br(htmlspecialchars($leadSource)) : '<em>Không có</em>';
     $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
     $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
+
+    // Parse custom fields from leadNote
+    $actualNote = '';
+    $customFieldsHtml = '';
+    
+    if (!empty($leadNote)) {
+        $lines = explode("\n", $leadNote);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            // Matches [Custom Key]: Value
+            if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches)) {
+                $cKey = htmlspecialchars(trim($matches[1]));
+                $cVal = htmlspecialchars(trim($matches[2]));
+                $customFieldsHtml .= '
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">' . $cKey . ':</td>
+                    <td style="padding: 6px 0; font-weight: 600; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
+                </tr>';
+            } else {
+                $actualNote .= htmlspecialchars($line) . '<br/>';
+            }
+        }
+    }
 
     // BUG-02 fix: Build report URL dynamically from system_settings or server vars
     $frontendUrl = '';
@@ -263,23 +286,31 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
                     <td style="padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;">' . htmlspecialchars($leadPhone) . '</td>
                 </tr>
+                ' . (!empty($email) ? '
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedEmail . '</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . htmlspecialchars($email) . '</td>
                 </tr>
+                ' : '') . '
+                ' . (!empty($leadSource) ? '
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Nguồn Data:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedSource . '</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . nl2br(htmlspecialchars($leadSource)) . '</td>
                 </tr>
+                ' : '') . '
+                ' . (!empty($type) ? '
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Loại Data:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . $formattedType . '</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . nl2br(htmlspecialchars($type)) . '</td>
                 </tr>
+                ' : '') . '
+                ' . (!empty($actualNote) ? '
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $formattedNote . '</td>
+                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $actualNote . '</td>
                 </tr>
-
+                ' : '') . 
+                $customFieldsHtml . '
             </table>
         </div>
 
