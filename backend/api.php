@@ -1196,19 +1196,48 @@ switch ($action) {
         break;
 
     case 'add_rule':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $col = $input['condition_column'] ?? '';
-        $op = $input['condition_operator'] ?? '';
-        $val = $input['condition_value'] ?? '';
-        $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
-        $logical_operator = $input['logical_operator'] ?? 'AND';
-        $target = (int) ($input['target_round_id'] ?? 0);
-        $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $col = $input['condition_column'] ?? '';
+            $op = $input['condition_operator'] ?? '';
+            $val = $input['condition_value'] ?? '';
+            $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
+            $logical_operator = $input['logical_operator'] ?? 'AND';
+            $target = (int) ($input['target_round_id'] ?? 0);
+            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
 
-        $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id, conditions_json, logical_operator) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+            $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id, conditions_json, logical_operator) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("isssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
+            
+            if (!$stmt->execute()) {
+                // If it's a foreign key constraint error due to negative IDs
+                if (strpos($stmt->error, 'foreign key constraint fails') !== false) {
+                    $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY routing_rules_ibfk_1");
+                    // Retry execution
+                    if (!$stmt->execute()) {
+                        throw new Exception($stmt->error);
+                    }
+                } else {
+                    throw new Exception($stmt->error);
+                }
+            }
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            // Self-healing attempt 2: maybe the constraint name is different
+            if (strpos($e->getMessage(), 'foreign key constraint fails') !== false) {
+                // Try to find the constraint name dynamically
+                $res = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_NAME = 'routing_rules' AND COLUMN_NAME = 'connection_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1");
+                if ($res && $res->num_rows > 0) {
+                    $fkName = $res->fetch_assoc()['CONSTRAINT_NAME'];
+                    $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY " . $fkName);
+                    // Retry again
+                    $stmt->execute();
+                    echo json_encode(['success' => true]);
+                    break;
+                }
+            }
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'delete_rule':
@@ -1220,20 +1249,49 @@ switch ($action) {
         break;
 
     case 'edit_rule':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($input['id'] ?? 0);
-        $col = $input['condition_column'] ?? '';
-        $op = $input['condition_operator'] ?? '';
-        $val = $input['condition_value'] ?? '';
-        $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
-        $logical_operator = $input['logical_operator'] ?? 'AND';
-        $target = (int) ($input['target_round_id'] ?? 0);
-        $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            $col = $input['condition_column'] ?? '';
+            $op = $input['condition_operator'] ?? '';
+            $val = $input['condition_value'] ?? '';
+            $conditions_json = isset($input['conditions_json']) ? json_encode($input['conditions_json']) : null;
+            $logical_operator = $input['logical_operator'] ?? 'AND';
+            $target = (int) ($input['target_round_id'] ?? 0);
+            $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (int) $input['connection_id'] : null;
 
-        $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=?, conditions_json=?, logical_operator=? WHERE id=?");
-        $stmt->bind_param("isssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
-        $stmt->execute();
-        echo json_encode(['success' => true]);
+            $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=?, conditions_json=?, logical_operator=? WHERE id=?");
+            $stmt->bind_param("isssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
+            
+            if (!$stmt->execute()) {
+                // If it's a foreign key constraint error due to negative IDs
+                if (strpos($stmt->error, 'foreign key constraint fails') !== false) {
+                    $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY routing_rules_ibfk_1");
+                    // Retry execution
+                    if (!$stmt->execute()) {
+                        throw new Exception($stmt->error);
+                    }
+                } else {
+                    throw new Exception($stmt->error);
+                }
+            }
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            // Self-healing attempt 2: maybe the constraint name is different
+            if (strpos($e->getMessage(), 'foreign key constraint fails') !== false) {
+                // Try to find the constraint name dynamically
+                $res = $conn->query("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_NAME = 'routing_rules' AND COLUMN_NAME = 'connection_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1");
+                if ($res && $res->num_rows > 0) {
+                    $fkName = $res->fetch_assoc()['CONSTRAINT_NAME'];
+                    $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY " . $fkName);
+                    // Retry again
+                    $stmt->execute();
+                    echo json_encode(['success' => true]);
+                    break;
+                }
+            }
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'reorder_rules':

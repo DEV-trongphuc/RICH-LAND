@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -70,11 +70,44 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete }: { rule: 
         {/* Content */}
         <div className="mobile-flex-wrap" style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ flex: 1 }}>
-            {rule.connection_id && rule.sheet_name && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {rule.sheet_name}
-              </span>
-            )}
+            {(() => {
+              if (rule.connection_id === null) {
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    <Globe size={14} color="#6366f1" /> Nguồn: Tất cả mọi kết nối (Sheet & API & Nhập tay)
+                  </span>
+                );
+              }
+              if (Number(rule.connection_id) === -1) {
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    <FileSpreadsheet size={14} color="#10b981" /> Nguồn: Tất cả các Google Sheets
+                  </span>
+                );
+              }
+              if (Number(rule.connection_id) === -2) {
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    <Zap size={14} color="#f59e0b" /> Nguồn: Tất cả các API / Landing Pages
+                  </span>
+                );
+              }
+              if (Number(rule.connection_id) === -3) {
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    <Keyboard size={14} color="#ec4899" /> Nguồn: Chỉ Data Nhập tay (Thêm Data Nhanh)
+                  </span>
+                );
+              }
+              if (rule.connection_id && rule.sheet_name) {
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {rule.sheet_name}
+                  </span>
+                );
+              }
+              return null;
+            })()}
             
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Điều kiện kích hoạt</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
