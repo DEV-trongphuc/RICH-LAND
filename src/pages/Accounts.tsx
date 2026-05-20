@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -170,7 +170,11 @@ export const Accounts = () => {
     }
   };
 
+  const [zaloRemindingId, setZaloRemindingId] = useState<number | null>(null);
+  const [zaloRemindedId, setZaloRemindedId] = useState<number | null>(null);
+
   const handleResendZaloVerify = async (accId: number) => {
+    setZaloRemindingId(accId);
     try {
       const json = await fetchAPI('resend_zalo_verify_account', {
         method: 'POST',
@@ -178,12 +182,15 @@ export const Accounts = () => {
       });
       if (json.success) {
         toast.success('Đã gửi lại email nhắc xác thực Zalo.');
+        setZaloRemindedId(accId);
+        setTimeout(() => setZaloRemindedId(null), 5000);
       } else {
         toast.error(json.message || 'Lỗi khi gửi email');
       }
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setZaloRemindingId(null);
   };
 
   const confirmUnlinkZalo = (id: number) => {
@@ -288,9 +295,15 @@ export const Accounts = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
                           {acc.email && (
-                            <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981' }} title="Gửi email nhắc xác thực Zalo">
-                              <Send size={12} style={{ marginRight: 4 }} /> Nhắc
-                            </button>
+                            zaloRemindedId === acc.id ? (
+                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                <Check size={12} /> Đã nhắc
+                              </span>
+                            ) : (
+                              <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
+                                {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? 'Đang gửi...' : 'Nhắc'}
+                              </button>
+                            )
                           )}
                         </div>
                       )}

@@ -7,7 +7,7 @@ if (empty($token)) {
     die("Token không hợp lệ.");
 }
 
-$stmt = $conn->prepare("SELECT id, name FROM accounts WHERE confirm_token = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT id, name, email FROM accounts WHERE confirm_token = ? LIMIT 1");
 $stmt->bind_param("s", $token);
 $stmt->execute();
 $res = $stmt->get_result();

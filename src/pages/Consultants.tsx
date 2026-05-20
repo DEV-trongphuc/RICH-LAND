@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -140,7 +140,11 @@ export const Consultants = () => {
     setUnlinkConfirmOpen(false);
     setUnlinkId(null);
   };
+  const [zaloRemindingId, setZaloRemindingId] = useState<number | null>(null);
+  const [zaloRemindedId, setZaloRemindedId] = useState<number | null>(null);
+
   const handleResendZaloVerify = async (consId: number) => {
+    setZaloRemindingId(consId);
     try {
       const json = await fetchAPI('resend_zalo_verify_consultant', {
         method: 'POST',
@@ -148,12 +152,15 @@ export const Consultants = () => {
       });
       if (json.success) {
         toast.success('Đã gửi lại email nhắc xác thực Zalo.');
+        setZaloRemindedId(consId);
+        setTimeout(() => setZaloRemindedId(null), 5000);
       } else {
         toast.error(json.message || 'Lỗi khi gửi email');
       }
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
+    setZaloRemindingId(null);
   };
 
   const handleSendQuickMessage = async (e: React.FormEvent) => {
@@ -282,9 +289,15 @@ export const Consultants = () => {
                             Chưa liên kết
                           </span>
                           {u.email && (
-                            <button onClick={() => handleResendZaloVerify(u.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981' }} title="Gửi email nhắc xác thực Zalo">
-                              <Send size={12} style={{ marginRight: 4 }} /> Nhắc
-                            </button>
+                            zaloRemindedId === u.id ? (
+                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                <Check size={12} /> Đã nhắc
+                              </span>
+                            ) : (
+                              <button onClick={() => handleResendZaloVerify(u.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === u.id}>
+                                {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? 'Đang gửi...' : 'Nhắc'}
+                              </button>
+                            )
                           )}
                         </div>
                       )}
