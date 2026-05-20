@@ -524,8 +524,8 @@ export const Rounds = () => {
             )}
 
             {activeTab === 'config' ? (
-              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <div className="responsive-grid-1-1" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
+                <div className="responsive-grid-1-1" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
@@ -595,9 +595,9 @@ export const Rounds = () => {
 
                           {showStartSaleDropdown && (
                             <div style={{
-                              position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, zIndex: 50,
+                              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
                               background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                              boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 150, overflowY: 'auto'
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 150, overflowY: 'auto'
                             }}>
                               <div
                                 onClick={() => { setFormData({ ...formData, starting_consultant_id: null }); setShowStartSaleDropdown(false); }}
@@ -608,7 +608,7 @@ export const Rounds = () => {
                                 -- Mặc định (Theo thứ tự thêm vào) --
                               </div>
                               {formData.selected_users.map(id => {
-                                const c = consultants.find(x => x.id === id);
+                                const c = consultants.find(x => Number(x.id) === Number(id));
                                 if (!c) return null;
                                 const isSelected = formData.starting_consultant_id === id;
                                 const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
@@ -656,7 +656,7 @@ export const Rounds = () => {
                   </div>
 
                   {/* RIGHT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden', minHeight: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0, flex: 1 }}>
                     {/* Custom Multi-Select with Avatars */}
                     <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> Chọn Tư vấn viên vào vòng này</label>
@@ -677,9 +677,9 @@ export const Rounds = () => {
                       {/* Dropdown Options */}
                       {showDropdown && (
                         <div style={{
-                          position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, zIndex: 50,
+                          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
                           background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                          boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 180, overflowY: 'auto'
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
                         }}>
                           {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
                             const isSelected = formData.selected_users.includes(Number(user.id));
