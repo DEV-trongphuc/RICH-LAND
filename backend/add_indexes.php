@@ -1,4 +1,10 @@
 <?php
+// Only allow local or CLI access for security
+if (php_sapi_name() !== 'cli' && ($_SERVER['REMOTE_ADDR'] ?? '') !== '127.0.0.1' && ($_SERVER['REMOTE_ADDR'] ?? '') !== '::1') {
+    http_response_code(403);
+    die("Forbidden: This script can only be run locally or via CLI.");
+}
+
 require_once 'env.php';
 require_once 'db_connect.php';
 

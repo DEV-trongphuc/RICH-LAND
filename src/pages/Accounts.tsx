@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -35,6 +35,27 @@ export const Accounts = () => {
 
   const [unlinkId, setUnlinkId] = useState<number | null>(null);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const json = await fetchAPI('get_admin_logs');
+      if (json.success) setLogs(json.data);
+    } catch (e: any) {
+      toast.error('Không thể tải nhật ký hoạt động: ' + e.message);
+    }
+    setLoadingLogs(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      fetchLogs();
+    }
+  }, [activeTab]);
 
   const fetchAccounts = async () => {
     try {
@@ -238,133 +259,254 @@ export const Accounts = () => {
         </button>
       </div>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu...</div>
-        ) : (
-          <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-            <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email đăng nhập</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Zalo Chat ID</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân quyền</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Hoạt động</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map(acc => (
-                  <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
-                    <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Avatar name={acc.name} size={36} />
-                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {acc.name}
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
+        <button 
+          onClick={() => setActiveTab('accounts')}
+          style={{
+            padding: '0.75rem 1rem',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'accounts' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            color: activeTab === 'accounts' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            fontWeight: activeTab === 'accounts' ? 700 : 500,
+            fontSize: '0.9375rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <UserCog size={16} /> Danh sách Tài khoản
+        </button>
+        <button 
+          onClick={() => setActiveTab('logs')}
+          style={{
+            padding: '0.75rem 1rem',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'logs' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            color: activeTab === 'logs' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            fontWeight: activeTab === 'logs' ? 700 : 500,
+            fontSize: '0.9375rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <History size={16} /> Nhật ký hoạt động Admin
+        </button>
+      </div>
+
+      {activeTab === 'accounts' ? (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu...</div>
+          ) : (
+            <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email đăng nhập</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Zalo Chat ID</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân quyền</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Hoạt động</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map(acc => (
+                    <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
+                      <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <Avatar name={acc.name} size={36} />
+                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {acc.name}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td data-label="Email đăng nhập" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Shield size={14} />
-                        <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
-                        {acc.email && (
-                          Number(acc.is_confirmed) === 1 ? (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Đã xác thực</span>
-                          ) : (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Chưa xác thực</span>
-                          )
-                        )}
-                      </div>
-                      {acc.email && Number(acc.is_confirmed) === 0 && (
-                        <div style={{ marginTop: 6, paddingLeft: 20 }}>
-                          <button onClick={() => handleResendConfirm(acc.id)} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
-                            <Send size={12} style={{ marginRight: 4 }} /> Gửi lại link
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td data-label="Zalo Chat ID" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
-                      {acc.zalo_chat_id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                      </td>
+                      <td data-label="Email đăng nhập" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Shield size={14} />
+                          <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
                           {acc.email && (
-                            zaloRemindedId === acc.id ? (
-                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                <Check size={12} /> Đã nhắc
-                              </span>
+                            Number(acc.is_confirmed) === 1 ? (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Đã xác thực</span>
                             ) : (
-                              <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
-                                {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? 'Đang gửi...' : 'Nhắc'}
-                              </button>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Chưa xác thực</span>
                             )
                           )}
                         </div>
-                      )}
-                    </td>
-                    <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>
-                      {getRoleBadge(acc.role)}
-                    </td>
-                    <td data-label="Hoạt động" style={{ padding: '1rem 1.5rem' }}>
-                      {acc.last_login ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>Chưa đăng nhập</span>
-                      )}
-                    </td>
-                    <td data-label="Thao tác" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        {acc.zalo_chat_id && (
-                          <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
-                            <Link2Off size={16} />
-                          </button>
+                        {acc.email && Number(acc.is_confirmed) === 0 && (
+                          <div style={{ marginTop: 6, paddingLeft: 20 }}>
+                            <button onClick={() => handleResendConfirm(acc.id)} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
+                              <Send size={12} style={{ marginRight: 4 }} /> Gửi lại link
+                            </button>
+                          </div>
                         )}
-                        <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
-                          <Edit3 size={16} />
-                        </button>
-                        {acc.id !== 1 && (
-                          <button
-                            onClick={() => triggerDeleteFlow(acc.id)}
-                            disabled={checkingDelete && deleteId === acc.id}
-                            className="btn ghost"
-                            style={{ padding: 8, color: 'var(--color-danger)' }}
-                            title="Xóa"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                      </td>
+                      <td data-label="Zalo Chat ID" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                        {acc.zalo_chat_id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                            {acc.email && (
+                              zaloRemindedId === acc.id ? (
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                  <Check size={12} /> Đã nhắc
+                                </span>
+                              ) : (
+                                <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
+                                  {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? 'Đang gửi...' : 'Nhắc'}
+                                </button>
+                              )
+                            )}
+                          </div>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {accounts.length === 0 && (
-                  <tr>
-                    <td colSpan={5}>
-                      <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                          <UserCog size={32} color="var(--color-text-muted)" />
+                      </td>
+                      <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>
+                        {getRoleBadge(acc.role)}
+                      </td>
+                      <td data-label="Hoạt động" style={{ padding: '1rem 1.5rem' }}>
+                        {acc.last_login ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>Chưa đăng nhập</span>
+                        )}
+                      </td>
+                      <td data-label="Thao tác" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                          {acc.zalo_chat_id && (
+                            <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                              <Link2Off size={16} />
+                            </button>
+                          )}
+                          <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
+                            <Edit3 size={16} />
+                          </button>
+                          {acc.id !== 1 && (
+                            <button
+                              onClick={() => triggerDeleteFlow(acc.id)}
+                              disabled={checkingDelete && deleteId === acc.id}
+                              className="btn ghost"
+                              style={{ padding: 8, color: 'var(--color-danger)' }}
+                              title="Xóa"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có tài khoản</h3>
-                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.</p>
-                        <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Tài khoản</button>
-                      </div>
-                    </td>
+                      </td>
+                    </tr>
+                  ))}
+                  {accounts.length === 0 && (
+                    <tr>
+                      <td colSpan={5}>
+                        <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                            <UserCog size={32} color="var(--color-text-muted)" />
+                          </div>
+                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có tài khoản</h3>
+                          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.</p>
+                          <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Tài khoản</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {loadingLogs ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải nhật ký...</div>
+          ) : (
+            <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Người thực hiện</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Hành động</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Chi tiết</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>IP Address</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {logs.map(log => {
+                    let parsedDetails = '';
+                    try {
+                      const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                      parsedDetails = JSON.stringify(detailsObj, null, 2);
+                    } catch {
+                      parsedDetails = log.details || '';
+                    }
+                    return (
+                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="hover:bg-slate-50">
+                        <td data-label="Thời gian" style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                          </div>
+                        </td>
+                        <td data-label="Người thực hiện" style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Avatar name={log.account_name || 'System'} size={28} />
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {log.account_name || 'Hệ thống'}
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>{log.account_email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td data-label="Hành động" style={{ padding: '1rem 1.5rem' }}>
+                          <span style={{
+                            background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(124, 58, 237, 0.1)',
+                            color: log.action === 'LOGIN' ? '#3b82f6' : 'var(--color-primary)',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            fontSize: '0.75rem',
+                            fontWeight: 700
+                          }}>
+                            {log.action}
+                          </span>
+                        </td>
+                        <td data-label="Chi tiết" style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: '300px', overflowX: 'auto' }}>
+                          {parsedDetails}
+                        </td>
+                        <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                          {log.ip_address}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {logs.length === 0 && (
+                    <tr>
+                      <td colSpan={5}>
+                        <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                          Chưa có lịch sử hoạt động nào được ghi lại.
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? "Sửa Tài khoản" : "Thêm Tài khoản Mới"}>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -513,11 +655,13 @@ export const Accounts = () => {
                   <CustomSelect
                     options={usageInfo.other_admins.map((a: any) => ({
                       value: a.id,
-                      label: `${a.name} (${a.email || a.username})`
+                      label: a.name,
+                      sublabel: a.email || a.username
                     }))}
                     value={replacementId || ''}
                     onChange={val => setReplacementId(Number(val))}
                     width="100%"
+                    showAvatars={true}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                     Hệ thống sẽ tự động cập nhật cấu hình Fallback / Ticket sang Admin được chọn và thực hiện xóa tài khoản cũ.

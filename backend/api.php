@@ -107,9 +107,9 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    // Check Admin roles for sensitive endpoints
     $adminOnlyActions = [
         'get_accounts',
+        'get_admin_logs',
         'add_account',
         'edit_account',
         'delete_account',
@@ -1925,10 +1925,25 @@ switch ($action) {
 
     case 'get_accounts':
         // Include email field for display and ticket notification settings
-        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed FROM accounts ORDER BY created_at DESC");
+        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login FROM accounts ORDER BY created_at DESC");
         $data = [];
         while ($row = $res->fetch_assoc())
             $data[] = $row;
+        echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'get_admin_logs':
+        $res = $conn->query("SELECT al.*, a.name as account_name, a.email as account_email 
+                             FROM admin_logs al 
+                             LEFT JOIN accounts a ON al.account_id = a.id 
+                             ORDER BY al.created_at DESC 
+                             LIMIT 200");
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 

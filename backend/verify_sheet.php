@@ -9,6 +9,42 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/db_connect.php';
 require_once __DIR__ . '/webhook_logic.php';
 
+// --- JWT Authentication Check ---
+$token = $_GET['token'] ?? '';
+$isAuthorized = false;
+if (!empty($token)) {
+    $parts = explode('.', $token);
+    if (count($parts) === 3) {
+        list($header, $payload, $signature) = $parts;
+        $secret = $_ENV['JWT_SECRET'] ?? 'DOMATION_SECRET_KEY_2026';
+        $validSignature = hash_hmac('sha256', $header . "." . $payload, $secret, true);
+        $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($validSignature));
+        if (hash_equals($base64UrlSignature, $signature)) {
+            $decoded = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload)), true);
+            if (isset($decoded['exp']) && $decoded['exp'] >= time() && ($decoded['role'] ?? '') === 'admin') {
+                $isAuthorized = true;
+            }
+        }
+    }
+}
+
+if (!$isAuthorized) {
+    http_response_code(401);
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chưa xác thực</title></head><body style="background:#0f172a;color:#ef4444;font-family:sans-serif;padding:50px;text-align:center;">';
+    echo '<h2>Truy cập bị từ chối 🚫</h2>';
+    echo '<p style="color:#94a3b8;">Yêu cầu quyền Administrator. Vui lòng đăng nhập vào hệ thống CRM hoặc truyền tham số ?token=... hợp lệ.</p>';
+    echo '<script>
+        const localTkn = localStorage.getItem("token") || localStorage.getItem("jwt_token") || sessionStorage.getItem("token");
+        if (localTkn) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("token", localTkn);
+            window.location.href = url.toString();
+        }
+    </script>';
+    echo '</body></html>';
+    exit();
+}
+
 // Check if a connection ID is requested
 $selected_conn_id = isset($_GET['connection_id']) ? (int)$_GET['connection_id'] : null;
 
@@ -20,7 +56,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_hash' && isset($_GET['r
         $stmt = $conn->prepare("DELETE FROM sheet_sync_records WHERE connection_id = ? AND row_hash = ?");
         $stmt->bind_param("is", $reset_conn_id, $row_hash);
         $stmt->execute();
-        header("Location: verify_sheet.php?connection_id=" . $reset_conn_id . "&reset_success=1");
+        $tokenParam = !empty($token) ? "&token=" . urlencode($token) : "";
+        header("Location: verify_sheet.php?connection_id=" . $reset_conn_id . "&reset_success=1" . $tokenParam);
         exit;
     }
 }
@@ -422,6 +459,7 @@ if ($connItem) {
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" class="row align-items-end g-3">
+                <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
                 <div class="col-md-8">
                     <label for="connection_id" class="form-label fw-bold">Chọn Google Sheet kết nối cần chuẩn đoán:</label>
                     <select name="connection_id" id="connection_id" class="form-select">
@@ -511,7 +549,7 @@ if ($connItem) {
                                         <?= htmlspecialchars($row['message']) ?>
                                         <?php if ($row['status'] === 'ALREADY_SYNCED' && empty($row['is_duplicate'])): ?>
                                             <div class="mt-2">
-                                                <a href="?action=reset_hash&connection_id=<?= $connItem['id'] ?>&row_hash=<?= $row['extracted']['hash'] ?>" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Bạn có chắc chắn muốn xóa lịch sử quét dòng này để đồng bộ lại không?')">🔄 Reset để đồng bộ lại</a>
+                                                <a href="?action=reset_hash&connection_id=<?= $connItem['id'] ?>&row_hash=<?= $row['extracted']['hash'] ?>&token=<?= urlencode($token) ?>" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Bạn có chắc chắn muốn xóa lịch sử quét dòng này để đồng bộ lại không?')">🔄 Reset để đồng bộ lại</a>
                                             </div>
                                         <?php endif; ?>
                                         <?php if (isset($row['extracted']['hash'])): ?>

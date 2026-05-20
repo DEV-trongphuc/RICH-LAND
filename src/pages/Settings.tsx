@@ -524,12 +524,14 @@ function doPost(e) {
                       { value: '', label: '-- Chọn Admin nhận data --' },
                       ...accounts.filter(a => a.role === 'admin').map(a => ({
                         value: a.id.toString(),
-                        label: `${a.name} (${a.email})`
+                        label: a.name,
+                        sublabel: a.email
                       }))
                     ]}
                     value={fallbackAdminId}
                     onChange={val => setFallbackAdminId(val.toString())}
                     width="100%"
+                    showAvatars={true}
                   />
                 </div>
                 <div>

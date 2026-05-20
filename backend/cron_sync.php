@@ -220,8 +220,21 @@ foreach ($connections as $connItem) {
                 continue;
             }
 
-            // --- 1. Check CRM (Duplication & dynamic threshold rule) ---
-            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+            // --- 0.5. Advisory Lock to prevent simultaneous processing of the same lead ---
+            $lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
+            $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
+            $lockStmt->bind_param("s", $lockKey);
+            $lockStmt->execute();
+            $lockRes = $lockStmt->get_result()->fetch_assoc();
+            $lockStmt->close();
+            if ($lockRes['get_lock'] != 1) {
+                logSync("Skip row $rowCount: Lock busy for $phone / $email.");
+                continue;
+            }
+
+            try {
+                // --- 1. Check CRM (Duplication & dynamic threshold rule) ---
+                $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
             // Load dynamic duplicate check threshold from system settings cache
             $fbSettings = get_system_setting($conn);
@@ -473,6 +486,14 @@ foreach ($connections as $connItem) {
                     sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
                 }
                 $syncedCount++;
+            }
+            } finally {
+                $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+                if ($relStmt) {
+                    $relStmt->bind_param("s", $lockKey);
+                    $relStmt->execute();
+                    $relStmt->close();
+                }
             }
         }
         fclose($stream);

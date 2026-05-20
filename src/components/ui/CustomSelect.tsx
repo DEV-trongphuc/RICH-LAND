@@ -97,7 +97,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <span className={styles.triggerContent}>
         {showAvatars && <Avatar src={selectedOption.avatar} name={selectedOption.label} size="sm" />}
         {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
-        {selectedOption.label}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>{selectedOption.label}</span>
+          {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({selectedOption.sublabel})</span>}
+        </span>
       </span>
     ) : placeholder;
   };

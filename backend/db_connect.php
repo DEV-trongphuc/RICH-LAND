@@ -45,7 +45,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 99) {
+        if ($dbVer >= 100) {
             $runMigration = false;
         }
     }
@@ -264,9 +264,26 @@ if ($runMigration) {
     }
     $conn->query("ALTER TABLE consultants AUTO_INCREMENT = 1000;");
 
+    // Auto-migrate: thêm cột last_login vào accounts để ghi nhận lịch sử đăng nhập
+    $chkLastLogin = $conn->query("SHOW COLUMNS FROM accounts LIKE 'last_login'");
+    if ($chkLastLogin && $chkLastLogin->num_rows === 0) {
+        $conn->query("ALTER TABLE accounts ADD COLUMN last_login DATETIME DEFAULT NULL");
+    }
+
+    // Auto-migrate: bảng admin_logs để lưu lịch sử hoạt động admin
+    $conn->query("CREATE TABLE IF NOT EXISTS admin_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        account_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        details LONGTEXT DEFAULT NULL COMMENT 'JSON details',
+        ip_address VARCHAR(45) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '10') ON DUPLICATE KEY UPDATE setting_value = '10'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '100') ON DUPLICATE KEY UPDATE setting_value = '100'");
 }
 
 ?>

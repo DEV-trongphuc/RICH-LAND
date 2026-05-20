@@ -11,6 +11,8 @@ function loadEnv($path) {
         list($name, $value) = explode('=', $line, 2);
         $name = trim($name);
         $value = trim($value);
+        // Strip single or double quotes surrounding value if present
+        $value = preg_replace('/^["\']|["\']$/', '', $value);
         if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
             putenv(sprintf('%s=%s', $name, $value));
             $_ENV[$name] = $value;

@@ -2,6 +2,43 @@
 // test_landing_page_api.php - Standalone utility to test API Landing Page webhook
 require_once 'db_connect.php';
 
+// --- JWT Authentication Check ---
+$token = $_GET['token'] ?? '';
+$isAuthorized = false;
+if (!empty($token)) {
+    $parts = explode('.', $token);
+    if (count($parts) === 3) {
+        list($header, $payload, $signature) = $parts;
+        $secret = $_ENV['JWT_SECRET'] ?? 'DOMATION_SECRET_KEY_2026';
+        $validSignature = hash_hmac('sha256', $header . "." . $payload, $secret, true);
+        $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($validSignature));
+        if (hash_equals($base64UrlSignature, $signature)) {
+            $decoded = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload)), true);
+            if (isset($decoded['exp']) && $decoded['exp'] >= time() && ($decoded['role'] ?? '') === 'admin') {
+                $isAuthorized = true;
+            }
+        }
+    }
+}
+
+if (!$isAuthorized) {
+    http_response_code(401);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chưa xác thực</title></head><body style="background:#0f172a;color:#ef4444;font-family:sans-serif;padding:50px;text-align:center;">';
+    echo '<h2>Truy cập bị từ chối 🚫</h2>';
+    echo '<p style="color:#94a3b8;">Yêu cầu quyền Administrator. Vui lòng đăng nhập vào hệ thống CRM hoặc truyền tham số ?token=... hợp lệ.</p>';
+    echo '<script>
+        const localTkn = localStorage.getItem("token") || localStorage.getItem("jwt_token") || sessionStorage.getItem("token");
+        if (localTkn) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("token", localTkn);
+            window.location.href = url.toString();
+        }
+    </script>';
+    echo '</body></html>';
+    exit();
+}
+
 // Action: Create a mock landing page connection if requested
 if (isset($_GET['action']) && $_GET['action'] === 'setup_connection') {
     header('Content-Type: application/json');
@@ -329,9 +366,12 @@ if ($res) {
     </div>
 
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || '';
+
         async function setupTestConnection() {
             try {
-                const res = await fetch('test_landing_page_api.php?action=setup_connection');
+                const res = await fetch(`test_landing_page_api.php?action=setup_connection&token=${encodeURIComponent(token)}`);
                 const data = await res.json();
                 alert(data.message);
                 if (data.success) {
@@ -405,7 +445,7 @@ if ($res) {
             dbResultDiv.textContent = 'Đang tra cứu database...';
             
             try {
-                const res = await fetch(`test_landing_page_api.php?action=check_status&phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}`);
+                const res = await fetch(`test_landing_page_api.php?action=check_status&phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
                 const json = await res.json();
                 
                 if (json.success) {
