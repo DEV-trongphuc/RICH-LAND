@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Users, Edit3, UserPlus, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Phone, Clock } from 'lucide-react';
+import { Plus, Users, Edit3, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';

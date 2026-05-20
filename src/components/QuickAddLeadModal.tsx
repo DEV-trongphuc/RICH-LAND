@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { CustomModal } from './ui/CustomModal';
 import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';

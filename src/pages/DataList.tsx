@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -89,7 +89,6 @@ export const DataList = () => {
   };
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
@@ -132,11 +131,6 @@ export const DataList = () => {
   };
 
   const ITEMS_PER_PAGE = 50;
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    fetchLeads().then(() => setIsRefreshing(false));
-  };
 
   // BUG-05 fix: Implement CSV export from current filtered data
   // BUG-05 fix: Implement CSV export from current filtered data using Backend Stream to prevent browser/server OOM
