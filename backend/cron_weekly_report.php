@@ -197,7 +197,7 @@ function runWeeklyReportCron($conn) {
 }
 
 // Nếu gọi trực tiếp từ CLI
-if (php_sapi_name() === 'cli') {
+if (php_sapi_name() === 'cli' && realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
     runWeeklyReportCron($conn);
     $conn->close();
 }

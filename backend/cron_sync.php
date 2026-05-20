@@ -536,3 +536,5 @@ runDailyReportCron($conn);
 require_once __DIR__ . '/cron_weekly_report.php';
 runWeeklyReportCron($conn);
 
+$conn->close();
+
