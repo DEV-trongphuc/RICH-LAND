@@ -299,11 +299,15 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     if (data.type === "custom") {
-      MailApp.sendEmail({
+      var options = {
         to: data.email,
         subject: data.subject,
         htmlBody: data.htmlBody
-      });
+      };
+      if (data.cc) {
+        options.cc = data.cc;
+      }
+      MailApp.sendEmail(options);
       return ContentService.createTextOutput(JSON.stringify({"success": true}))
         .setMimeType(ContentService.MimeType.JSON);
     }
