@@ -220,17 +220,54 @@ foreach ($connections as $connItem) {
                 continue;
             }
 
-            // --- 1. Check CRM (Duplication & 6-month rule) ---
+            // --- 1. Check CRM (Duplication & dynamic threshold rule) ---
             $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
-            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
-                // Duplicate < 6 months, skip assigning to new round but update last interaction
+            // Load dynamic duplicate check threshold from system settings cache
+            $fbSettings = get_system_setting($conn);
+            $dupCheckMonths = (int)($fbSettings['duplicate_check_months'] ?? 6);
+            if ($dupCheckMonths <= 0) {
+                $dupCheckMonths = 6;
+            }
+
+            if (!empty($connItem['is_silent'])) {
+                $assignedToId = null;
+                $assignedToVal = extractMappedValues($mappings, 'assigned_to', $rowData);
+                if (!empty($assignedToVal)) {
+                    $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+                }
+                
+                $conn->begin_transaction();
+                try {
+                    if ($crmCheckResult['isDuplicate']) {
+                        $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id']);
+                    } else {
+                        $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                    }
+                    $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
+                    logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+                    
+                    $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                    $recordStmt->execute();
+                    $hashMap[$rowHash] = true;
+                    
+                    $conn->commit();
+                } catch (Exception $txE) {
+                    $conn->rollback();
+                    logSync("Transaction failed for silent row: " . $txE->getMessage());
+                }
+                continue;
+            }
+
+            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+                // Duplicate < threshold months, skip assigning to new round but update last interaction
                 $assignedTo = $crmCheckResult['assignedTo'];
                 
                 $conn->begin_transaction();
                 try {
-                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
-                    logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < 6 tháng via cron_sync.');
+                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id']);
+                    logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng via cron_sync.');
                     
                     // Record hash so we don't spam duplicate logs on next run
                     $recordStmt->bind_param("is", $connItem['id'], $rowHash);
@@ -263,7 +300,14 @@ foreach ($connections as $connItem) {
             }
 
             // --- 2. Evaluate Dynamic Rules to determine Target Round ---
-            $ruleResult = evaluateRules($conn, $rowData, $source, $type, $connId);
+            $rowData['phone'] = $phone;
+            $rowData['email'] = $email;
+            $rowData['name'] = $name;
+            $rowData['note'] = $note;
+            $rowData['source'] = $source;
+            $rowData['type'] = $type;
+
+            $ruleResult = evaluateRules($conn, $rowData, $source, $type, $connItem['id']);
             $targetRoundId = null;
             $assignedConsultantId = null;
             $cronStatus = 'unassigned';

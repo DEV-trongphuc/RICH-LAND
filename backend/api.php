@@ -1025,9 +1025,10 @@ switch ($action) {
         $requireBoth = (int) ($input['require_both_contact'] ?? 0);
         $connectionType = $input['connection_type'] ?? 'sheets';
         $syncMode = $input['sync_mode'] ?? 'all';
+        $isSilent = (int) ($input['is_silent'] ?? 0);
 
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)");
-        $stmt->bind_param("sssiiiss", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode);
+        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
+        $stmt->bind_param("sssiiissi", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent);
         $stmt->execute();
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -1042,9 +1043,10 @@ switch ($action) {
         $requireBoth = (int) ($input['require_both_contact'] ?? 0);
         $connectionType = $input['connection_type'] ?? 'sheets';
         $syncMode = $input['sync_mode'] ?? 'all';
+        $isSilent = (int) ($input['is_silent'] ?? 0);
 
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=? WHERE id=?");
-        $stmt->bind_param("ssiiissi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $id);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=? WHERE id=?");
+        $stmt->bind_param("ssiiissii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;

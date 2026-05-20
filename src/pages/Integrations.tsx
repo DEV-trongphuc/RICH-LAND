@@ -13,6 +13,7 @@ const SYSTEM_FIELDS = [
   { value: 'source', label: 'Nguồn Data' },
   { value: 'type', label: 'Loại Data' },
   { value: 'note', label: 'Ghi Chú' },
+  { value: 'assigned_to', label: 'Sale phụ trách (Trùng số nhắc lại)' },
 ];
 
 const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "https://open.domation.net/sale_data/webhook.php";
@@ -26,6 +27,7 @@ type Connection = {
   connection_type?: string;
   sync_interval?: number;
   sync_mode?: 'all' | 'new_only' | string;
+  is_silent?: number | boolean;
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   last_sync_at?: string;
@@ -86,6 +88,7 @@ export const Integrations = () => {
   const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
   const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [customSyncMins, setCustomSyncMins] = useState<number>(15);
+  const [isSilent, setIsSilent] = useState(false);
   const [tempMappings, setTempMappings] = useState<{ sheet_col: string, sys_field: string, custom_label?: string }[]>([]);
   const [fetchedColumns, setFetchedColumns] = useState<string[]>([]);
   const [isFetchingColumns, setIsFetchingColumns] = useState(false);
@@ -117,6 +120,7 @@ export const Integrations = () => {
   const [editSyncPreset, setEditSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [editCustomSyncMins, setEditCustomSyncMins] = useState<number>(15);
   const [editSyncMode, setEditSyncMode] = useState<'all' | 'new_only'>('all');
+  const [editIsSilent, setEditIsSilent] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -130,6 +134,7 @@ export const Integrations = () => {
           is_active: Boolean(Number(c.is_active)),
           sync_interval: Number(c.sync_interval),
           connection_type: c.connection_type,
+          is_silent: Boolean(Number(c.is_silent)),
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
@@ -209,7 +214,8 @@ export const Integrations = () => {
       webhook_token: generateToken(),
       is_active: 1,
       sync_interval: finalInterval,
-      sync_mode: syncMode
+      sync_mode: syncMode,
+      is_silent: isSilent ? 1 : 0
     };
 
     if (isSaving) return;
@@ -236,6 +242,7 @@ export const Integrations = () => {
         setSyncPreset('15p');
         setCustomSyncMins(15);
         setSyncMode('all');
+        setIsSilent(false);
         setTempMappings([]);
         setAddStep(1);
         setShowAddConn(false);
@@ -293,7 +300,8 @@ export const Integrations = () => {
       sync_interval: finalInterval,
       require_both_contact: selected.require_both_contact,
       connection_type: selected.connection_type,
-      sync_mode: editSyncMode
+      sync_mode: editSyncMode,
+      is_silent: editIsSilent ? 1 : 0
     };
 
     if (isSaving) return;
@@ -622,6 +630,7 @@ export const Integrations = () => {
                             setEditSyncPreset(preset);
                             setEditCustomSyncMins(customVal || 15);
                             setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
+                            setEditIsSilent(Boolean(Number(selected.is_silent)));
                             setShowEditConn(true);
                           }}
                         >
@@ -1112,6 +1121,17 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
               </div>
 
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
+                </div>
+                <ToggleSwitch
+                  checked={isSilent}
+                  onChange={setIsSilent}
+                />
+              </div>
+
               {syncPreset === 'custom' && (
                 <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   <div style={{ width: 140 }}>
@@ -1405,6 +1425,17 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
+              </div>
+              <ToggleSwitch
+                checked={editIsSilent}
+                onChange={setEditIsSilent}
+              />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>

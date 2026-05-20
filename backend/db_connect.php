@@ -64,6 +64,13 @@ if ($runMigration) {
         $conn->query("ALTER TABLE sheet_connections ADD COLUMN require_both_contact BOOLEAN DEFAULT FALSE COMMENT 'Yêu cầu có cả SĐT và Email'");
     }
 
+    // Auto-migrate: ensure is_silent column exists in sheet_connections
+    $checkColSC = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'is_silent'");
+    if ($checkColSC && $checkColSC->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN is_silent TINYINT(1) DEFAULT 0 COMMENT 'Không chia số, chỉ đồng bộ check trùng'");
+    }
+
+
     // Auto-migrate: ensure receive_ratio column exists in round_consultants
     $checkColRR = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'receive_ratio'");
     if ($checkColRR && $checkColRR->num_rows === 0) {

@@ -59,7 +59,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
   const isSelected = (val: string | number) => {
     if (multiple) {
-      return Array.isArray(value) && value.includes(val);
+      return Array.isArray(value) && value.some(v => String(v) === String(val));
     }
     return value == val;
   };
@@ -71,7 +71,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       if (val === 'all') {
         onChange(['all']);
       } else {
-        const newArr = arr.includes(val) ? arr.filter(v => v !== val) : [...arr.filter(v => v !== 'all'), val];
+        const hasVal = arr.some(v => String(v) === String(val));
+        const newArr = hasVal 
+          ? arr.filter(v => String(v) !== String(val)) 
+          : [...arr.filter(v => String(v) !== 'all'), val];
         if (newArr.length === 0) onChange(['all']);
         else onChange(newArr);
       }
@@ -85,8 +88,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const renderTriggerContent = () => {
     if (multiple) {
       const arr = Array.isArray(value) ? value : [];
-      if (arr.length === 0 || arr.includes('all')) return <span className={styles.triggerContent}><span style={{display: 'flex'}}>{options[0]?.icon}</span>Tất cả (Sheet & API & Nhập tay)</span>;
-      const selectedOpts = options.filter(o => arr.includes(o.value));
+      if (arr.length === 0 || arr.some(v => String(v) === 'all')) return <span className={styles.triggerContent}><span style={{display: 'flex'}}>{options[0]?.icon}</span>Tất cả (Sheet & API & Nhập tay)</span>;
+      const selectedOpts = options.filter(o => arr.some(v => String(v) === String(o.value)));
       if (selectedOpts.length === 1) return <span className={styles.triggerContent}>{!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}{selectedOpts[0].label}</span>;
       return <span className={styles.triggerContent}>Đã chọn ({selectedOpts.length} nguồn)</span>;
     }

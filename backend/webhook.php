@@ -39,10 +39,10 @@ $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
 $stmt = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
 } else {
     http_response_code(401);
@@ -62,6 +62,7 @@ $connData = $connRes->fetch_assoc();
 $connectionId = $connData['id'];
 $requirePhone = $connData['require_both_contact'];
 $connectionType = $connData['connection_type'] ?? 'sheets';
+$isSilent = (int) ($connData['is_silent'] ?? 0);
 
 if ($connectionType === 'landing_page') {
     // API Landing Page Logic: map standard fields natively, bundle everything else to note
@@ -177,16 +178,53 @@ if (checkGlobalExclusion($conn, $data, $phone, $email)) {
     exit();
 }
 
-// --- 1. Check CRM (Duplication & 6-month rule) ---
+// --- 1. Check CRM (Duplication & dynamic threshold rule) ---
 $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 
-if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < 6 && !empty($crmCheckResult['assignedTo'])) {
+// Load dynamic duplicate check threshold
+$dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+if ($dupCheckMonths <= 0) {
+    $dupCheckMonths = 6;
+}
+
+if ($isSilent == 1) {
+    $assignedToId = null;
+    if ($connectionType === 'landing_page') {
+        $assignedToVal = trim($data['assigned_to'] ?? '');
+    } else {
+        $assignedToVal = extractMappedValues($mappings, 'assigned_to', $data);
+    }
+    if (!empty($assignedToVal)) {
+        $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+    }
+    
+    $conn->begin_transaction();
+    try {
+        if ($crmCheckResult['isDuplicate']) {
+            $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
+            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId);
+        } else {
+            $leadId = insertLead($conn, $data, $assignedToId, $phone, $email, $name, $source, $type, $note, $connectionId);
+        }
+        $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
+        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        exit();
+    }
+    echo json_encode(["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."]);
+    exit();
+}
+
+if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
     $assignedTo = $crmCheckResult['assignedTo'];
     $conn->begin_transaction();
     try {
         // Update last interaction
-        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note);
-        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < 6 tháng.');
+        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId);
+        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
         $conn->commit();
 
         // Gửi thông báo nhắc nhở cho Sale cũ
@@ -205,12 +243,19 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
         exit();
     }
-    echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < 6 months."]);
+    echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < " . $dupCheckMonths . " months."]);
     exit();
 }
 
 // --- 2. Evaluate Dynamic Rules to determine the Target Round ---
-$ruleResult = evaluateRules($conn, $data, $source, $type, $connId, $connectionType);
+$data['phone'] = $phone;
+$data['email'] = $email;
+$data['name'] = $name;
+$data['note'] = $note;
+$data['source'] = $source;
+$data['type'] = $type;
+
+$ruleResult = evaluateRules($conn, $data, $source, $type, $connectionId, $connectionType);
 $targetRoundId = null;
 $assignedConsultantId = null;
 $status = 'unassigned';

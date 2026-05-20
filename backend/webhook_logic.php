@@ -93,6 +93,30 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
     return false;
 }
 
+function findConsultantByEmailOrName($conn, $value) {
+    $value = trim($value);
+    if (empty($value)) return null;
+    // 1. Try finding by email
+    if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        $stmt = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $value);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($row = $res->fetch_assoc()) {
+            return $row['id'];
+        }
+    }
+    // 2. Try finding by name (case-insensitive or exact name match)
+    $stmt = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
+    $stmt->bind_param("s", $value);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($row = $res->fetch_assoc()) {
+        return $row['id'];
+    }
+    return null;
+}
+
 function checkCRMInteraction($conn, $phone, $email) {
     if (empty($phone) && empty($email)) {
         return ['isDuplicate' => false, 'monthsSinceLastInteraction' => 0, 'assignedTo' => null];

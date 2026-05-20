@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, Settings as SettingsIcon } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -38,6 +38,7 @@ export const Settings = () => {
   // Fallback round config
   const [rounds, setRounds] = useState<any[]>([]);
   const [fallbackRoundId, setFallbackRoundId] = useState('');
+  const [duplicateCheckMonths, setDuplicateCheckMonths] = useState(6);
 
   // Fallback direct Admin + CC config
   const [fallbackType, setFallbackType] = useState('round');
@@ -81,6 +82,7 @@ export const Settings = () => {
         if (json.data.fallback_cc_email) setFallbackCcEmail(json.data.fallback_cc_email);
         if (json.data.global_exclusion_keys) setExclusionKeys(json.data.global_exclusion_keys);
         if (json.data.global_exclusion_contacts) setExclusionContacts(json.data.global_exclusion_contacts);
+        if (json.data.duplicate_check_months) setDuplicateCheckMonths(Number(json.data.duplicate_check_months));
       }
     } catch (e) {
       console.error(e);
@@ -112,7 +114,8 @@ export const Settings = () => {
       fallback_admin_id: fallbackAdminId,
       fallback_cc_email: fallbackCcEmail,
       global_exclusion_keys: exclusionKeys,
-      global_exclusion_contacts: exclusionContacts
+      global_exclusion_contacts: exclusionContacts,
+      duplicate_check_months: duplicateCheckMonths
     };
     
     try {
@@ -543,6 +546,36 @@ function doPost(e) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Cấu hình Lọc trùng */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                <RefreshCw size={16} />
+              </span>
+              Cấu hình Nhận diện & Lọc Trùng Lặp
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.
+            </p>
+            <div>
+              <label className="form-label">Thời hạn nhận diện trùng lặp (Tháng)</label>
+              <div style={{ position: 'relative', width: 200 }}>
+                <input 
+                  type="number" 
+                  min={1} 
+                  className="form-input" 
+                  value={duplicateCheckMonths}
+                  onChange={e => setDuplicateCheckMonths(Math.max(1, Number(e.target.value)))}
+                  style={{ paddingRight: 60 }}
+                />
+                <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Tháng</span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                Mặc định là 6 tháng. Đặt 12 tháng nếu muốn giữ khách cũ cho Sale trong vòng 1 năm.
+              </p>
+            </div>
           </div>
 
           {/* Blacklist Config Card */}

@@ -81,7 +81,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                 if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
                   return (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                      <Globe size={14} color="#6366f1" /> Nguồn: Tất cả mọi kết nối (Sheet & API & Nhập tay)
+                      <Globe size={14} color="#6366f1" /> Tất cả mọi kết nối (Sheet & API & Nhập tay)
                     </span>
                   );
                 }
@@ -91,21 +91,21 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                   if (cId === -1) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <FileSpreadsheet size={14} color="#10b981" /> Nguồn: Tất cả các Google Sheets
+                        <FileSpreadsheet size={14} color="#10b981" /> Tất cả các Google Sheets
                       </span>
                     );
                   }
                   if (cId === -2) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Zap size={14} color="#f59e0b" /> Nguồn: Tất cả các API / Landing Pages
+                        <Zap size={14} color="#f59e0b" /> Tất cả các API / Landing Pages
                       </span>
                     );
                   }
                   if (cId === -3) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Keyboard size={14} color="#ec4899" /> Nguồn: Chỉ Data Nhập tay (Thêm Data Nhanh)
+                        <Keyboard size={14} color="#ec4899" /> Chỉ Data Nhập tay (Thêm Data Nhanh)
                       </span>
                     );
                   }
@@ -113,7 +113,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                   if (conn) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <FileSpreadsheet size={14} color="#10b981" /> Nguồn: {conn.sheet_name}
+                        <FileSpreadsheet size={14} color="#10b981" /> {conn.sheet_name}
                       </span>
                     );
                   }
@@ -276,7 +276,7 @@ export const RuleSettings = () => {
       if (connRes.success && mapRes.success) {
         const conns = connRes.data.map((c: any) => ({
           ...c,
-          mappings: mapRes.data.filter((m: any) => m.connection_id === c.id)
+          mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
       }
@@ -364,7 +364,10 @@ export const RuleSettings = () => {
     
     let initialConns = ['all'];
     if (rule.connection_id !== null && rule.connection_id !== '') {
-      initialConns = rule.connection_id.toString().split(',').map((v: string) => Number(v.trim()));
+      initialConns = rule.connection_id.toString().split(',').map((v: string) => {
+        const trim = v.trim();
+        return isNaN(Number(trim)) ? trim : Number(trim);
+      });
     }
     setConnectionId(initialConns);
 
