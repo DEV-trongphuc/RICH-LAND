@@ -59,6 +59,17 @@ function runWeeklyReportCron($conn) {
         $stmtTs->execute();
         $stmtTs->close();
 
+        // Fetch frontend URL for portal link
+        $frontendUrl = '';
+        $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+        if ($urlRes && $urlRes->num_rows > 0) {
+            $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+        }
+        if (empty($frontendUrl)) {
+            $frontendUrl = 'http://localhost:5173'; // Fallback
+        }
+        $portalUrl = $frontendUrl . '/sale-portal';
+
         // 2. Fetch all active or leave consultants (sales)
         $consultantRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM consultants WHERE status IN ('active', 'leave')");
         if ($consultantRes) {
@@ -166,6 +177,8 @@ function runWeeklyReportCron($conn) {
                 $msg .= "\n❖ THÔNG TIN ĐỀN BÙ:\n";
                 $msg .= "  • Số lượt đã bù tuần này: $totalCompReceived lượt\n";
                 $msg .= "  • Số lượt đang chờ bù tiếp theo: $totalCompOwed lượt\n";
+                $msg .= "\n❖ TRUY CẬP TRANG NHẬN DATA & BÁO LỖI:\n";
+                $msg .= "  👉 Link portal: $portalUrl\n";
 
                 // Send Zalo Bot message to this Sale if linked
                 if (!empty($botToken) && !empty($saleZaloId)) {

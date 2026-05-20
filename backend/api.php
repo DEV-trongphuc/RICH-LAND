@@ -90,8 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login and test_email
-// Public endpoints (no auth required)
-$publicActions = ['login', 'login_google', 'test_email', 'submit_report', 'get_report_context'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'test_email', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -104,6 +103,12 @@ if (!in_array($action, $publicActions)) {
     if (!$decodedUser) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid or expired token']);
+        exit();
+    }
+
+    if ($decodedUser['role'] === 'sale' && $action !== 'get_sale_portal_data') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
     }
 
@@ -299,6 +304,406 @@ switch ($action) {
             ]);
         }
         break;
+
+    case 'login_google_sale':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $credential = $input['credential'] ?? '';
+        if (empty($credential)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin xác thực Google']);
+            break;
+        }
+
+        $url = "https://oauth2.googleapis.com/tokeninfo?id_token=" . urlencode($credential);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            echo json_encode(['success' => false, 'message' => 'Token xác thực Google không hợp lệ hoặc đã hết hạn']);
+            break;
+        }
+
+        $googleData = json_decode($response, true);
+        $googleEmail = trim($googleData['email'] ?? '');
+        $googleAud = $googleData['aud'] ?? '';
+
+        $expectedClientId = '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com';
+        if ($googleAud !== $expectedClientId) {
+            echo json_encode(['success' => false, 'message' => 'Client ID không hợp lệ']);
+            break;
+        }
+
+        if (empty($googleEmail)) {
+            echo json_encode(['success' => false, 'message' => 'Không thể lấy email từ tài khoản Google']);
+            break;
+        }
+
+        // 1. Check if email exists in accounts table as Admin
+        $stmtAdmin = $conn->prepare("SELECT * FROM accounts WHERE email = ? LIMIT 1");
+        $stmtAdmin->bind_param("s", $googleEmail);
+        $stmtAdmin->execute();
+        $resAdmin = $stmtAdmin->get_result();
+        if ($resAdmin->num_rows > 0) {
+            $adminUser = $resAdmin->fetch_assoc();
+            $payload = [
+                'id' => $adminUser['id'],
+                'username' => $adminUser['username'],
+                'email' => $adminUser['email'] ?? '',
+                'role' => $adminUser['role'],
+                'name' => $adminUser['name'],
+                'exp' => time() + 86400 * 7
+            ];
+            $token = create_jwt($payload, $JWT_SECRET);
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'username' => $adminUser['username'],
+                    'email' => $adminUser['email'] ?? '',
+                    'role' => $adminUser['role'],
+                    'name' => $adminUser['name']
+                ]
+            ]);
+            $stmtAdmin->close();
+            break;
+        }
+        $stmtAdmin->close();
+
+        // 2. Check if email exists in consultants table as Sale
+        $stmtSale = $conn->prepare("SELECT * FROM consultants WHERE email = ? LIMIT 1");
+        $stmtSale->bind_param("s", $googleEmail);
+        $stmtSale->execute();
+        $resSale = $stmtSale->get_result();
+
+        if ($resSale->num_rows > 0) {
+            $sale = $resSale->fetch_assoc();
+            if ($sale['status'] !== 'active' && $sale['status'] !== 'leave') {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Tài khoản Tư vấn viên của bạn đã bị ngừng hoạt động.'
+                ]);
+                $stmtSale->close();
+                break;
+            }
+
+            $payload = [
+                'id' => $sale['id'],
+                'username' => $sale['email'],
+                'email' => $sale['email'],
+                'role' => 'sale',
+                'name' => $sale['name'],
+                'exp' => time() + 86400 * 7 // 7 days token for sales
+            ];
+            $token = create_jwt($payload, $JWT_SECRET);
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'username' => $sale['email'],
+                    'email' => $sale['email'],
+                    'role' => 'sale',
+                    'name' => $sale['name'],
+                    'consultant_id' => $sale['id']
+                ]
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => "Email '$googleEmail' chưa được cấu hình làm Tư vấn viên trong hệ thống. Vui lòng liên hệ Admin."
+            ]);
+        }
+        $stmtSale->close();
+        break;
+
+    case 'get_sale_portal_data':
+        $saleId = (int)$decodedUser['id'];
+        $isSale = $decodedUser['role'] === 'sale';
+        
+        $search = trim($_GET['search'] ?? '');
+        $roundFilter = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int)$_GET['round_id'] : null;
+        $saleFilterId = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' ? (int)$_GET['sale_id'] : null;
+        
+        $dateMode = $_GET['date_mode'] ?? 'all';
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+        
+        if ($isSale) {
+            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation')"];
+            $params = [$saleId];
+            $types = "i";
+        } else {
+            $where = ["dl.status IN ('assigned', 'compensation')"];
+            $params = [];
+            $types = "";
+            if ($saleFilterId !== null) {
+                $where[] = "dl.assigned_to = ?";
+                $params[] = $saleFilterId;
+                $types .= "i";
+            }
+        }
+        
+        if (!empty($search)) {
+            $where[] = "(l.phone LIKE ? OR l.email LIKE ? OR l.name LIKE ?)";
+            $searchParam = "%$search%";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "sss";
+        }
+        
+        if ($roundFilter !== null) {
+            $where[] = "dl.round_id = ?";
+            $params[] = $roundFilter;
+            $types .= "i";
+        }
+        
+        $today = date('Y-m-d');
+        if ($dateMode === 'today') {
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $today . ' 00:00:00';
+            $params[] = $today . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === 'yesterday') {
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $yesterday . ' 00:00:00';
+            $params[] = $yesterday . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === '7_days') {
+            $where[] = "dl.received_at >= ?";
+            $params[] = date('Y-m-d', strtotime('-7 days')) . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === '30_days') {
+            $where[] = "dl.received_at >= ?";
+            $params[] = date('Y-m-d', strtotime('-30 days')) . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === 'this_month') {
+            $where[] = "dl.received_at >= ?";
+            $params[] = date('Y-m-01') . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === 'last_month') {
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at < ?";
+            $params[] = date('Y-m-01', strtotime('first day of last month')) . ' 00:00:00';
+            $params[] = date('Y-m-01') . ' 00:00:00';
+            $types .= "ss";
+        } elseif ($dateMode === 'this_year') {
+            $where[] = "dl.received_at >= ?";
+            $params[] = date('Y-01-01') . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $startDate . ' 00:00:00';
+            $params[] = $endDate . ' 23:59:59';
+            $types .= "ss";
+        }
+        
+        $whereClause = implode(" AND ", $where);
+        
+        // 1. Query leads
+        $sqlLeads = "
+            SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
+                   l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
+                   r.round_name,
+                   c.name as sale_name, c.email as sale_email,
+                   dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
+            WHERE $whereClause
+            ORDER BY dl.received_at DESC
+        ";
+        
+        $stmtLeads = $conn->prepare($sqlLeads);
+        if (!empty($types)) {
+            $stmtLeads->bind_param($types, ...$params);
+        }
+        $stmtLeads->execute();
+        $resLeads = $stmtLeads->get_result();
+        $leads = [];
+        while ($row = $resLeads->fetch_assoc()) {
+            $leads[] = $row;
+        }
+        $stmtLeads->close();
+        
+        // 2. Query rounds
+        if ($isSale) {
+            $sqlRounds = "
+                SELECT DISTINCT r.id, r.round_name 
+                FROM distribution_rounds r
+                JOIN round_consultants rc ON r.id = rc.round_id
+                WHERE rc.consultant_id = ?
+            ";
+            $stmtR = $conn->prepare($sqlRounds);
+            $stmtR->bind_param("i", $saleId);
+        } else {
+            $sqlRounds = "SELECT id, round_name FROM distribution_rounds";
+            $stmtR = $conn->prepare($sqlRounds);
+        }
+        $stmtR->execute();
+        $resR = $stmtR->get_result();
+        $rounds = [];
+        while ($row = $resR->fetch_assoc()) {
+            $rounds[] = $row;
+        }
+        $stmtR->close();
+        
+        // 3. Ticket stats under active date filter
+        if ($isSale) {
+            $ticketWhere = ["consultant_id = ?"];
+            $ticketParams = [$saleId];
+            $ticketTypes = "i";
+        } else {
+            $ticketWhere = [];
+            $ticketParams = [];
+            $ticketTypes = "";
+            if ($saleFilterId !== null) {
+                $ticketWhere[] = "consultant_id = ?";
+                $ticketParams[] = $saleFilterId;
+                $ticketTypes .= "i";
+            }
+        }
+        if ($dateMode === 'today') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketWhere[] = "created_at <= ?";
+            $ticketParams[] = $today . ' 00:00:00';
+            $ticketParams[] = $today . ' 23:59:59';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === 'yesterday') {
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $ticketWhere[] = "created_at >= ?";
+            $ticketWhere[] = "created_at <= ?";
+            $ticketParams[] = $yesterday . ' 00:00:00';
+            $ticketParams[] = $yesterday . ' 23:59:59';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === '7_days') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketParams[] = date('Y-m-d', strtotime('-7 days')) . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === '30_days') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketParams[] = date('Y-m-d', strtotime('-30 days')) . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === 'this_month') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketParams[] = date('Y-m-01') . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === 'last_month') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketWhere[] = "created_at < ?";
+            $ticketParams[] = date('Y-m-01', strtotime('first day of last month')) . ' 00:00:00';
+            $ticketParams[] = date('Y-m-01') . ' 00:00:00';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === 'this_year') {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketParams[] = date('Y-01-01') . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $ticketWhere[] = "created_at >= ?";
+            $ticketWhere[] = "created_at <= ?";
+            $ticketParams[] = $startDate . ' 00:00:00';
+            $ticketParams[] = $endDate . ' 23:59:59';
+            $ticketTypes .= "ss";
+        }
+        $ticketWhereClause = !empty($ticketWhere) ? implode(" AND ", $ticketWhere) : "1=1";
+        
+        $sqlTickets = "
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+            FROM data_reports
+            WHERE $ticketWhereClause
+        ";
+        $stmtT = $conn->prepare($sqlTickets);
+        if (!empty($ticketTypes)) {
+            $stmtT->bind_param($ticketTypes, ...$ticketParams);
+        }
+        $stmtT->execute();
+        $ticketStats = $stmtT->get_result()->fetch_assoc();
+        $stmtT->close();
+        
+        // 4. Query distribution by round
+        $sqlByRound = "
+            SELECT r.round_name, COUNT(dl.id) as count
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            JOIN distribution_rounds r ON dl.round_id = r.id
+            WHERE $whereClause
+            GROUP BY dl.round_id
+        ";
+        $stmtBR = $conn->prepare($sqlByRound);
+        if (!empty($types)) {
+            $stmtBR->bind_param($types, ...$params);
+        }
+        $stmtBR->execute();
+        $resBR = $stmtBR->get_result();
+        $byRound = [];
+        while ($row = $resBR->fetch_assoc()) {
+            $byRound[] = $row;
+        }
+        $stmtBR->close();
+        
+        // 5. Query distribution by hour
+        $sqlByHour = "
+            SELECT HOUR(dl.received_at) as hr, COUNT(dl.id) as count
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            WHERE $whereClause
+            GROUP BY HOUR(dl.received_at)
+            ORDER BY hr ASC
+        ";
+        $stmtBH = $conn->prepare($sqlByHour);
+        if (!empty($types)) {
+            $stmtBH->bind_param($types, ...$params);
+        }
+        $stmtBH->execute();
+        $resBH = $stmtBH->get_result();
+        $byHour = array_fill(0, 24, 0);
+        while ($row = $resBH->fetch_assoc()) {
+            $byHour[(int)$row['hr']] = (int)$row['count'];
+        }
+        $stmtBH->close();
+        
+        // 6. Query active consultants list if user is admin
+        $consultantsList = [];
+        if (!$isSale) {
+            $resC = $conn->query("SELECT id, name, email FROM consultants WHERE status = 'active' ORDER BY name ASC");
+            if ($resC) {
+                while ($row = $resC->fetch_assoc()) {
+                    $consultantsList[] = $row;
+                }
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'leads' => $leads,
+            'rounds' => $rounds,
+            'consultants' => $consultantsList,
+            'stats' => [
+                'total_received' => count($leads),
+                'tickets_total' => (int)($ticketStats['total'] ?? 0),
+                'tickets_approved' => (int)($ticketStats['approved'] ?? 0),
+                'tickets_rejected' => (int)($ticketStats['rejected'] ?? 0),
+                'tickets_pending' => (int)($ticketStats['pending'] ?? 0)
+            ],
+            'by_round' => $byRound,
+            'by_hour' => $byHour
+        ]);
+        break;
+
     case 'get_stats':
         $todayStr = date('Y-m-d');
         $stmt = $conn->prepare("SELECT 

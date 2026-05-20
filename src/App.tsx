@@ -18,6 +18,7 @@ const Login = lazy(() => import('./pages/Login').then(module => ({ default: modu
 const Accounts = lazy(() => import('./pages/Accounts').then(module => ({ default: module.Accounts })));
 const ReportData = lazy(() => import('./pages/ReportData').then(module => ({ default: module.ReportData })));
 const DemoEntry = lazy(() => import('./pages/DemoEntry').then(module => ({ default: module.DemoEntry })));
+const SalePortal = lazy(() => import('./pages/SalePortal').then(module => ({ default: module.SalePortal })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -26,7 +27,7 @@ const PageLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('admin' | 'assistant' | 'viewer')[] }) => {
+const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('admin' | 'assistant' | 'viewer' | 'sale')[] }) => {
   const { user, token } = useAuth();
   if (!token || !user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
@@ -115,6 +116,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/report-data" element={<ReportData />} />
               <Route path="/demo" element={<DemoEntry />} />
+              <Route path="/sale-portal" element={<SalePortal />} />
               
               {/* Admin only routes */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

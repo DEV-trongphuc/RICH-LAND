@@ -42,6 +42,11 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
 
       if (!response.ok) {
         if ((response.status === 401 || response.status === 403) && action !== 'login') {
+          if (window.location.pathname === '/sale-portal') {
+            localStorage.removeItem('domation_token');
+            localStorage.removeItem('domation_user');
+            throw new Error(json.message || 'Unauthorized');
+          }
           // BUG-11 fix: Only redirect once even if multiple parallel requests all fail
           if (!_isRedirectingToLogin) {
             _isRedirectingToLogin = true;

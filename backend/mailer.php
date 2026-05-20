@@ -359,6 +359,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
     }
     $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
+    $portalUrl = $frontendUrl . "/sale-portal";
 
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
@@ -379,7 +380,14 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . urlencode($leadPhone) . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
         </div>
 
-        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1; padding-bottom: 24px; border-bottom: 1px dashed #cbd5e1;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Xem danh sách dữ liệu và báo cáo hiệu suất của bạn tại Trang Tư vấn viên:</p>
+            <a href="' . $portalUrl . '" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; padding: 9px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); margin-bottom: 8px;">
+                TRANG XEM DATA CỦA BẠN
+            </a>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px;">
             <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
             <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
                 BÁO CÁO DATA
@@ -786,8 +794,8 @@ function sendWeeklyReportEmailToSale(
         </div>
         
         <div style="text-align: center; margin-top: 24px;">
-            <a href="' . $frontendUrl . '/" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0068ff; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
-                XEM CHI TIẾT TẠI DASHBOARD
+            <a href="' . $frontendUrl . '/sale-portal" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+                TRUY CẬP TRANG NHẬN DATA & BÁO LỖI
             </a>
         </div>
     ';
