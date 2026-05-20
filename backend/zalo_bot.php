@@ -159,7 +159,8 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
     $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
     $roundLine = !empty($roundName) ? "  • Vòng phân bổ: $roundName\n" : "";
 
-    $text = "[ THÔNG BÁO DATA MỚI ]\n\n"
+    $roundTitle = !empty($roundName) ? " - " . mb_strtoupper($roundName, 'UTF-8') : "";
+    $text = "[ THÔNG BÁO DATA MỚI$roundTitle ]\n\n"
         . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"

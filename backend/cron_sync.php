@@ -211,6 +211,15 @@ foreach ($connections as $connItem) {
                 }
             }
 
+            // --- 0. Check Global Blacklist / Exclusions ---
+            if (checkGlobalExclusion($conn, $rowData, $phone, $email)) {
+                // Record hash so we don't process this blacklisted row again
+                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                $recordStmt->execute();
+                $hashMap[$rowHash] = true;
+                continue;
+            }
+
             // --- 1. Check CRM (Duplication & 6-month rule) ---
             $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 

@@ -40,6 +40,49 @@ function normalizePhone($phoneRaw) {
     return $clean;
 }
 
+function checkGlobalExclusion($conn, $data, $phone, $email) {
+    static $exclusions = null;
+    if ($exclusions === null) {
+        $exclusions = ['keys' => '', 'contacts' => ''];
+        $res = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_exclusion_keys', 'global_exclusion_contacts')");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                if ($row['setting_key'] === 'global_exclusion_keys') $exclusions['keys'] = $row['setting_value'];
+                if ($row['setting_key'] === 'global_exclusion_contacts') $exclusions['contacts'] = $row['setting_value'];
+            }
+        }
+    }
+
+    // 1. Check contacts (email / phone)
+    if (!empty($exclusions['contacts'])) {
+        $blacklistContacts = array_map('trim', explode(',', strtolower($exclusions['contacts'])));
+        $p = strtolower(normalizePhone($phone));
+        $e = strtolower(trim($email));
+        foreach ($blacklistContacts as $contact) {
+            if (empty($contact)) continue;
+            if ((!empty($p) && strpos($p, $contact) !== false) || (!empty($e) && $e === $contact)) {
+                return true; // Match found in contacts
+            }
+        }
+    }
+
+    // 2. Check keys in payload
+    if (!empty($exclusions['keys'])) {
+        $blacklistKeys = array_map('trim', explode(',', mb_strtolower($exclusions['keys'], 'UTF-8')));
+        $scanData = $data;
+        unset($scanData['_meta']); // Do not scan internal metadata
+        $payloadStr = mb_strtolower(json_encode($scanData, JSON_UNESCAPED_UNICODE), 'UTF-8');
+        foreach ($blacklistKeys as $key) {
+            if (empty($key)) continue;
+            if (strpos($payloadStr, $key) !== false) {
+                return true; // Match found in payload
+            }
+        }
+    }
+
+    return false;
+}
+
 function checkCRMInteraction($conn, $phone, $email) {
     if (empty($phone) && empty($email)) {
         return ['isDuplicate' => false, 'monthsSinceLastInteraction' => 0, 'assignedTo' => null];

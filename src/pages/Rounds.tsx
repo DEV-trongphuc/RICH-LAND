@@ -41,6 +41,7 @@ export const Rounds = () => {
     starting_consultant_id: null as number | null,
     ratios: {} as Record<string, number>,
     data_per_turns: {} as Record<string, number>,
+    compensations: {} as Record<string, number>,
     is_fallback: false
   });
 
@@ -53,6 +54,12 @@ export const Rounds = () => {
   const [activeTab, setActiveTab] = useState<'config' | 'reports'>('config');
   const [reports, setReports] = useState<any[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
+
+  // Compensation Modal State
+  const [compModalOpen, setCompModalOpen] = useState(false);
+  const [compRound, setCompRound] = useState<any>(null);
+  const [compData, setCompData] = useState<Record<number, number>>({});
+  const [isSavingComp, setIsSavingComp] = useState(false);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -93,8 +100,39 @@ export const Rounds = () => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, is_fallback: false });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false });
     setModalOpen(true);
+  };
+
+  const openCompModal = (r: any) => {
+    setCompRound(r);
+    setCompData(r.compensations || {});
+    setCompModalOpen(true);
+  };
+
+  const handleSaveComp = async () => {
+    if (!compRound || isSavingComp) return;
+    setIsSavingComp(true);
+    try {
+      const payload = {
+        round_id: compRound.id,
+        compensations: compData
+      };
+      const res = await fetchAPI('update_compensations', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (res.success) {
+        toast.success('Đã cập nhật Bù Data!');
+        fetchRounds();
+        setCompModalOpen(false);
+      } else {
+        toast.error(res.message || 'Có lỗi xảy ra');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsSavingComp(false);
   };
 
   const openEditModal = (r: any) => {
@@ -113,6 +151,7 @@ export const Rounds = () => {
       starting_consultant_id: r.next_consultant_id ? parseInt(r.next_consultant_id) : null,
       ratios: r.ratios || {},
       data_per_turns: r.data_per_turns || {},
+      compensations: r.compensations || {},
       is_fallback: !!r.is_fallback
     });
     setModalOpen(true);
@@ -367,8 +406,8 @@ export const Rounds = () => {
                     <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
                       <Edit3 size={13} /> Sửa
                     </button>
-                    <button className="btn primary sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
-                      <UserPlus size={13} /> Gán TVV
+                    <button className="btn primary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
+                      <Zap size={13} /> Bù Data
                     </button>
                     <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
                       <Trash2 size={14} />
@@ -442,8 +481,8 @@ export const Rounds = () => {
                   <button className="btn outline sm" onClick={() => openEditModal(r)}>
                     <Edit3 size={14} /> Sửa
                   </button>
-                  <button className="btn primary sm" onClick={() => openEditModal(r)}>
-                    <UserPlus size={14} /> Gán TVV
+                  <button className="btn primary sm" onClick={() => openCompModal(r)}>
+                    <Zap size={14} /> Bù Data
                   </button>
                   <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', padding: '0 0.5rem' }}>
                     <Trash2 size={14} />
@@ -753,7 +792,6 @@ export const Rounds = () => {
                                   />
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>vòng</span>
                                 </div>
-
                               </div>
                             </div>
                           );
@@ -874,6 +912,87 @@ export const Rounds = () => {
               </div>
             )}
 
+          </div>
+        </div>, document.body
+      )}
+
+      {compModalOpen && compRound && typeof document !== 'undefined' && createPortal(
+        <div className="overlay-backdrop" onClick={() => setCompModalOpen(false)}>
+          <div
+            className="modal-container custom-scrollbar"
+            onClick={e => e.stopPropagation()}
+            style={{ width: '90%', maxWidth: '550px', background: 'white', borderRadius: 'var(--radius-2xl)', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)', maxHeight: '90vh', overflow: 'hidden', boxShadow: 'var(--shadow-xl)' }}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Zap size={20} color="var(--color-primary)" /> Quản lý Bù Data
+                </h2>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Vòng: <strong>{compRound.round_name}</strong></div>
+              </div>
+              <button onClick={() => setCompModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, background: 'white' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Danh sách Tư vấn viên trong vòng</div>
+                {compRound.consultant_ids ? compRound.consultant_ids.split(',').map((idStr: string) => {
+                  const id = parseInt(idStr, 10);
+                  const user = consultants.find(c => Number(c.id) === id);
+                  if (!user) return null;
+                  const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                  const currentComp = compData[id] || 0;
+                  
+                  return (
+                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: currentComp > 0 ? '#fffbeb' : '#f8fafc', border: `1px solid ${currentComp > 0 ? '#fde68a' : '#e2e8f0'}`, borderRadius: 12, transition: 'all 0.2s' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(user.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{user.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => setCompData({ ...compData, [id]: Math.max(0, currentComp - 1) })}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                        >
+                          -
+                        </button>
+                        <div style={{ width: 40, textAlign: 'center', fontSize: '1rem', fontWeight: 800, color: currentComp > 0 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                          {currentComp}
+                        </div>
+                        <button 
+                          onClick={() => setCompData({ ...compData, [id]: currentComp + 1 })}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #cbd5e1', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                    Chưa có thành viên nào trong vòng này
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" className="btn outline" onClick={() => setCompModalOpen(false)}>Hủy bỏ</button>
+              <button type="button" className="btn primary" onClick={handleSaveComp} disabled={isSavingComp}>
+                {isSavingComp ? 'Đang lưu...' : 'Cập nhật Bù Data'}
+              </button>
+            </div>
           </div>
         </div>, document.body
       )}

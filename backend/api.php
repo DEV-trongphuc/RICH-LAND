@@ -715,12 +715,15 @@ switch ($action) {
             $ratios = $input['ratios'] ?? [];
             $per_turns = $input['data_per_turns'] ?? [];
 
+            $compensations = $input['compensations'] ?? [];
+
             if (!empty($consultants)) {
-                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?)");
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, ?, ?, ?)");
                 foreach ($consultants as $cid) {
                     $ratio = isset($ratios[$cid]) ? max(1, (int) $ratios[$cid]) : 1;
                     $perTurn = isset($per_turns[$cid]) ? max(1, (int) $per_turns[$cid]) : 1;
-                    $stmtC->bind_param("iiii", $roundId, $cid, $ratio, $perTurn);
+                    $comp = isset($compensations[$cid]) ? max(0, (int) $compensations[$cid]) : 0;
+                    $stmtC->bind_param("iiiii", $roundId, $cid, $ratio, $perTurn, $comp);
                     $stmtC->execute();
                 }
             }
@@ -794,12 +797,15 @@ switch ($action) {
             $ratios = $input['ratios'] ?? [];
             $per_turns = $input['data_per_turns'] ?? [];
 
+            $compensations = $input['compensations'] ?? [];
+
             if (!empty($consultants)) {
-                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), current_turn_remaining = 0");
+                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), compensation_count = VALUES(compensation_count), current_turn_remaining = 0");
                 foreach ($consultants as $cid) {
                     $ratio = isset($ratios[$cid]) ? max(1, (int) $ratios[$cid]) : 1;
                     $perTurn = isset($per_turns[$cid]) ? max(1, (int) $per_turns[$cid]) : 1;
-                    $stmtC->bind_param("iiii", $id, $cid, $ratio, $perTurn);
+                    $comp = isset($compensations[$cid]) ? max(0, (int) $compensations[$cid]) : 0;
+                    $stmtC->bind_param("iiiii", $id, $cid, $ratio, $perTurn, $comp);
                     $stmtC->execute();
                 }
             }
@@ -829,6 +835,30 @@ switch ($action) {
         }
         break;
 
+
+    case 'update_compensations':
+        $conn->begin_transaction();
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $roundId = (int) ($input['round_id'] ?? 0);
+            $compensations = $input['compensations'] ?? [];
+
+            if ($roundId > 0 && !empty($compensations)) {
+                $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = ? WHERE round_id = ? AND consultant_id = ?");
+                foreach ($compensations as $cid => $compCount) {
+                    $c = (int)$cid;
+                    $count = max(0, (int)$compCount);
+                    $stmtComp->bind_param("iii", $count, $roundId, $c);
+                    $stmtComp->execute();
+                }
+            }
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        }
+        break;
 
     case 'delete_round':
         $conn->begin_transaction();

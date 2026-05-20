@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, Settings as SettingsIcon } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -9,6 +9,9 @@ export const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo'>('processing');
   
   // States
   const [provider, setProvider] = useState('appscript');
@@ -42,6 +45,10 @@ export const Settings = () => {
   const [fallbackCcEmail, setFallbackCcEmail] = useState('');
   const [accounts, setAccounts] = useState<any[]>([]);
 
+  // Blacklist Config
+  const [exclusionKeys, setExclusionKeys] = useState('');
+  const [exclusionContacts, setExclusionContacts] = useState('');
+
   const fetchSettings = async () => {
     try {
       const roundsJson = await fetchAPI('get_rounds');
@@ -72,6 +79,8 @@ export const Settings = () => {
         if (json.data.fallback_type) setFallbackType(json.data.fallback_type);
         if (json.data.fallback_admin_id) setFallbackAdminId(json.data.fallback_admin_id);
         if (json.data.fallback_cc_email) setFallbackCcEmail(json.data.fallback_cc_email);
+        if (json.data.global_exclusion_keys) setExclusionKeys(json.data.global_exclusion_keys);
+        if (json.data.global_exclusion_contacts) setExclusionContacts(json.data.global_exclusion_contacts);
       }
     } catch (e) {
       console.error(e);
@@ -88,7 +97,7 @@ export const Settings = () => {
     const payload = {
       email_provider: provider,
       appscript_webhook_url: appscriptUrl,
-      frontend_url: frontendUrl, // BUG-02 fix: save frontend URL for email report links
+      frontend_url: frontendUrl,
       ses_host: sesHost,
       ses_username: sesUser,
       ses_password: sesPass,
@@ -101,7 +110,9 @@ export const Settings = () => {
       fallback_round_id: fallbackRoundId,
       fallback_type: fallbackType,
       fallback_admin_id: fallbackAdminId,
-      fallback_cc_email: fallbackCcEmail
+      fallback_cc_email: fallbackCcEmail,
+      global_exclusion_keys: exclusionKeys,
+      global_exclusion_contacts: exclusionContacts
     };
     
     try {
@@ -167,6 +178,27 @@ export const Settings = () => {
         </button>
       </div>
 
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+        <button 
+          onClick={() => setActiveTab('processing')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <SettingsIcon size={18} /> Cấu hình Xử lý
+        </button>
+        <button 
+          onClick={() => setActiveTab('mail')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <Mail size={18} /> Cấu hình Email
+        </button>
+        <button 
+          onClick={() => setActiveTab('zalo')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <MessageCircle size={18} /> Cấu hình Zalo Bot
+        </button>
+      </div>
+
       {loading ? (
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
           <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
@@ -179,6 +211,7 @@ export const Settings = () => {
         {/* Left Column */}
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
           
+          {activeTab === 'mail' && (
           <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
               <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
@@ -308,7 +341,10 @@ function doPost(e) {
               </div>
             )}
           </div>
+          )}
+
           {/* Cấu hình Zalo Bot */}
+          {activeTab === 'zalo' && (
           <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
@@ -383,9 +419,12 @@ function doPost(e) {
               </p>
             </div>
           </div>
+          )}
 
-          {/* Fallback Round Config Card */}
-          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+          {/* Fallback & Blacklist Configs (Processing Tab) */}
+          {activeTab === 'processing' && (
+          <>
+          <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                 <Zap size={16} />
@@ -505,6 +544,55 @@ function doPost(e) {
               </div>
             )}
           </div>
+
+          {/* Blacklist Config Card */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', background: '#374151', color: 'white', padding: 4, borderRadius: 6 }}>
+                <Shield size={16} />
+              </span>
+              Danh sách đen & Loại trừ Data
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và <strong>KHÔNG</strong> được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Từ khóa loại trừ (Keys)
+                </label>
+                <textarea 
+                  className="form-input" 
+                  style={{ minHeight: 80, resize: 'vertical' }}
+                  placeholder="Ví dụ: spam, test, rác..." 
+                  value={exclusionKeys}
+                  onChange={e => setExclusionKeys(e.target.value)}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Ngăn cách bằng dấu phẩy. Nếu dữ liệu (Tên, Nguồn, Ghi chú...) chứa bất kỳ từ khóa nào trong danh sách này, hệ thống sẽ tự động bỏ qua.
+                </p>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Số điện thoại / Email loại trừ
+                </label>
+                <textarea 
+                  className="form-input" 
+                  style={{ minHeight: 80, resize: 'vertical' }}
+                  placeholder="Ví dụ: 0909123456, admin@test.com..." 
+                  value={exclusionContacts}
+                  onChange={e => setExclusionContacts(e.target.value)}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Ngăn cách bằng dấu phẩy. Chặn đứng các Data Spam từ số điện thoại hoặc Email cụ thể.
+                </p>
+              </div>
+            </div>
+          </div>
+          </>
+          )}
         </div>
 
         {/* Right Column: Testing */}

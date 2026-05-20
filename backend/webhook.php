@@ -170,6 +170,13 @@ register_shutdown_function(function() use ($conn, $lockKey) {
     }
 });
 
+// --- 0. Check Global Blacklist / Exclusions ---
+if (checkGlobalExclusion($conn, $data, $phone, $email)) {
+    // If blacklisted, return ignored immediately without saving to DB
+    echo json_encode(["success" => true, "status" => "ignored", "message" => "Data matches exclusion list."]);
+    exit();
+}
+
 // --- 1. Check CRM (Duplication & 6-month rule) ---
 $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
 

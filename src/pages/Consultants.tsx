@@ -426,12 +426,12 @@ export const Consultants = () => {
                   </label>
                   <input 
                     className="form-input" 
-                    placeholder="Chưa liên kết. Sale cần nhắn email cho Zalo Bot." 
+                    placeholder="Chưa liên kết. Sale cần nhắn mã ID cho Zalo Bot." 
                     value={formData.zalo_chat_id}
                     onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                    Sale nhắn tin Email vào Bot, hệ thống sẽ tự điền ID này. Admin cũng có thể nhập tay nếu biết ID.
+                    Sale nhắn mã ID của mình vào Bot, hệ thống sẽ tự điền ID này. Admin cũng có thể nhập tay nếu biết Zalo Chat ID.
                   </p>
                 </div>
               </div>
