@@ -149,6 +149,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 if ($res && $res->num_rows > 0) {
                     $existingSaleOwner = $res->fetch_assoc();
                 }
+                $stmt->close();
             }
 
             $existingAdminOwner = null;
@@ -160,11 +161,13 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 if ($res && $res->num_rows > 0) {
                     $existingAdminOwner = $res->fetch_assoc();
                 }
+                $stmt->close();
             }
 
             // 1. Tìm trong hệ thống Sale (consultants)
             $sale = null;
             if ($targetType === '' || $targetType === 'sale') {
+                $stmtFind = null;
                 if ($userId > 0 && !empty($email)) {
                     $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? AND email = ? LIMIT 1");
                     if ($stmtFind) $stmtFind->bind_param("is", $userId, $email);
@@ -182,11 +185,13 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         $sale = $res->fetch_assoc();
                     }
                 }
+                if ($stmtFind) $stmtFind->close();
             }
 
             // 2. Tìm trong hệ thống Quản trị (accounts)
             $admin = null;
             if ($targetType === '' || $targetType === 'admin') {
+                $stmtAdmin = null;
                 if ($userId > 0 && !empty($email)) {
                     $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
                     if ($stmtAdmin) $stmtAdmin->bind_param("is", $userId, $email);
@@ -204,6 +209,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         $admin = $resAdmin->fetch_assoc();
                     }
                 }
+                if ($stmtAdmin) $stmtAdmin->close();
             }
 
             // Xử lý trùng lặp Email giữa Sale và Admin
@@ -245,6 +251,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     // Cập nhật existing owner ảo để tránh xử lý trùng nếu trùng ID/email giữa sale và admin
                                     $existingSaleOwner = $sale;
                                 }
+                                $stmtUpdate->close();
                             }
                         }
                     }
@@ -274,6 +281,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     $adminName = $admin['name'] ?: 'Quản trị viên';
                                     $successMessages[] = "Quản trị viên: " . $adminName . " - Email: " . $admin['email'];
                                 }
+                                $stmtUpdateAdmin->close();
                             }
                         }
                     }

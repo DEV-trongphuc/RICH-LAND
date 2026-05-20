@@ -11,13 +11,16 @@ $stmt = $conn->prepare("SELECT id, name, email FROM accounts WHERE confirm_token
 $stmt->bind_param("s", $token);
 $stmt->execute();
 $res = $stmt->get_result();
+$stmt->close();
 
 if ($res->num_rows > 0) {
     $admin = $res->fetch_assoc();
     $updateStmt = $conn->prepare("UPDATE accounts SET is_confirmed = 1, confirm_token = NULL WHERE id = ?");
     $updateStmt->bind_param("i", $admin['id']);
+    $success = $updateStmt->execute();
+    $updateStmt->close();
     
-    if ($updateStmt->execute()) {
+    if ($success) {
         // Fetch settings
         $frontendUrl = './';
         $botLink = '';

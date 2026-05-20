@@ -11,8 +11,13 @@ set_time_limit(0);
 $lockFile = __DIR__ . '/cron_sync.lock';
 $lockFp = fopen($lockFile, 'w');
 if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
-    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running. Exiting.\n";
-    exit(0);
+    $lockMsg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running. Exiting.\n";
+    if (php_sapi_name() === 'cli') {
+        echo $lockMsg;
+        exit(0);
+    } else {
+        throw new Exception("Hệ thống đồng bộ đang bận (hoặc đang chạy ngầm). Vui lòng thử lại sau.");
+    }
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
 
@@ -49,6 +54,12 @@ if (isset($argv[1]) && is_numeric($argv[1])) {
     $sql .= " AND id = ?";
     $params[] = (int)$argv[1];
     $types .= "i";
+} else {
+    // Filter by sync interval for normal connections, and select uninitialized silent connections
+    $sql .= " AND (
+        (is_silent = 0 AND (last_sync_at IS NULL OR DATE_ADD(last_sync_at, INTERVAL sync_interval MINUTE) <= NOW()))
+        OR (is_silent = 1 AND is_initialized = 0)
+    )";
 }
 
 $stmt = $conn->prepare($sql);
@@ -57,6 +68,7 @@ if (!empty($params)) {
 }
 $stmt->execute();
 $connections = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 logSync("Found " . count($connections) . " active connections.");
 
@@ -72,6 +84,7 @@ foreach ($connections as $connItem) {
     $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'syncing' WHERE id = ?");
     $upStmt->bind_param("i", $connItem['id']);
     $upStmt->execute();
+    $upStmt->close();
 
     try {
         // Fetch field mappings
@@ -79,6 +92,7 @@ foreach ($connections as $connItem) {
         $mapStmt->bind_param("i", $connItem['id']);
         $mapStmt->execute();
         $mappingsResult = $mapStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mapStmt->close();
         
         $mappings = [];
         foreach ($mappingsResult as $row) {
@@ -152,6 +166,7 @@ foreach ($connections as $connItem) {
         while ($hRow = $existingHashesRes->fetch_assoc()) {
             $hashMap[$hRow['row_hash']] = true;
         }
+        $existingHashesStmt->close();
 
         // Check if this connection requires Silent Sync (First run of 'new_only' mode)
         $isSilentSync = (!empty($connItem['sync_mode']) && $connItem['sync_mode'] === 'new_only' && empty($connItem['is_initialized']));
@@ -288,20 +303,21 @@ foreach ($connections as $connItem) {
 
                 // If duplicate, check if we need to send duplicate reminder
                 if ($crmCheckResult['isDuplicate'] && !empty($connItem['sync_saleperson'])) {
-                    // Send reminder ONLY if we have a sale in CRM and a sale in the sheet row, and they match
-                    if (!empty($crmCheckResult['assignedTo']) && !empty($assignedToId) && (int)$crmCheckResult['assignedTo'] === (int)$assignedToId) {
+                    $ownerId = $crmCheckResult['assignedTo'];
+                    if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
                         static $consultantCache = [];
-                        if (!isset($consultantCache[$assignedToId])) {
+                        if (!isset($consultantCache[$ownerId])) {
                             $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $assignedToId);
+                            $stmtC->bind_param("i", $ownerId);
                             $stmtC->execute();
-                            $consultantCache[$assignedToId] = $stmtC->get_result()->fetch_assoc();
+                            $consultantCache[$ownerId] = $stmtC->get_result()->fetch_assoc();
+                            $stmtC->close();
                         }
-                        $cRow = $consultantCache[$assignedToId];
+                        $cRow = $consultantCache[$ownerId];
                         
                         if ($cRow) {
                             sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
-                            sendLeadReminderZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, $note, $source);
+                            sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source);
                         }
                     }
                 }
@@ -330,13 +346,13 @@ foreach ($connections as $connItem) {
                     continue;
                 }
                 
-                // Notify the old consultant (Align with webhook)
                 static $consultantCache = [];
                 if (!isset($consultantCache[$assignedTo])) {
                     $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
                     $stmtC->bind_param("i", $assignedTo);
                     $stmtC->execute();
                     $consultantCache[$assignedTo] = $stmtC->get_result()->fetch_assoc();
+                    $stmtC->close();
                 }
                 $cRow = $consultantCache[$assignedTo];
                 
@@ -404,6 +420,7 @@ foreach ($connections as $connItem) {
                             $admStmt->execute();
                             $admRes = $admStmt->get_result();
                             $fallbackAdminCache[$fbAdminId] = ($admRes->num_rows > 0) ? $admRes->fetch_assoc() : null;
+                            $admStmt->close();
                         }
                         
                         $fallbackAdminData = $fallbackAdminCache[$fbAdminId];
@@ -497,6 +514,7 @@ foreach ($connections as $connItem) {
                         $rStmt->execute();
                         $rRes = $rStmt->get_result();
                         $roundCache[$targetRoundId] = ($rRes->num_rows > 0) ? $rRes->fetch_assoc() : null;
+                        $rStmt->close();
                     }
                     if ($roundCache[$targetRoundId]) {
                         $ccEmails = $roundCache[$targetRoundId]['cc_emails'] ?? '';
@@ -510,6 +528,7 @@ foreach ($connections as $connItem) {
                     $stmtC2->bind_param("i", $assignedConsultantId);
                     $stmtC2->execute();
                     $assignedConsultantCache[$assignedConsultantId] = $stmtC2->get_result()->fetch_assoc();
+                    $stmtC2->close();
                 }
                 $c = $assignedConsultantCache[$assignedConsultantId];
                 
@@ -532,10 +551,13 @@ foreach ($connections as $connItem) {
             }
         }
         fclose($stream);
+        if (isset($recordStmt)) {
+            $recordStmt->close();
+        }
 
-        if ($isSilentSync) {
+        if ($isSilentSync || !empty($connItem['is_silent'])) {
             $conn->query("UPDATE sheet_connections SET is_initialized = 1 WHERE id = " . $connItem['id']);
-            logSync("Silent Sync completed for Connection ID {$connItem['id']}. Hashed existing rows, skipped distribution.");
+            logSync("Sync initialized for Connection ID {$connItem['id']} (isSilentSync: " . ($isSilentSync ? 'yes' : 'no') . ", is_silent: " . (!empty($connItem['is_silent']) ? 'yes' : 'no') . ").");
         }
 
         logSync("Finished Connection ID {$connItem['id']}. Synced $syncedCount new leads.");
@@ -544,12 +566,14 @@ foreach ($connections as $connItem) {
         $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle' WHERE id = ?");
         $upStmt->bind_param("i", $connItem['id']);
         $upStmt->execute();
+        $upStmt->close();
 
     } catch (Exception $e) {
         logSync("Error processing ID {$connItem['id']}: " . $e->getMessage());
         $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error' WHERE id = ?");
         $upStmt->bind_param("i", $connItem['id']);
         $upStmt->execute();
+        $upStmt->close();
     }
 }
 

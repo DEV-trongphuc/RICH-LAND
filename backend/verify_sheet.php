@@ -56,6 +56,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_hash' && isset($_GET['r
         $stmt = $conn->prepare("DELETE FROM sheet_sync_records WHERE connection_id = ? AND row_hash = ?");
         $stmt->bind_param("is", $reset_conn_id, $row_hash);
         $stmt->execute();
+        $stmt->close();
         $tokenParam = !empty($token) ? "&token=" . urlencode($token) : "";
         header("Location: verify_sheet.php?connection_id=" . $reset_conn_id . "&reset_success=1" . $tokenParam);
         exit;
@@ -90,11 +91,11 @@ $headers = [];
 
 if ($connItem) {
     try {
-        // Fetch field mappings
         $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
         $mapStmt->bind_param("i", $connItem['id']);
         $mapStmt->execute();
         $mappingsResult = $mapStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mapStmt->close();
         
         $mappings = [];
         foreach ($mappingsResult as $mRow) {
@@ -190,6 +191,7 @@ if ($connItem) {
         while ($hRow = $existingHashesRes->fetch_assoc()) {
             $hashMap[$hRow['row_hash']] = $hRow['synced_at'];
         }
+        $existingHashesStmt->close();
 
         $rowCount = 0;
         while (($row = fgetcsv($stream)) !== FALSE) {
@@ -332,11 +334,11 @@ if ($connItem) {
                         $crmLeadDetail = $getLeadDetailLocal($conn, $phone, $email);
                         $crmOwner = $crmLeadDetail['consultant_name'] ?? null;
 
-                        if ($crmOwner && $matchedSale && $crmOwner === $matchedSale) {
+                        if ($crmOwner && (empty($matchedSale) || $crmOwner === $matchedSale)) {
                             $msg = "Khách hàng TRÙNG trong CRM và thuộc Sale: $crmOwner. Sẽ gửi thông báo báo trùng cho Sale này.";
                             $cls = 'table-info';
                         } else {
-                            $msg = "Khách hàng TRÙNG trong CRM (CRM Owner: " . ($crmOwner ?: "Trống") . ", Sheet Sale: " . ($matchedSale ?: "Trống") . "). Không khớp hoặc thiếu Sale, chỉ lưu ngầm không gửi nhắc nhở.";
+                            $msg = "Khách hàng TRÙNG trong CRM (CRM Owner: " . ($crmOwner ?: "Trống") . ", Sheet Sale: " . ($matchedSale ?: "Trống") . "). Không khớp Sale, chỉ lưu ngầm không gửi nhắc nhở.";
                             $cls = 'table-primary';
                         }
                     } else {

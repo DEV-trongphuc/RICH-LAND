@@ -89,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $action = $_GET['action'] ?? '';
 
-// Require authentication for all endpoints except login and test_email
-$publicActions = ['login', 'login_google', 'login_google_sale', 'test_email', 'submit_report', 'get_report_context'];
+// Require authentication for all endpoints except login
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -146,7 +146,8 @@ if (!in_array($action, $publicActions)) {
         'force_sync',
         'get_ticket_settings',
         'save_ticket_settings', // Ticket notification config
-        'unlink_zalo'
+        'unlink_zalo',
+        'test_email'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -163,6 +164,7 @@ function logAdminAction($conn, $accountId, $action, $details = []) {
     if ($stmt) {
         $stmt->bind_param("isss", $accountId, $action, $detailsJson, $ip);
         $stmt->execute();
+        $stmt->close();
     }
 }
 
@@ -1466,7 +1468,7 @@ switch ($action) {
         $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
         $emailTemplate = $input['email_template'] ?? null;
 
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL WHERE id=?");
         $stmt->bind_param("ssiiissiiis", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $id);
         if ($stmt->execute()) {
             logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
@@ -1833,7 +1835,9 @@ switch ($action) {
         ");
         $verifyStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
         $verifyStmt->execute();
-        if ($verifyStmt->get_result()->num_rows === 0) {
+        $verifyRes = $verifyStmt->get_result();
+        $verifyStmt->close();
+        if ($verifyRes->num_rows === 0) {
             echo json_encode(['success' => false, 'message' => 'Thông tin không hợp lệ: Data này không thuộc về bạn trong vòng này.']);
             break;
         }
@@ -1842,21 +1846,28 @@ switch ($action) {
         $checkStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id=? AND consultant_id=? AND round_id=? AND status='pending'");
         $checkStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
         $checkStmt->execute();
-        if ($checkStmt->get_result()->num_rows > 0) {
+        $checkRes = $checkStmt->get_result();
+        $checkStmt->close();
+        if ($checkRes->num_rows > 0) {
             echo json_encode(['success' => false, 'message' => 'Bạn đã báo cáo Lead này và đang chờ duyệt!']);
             break;
         }
 
         $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
-        if ($stmt->execute()) {
+        $success = $stmt->execute();
+        $stmt->close();
+
+        if ($success) {
             // FEATURE: Gửi email thông báo tới admin được thiết lập nhận ticket
             require_once __DIR__ . '/mailer.php';
             $notifyIds = [];
             $notifyRes = $conn->query("SELECT account_id FROM ticket_notify_settings");
-            if ($notifyRes)
-                while ($nr = $notifyRes->fetch_assoc())
+            if ($notifyRes) {
+                while ($nr = $notifyRes->fetch_assoc()) {
                     $notifyIds[] = (int) $nr['account_id'];
+                }
+            }
 
             if (!empty($notifyIds)) {
                 // Lấy thông tin consultant và lead để gửi email
@@ -1872,6 +1883,7 @@ switch ($action) {
                 $ctxForEmail->bind_param("iii", $lead_id, $sale_id, $round_id);
                 $ctxForEmail->execute();
                 $ctxData = $ctxForEmail->get_result()->fetch_assoc();
+                $ctxForEmail->close();
 
                 // Lấy danh sách email và zalo_chat_id của admin được chọn
                 $placeholders = implode(',', array_fill(0, count($notifyIds), '?'));
@@ -1879,6 +1891,7 @@ switch ($action) {
                 $adminEmailStmt->bind_param(str_repeat('i', count($notifyIds)), ...$notifyIds);
                 $adminEmailStmt->execute();
                 $adminEmails = $adminEmailStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $adminEmailStmt->close();
 
                 if (!empty($adminEmails)) {
                     $toAdmin = array_shift($adminEmails); // Admin đầu tiên là recipient chính
@@ -2841,12 +2854,17 @@ switch ($action) {
         $id = (int) ($_GET['id'] ?? 0);
         if ($id) {
             ob_start();
-            // Mock CLI arguments for cron_sync.php
-            $argv = ['cron_sync.php', $id];
-            require __DIR__ . '/cron_sync.php';
-            $output = ob_get_clean();
-            logAdminAction($conn, $decodedUser['id'], 'FORCE_SYNC', ['connection_id' => $id]);
-            echo json_encode(['success' => true, 'output' => $output]);
+            try {
+                // Mock CLI arguments for cron_sync.php
+                $argv = ['cron_sync.php', $id];
+                require __DIR__ . '/cron_sync.php';
+                $output = ob_get_clean();
+                logAdminAction($conn, $decodedUser['id'], 'FORCE_SYNC', ['connection_id' => $id]);
+                echo json_encode(['success' => true, 'output' => $output]);
+            } catch (Exception $e) {
+                ob_end_clean();
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid ID']);
         }

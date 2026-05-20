@@ -307,6 +307,12 @@ if ($runMigration) {
         $conn->query("ALTER TABLE sheet_connections ADD COLUMN sync_saleperson TINYINT(1) DEFAULT 0 COMMENT 'Đồng bộ salesperson bằng email'");
     }
 
+    // Auto-migrate: thêm cột is_initialized vào sheet_connections
+    $chkIsInitialized = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'is_initialized'");
+    if ($chkIsInitialized && $chkIsInitialized->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN is_initialized TINYINT(1) DEFAULT 0 COMMENT 'Đánh dấu đã đồng bộ lần đầu'");
+    }
+
     // Auto-migrate: thêm cài đặt mặc định cho báo cáo tuần
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_day', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_time', '08:00')");

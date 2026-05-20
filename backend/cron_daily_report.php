@@ -6,7 +6,8 @@ function runDailyReportCron($conn) {
     // --- PREVENT CONCURRENT EXECUTION ---
     $lockFile = __DIR__ . '/cron_daily_report.lock';
     $lockFp = fopen($lockFile, 'w');
-    if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+    if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
+        if ($lockFp) fclose($lockFp);
         return; // Already running
     }
     

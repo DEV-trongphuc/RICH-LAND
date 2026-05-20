@@ -122,6 +122,7 @@ while($row = $mappingsResult->fetch_assoc()) {
         'custom_label' => $row['custom_label']
     ];
 }
+$mapStmt->close();
 
 // Extract mapped values from incoming data (handle multiple mapped columns by concatenating them)
 function extractMappedValues($mappingsArray, $systemField, $data) {
@@ -182,6 +183,7 @@ $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
 $lockStmt->bind_param("s", $lockKey);
 $lockStmt->execute();
 $lockRes = $lockStmt->get_result()->fetch_assoc();
+$lockStmt->close();
 if ($lockRes['get_lock'] != 1) {
     http_response_code(429);
     echo json_encode(["success" => false, "message" => "Too many concurrent requests for this lead. Please try again later."]);
@@ -251,17 +253,18 @@ if ($isSilent == 1) {
 
     // If duplicate, check if we need to send duplicate reminder
     if ($crmCheckResult['isDuplicate'] && $syncSaleperson == 1) {
-        // Send reminder ONLY if we have a sale in CRM and a sale in the webhook/payload, and they match
-        if (!empty($crmCheckResult['assignedTo']) && !empty($assignedToId) && (int)$crmCheckResult['assignedTo'] === (int)$assignedToId) {
+        $ownerId = $crmCheckResult['assignedTo'];
+        if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
             $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-            $stmtC->bind_param("i", $assignedToId);
+            $stmtC->bind_param("i", $ownerId);
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
             if ($cRow) {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
                 sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
-                sendLeadReminderZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, $note, $source);
+                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source);
             }
         }
     }
@@ -279,11 +282,11 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
         $conn->commit();
 
-        // Gửi thông báo nhắc nhở cho Sale cũ
         $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
         $stmtC->bind_param("i", $assignedTo);
         $stmtC->execute();
         $cRow = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
         if ($cRow) {
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
@@ -366,6 +369,7 @@ if (!$targetRoundId) {
                 $message = 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
                 $fallbackCcEmails = $fbCc;
             }
+            $admStmt->close();
         }
     } else {
         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
@@ -474,6 +478,7 @@ if ($isFallbackAdmin && $fallbackAdminData) {
             $ccEmails = $rData['cc_emails'] ?? '';
             $roundName = $rData['round_name'] ?? '';
         }
+        $stmtQ->close();
     }
 
     $stmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
@@ -485,6 +490,7 @@ if ($isFallbackAdmin && $fallbackAdminData) {
         sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
         sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
     }
+    $stmt->close();
 }
 
 $conn->close();

@@ -222,7 +222,7 @@ export const Integrations = () => {
       webhook_token: generateToken(),
       is_active: 1,
       sync_interval: finalInterval,
-      sync_mode: syncMode,
+      sync_mode: isSilent ? 'all' : syncMode,
       is_silent: isSilent ? 1 : 0,
       sync_saleperson: syncSaleperson ? 1 : 0,
       email_template: emailTemplate
@@ -311,7 +311,7 @@ export const Integrations = () => {
       sync_interval: finalInterval,
       require_both_contact: selected.require_both_contact,
       connection_type: selected.connection_type,
-      sync_mode: editSyncMode,
+      sync_mode: editIsSilent ? 'all' : editSyncMode,
       is_silent: editIsSilent ? 1 : 0,
       sync_saleperson: editSyncSaleperson ? 1 : 0,
       email_template: editEmailTemplate
@@ -1074,71 +1074,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 )}
               </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>(?) Cơ chế hoạt động?</span>
-                </div>
-
-                <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-                  {[
-                    { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
-                    { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
-                    { id: '1h', icon: <Clock size={20} />, time: '1h', label: 'ỔN ĐỊNH' },
-                    { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
-                    { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
-                  ].map(preset => (
-                    <div
-                      key={preset.id}
-                      onClick={() => setSyncPreset(preset.id as any)}
-                      style={{
-                        border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                        background: syncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
-                        borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                        transition: 'all 0.2s', opacity: syncPreset === preset.id ? 1 : 0.6
-                      }}
-                    >
-                      <div style={{ color: syncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="sync_mode"
-                      checked={syncMode === 'all'}
-                      onChange={() => setSyncMode('all')}
-                      style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Quét toàn bộ Data hiện có</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hút toàn bộ dữ liệu đang có sẵn trên Sheets vào CRM (Mặc định).</div>
-                    </div>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="sync_mode"
-                      checked={syncMode === 'new_only'}
-                      onChange={() => setSyncMode('new_only')}
-                      style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ quét Data mới (Bỏ qua Data cũ)</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hệ thống sẽ chạy ngầm đánh dấu bỏ qua toàn bộ dòng cũ. Chỉ những dòng được thêm vào SAU KHI kết nối mới được hút vào CRM.</div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
+              {/* Chỉ đồng bộ check trùng */}
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
@@ -1176,7 +1112,42 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </>
               )}
 
-              {syncPreset === 'custom' && (
+              {!isSilent && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>(?) Cơ chế hoạt động?</span>
+                  </div>
+
+                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                    {[
+                      { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
+                      { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
+                      { id: '1h', icon: <Clock size={20} />, time: '1h', label: 'ỔN ĐỊNH' },
+                      { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
+                      { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
+                    ].map(preset => (
+                      <div
+                        key={preset.id}
+                        onClick={() => setSyncPreset(preset.id as any)}
+                        style={{
+                          border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
+                          background: syncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
+                          borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                          transition: 'all 0.2s', opacity: syncPreset === preset.id ? 1 : 0.6
+                        }}
+                      >
+                        <div style={{ color: syncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!isSilent && syncPreset === 'custom' && (
                 <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   <div style={{ width: 140 }}>
                     <label className="form-label" style={{ fontWeight: 800, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Số phút tùy chỉnh</label>
@@ -1191,6 +1162,40 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   </div>
                   <div style={{ flex: 1, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5 }}>
                     Lưu ý: Thời gian quá ngắn (dưới 5 phút) có thể khiến Google giới hạn băng thông.
+                  </div>
+                </div>
+              )}
+
+              {!isSilent && (
+                <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                  <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="sync_mode"
+                        checked={syncMode === 'all'}
+                        onChange={() => setSyncMode('all')}
+                        style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Quét toàn bộ Data hiện có</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hút toàn bộ dữ liệu đang có sẵn trên Sheets vào CRM (Mặc định).</div>
+                      </div>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="sync_mode"
+                        checked={syncMode === 'new_only'}
+                        onChange={() => setSyncMode('new_only')}
+                        style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ quét Data mới (Bỏ qua Data cũ)</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hệ thống sẽ chạy ngầm đánh dấu bỏ qua toàn bộ dòng cũ. Chỉ những dòng được thêm vào SAU KHI kết nối mới được hút vào CRM.</div>
+                      </div>
+                    </label>
                   </div>
                 </div>
               )}
@@ -1388,10 +1393,48 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </p>
             </div>
 
-            {selected?.connection_type !== 'landing_page' && (
+            {/* Chỉ đồng bộ check trùng */}
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
+              </div>
+              <ToggleSwitch
+                checked={editIsSilent}
+                onChange={(val) => {
+                  setEditIsSilent(val);
+                  if (!val) setEditSyncSaleperson(false);
+                }}
+              />
+            </div>
+
+            {editIsSilent && (
+              <>
+                <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', transition: 'all 0.3s ease-in-out' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
+                    <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
+                  </div>
+                  <ToggleSwitch
+                    checked={editSyncSaleperson}
+                    onChange={setEditSyncSaleperson}
+                  />
+                </div>
+                {editSyncSaleperson && (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
+                    </div>
+                    Hãy đảm bảo đã vào mục <strong>Cấu hình trường (Mapping)</strong> ở bảng chi tiết ngoài màn hình chính để map cột tương ứng với trường hệ thống <strong>"Salesperson (Tên/Email Sale)"</strong>.
+                  </div>
+                )}
+              </>
+            )}
+
+            {selected?.connection_type !== 'landing_page' && !editIsSilent && (
               <>
                 {/* Chu kỳ đồng bộ */}
-                <div>
+                <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
                   </div>
@@ -1442,7 +1485,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
 
                 {/* Chế độ đồng bộ */}
-                <div>
+                <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chế độ đồng bộ</label>
                   </div>
@@ -1509,43 +1552,6 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 ))}
               </div>
             </div>
-
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
-              </div>
-              <ToggleSwitch
-                checked={editIsSilent}
-                onChange={(val) => {
-                  setEditIsSilent(val);
-                  if (!val) setEditSyncSaleperson(false);
-                }}
-              />
-            </div>
-
-            {editIsSilent && (
-              <>
-                <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', transition: 'all 0.3s ease-in-out' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
-                    <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
-                  </div>
-                  <ToggleSwitch
-                    checked={editSyncSaleperson}
-                    onChange={setEditSyncSaleperson}
-                  />
-                </div>
-                {editSyncSaleperson && (
-                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
-                    </div>
-                    Hãy đảm bảo đã vào mục <strong>Cấu hình trường (Mapping)</strong> ở bảng chi tiết ngoài màn hình chính để map cột tương ứng với trường hệ thống <strong>"Salesperson (Tên/Email Sale)"</strong>.
-                  </div>
-                )}
-              </>
-            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
               <button className="btn outline" onClick={() => setShowEditConn(false)} style={{ padding: '0.5rem 1.25rem' }}>Hủy bỏ</button>

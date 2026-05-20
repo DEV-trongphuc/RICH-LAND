@@ -49,6 +49,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'setup_connection') {
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $res = $stmt->get_result();
+    $stmt->close();
     
     if ($res->num_rows > 0) {
         $row = $res->fetch_assoc();
@@ -67,6 +68,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'setup_connection') {
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi tạo kết nối: ' . $conn->error]);
         }
+        $insert->close();
     }
     exit();
 }
@@ -93,6 +95,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'check_status') {
     }
     $stmt->execute();
     $leadRes = $stmt->get_result();
+    $stmt->close();
     if ($leadRes->num_rows === 0) {
         echo json_encode(['success' => false, 'message' => 'Không tìm thấy Lead trong database.']);
         exit();
@@ -109,6 +112,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'check_status') {
     $logStmt->execute();
     $logRes = $logStmt->get_result();
     $log = $logRes->fetch_assoc() ?: null;
+    $logStmt->close();
     
     echo json_encode([
         'success' => true,

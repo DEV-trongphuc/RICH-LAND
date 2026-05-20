@@ -135,6 +135,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
             $row = $res->fetch_assoc();
             $chatId = $row['zalo_chat_id'];
         }
+        $stmtConsultant->close();
         $chatIdCache[$consultantId] = $chatId;
     }
 
@@ -201,6 +202,7 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         if ($res->num_rows > 0) {
             $chatId = $res->fetch_assoc()['zalo_chat_id'];
         }
+        $stmtConsultant->close();
         $chatIdCache[$consultantId] = $chatId;
     }
 
@@ -265,6 +267,7 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $stmtC->bind_param('i', $consultantId);
     $stmtC->execute();
     $resC = $stmtC->get_result();
+    $stmtC->close();
     if ($resC->num_rows === 0) return false;
     $chatId = $resC->fetch_assoc()['zalo_chat_id'];
     if (!$chatId) return false;

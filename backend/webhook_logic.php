@@ -19,22 +19,25 @@ function normalizePhone($phoneRaw) {
     $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
 
     // Keep only digits and leading +
-    $hasPlusPrefix = (strpos($phone, '+') !== false);
+    $hasPlusPrefix = (strpos($phone, '+') !== false && strpos(ltrim($phone), '+') === 0);
     $clean = preg_replace('/[^\d]/', '', $phone);
 
-    // If original had a + at start, restore it (foreign number)
-    if ($hasPlusPrefix && strpos(ltrim($phone), '+') === 0) {
-        // Check if it's +84 (Vietnamese)
-        if (strpos($clean, '84') === 0 && strlen($clean) >= 11) {
-            return '0' . substr($clean, 2); // +84xxx → 0xxx
+    if ($hasPlusPrefix) {
+        // If it starts with +84, it's Vietnamese, convert to leading 0
+        if (strpos($clean, '84') === 0) {
+            return '0' . substr($clean, 2);
         }
-        return '+' . $clean; // Keep as foreign number
+        return '+' . $clean; // Keep other country codes as foreign numbers
     }
 
-    // No plus sign — pure digits
-    // Handle 84xxxxxxxxx (11 digits, Vietnamese without +)
-    if (strpos($clean, '84') === 0 && strlen($clean) === 11) {
-        return '0' . substr($clean, 2);
+    // Handle Vietnamese numbers starting with 84 (without leading +)
+    if (strpos($clean, '84') === 0 && (strlen($clean) === 10 || strlen($clean) === 11 || strlen($clean) === 9)) {
+        $clean = '0' . substr($clean, 2);
+    }
+
+    // If it does not start with 0, prepend 0 (Vietnamese numbers missing leading 0, e.g. 90555555 -> 090555555)
+    if (!empty($clean) && strpos($clean, '0') !== 0) {
+        return '0' . $clean;
     }
 
     return $clean;
@@ -60,8 +63,18 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
         $e = strtolower(trim($email));
         foreach ($blacklistContacts as $contact) {
             if (empty($contact)) continue;
-            if ((!empty($p) && strpos($p, $contact) !== false) || (!empty($e) && $e === $contact)) {
-                return true; // Match found in contacts
+            
+            if (strpos($contact, '@') !== false) {
+                // Email check: exact match OR domain match if contact starts with @ (e.g. @test.com)
+                if (!empty($e) && ($e === $contact || (strpos($contact, '@') === 0 && strpos($e, $contact) !== false))) {
+                    return true;
+                }
+            } else {
+                // Phone check: normalize both to ignore spacing/prefix mismatches
+                $normalizedContact = strtolower(normalizePhone($contact));
+                if (!empty($normalizedContact) && !empty($p) && strpos($p, $normalizedContact) !== false) {
+                    return true;
+                }
             }
         }
     }
@@ -96,22 +109,27 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
 function findConsultantByEmailOrName($conn, $value) {
     $value = trim($value);
     if (empty($value)) return null;
+    $lowerVal = mb_strtolower($value, 'UTF-8');
     // 1. Try finding by email
     if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
-        $stmt = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
-        $stmt->bind_param("s", $value);
+        $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(email) = ? LIMIT 1");
+        $stmt->bind_param("s", $lowerVal);
         $stmt->execute();
         $res = $stmt->get_result();
-        if ($row = $res->fetch_assoc()) {
+        $row = $res->fetch_assoc();
+        $stmt->close();
+        if ($row) {
             return $row['id'];
         }
     }
     // 2. Try finding by name (case-insensitive or exact name match)
-    $stmt = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
-    $stmt->bind_param("s", $value);
+    $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(name) = ? LIMIT 1");
+    $stmt->bind_param("s", $lowerVal);
     $stmt->execute();
     $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
+    $row = $res->fetch_assoc();
+    $stmt->close();
+    if ($row) {
         return $row['id'];
     }
     return null;
@@ -563,11 +581,13 @@ function simulateNextConsultantInRound($conn, $roundId) {
     $res = $stmt->get_result();
     
     if ($res->num_rows === 0) {
+        $stmt->close();
         return null; // Round not found or inactive
     }
     
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
+    $stmt->close();
     
     // 2. Get active consultants with ALL rules
     $cStmt = $conn->prepare("
@@ -583,6 +603,7 @@ function simulateNextConsultantInRound($conn, $roundId) {
     $cRes = $cStmt->get_result();
     
     if ($cRes->num_rows === 0) {
+        $cStmt->close();
         return null;
     }
     
@@ -601,6 +622,7 @@ function simulateNextConsultantInRound($conn, $roundId) {
             $midTurnConsultant = $row;
         }
     }
+    $cStmt->close();
     
     // === PRIORITY 1: COMPENSATION ===
     if ($compensatedConsultant) {
