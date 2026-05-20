@@ -652,7 +652,17 @@ export const Integrations = () => {
                         setEditCustomSyncMins(customVal || 15);
                         setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
                         setEditIsSilent(Boolean(Number(selected.is_silent)));
-                        setEditEmailTemplate(selected.email_template || '');
+                        const existingTemplate = selected.email_template || '';
+                        setEditEmailTemplate(
+                          existingTemplate ||
+                          generateDefaultTemplate(
+                            (selected.mappings || []).map(m => ({
+                              sheet_col: m.sheet_column,
+                              sys_field: m.system_field,
+                              custom_label: m.custom_label
+                            }))
+                          )
+                        );
                         setShowEditConn(true);
                       }}
                     >
