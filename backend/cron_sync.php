@@ -221,7 +221,16 @@ foreach ($connections as $connItem) {
             }
 
             // --- 0.5. Advisory Lock to prevent simultaneous processing of the same lead ---
-            $lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
+            // Normalize lock key to target normalized phone (if set) or email (if set) individually
+            $lockKey = '';
+            if (!empty($phone)) {
+                $lockKey = 'webhook_lead_phone_' . $phone;
+            } else if (!empty($email)) {
+                $lockKey = 'webhook_lead_email_' . md5($email);
+            } else {
+                $lockKey = 'webhook_lead_empty_' . md5(json_encode($rowData));
+            }
+
             $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
             $lockStmt->bind_param("s", $lockKey);
             $lockStmt->execute();
@@ -387,23 +396,22 @@ foreach ($connections as $connItem) {
                 }
             }
 
-            if ($targetRoundId) {
-                // --- 3. Round-Robin Assignment ---
-                $assignResult = getNextConsultantInRound($conn, $targetRoundId);
-                if ($assignResult) {
-                    $assignedConsultantId = $assignResult['id'];
-                    $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                    $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
-                } else {
-                    $assignedConsultantId = null;
-                    $cronStatus = 'pending';
-                    $cronMessage = 'No active consultants in this round via cron_sync.';
-                }
-            }
-
-            // --- 4. Process new Lead and Log Distribution (always save lead) ---
+            // --- 3. Round-Robin Assignment & 4. Process Lead (Unified Transaction) ---
             $conn->begin_transaction();
             try {
+                if ($targetRoundId) {
+                    $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+                    if ($assignResult) {
+                        $assignedConsultantId = $assignResult['id'];
+                        $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                        $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
+                    } else {
+                        $assignedConsultantId = null;
+                        $cronStatus = 'pending';
+                        $cronMessage = 'No active consultants in this round via cron_sync.';
+                    }
+                }
+
                 if ($crmCheckResult['isDuplicate']) {
                     $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id']);
                 } else {
@@ -523,4 +531,8 @@ logSync("Cronjob finished.");
 // --- Chạy Báo cáo Ngày nếu đã đến giờ ---
 require_once __DIR__ . '/cron_daily_report.php';
 runDailyReportCron($conn);
+
+// --- Chạy Báo cáo Tuần nếu đã đến giờ ---
+require_once __DIR__ . '/cron_weekly_report.php';
+runWeeklyReportCron($conn);
 

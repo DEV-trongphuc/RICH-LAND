@@ -37,6 +37,10 @@ export const Settings = () => {
   const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
   const [dailyReportAdmins, setDailyReportAdmins] = useState<number[]>([]);
 
+  // Weekly report config
+  const [zaloWeeklyReportDay, setZaloWeeklyReportDay] = useState('0');
+  const [zaloWeeklyReportTime, setZaloWeeklyReportTime] = useState('08:00');
+
   // Fallback round config
   const [rounds, setRounds] = useState<any[]>([]);
   const [fallbackRoundId, setFallbackRoundId] = useState('');
@@ -84,6 +88,8 @@ export const Settings = () => {
             if (Array.isArray(parsed)) setDailyReportAdmins(parsed.map(Number));
           } catch { /* ignore */ }
         }
+        if (json.data.zalo_weekly_report_day) setZaloWeeklyReportDay(json.data.zalo_weekly_report_day);
+        if (json.data.zalo_weekly_report_time) setZaloWeeklyReportTime(json.data.zalo_weekly_report_time);
         if (json.data.fallback_round_id) setFallbackRoundId(json.data.fallback_round_id);
         if (json.data.fallback_type) setFallbackType(json.data.fallback_type);
         if (json.data.fallback_admin_id) setFallbackAdminId(json.data.fallback_admin_id);
@@ -118,6 +124,8 @@ export const Settings = () => {
       zalo_bot_link: zaloBotLink,
       zalo_daily_report_time: zaloDailyReportTime,
       daily_report_admins: dailyReportAdmins,
+      zalo_weekly_report_day: zaloWeeklyReportDay,
+      zalo_weekly_report_time: zaloWeeklyReportTime,
       fallback_round_id: fallbackRoundId,
       fallback_type: fallbackType,
       fallback_admin_id: fallbackAdminId,
@@ -448,6 +456,47 @@ function doPost(e) {
                     value={zaloDailyReportTime}
                     onChange={e => setZaloDailyReportTime(e.target.value)}
                     style={{ flex: 1, height: '100%' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Báo cáo Tuần */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-flex', background: '#8b5cf6', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
+                Lịch gửi Báo cáo Tuần (cho Sale)
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                Tự động gửi thống kê nhận data và tình trạng ticket đền bù của tuần qua trực tiếp cho từng Sale qua Email và Zalo.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label className="form-label">Ngày gửi trong tuần</label>
+                  <CustomSelect 
+                    options={[
+                      { value: '0', label: 'Tắt báo cáo tuần' },
+                      { value: '1', label: 'Thứ 2 hàng tuần' },
+                      { value: '2', label: 'Thứ 3 hàng tuần' },
+                      { value: '3', label: 'Thứ 4 hàng tuần' },
+                      { value: '4', label: 'Thứ 5 hàng tuần' },
+                      { value: '5', label: 'Thứ 6 hàng tuần' },
+                      { value: '6', label: 'Thứ 7 hàng tuần' },
+                      { value: '7', label: 'Chủ Nhật hàng tuần' }
+                    ]}
+                    value={zaloWeeklyReportDay}
+                    onChange={val => setZaloWeeklyReportDay(val.toString())}
+                    width="100%"
+                  />
+                </div>
+                <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
+                  <label className="form-label">Giờ gửi báo cáo</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={zaloWeeklyReportTime}
+                    onChange={e => setZaloWeeklyReportTime(e.target.value)}
+                    style={{ flex: 1, height: '42px' }}
                   />
                 </div>
               </div>

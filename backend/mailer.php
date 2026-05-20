@@ -695,3 +695,102 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
 
     sendEmailNotification($consultantEmail, $subject, $title, $content, '');
 }
+
+function sendWeeklyReportEmailToSale(
+    string $saleEmail,
+    string $saleName,
+    int $totalData,
+    string $roundDetailsHtml,
+    int $totalTickets,
+    int $approvedTickets,
+    int $rejectedTickets,
+    int $pendingTickets,
+    int $totalCompReceived,
+    int $totalCompOwed,
+    string $windowStart,
+    string $windowEnd
+) {
+    global $conn;
+
+    $subject = '[Báo cáo tuần] Thống kê nhận data và ticket đền bù';
+    $fName = htmlspecialchars($saleName ?: 'Tư vấn viên');
+
+    $frontendUrl = '';
+    if (isset($conn) && $conn) {
+        $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+        if ($urlRes && $urlRes->num_rows > 0) {
+            $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+        }
+    }
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $frontendUrl = $proto . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">📅</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là báo cáo tổng kết hiệu suất của bạn từ <strong>' . $windowStart . '</strong> đến <strong>' . $windowEnd . '</strong>.</p>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 16px 20px; background: #e0e7ff; border-bottom: 1px solid #c7d2fe;">
+                <h3 style="margin: 0; color: #4338ca; font-size: 16px;">❖ Số Data Đã Nhận (' . $totalData . ')</h3>
+            </div>
+            <div style="padding: 20px;">
+                <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+                    ' . $roundDetailsHtml . '
+                </ul>
+            </div>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 16px 20px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0;">
+                <h3 style="margin: 0; color: #166534; font-size: 16px;">❖ Báo Cáo Lỗi</h3>
+            </div>
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse; color: #334155; line-height: 1.6;">
+                    <tr>
+                        <td style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">Tổng số ticket đã tạo:</td>
+                        <td style="padding: 6px 0; font-weight: bold; text-align: right; border-bottom: 1px solid #f1f5f9;">' . $totalTickets . '</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">Thành công (Được duyệt):</td>
+                        <td style="padding: 6px 0; font-weight: bold; color: #16a34a; text-align: right; border-bottom: 1px solid #f1f5f9;">' . $approvedTickets . '</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">Thất bại (Từ chối):</td>
+                        <td style="padding: 6px 0; font-weight: bold; color: #dc2626; text-align: right; border-bottom: 1px solid #f1f5f9;">' . $rejectedTickets . '</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0;">Chờ duyệt:</td>
+                        <td style="padding: 6px 0; font-weight: bold; color: #d97706; text-align: right;">' . $pendingTickets . '</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 16px 20px; background: #fffbeb; border-bottom: 1px solid #fef3c7;">
+                <h3 style="margin: 0; color: #b45309; font-size: 16px;">❖ Thông Tin Đền Bù</h3>
+            </div>
+            <div style="padding: 20px;">
+                <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.6;">
+                    <li>Số lượt đã đền bù trong tuần này: <strong>' . $totalCompReceived . '</strong> lượt</li>
+                    <li>Số lượt hiện đang chờ đền bù tiếp theo: <strong>' . $totalCompOwed . '</strong> lượt</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 24px;">
+            <a href="' . $frontendUrl . '/" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0068ff; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
+                XEM CHI TIẾT TẠI DASHBOARD
+            </a>
+        </div>
+    ';
+
+    return sendEmailNotification($saleEmail, $subject, '[ BÁO CÁO TỔNG KẾT TUẦN ]', $content, '', false);
+}

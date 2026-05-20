@@ -45,7 +45,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 101) {
+        if ($dbVer >= 103) {
             $runMigration = false;
         }
     }
@@ -287,9 +287,28 @@ if ($runMigration) {
         FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    // Auto-migrate: thêm cột attempts và last_error vào mail_queue
+    $chkMailAttempts = $conn->query("SHOW COLUMNS FROM mail_queue LIKE 'attempts'");
+    if ($chkMailAttempts && $chkMailAttempts->num_rows === 0) {
+        $conn->query("ALTER TABLE mail_queue ADD COLUMN attempts INT DEFAULT 0");
+    }
+    $chkMailErr = $conn->query("SHOW COLUMNS FROM mail_queue LIKE 'last_error'");
+    if ($chkMailErr && $chkMailErr->num_rows === 0) {
+        $conn->query("ALTER TABLE mail_queue ADD COLUMN last_error TEXT NULL");
+    }
+
+    // Auto-migrate: thêm cài đặt mặc định cho last_daily_report_timestamp nếu chưa có
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_daily_report_timestamp', '')");
+
+    // Auto-migrate: thêm cài đặt mặc định cho báo cáo tuần
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_day', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_time', '08:00')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_weekly_report_date', '')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_weekly_report_timestamp', '')");
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '101') ON DUPLICATE KEY UPDATE setting_value = '101'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '103') ON DUPLICATE KEY UPDATE setting_value = '103'");
 }
 
 ?>

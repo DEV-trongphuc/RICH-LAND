@@ -17,7 +17,7 @@ function runDailyReportCron($conn) {
         WHERE status = 'leave' AND leave_end IS NOT NULL AND leave_end < CURDATE()
     ");
 
-    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins')");
+    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp')");
     $settings = [];
     if ($settingRes) {
         while ($row = $settingRes->fetch_assoc()) {
@@ -38,50 +38,67 @@ function runDailyReportCron($conn) {
     $currentTime = date('H:i');
 
     if ($lastRunDate !== $today && $currentTime >= $reportTime) {
+        $endTimestamp = date('Y-m-d H:i:s');
+        $lastReportTimestamp = $settings['last_daily_report_timestamp'] ?? '';
+        $startTimestamp = !empty($lastReportTimestamp) ? $lastReportTimestamp : date('Y-m-d H:i:s', strtotime('-24 hours'));
+
         // 1. Mark as run FIRST to prevent double-sending
         $stmt = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('last_daily_report_date', ?)");
         $stmt->bind_param("s", $today);
         $stmt->execute();
+        $stmt->close();
+
+        $stmtTs = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('last_daily_report_timestamp', ?)");
+        $stmtTs->bind_param("s", $endTimestamp);
+        $stmtTs->execute();
+        $stmtTs->close();
         
-        // 2. BUG-FIX: Dùng cửa sổ 24h trượt thay vì CURDATE() để tránh bỏ sót data 17:00 - 00:00
-        // Nếu báo cáo gửi lúc 17:00, data được đếm từ 17:00 hôm qua đến 17:00 hôm nay
-        $stmtData = $conn->query("
+        // 2. Dùng cửa sổ thời gian từ lần chạy báo cáo trước đến nay để tránh bỏ sót hoặc trùng lặp data
+        $stmtData = $conn->prepare("
             SELECT c.name, COUNT(dl.id) as total 
             FROM distribution_logs dl 
             JOIN consultants c ON dl.assigned_to = c.id 
-            WHERE dl.received_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-              AND dl.received_at <= NOW()
+            WHERE dl.received_at >= ?
+              AND dl.received_at <= ?
               AND dl.status IN ('assigned', 'compensation', 'error')
             GROUP BY c.id
             ORDER BY total DESC
         ");
+        $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
+        $stmtData->execute();
+        $resData = $stmtData->get_result();
         
         $saleStats = "";
         $saleStatsHtml = "";
         $totalData = 0;
-        if ($stmtData) {
-            while ($row = $stmtData->fetch_assoc()) {
+        if ($resData) {
+            while ($row = $resData->fetch_assoc()) {
                 $saleStats .= "  • " . $row['name'] . ": " . $row['total'] . " data\n";
                 $saleStatsHtml .= "<li><strong>" . htmlspecialchars($row['name']) . "</strong>: " . $row['total'] . " data</li>";
                 $totalData += $row['total'];
             }
         }
+        $stmtData->close();
         if (empty($saleStats)) {
-            $saleStats = "  Hôm nay chưa chia data nào.\n";
-            $saleStatsHtml = "<li>Hôm nay chưa chia data nào.</li>";
+            $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
+            $saleStatsHtml = "<li>Kỳ báo cáo này chưa chia data nào.</li>";
         }
         
-        // 3. Lấy số ticket trong 24h trượt (cùng cửa sổ với data)
-        $stmtTicket = $conn->query("
+        // 3. Lấy số ticket trong kỳ báo cáo (cùng cửa sổ với data)
+        $stmtTicket = $conn->prepare("
             SELECT COUNT(*) as total 
             FROM data_reports 
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-              AND created_at <= NOW()
+            WHERE created_at >= ?
+              AND created_at <= ?
         ");
+        $stmtTicket->bind_param("ss", $startTimestamp, $endTimestamp);
+        $stmtTicket->execute();
+        $resTicket = $stmtTicket->get_result();
         $totalTicket = 0;
-        if ($stmtTicket && $row = $stmtTicket->fetch_assoc()) {
+        if ($resTicket && $row = $resTicket->fetch_assoc()) {
             $totalTicket = $row['total'];
         }
+        $stmtTicket->close();
         
         // 4. Lấy danh sách Admin nhận báo cáo
         // Ưu tiên danh sách đã được cấu hình; nếu chưa có thì gửi cho tất cả admin + super admin
@@ -112,13 +129,14 @@ function runDailyReportCron($conn) {
                 $admins[] = $row;
             }
         }
+        if (isset($adminStmt)) $adminStmt->close();
         
         if (count($admins) > 0) {
             require_once 'mailer.php';
             
             // Tạo nội dung cảnh báo cửa sổ thời gian
-            $windowStart = date('H:i d/m/Y', strtotime('-24 hours'));
-            $windowEnd = date('H:i d/m/Y');
+            $windowStart = date('H:i d/m/Y', strtotime($startTimestamp));
+            $windowEnd = date('H:i d/m/Y', strtotime($endTimestamp));
 
             $msg = "[ BÁO CÁO TỔNG KẾT NGÀY ]\n";
             $msg .= "Kỳ báo cáo: $windowStart → $windowEnd\n\n";

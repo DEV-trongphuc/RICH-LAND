@@ -37,28 +37,48 @@ if (!$data) {
 $token = $_GET['token'] ?? '';
 $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
-$stmt = null;
+$connData = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, spreadsheet_id FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $connRes = $stmt->get_result();
+    if ($connRes->num_rows > 0) {
+        $connData = $connRes->fetch_assoc();
+        if (!empty($spreadsheet_id) && !empty($connData['spreadsheet_id']) && $connData['spreadsheet_id'] !== $spreadsheet_id) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Spreadsheet ID does not match this token connection"]);
+            exit();
+        }
+    } else {
+        http_response_code(401);
+        echo json_encode(["success" => false, "message" => "Invalid or inactive token"]);
+        exit();
+    }
+    $stmt->close();
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, webhook_token FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
+    $stmt->execute();
+    $connRes = $stmt->get_result();
+    if ($connRes->num_rows > 0) {
+        $connData = $connRes->fetch_assoc();
+        if (!empty($connData['webhook_token'])) {
+            http_response_code(403);
+            echo json_encode(["success" => false, "message" => "Token is required for this connection"]);
+            exit();
+        }
+    } else {
+        http_response_code(401);
+        echo json_encode(["success" => false, "message" => "Invalid or inactive connection ID"]);
+        exit();
+    }
+    $stmt->close();
 } else {
     http_response_code(401);
     echo json_encode(["success" => false, "message" => "Missing token or spreadsheet_id"]);
     exit();
 }
-
-$stmt->execute();
-$connRes = $stmt->get_result();
-
-if ($connRes->num_rows === 0) {
-    http_response_code(401);
-    echo json_encode(["success" => false, "message" => "Invalid or inactive connection"]);
-    exit();
-}
-$connData = $connRes->fetch_assoc();
 $connectionId = $connData['id'];
 $requirePhone = $connData['require_both_contact'];
 $connectionType = $connData['connection_type'] ?? 'sheets';
@@ -148,7 +168,15 @@ if ($requirePhone == 1) {
 }
 
 // --- 0. Advisory Lock to prevent simultaneous identical webhooks ---
-$lockKey = 'webhook_lead_' . md5($phone . '_' . $email);
+$lockKey = '';
+if (!empty($phone)) {
+    $lockKey = 'webhook_lead_phone_' . $phone;
+} else if (!empty($email)) {
+    $lockKey = 'webhook_lead_email_' . md5($email);
+} else {
+    $lockKey = 'webhook_lead_empty_' . md5(json_encode($data));
+}
+
 $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
 $lockStmt->bind_param("s", $lockKey);
 $lockStmt->execute();
@@ -324,22 +352,21 @@ if (!$targetRoundId) {
     }
 }
 
-if ($targetRoundId) {
-    // --- 3. Round-Robin Assignment ---
-    $assignResult = getNextConsultantInRound($conn, $targetRoundId);
-    if ($assignResult) {
-        $assignedConsultantId = $assignResult['id'];
-        $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-        $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
-    } else {
-        $status = 'pending';
-        $message = 'No active consultants in this round.';
-    }
-}
-
-// --- 4. Process new Lead and Log Distribution ---
+// --- 3. Round-Robin Assignment & 4. Process new Lead and Log Distribution (Unified Transaction) ---
 $conn->begin_transaction();
 try {
+    if ($targetRoundId) {
+        $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+        if ($assignResult) {
+            $assignedConsultantId = $assignResult['id'];
+            $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+            $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
+        } else {
+            $status = 'pending';
+            $message = 'No active consultants in this round.';
+        }
+    }
+
     if ($crmCheckResult['isDuplicate']) {
         // Existed but older than 6 months -> new assignment
         $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId);

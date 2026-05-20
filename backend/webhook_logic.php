@@ -308,9 +308,6 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
 }
 
 function getNextConsultantInRound($conn, $roundId) {
-    // Start transaction to prevent race conditions
-    $conn->begin_transaction();
-
     // 1. Get round info with FOR UPDATE lock
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
     $stmt->bind_param("i", $roundId);
@@ -318,7 +315,6 @@ function getNextConsultantInRound($conn, $roundId) {
     $res = $stmt->get_result();
     
     if ($res->num_rows === 0) {
-        $conn->rollback();
         return null; // Round not found or inactive
     }
     
@@ -342,7 +338,6 @@ function getNextConsultantInRound($conn, $roundId) {
     if ($cRes->num_rows === 0) {
         error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
         $cStmt->close();
-        $conn->rollback();
         return null;
     }
     
@@ -372,7 +367,6 @@ function getNextConsultantInRound($conn, $roundId) {
         if (isset($cStmt)) $cStmt->close();
         // Note: Do NOT update last_assigned_consultant_id here. 
         // Compensation is an out-of-band assignment and shouldn't disrupt the normal round-robin order.
-        $conn->commit();
         return ['id' => $nextId, 'is_compensation' => true];
     }
 
@@ -386,7 +380,6 @@ function getNextConsultantInRound($conn, $roundId) {
         $midStmt->close();
         if (isset($cStmt)) $cStmt->close();
         // Note: do NOT update last_assigned here — keeps position for proper round-robin next turn
-        $conn->commit();
         return ['id' => $nextId, 'is_compensation' => false];
     }
     
@@ -452,9 +445,6 @@ function getNextConsultantInRound($conn, $roundId) {
     if (isset($skipResetStmt)) $skipResetStmt->close();
     if (isset($skipIncrStmt)) $skipIncrStmt->close();
     if (isset($cStmt)) $cStmt->close();
-    
-    // Commit transaction
-    $conn->commit();
     
     return ['id' => $nextId, 'is_compensation' => false];
 }

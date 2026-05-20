@@ -34,20 +34,21 @@ function runMailerCron($conn) {
 
     $provider = $settings['email_provider'] ?? 'appscript';
 
-    // 2. Kéo tối đa 50 email đang chờ gửi
-    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html FROM mail_queue WHERE status = 'pending' ORDER BY id ASC LIMIT 50");
+    // 2. Kéo tối đa 50 email đang chờ gửi hoặc bị lỗi dưới 3 lần
+    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html, attempts FROM mail_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
     if (!$res || $res->num_rows === 0) {
-        echo "[" . date('Y-m-d H:i:s') . "] No pending emails to send.\n";
+        echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable emails to send.\n";
         return;
     }
 
-    echo "[" . date('Y-m-d H:i:s') . "] Found " . $res->num_rows . " pending emails. Processing...\n";
+    echo "[" . date('Y-m-d H:i:s') . "] Found " . $res->num_rows . " emails to process. Processing...\n";
 
     $successCount = 0;
     $failCount = 0;
 
-    // Chuẩn bị statement cập nhật trạng thái
-    $updStmt = $conn->prepare("UPDATE mail_queue SET status = ?, sent_at = NOW() WHERE id = ?");
+    // Chuẩn bị các statement cập nhật trạng thái
+    $updSuccessStmt = $conn->prepare("UPDATE mail_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
+    $updFailStmt = $conn->prepare("UPDATE mail_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
 
     while ($row = $res->fetch_assoc()) {
         $mailId = $row['id'];
@@ -57,6 +58,7 @@ function runMailerCron($conn) {
         $htmlBody = $row['body_html'];
         
         $isSent = false;
+        $lastErrorMsg = null;
 
         if ($provider === 'appscript') {
             $url = $settings['appscript_webhook_url'] ?? '';
@@ -75,10 +77,17 @@ function runMailerCron($conn) {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 $result = curl_exec($ch);
-                curl_close($ch);
                 
-                // Nếu gọi AppScript không ném exception cURL, coi như thành công (dù queue của appscript có thể gửi chậm hơn)
-                $isSent = true; 
+                if ($result === false) {
+                    $err = curl_error($ch);
+                    $isSent = false;
+                    $lastErrorMsg = "AppScript cURL Error: " . $err;
+                } else {
+                    $isSent = true;
+                }
+                curl_close($ch);
+            } else {
+                $lastErrorMsg = "AppScript Webhook URL is empty.";
             }
         } else if ($provider === 'ses') {
             $mail = new PHPMailer(true);
@@ -116,23 +125,31 @@ function runMailerCron($conn) {
                 $mail->send();
                 $isSent = true;
             } catch (Exception $e) {
-                error_log("Cron Mailer Error for ID $mailId: {$mail->ErrorInfo}");
+                $isSent = false;
+                $lastErrorMsg = "PHPMailer Error: " . $mail->ErrorInfo . " | " . $e->getMessage();
+                error_log("Cron Mailer Error for ID $mailId: " . $lastErrorMsg);
             }
+        } else {
+            $lastErrorMsg = "Invalid email provider configuration: " . $provider;
         }
 
         // Cập nhật kết quả vào DB
-        $newStatus = $isSent ? 'sent' : 'failed';
-        $updStmt->bind_param("si", $newStatus, $mailId);
-        $updStmt->execute();
-
-        if ($isSent) $successCount++;
-        else $failCount++;
+        if ($isSent) {
+            $updSuccessStmt->bind_param("i", $mailId);
+            $updSuccessStmt->execute();
+            $successCount++;
+        } else {
+            $updFailStmt->bind_param("si", $lastErrorMsg, $mailId);
+            $updFailStmt->execute();
+            $failCount++;
+        }
         
         // Nghỉ 100ms giữa các email để tránh bị rate limit (spam block) từ Amazon SES hoặc Google
         usleep(100000); 
     }
 
-    $updStmt->close();
+    $updSuccessStmt->close();
+    $updFailStmt->close();
     echo "[" . date('Y-m-d H:i:s') . "] Processed $successCount sent, $failCount failed.\n";
 }
 
