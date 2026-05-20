@@ -170,6 +170,22 @@ export const Accounts = () => {
     }
   };
 
+  const handleResendZaloVerify = async (accId: number) => {
+    try {
+      const json = await fetchAPI('resend_zalo_verify_account', {
+        method: 'POST',
+        body: JSON.stringify({ id: accId })
+      });
+      if (json.success) {
+        toast.success('Đã gửi lại email nhắc xác thực Zalo.');
+      } else {
+        toast.error(json.message || 'Lỗi khi gửi email');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+  };
+
   const confirmUnlinkZalo = (id: number) => {
     setUnlinkId(id);
     setUnlinkConfirmOpen(true);
@@ -269,7 +285,14 @@ export const Accounts = () => {
                           <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
+                          {acc.email && (
+                            <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981' }} title="Gửi email nhắc xác thực Zalo">
+                              <Send size={12} style={{ marginRight: 4 }} /> Nhắc
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>

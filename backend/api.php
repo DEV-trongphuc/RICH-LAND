@@ -1903,7 +1903,7 @@ switch ($action) {
             $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $basePath = preg_replace('/\/api\.php.*$/i', '', $_SERVER['REQUEST_URI'] ?? '');
-            $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token;
+            $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token . '&p=' . base64_encode($password);
 
             require_once 'mailer.php';
             sendAdminConfirmationEmail($email, $name, $confirmLink);
@@ -2178,6 +2178,60 @@ switch ($action) {
             }
         } else {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản']);
+        }
+        break;
+
+    case 'resend_zalo_verify_account':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        $stmtAcc = $conn->prepare("SELECT email, name FROM accounts WHERE id = ?");
+        $stmtAcc->bind_param("i", $id);
+        $stmtAcc->execute();
+        $res = $stmtAcc->get_result();
+        if ($res && $res->num_rows > 0) {
+            $account = $res->fetch_assoc();
+            if (empty($account['email'])) {
+                echo json_encode(['success' => false, 'message' => 'Tài khoản này chưa có email để nhận thông báo']);
+                break;
+            }
+            require_once 'mailer.php';
+            $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link'");
+            $botLink = "https://zalo.me/1185588456243371597"; // Default
+            if ($settingStmt && $settingStmt->num_rows > 0) {
+                $row = $settingStmt->fetch_assoc();
+                if (!empty($row['setting_value'])) $botLink = $row['setting_value'];
+            }
+            sendWelcomeEmailToAdminTicket($id, $account['email'], $account['name'], $botLink, true);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản']);
+        }
+        break;
+
+    case 'resend_zalo_verify_consultant':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        $stmtCon = $conn->prepare("SELECT email, name FROM consultants WHERE id = ?");
+        $stmtCon->bind_param("i", $id);
+        $stmtCon->execute();
+        $res = $stmtCon->get_result();
+        if ($res && $res->num_rows > 0) {
+            $consultant = $res->fetch_assoc();
+            if (empty($consultant['email'])) {
+                echo json_encode(['success' => false, 'message' => 'Tư vấn viên này chưa có email']);
+                break;
+            }
+            require_once 'mailer.php';
+            $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link'");
+            $botLink = "https://zalo.me/1185588456243371597"; // Default
+            if ($settingStmt && $settingStmt->num_rows > 0) {
+                $row = $settingStmt->fetch_assoc();
+                if (!empty($row['setting_value'])) $botLink = $row['setting_value'];
+            }
+            sendWelcomeEmailToSale($id, $consultant['email'], $consultant['name'], $botLink, true);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tư vấn viên']);
         }
         break;
 

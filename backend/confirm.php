@@ -59,8 +59,19 @@ if ($res->num_rows > 0) {
             <div class="container">
                 <div class="icon">✓</div>
                 <h1>Xác nhận thành công!</h1>
-                <p>Cảm ơn ' . htmlspecialchars($admin['name']) . '. Email của bạn đã được xác nhận. Bạn có thể đăng nhập vào CRM ngay bây giờ.</p>
-                <a href="' . htmlspecialchars($frontendUrl) . '">Về trang Đăng nhập</a>
+                <p>Cảm ơn ' . htmlspecialchars($admin['name']) . '. Email của bạn đã được xác nhận. Bạn có thể đăng nhập vào CRM ngay bây giờ.</p>';
+        
+        $p = $_GET['p'] ?? '';
+        if (!empty($p)) {
+            $defaultPassword = base64_decode($p);
+            echo '<div style="background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
+                    <p style="margin: 0 0 8px; font-size: 14px; color: #475569;">Mật khẩu mặc định của bạn là:</p>
+                    <div style="font-size: 18px; font-family: monospace; font-weight: 700; color: #0f172a; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center; margin-bottom: 12px;">' . htmlspecialchars($defaultPassword) . '</div>
+                    <p style="margin: 0; font-size: 13px; color: #ef4444; font-weight: 600; text-align: center;">⚠ Vui lòng đổi mật khẩu ngay sau khi đăng nhập!</p>
+                  </div>';
+        }
+
+        echo '  <a href="' . htmlspecialchars($frontendUrl) . '">Về trang Đăng nhập</a>
             </div>
         </body>
         </html>';

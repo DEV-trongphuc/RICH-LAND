@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -140,6 +140,21 @@ export const Consultants = () => {
     setUnlinkConfirmOpen(false);
     setUnlinkId(null);
   };
+  const handleResendZaloVerify = async (consId: number) => {
+    try {
+      const json = await fetchAPI('resend_zalo_verify_consultant', {
+        method: 'POST',
+        body: JSON.stringify({ id: consId })
+      });
+      if (json.success) {
+        toast.success('Đã gửi lại email nhắc xác thực Zalo.');
+      } else {
+        toast.error(json.message || 'Lỗi khi gửi email');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+  };
 
   const handleSendQuickMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,13 +273,20 @@ export const Consultants = () => {
                           </span>
                         </div>
                       ) : (
-                        <span style={{ 
-                          display: 'inline-flex', alignItems: 'center', gap: 6, 
-                          padding: '4px 10px', borderRadius: 20, 
-                          background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
-                        }}>
-                          Chưa liên kết
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ 
+                            display: 'inline-flex', alignItems: 'center', gap: 6, 
+                            padding: '4px 10px', borderRadius: 20, 
+                            background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                          }}>
+                            Chưa liên kết
+                          </span>
+                          {u.email && (
+                            <button onClick={() => handleResendZaloVerify(u.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981' }} title="Gửi email nhắc xác thực Zalo">
+                              <Send size={12} style={{ marginRight: 4 }} /> Nhắc
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td>
