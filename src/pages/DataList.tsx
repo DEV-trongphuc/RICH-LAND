@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { useSearchParams } from 'react-router-dom';
@@ -93,6 +94,7 @@ export const DataList = () => {
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
+  const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
 
   const fetchConsultants = async () => {
     try {
@@ -557,7 +559,7 @@ export const DataList = () => {
                     />
                     <button 
                       className="btn primary" 
-                      onClick={handleReassign}
+                      onClick={() => setConfirmReassignOpen(true)}
                       disabled={isReassigning || !reassignConsId}
                       style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
                     >
@@ -572,6 +574,16 @@ export const DataList = () => {
           </div>
         )}
       </CustomModal>
+
+      <ConfirmModal
+        isOpen={confirmReassignOpen}
+        onClose={() => setConfirmReassignOpen(false)}
+        onConfirm={handleReassign}
+        title="Xác nhận Giao lại Lead"
+        message={`Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead "${selectedLead?.name || ''}" sang cho Tư vấn viên "${consultants.find(c => Number(c.id) === Number(reassignConsId))?.name || 'Tư vấn viên mới'}" không?`}
+        confirmText="Xác nhận giao"
+        cancelText="Hủy"
+      />
 
       <style>{`
         .spin { animation: spin 1s linear infinite; }

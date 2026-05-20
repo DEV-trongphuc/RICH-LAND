@@ -88,10 +88,25 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const renderTriggerContent = () => {
     if (multiple) {
       const arr = Array.isArray(value) ? value : [];
-      if (arr.length === 0 || arr.some(v => String(v) === 'all')) return <span className={styles.triggerContent}><span style={{display: 'flex'}}>{options[0]?.icon}</span>Tất cả (Sheet & API & Nhập tay)</span>;
+      if (arr.length === 0 || arr.some(v => String(v) === 'all')) {
+        const allOption = options.find(o => String(o.value) === 'all');
+        return (
+          <span className={styles.triggerContent}>
+            {allOption?.icon && <span style={{ display: 'flex' }}>{allOption.icon}</span>}
+            {allOption ? allOption.label : placeholder}
+          </span>
+        );
+      }
       const selectedOpts = options.filter(o => arr.some(v => String(v) === String(o.value)));
-      if (selectedOpts.length === 1) return <span className={styles.triggerContent}>{!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}{selectedOpts[0].label}</span>;
-      return <span className={styles.triggerContent}>Đã chọn ({selectedOpts.length} nguồn)</span>;
+      if (selectedOpts.length === 1) {
+        return (
+          <span className={styles.triggerContent}>
+            {!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}
+            {selectedOpts[0].label}
+          </span>
+        );
+      }
+      return <span className={styles.triggerContent}>Đã chọn ({selectedOpts.length})</span>;
     }
     return selectedOption ? (
       <span className={styles.triggerContent}>

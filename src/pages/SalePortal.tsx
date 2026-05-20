@@ -222,7 +222,11 @@ export const SalePortal = () => {
       const json = await res.json();
 
       if (json.success) {
-        toast.success('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.');
+        if (json.auto_approved) {
+          toast.success('Báo cáo lỗi đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT & ĐỀN BÙ thành công!', { duration: 6000 });
+        } else {
+          toast.success('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.');
+        }
         setReportModalOpen(false);
         loadPortalData();
       } else {

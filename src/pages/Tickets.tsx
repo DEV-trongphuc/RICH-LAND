@@ -1,16 +1,20 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 
 export const Tickets = () => {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isActioning, setIsActioning] = useState<number | null>(null);
+  const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
   // ── NEW: Sale + Date filters ───────────────────────────────────────────────
@@ -19,6 +23,7 @@ export const Tickets = () => {
   const [dateTo, setDateTo] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [ticketAutoApprove, setTicketAutoApprove] = useState(false);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -31,7 +36,18 @@ export const Tickets = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchReports(); }, []);
+  useEffect(() => {
+    fetchReports();
+    fetchAPI('get_settings')
+      .then(res => {
+        if (res.success && res.data) {
+          setTicketAutoApprove(Number(res.data.ticket_auto_approve_enabled) === 1);
+        }
+      })
+      .catch(err => console.error('Lỗi tải cấu hình auto duyệt:', err));
+  }, []);
+
+
 
   // Reject Modal State
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -179,6 +195,7 @@ export const Tickets = () => {
           >
             <Settings2 size={14} /> Cài đặt thông báo
           </button>
+
           <div style={{
             background: pendingCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
             color: pendingCount > 0 ? 'var(--color-danger)' : '#10b981',
@@ -298,9 +315,71 @@ export const Tickets = () => {
           </button>
         )}
 
-        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-          {filteredReports.length}/{reports.length} tickets
-        </span>
+        <div style={{
+          marginLeft: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          {/* Auto duyệt Toggle */}
+          <div 
+            onClick={() => navigate('/settings?tab=processing#auto-approve')}
+            title="Cấu hình quy tắc tự động duyệt"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 8,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-text-muted)';
+            }}
+          >
+            <span 
+              className="auto-approve-label"
+              style={{ 
+                fontSize: '0.8rem', 
+                fontWeight: 700, 
+                color: 'var(--color-text-muted)',
+                transition: 'color 0.2s',
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted'
+              }}
+            >
+              Auto duyệt
+            </span>
+            <div 
+              style={{
+                width: 36, height: 20, borderRadius: 10,
+                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                position: 'relative', transition: 'background 0.2s',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+              }} />
+            </div>
+          </div>
+
+          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+            {filteredReports.length}/{reports.length} tickets
+          </span>
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -389,7 +468,7 @@ export const Tickets = () => {
                           <button onClick={() => openRejectModal(r.id)} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
                             Từ chối
                           </button>
-                          <button onClick={() => handleReportApprove(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                          <button onClick={() => setConfirmApproveId(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
                             {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
                           </button>
                         </div>
@@ -471,6 +550,20 @@ export const Tickets = () => {
         </form>
       </CustomModal>
 
+      <ConfirmModal
+        isOpen={confirmApproveId !== null}
+        onClose={() => setConfirmApproveId(null)}
+        onConfirm={() => {
+          if (confirmApproveId !== null) {
+            handleReportApprove(confirmApproveId);
+          }
+        }}
+        title="Duyệt & Đền Bù Data"
+        message="Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức."
+        confirmText="Xác nhận duyệt"
+        cancelText="Hủy"
+      />
+
     </div>
   );
 };
@@ -492,13 +585,14 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
       fetchAPI('get_ticket_settings')
     ]).then(([accRes, settingsRes]) => {
       if (accRes.success) setAccounts(accRes.data);
-      if (settingsRes.success) setSelectedIds(settingsRes.data ?? []);
+      if (settingsRes.success) setSelectedIds((settingsRes.data ?? []).map((id: any) => Number(id)));
     }).catch((e: any) => toast.error('Lỗi tải cấu hình: ' + e.message))
       .finally(() => setLoadingData(false));
   }, [open]);
 
-  const toggle = (id: number) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggle = (id: any) => {
+    const numId = Number(id);
+    setSelectedIds(prev => prev.includes(numId) ? prev.filter(x => x !== numId) : [...prev, numId]);
   };
 
   const handleSave = async () => {
@@ -533,12 +627,12 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
               {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').map((acc: any) => {
-                const isSelected = selectedIds.includes(acc.id);
+                const isSelected = selectedIds.includes(Number(acc.id));
                 const noEmail = !acc.email;
                 return (
                   <div
                     key={acc.id}
-                    onClick={() => !noEmail && toggle(acc.id)}
+                    onClick={() => !noEmail && toggle(Number(acc.id))}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                       borderRadius: 'var(--radius-lg)', border: '1px solid',

@@ -168,6 +168,41 @@ function logAdminAction($conn, $accountId, $action, $details = []) {
     }
 }
 
+function getTicketNotifyAdmins($conn) {
+    $res = $conn->query("SELECT account_id FROM ticket_notify_settings");
+    $adminIds = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $adminIds[] = (int) $row['account_id'];
+        }
+    }
+
+    $admins = [];
+    if (!empty($adminIds)) {
+        $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+        $types = str_repeat('i', count($adminIds));
+        $adminStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+        $adminStmt->bind_param($types, ...$adminIds);
+        $adminStmt->execute();
+        $adminRes = $adminStmt->get_result();
+        if ($adminRes) {
+            while ($r = $adminRes->fetch_assoc()) {
+                $admins[] = $r;
+            }
+        }
+        $adminStmt->close();
+    } else {
+        // Fallback: role = 'admin' OR id = 1
+        $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+        if ($adminRes) {
+            while ($r = $adminRes->fetch_assoc()) {
+                $admins[] = $r;
+            }
+        }
+    }
+    return $admins;
+}
+
 switch ($action) {
     case 'login':
         $input = json_decode(file_get_contents('php://input'), true);
@@ -1906,23 +1941,244 @@ switch ($action) {
             break;
         }
 
+        // Fetch lead's connection_id
+        $leadConnId = 0;
+        $leadQuery = $conn->prepare("SELECT connection_id FROM leads WHERE id = ? LIMIT 1");
+        $leadQuery->bind_param("i", $lead_id);
+        $leadQuery->execute();
+        $resLeadInfo = $leadQuery->get_result()->fetch_assoc();
+        if ($resLeadInfo) {
+            $leadConnId = (int)$resLeadInfo['connection_id'];
+        }
+        $leadQuery->close();
+
+        // Auto-approve check using rules
+        $autoAppEnabled = false;
+        $enabledRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'ticket_auto_approve_enabled' LIMIT 1");
+        if ($enabledRes && $row = $enabledRes->fetch_assoc()) {
+            $autoAppEnabled = ($row['setting_value'] === '1' || $row['setting_value'] === 1 || $row['setting_value'] == 1);
+        }
+
+        $autoApproved = false;
+        $matchedKeyword = '';
+        $matchedRuleName = '';
+
+        if ($autoAppEnabled) {
+            $autoAppRulesSetting = '';
+            $settingsRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'ticket_auto_approve_rules' LIMIT 1");
+            if ($settingsRes && $row = $settingsRes->fetch_assoc()) {
+                $autoAppRulesSetting = trim($row['setting_value']);
+            }
+
+            if (!empty($autoAppRulesSetting)) {
+                $rules = json_decode($autoAppRulesSetting, true);
+                if (is_array($rules)) {
+                    $reasonLower = mb_strtolower($reason, 'UTF-8');
+                    foreach ($rules as $rule) {
+                        if (empty($rule['active'])) {
+                            continue;
+                        }
+
+                        // 1. Check round condition
+                        $roundMatch = false;
+                        $ruleRounds = $rule['rounds'] ?? [];
+                        if (empty($ruleRounds) || in_array('all', $ruleRounds) || in_array((string)$round_id, array_map('strval', $ruleRounds))) {
+                            $roundMatch = true;
+                        }
+                        if (!$roundMatch) {
+                            continue;
+                        }
+
+                        // 2. Check sale condition
+                        $saleMatch = false;
+                        $ruleSales = $rule['sales'] ?? [];
+                        if (empty($ruleSales) || in_array('all', $ruleSales) || in_array((string)$sale_id, array_map('strval', $ruleSales))) {
+                            $saleMatch = true;
+                        }
+                        if (!$saleMatch) {
+                            continue;
+                        }
+
+                        // 3. Check source (connection_id) condition
+                        $sourceMatch = false;
+                        $ruleConnections = $rule['connections'] ?? [];
+                        if (empty($ruleConnections) || in_array('all', $ruleConnections) || in_array((string)$leadConnId, array_map('strval', $ruleConnections))) {
+                            $sourceMatch = true;
+                        }
+                        if (!$sourceMatch) {
+                            continue;
+                        }
+
+                        // 4. Check keywords/reasons
+                        $keywords = $rule['keywords'] ?? [];
+                        if (!is_array($keywords) && is_string($keywords)) {
+                            $keywords = array_map('trim', explode(',', $keywords));
+                        }
+                        $keywords = array_filter($keywords);
+
+                        foreach ($keywords as $kw) {
+                            $kwLower = mb_strtolower($kw, 'UTF-8');
+                            if (mb_strpos($reasonLower, $kwLower) !== false) {
+                                $autoApproved = true;
+                                $matchedKeyword = $kw;
+                                $matchedRuleName = $rule['name'] ?? 'Luật tự động';
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($autoApproved) {
+            $conn->begin_transaction();
+            try {
+                // 1. Insert report as approved
+                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_at) VALUES (?, ?, ?, ?, 'approved', NOW())");
+                $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
+                $stmt->execute();
+                $report_id = $stmt->insert_id;
+                $stmt->close();
+
+                // 2. Mark lead as faulty
+                $faultyMsg = "[LỖI - TỰ ĐỘNG DUYỆT (Luật: $matchedRuleName, Từ khóa: $matchedKeyword)]: " . $reason;
+                $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+                $updLead->bind_param("si", $faultyMsg, $lead_id);
+                $updLead->execute();
+                $updLead->close();
+
+                // 3. Mark distribution_logs as error
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                $updLog->bind_param("iii", $lead_id, $sale_id, $round_id);
+                $updLog->execute();
+                $updLog->close();
+
+                // 4. Increment compensation_count for the consultant in that round
+                $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
+                $updComp->bind_param("ii", $round_id, $sale_id);
+                $updComp->execute();
+                $updComp->close();
+
+                logAdminAction($conn, 0, 'AUTO_APPROVE_REPORT', [
+                    'report_id' => $report_id,
+                    'lead_id' => $lead_id,
+                    'consultant_id' => $sale_id,
+                    'round_id' => $round_id,
+                    'rule_name' => $matchedRuleName,
+                    'keyword' => $matchedKeyword
+                ]);
+
+                $conn->commit();
+
+                // Fetch Sale & Lead info for notifications
+                $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                $consultStmt->bind_param("i", $sale_id);
+                $consultStmt->execute();
+                $consultant = $consultStmt->get_result()->fetch_assoc();
+                $consultStmt->close();
+
+                $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
+                $leadStmt->bind_param("i", $lead_id);
+                $leadStmt->execute();
+                $lead = $leadStmt->get_result()->fetch_assoc();
+                $leadStmt->close();
+
+                $cName = $consultant['name'] ?? 'Bạn';
+                $lName = $lead['name'] ?? 'Khách hàng';
+                $lPhone = $lead['phone'] ?? 'Không rõ';
+
+                // Send Zalo to Sale
+                require_once __DIR__ . '/zalo_bot.php';
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+                if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
+                    $zaloMsg = "[ TICKET ĐÃ ĐƯỢC TỰ ĐỘNG DUYỆT ]\n\n"
+                        . "Chào $cName, báo cáo lỗi Data của bạn đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT.\n\n"
+                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                        . "  • Khách hàng: $lName ($lPhone)\n"
+                        . "  • Lỗi bạn báo: $reason\n"
+                        . "  • Luật áp dụng: $matchedRuleName\n"
+                        . "  • Từ khóa tự động: $matchedKeyword\n\n"
+                        . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                }
+
+                // Send Email to Sale
+                if (!empty($consultant['email'])) {
+                    require_once __DIR__ . '/mailer.php';
+                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Tự Động Duyệt - $lName";
+                    $emailBody = "<h3>Báo cáo lỗi Data được tự động phê duyệt</h3>
+                                  <p>Chào $cName,</p>
+                                  <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được hệ thống tự động phê duyệt.</p>
+                                  <p><strong>Luật áp dụng:</strong> $matchedRuleName</p>
+                                  <p><strong>Từ khóa kích hoạt:</strong> $matchedKeyword</p>
+                                  <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                    sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                }
+
+                // Notify Admins
+                $adminEmails = getTicketNotifyAdmins($conn);
+
+                if (!empty($adminEmails)) {
+                    // Zalo to admins
+                    if (!empty($botToken)) {
+                        $adminChatIds = [];
+                        foreach ($adminEmails as $adm) {
+                            if (!empty($adm['zalo_chat_id'])) {
+                                $adminChatIds[] = $adm['zalo_chat_id'];
+                            }
+                        }
+                        if (!empty($adminChatIds)) {
+                            $zaloAdminMsg = "[ TICKET TỰ ĐỘNG DUYỆT ]\n\n"
+                                . "Hệ thống đã tự động duyệt báo cáo lỗi Data từ Sale:\n\n"
+                                . "❖ THÔNG TIN BÁO CÁO:\n"
+                                . "  • Sale báo cáo: $cName\n"
+                                . "  • Khách hàng: $lName ($lPhone)\n\n"
+                                . "❖ CHI TIẾT TỰ ĐỘNG DUYỆT:\n"
+                                . "  • Lý do: $reason\n"
+                                . "  • Từ khóa kích hoạt: $matchedKeyword\n\n"
+                                . "Lượt đền bù đã được tự động cộng cho Sale.";
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                        }
+                    }
+
+                    // Email to admins
+                    require_once __DIR__ . '/mailer.php';
+                    $toAdmin = array_shift($adminEmails);
+                    $ccList = array_map(fn($a) => $a['email'], $adminEmails);
+                    $ccString = implode(',', array_filter($ccList));
+
+                    $emailSubjAdmin = "[Domation DATA] Thông báo Ticket Tự động duyệt - Sale: $cName";
+                    $emailBodyAdmin = "<h3>Thông báo Ticket Tự động duyệt</h3>
+                                      <p>Hệ thống đã tự động duyệt báo cáo lỗi của Sale <strong>$cName</strong> đối với khách hàng <strong>$lName ($lPhone)</strong>.</p>
+                                      <p><strong>Lý do lỗi:</strong> $reason</p>
+                                      <p><strong>Từ khóa kích hoạt:</strong> $matchedKeyword</p>
+                                      <p>Lượt đền bù đã được tự động cộng cho Sale thành công.</p>";
+                    sendEmailNotification($toAdmin['email'], $emailSubjAdmin, 'Thông báo Hệ thống', $emailBodyAdmin, $ccString);
+                }
+
+                echo json_encode(['success' => true, 'auto_approved' => true]);
+                break;
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Lỗi xử lý tự động duyệt: ' . $e->getMessage()]);
+                break;
+            }
+        }
+
         $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
         $success = $stmt->execute();
         $stmt->close();
 
         if ($success) {
-            // FEATURE: Gửi email thông báo tới admin được thiết lập nhận ticket
+            // FEATURE: Gửi email thông báo tới admin được thiết lập nhận ticket (dùng chung cấu hình báo cáo ngày)
             require_once __DIR__ . '/mailer.php';
-            $notifyIds = [];
-            $notifyRes = $conn->query("SELECT account_id FROM ticket_notify_settings");
-            if ($notifyRes) {
-                while ($nr = $notifyRes->fetch_assoc()) {
-                    $notifyIds[] = (int) $nr['account_id'];
-                }
-            }
+            
+            $adminEmails = getTicketNotifyAdmins($conn);
 
-            if (!empty($notifyIds)) {
+            if (!empty($adminEmails)) {
                 // Lấy thông tin consultant và lead để gửi email
                 $ctxForEmail = $conn->prepare("
                     SELECT l.name as lead_name, l.phone as lead_phone, c.name as consultant_name, c.zalo_chat_id, dr.round_name
@@ -1938,59 +2194,49 @@ switch ($action) {
                 $ctxData = $ctxForEmail->get_result()->fetch_assoc();
                 $ctxForEmail->close();
 
-                // Lấy danh sách email và zalo_chat_id của admin được chọn
-                $placeholders = implode(',', array_fill(0, count($notifyIds), '?'));
-                $adminEmailStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id IN ($placeholders) AND email IS NOT NULL");
-                $adminEmailStmt->bind_param(str_repeat('i', count($notifyIds)), ...$notifyIds);
-                $adminEmailStmt->execute();
-                $adminEmails = $adminEmailStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                $adminEmailStmt->close();
+                $toAdmin = array_shift($adminEmails); // Admin đầu tiên là recipient chính
+                $ccList = array_map(fn($a) => $a['email'], $adminEmails); // Còn lại là CC
+                $ccString = implode(',', array_filter($ccList));
 
-                if (!empty($adminEmails)) {
-                    $toAdmin = array_shift($adminEmails); // Admin đầu tiên là recipient chính
-                    $ccList = array_map(fn($a) => $a['email'], $adminEmails); // Còn lại là CC
-                    $ccString = implode(',', array_filter($ccList));
+                // 1. Gửi Email
+                sendTicketNotificationToAdmins(
+                    $toAdmin['email'],
+                    $toAdmin['name'],
+                    $ctxData['lead_name'] ?? 'Khách hàng',
+                    $ctxData['lead_phone'] ?? '',
+                    $reason,
+                    $ctxData['consultant_name'] ?? '',
+                    $ctxData['round_name'] ?? '',
+                    $ccString
+                );
 
-                    // 1. Gửi Email
-                    sendTicketNotificationToAdmins(
-                        $toAdmin['email'],
-                        $toAdmin['name'],
-                        $ctxData['lead_name'] ?? 'Khách hàng',
-                        $ctxData['lead_phone'] ?? '',
-                        $reason,
-                        $ctxData['consultant_name'] ?? '',
-                        $ctxData['round_name'] ?? '',
-                        $ccString
-                    );
+                // 2. Gửi Zalo Message cho toàn bộ admin có zalo_chat_id
+                require_once __DIR__ . '/zalo_bot.php';
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                if (!empty($botToken)) {
+                    $allAdmins = array_merge([$toAdmin], $adminEmails);
+                    $leadName = $ctxData['lead_name'] ?? 'Khách hàng';
+                    $leadPhone = $ctxData['lead_phone'] ?? 'Không rõ';
+                    $consultName = $ctxData['consultant_name'] ?? 'Không rõ';
 
-                    // 2. Gửi Zalo Message cho toàn bộ admin có zalo_chat_id
-                    require_once __DIR__ . '/zalo_bot.php';
-                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-                    if (!empty($botToken)) {
-                        $allAdmins = array_merge([$toAdmin], $adminEmails);
-                        $leadName = $ctxData['lead_name'] ?? 'Khách hàng';
-                        $leadPhone = $ctxData['lead_phone'] ?? 'Không rõ';
-                        $consultName = $ctxData['consultant_name'] ?? 'Không rõ';
+                    $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"
+                        . "Một nhân viên vừa gửi báo cáo lỗi Data:\n\n"
+                        . "❖ THÔNG TIN BÁO CÁO:\n"
+                        . "  • Sale báo cáo: $consultName\n"
+                        . "  • Khách hàng: $leadName ($leadPhone)\n\n"
+                        . "❖ LÝ DO LỖI:\n"
+                        . "  $reason\n\n"
+                        . "Vui lòng đăng nhập hệ thống Domation DATA để duyệt hoặc từ chối Ticket này.";
 
-                        $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"
-                            . "Một nhân viên vừa gửi báo cáo lỗi Data:\n\n"
-                            . "❖ THÔNG TIN BÁO CÁO:\n"
-                            . "  • Sale báo cáo: $consultName\n"
-                            . "  • Khách hàng: $leadName ($leadPhone)\n\n"
-                            . "❖ LÝ DO LỖI:\n"
-                            . "  $reason\n\n"
-                            . "Vui lòng đăng nhập hệ thống Domation DATA để duyệt hoặc từ chối Ticket này.";
-
-                        $adminChatIds = [];
-                        foreach ($allAdmins as $adm) {
-                            if (!empty($adm['zalo_chat_id'])) {
-                                $adminChatIds[] = $adm['zalo_chat_id'];
-                            }
+                    $adminChatIds = [];
+                    foreach ($allAdmins as $adm) {
+                        if (!empty($adm['zalo_chat_id'])) {
+                            $adminChatIds[] = $adm['zalo_chat_id'];
                         }
-                        if (!empty($adminChatIds)) {
-                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
-                        }
+                    }
+                    if (!empty($adminChatIds)) {
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
                     }
                 }
             }
@@ -2627,8 +2873,9 @@ switch ($action) {
         $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
         $stmtTick->bind_param("i", $id);
         $stmtTick->execute();
-        $resTick = $stmtTick->get_result();
-        if ($resTick && $resTick->fetch_assoc()['cnt'] > 0) {
+        $resTick = $stmtTick->get_result()->fetch_assoc();
+        $stmtTick->close();
+        if (($resTick['cnt'] ?? 0) > 0) {
             $isTicket = true;
         }
 
@@ -2685,8 +2932,9 @@ switch ($action) {
         $stmtTick = $conn->prepare("SELECT COUNT(*) as cnt FROM ticket_notify_settings WHERE account_id = ?");
         $stmtTick->bind_param("i", $id);
         $stmtTick->execute();
-        $resTick = $stmtTick->get_result();
-        if ($resTick && $resTick->fetch_assoc()['cnt'] > 0) {
+        $resTick = $stmtTick->get_result()->fetch_assoc();
+        $stmtTick->close();
+        if (($resTick['cnt'] ?? 0) > 0) {
             $isTicket = true;
         }
 
@@ -2718,15 +2966,15 @@ switch ($action) {
 
                 // Transfer ticket notify settings
                 if ($isTicket) {
-                    // Delete old admin from ticket notify
-                    $stmtDelT = $conn->prepare("DELETE FROM ticket_notify_settings WHERE account_id = ?");
-                    $stmtDelT->bind_param("i", $id);
-                    $stmtDelT->execute();
+                    $stmtDelTick = $conn->prepare("DELETE FROM ticket_notify_settings WHERE account_id = ?");
+                    $stmtDelTick->bind_param("i", $id);
+                    $stmtDelTick->execute();
+                    $stmtDelTick->close();
 
-                    // Insert replacement if not already in there
-                    $stmtInsT = $conn->prepare("INSERT IGNORE INTO ticket_notify_settings (account_id) VALUES (?)");
-                    $stmtInsT->bind_param("i", $replacementId);
-                    $stmtInsT->execute();
+                    $stmtInsTick = $conn->prepare("INSERT IGNORE INTO ticket_notify_settings (account_id) VALUES (?)");
+                    $stmtInsTick->bind_param("i", $replacementId);
+                    $stmtInsTick->execute();
+                    $stmtInsTick->close();
                 }
             }
 
@@ -2849,6 +3097,18 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $adminIds = array_map('intval', $input['admin_ids'] ?? []);
 
+        // Lấy danh sách admin đang nhận thông báo trước khi lưu
+        $existingRes = $conn->query("SELECT account_id FROM ticket_notify_settings");
+        $existingIds = [];
+        if ($existingRes) {
+            while ($row = $existingRes->fetch_assoc()) {
+                $existingIds[] = (int) $row['account_id'];
+            }
+        }
+
+        // Tìm các admin mới được thêm vào (chuyển từ Tắt sang Bật)
+        $newlyAddedIds = array_diff($adminIds, $existingIds);
+
         $conn->begin_transaction();
         try {
             // Xóa toàn bộ cấu hình cũ rồi insert lại
@@ -2864,8 +3124,8 @@ switch ($action) {
             }
             $conn->commit();
 
-            // Send notification email and Zalo to admins
-            if (!empty($adminIds)) {
+            // Chỉ gửi thông báo Zalo và email cho admin mới được bật
+            if (!empty($newlyAddedIds)) {
                 require_once 'mailer.php';
                 require_once 'zalo_bot.php';
 
@@ -2875,12 +3135,12 @@ switch ($action) {
                 $stmtLink = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link' LIMIT 1");
                 $botLink = $stmtLink->fetch_assoc()['setting_value'] ?? 'https://zalo.me/1185588456243371597';
 
-                $idsStr = implode(',', $adminIds);
-                $resAdmins = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($idsStr)");
+                $newIdsStr = implode(',', $newlyAddedIds);
+                $resAdmins = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($newIdsStr)");
                 if ($resAdmins) {
                     while ($admin = $resAdmins->fetch_assoc()) {
                         if (!empty($admin['email'])) {
-                            sendWelcomeEmailToAdminTicket($admin['id'], $admin['email'], $admin['name'], $botLink);
+                            sendAdminAddedToTicketEmail($admin['email'], $admin['name']);
                         }
                         if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
                             $zName = $admin['name'] ?: 'Quản trị viên';

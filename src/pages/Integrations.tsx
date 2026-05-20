@@ -154,7 +154,7 @@ export const Integrations = () => {
         }));
         setConnections(conns);
         if (selected) {
-          const updatedSelected = conns.find((c: any) => c.id === selected.id);
+          const updatedSelected = conns.find((c: any) => Number(c.id) === Number(selected.id));
           if (updatedSelected) setSelected(updatedSelected);
         } else if (conns.length > 0) {
           setSelected(conns[0]);
@@ -344,7 +344,7 @@ export const Integrations = () => {
       await fetchAPI(`delete_connection&id=${deleteId}`);
       toast.success('Đã xóa kết nối');
       fetchData();
-      if (selected?.id === deleteId) setSelected(null);
+      if (selected && Number(selected.id) === Number(deleteId)) setSelected(null);
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
     }
@@ -516,46 +516,49 @@ export const Integrations = () => {
                 <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>Chưa có tích hợp</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Thêm kết nối Sheets đầu tiên của bạn.</p>
               </div>
-            ) : connections.map(conn => (
-              <div
-                key={conn.id}
-                onClick={() => setSelected(conn)}
-                style={{
-                  background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                  border: `1px solid ${selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  borderRadius: 12, padding: '0.875rem 1rem', cursor: 'pointer', transition: 'all 0.2s',
-                  display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden'
-                }}
-              >
-                {selected?.id === conn.id && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
-                  border: selected?.id === conn.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
-                }} title={conn.is_silent ? "Chỉ đồng bộ check trùng" : undefined}>
-                  {conn.connection_type === 'landing_page' ? (
-                    <Zap size={20} color={selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-                  ) : conn.is_silent ? (
-                    <Copy size={20} color="#eab308" style={{ opacity: selected?.id === conn.id ? 1 : 0.7 }} />
-                  ) : (
-                    <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: selected?.id === conn.id ? 1 : 0.6 }} alt="Google Sheets" />
-                  )}
+            ) : connections.map(conn => {
+              const isSelected = selected && Number(selected.id) === Number(conn.id);
+              return (
+                <div
+                  key={conn.id}
+                  onClick={() => setSelected(conn)}
+                  style={{
+                    background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                    border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    borderRadius: 12, padding: '0.875rem 1rem', cursor: 'pointer', transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden'
+                  }}
+                >
+                  {isSelected && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                    border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
+                  }} title={conn.is_silent ? "Chỉ đồng bộ check trùng" : undefined}>
+                    {conn.connection_type === 'landing_page' ? (
+                      <Zap size={20} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+                    ) : conn.is_silent ? (
+                      <Copy size={20} color="#eab308" style={{ opacity: isSelected ? 1 : 0.7 }} />
+                    ) : (
+                      <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: isSelected ? 1 : 0.6 }} alt="Google Sheets" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {conn.sheet_name}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                      {conn.connection_type === 'landing_page' ? 'Nhận Data qua API' : `${(conn.mappings || []).length} cột đã map`}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: conn.is_active ? 'var(--color-success)' : 'var(--color-border)' }} />
+                    <ChevronRight size={14} color="var(--color-text-muted)" />
+                  </div>
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {conn.sheet_name}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                    {conn.connection_type === 'landing_page' ? 'Nhận Data qua API' : `${(conn.mappings || []).length} cột đã map`}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: conn.is_active ? 'var(--color-success)' : 'var(--color-border)' }} />
-                  <ChevronRight size={14} color="var(--color-text-muted)" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -88,7 +88,7 @@ export const Accounts = () => {
     if (!formData.username || !formData.name) return toast.error('Vui lòng nhập đủ tên và username');
     if (!editingAccount && !formData.password) return toast.error('Vui lòng nhập mật khẩu cho tài khoản mới');
     // Email bắt buộc trừ Super Admin (id=1)
-    const isSuperAdmin = editingAccount?.id === 1;
+    const isSuperAdmin = Number(editingAccount?.id) === 1;
     if (!isSuperAdmin) {
       if (!formData.email) return toast.error('Email là bắt buộc để đăng nhập');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return toast.error('Định dạng email không hợp lệ');
@@ -407,7 +407,7 @@ export const Accounts = () => {
                           <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
                             <Edit3 size={16} />
                           </button>
-                          {acc.id !== 1 && (
+                          {Number(acc.id) !== 1 && (
                             <button
                               onClick={() => triggerDeleteFlow(acc.id)}
                               disabled={checkingDelete && deleteId === acc.id}
@@ -569,8 +569,8 @@ export const Accounts = () => {
           </div>
           <div className="form-group">
             <label className="form-label">
-              Email đăng nhập {editingAccount?.id !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
-              {editingAccount?.id === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
+              Email đăng nhập {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
+              {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
             </label>
             <input
               type="email"
@@ -578,7 +578,7 @@ export const Accounts = () => {
               placeholder="VD: ten@company.com"
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
-              required={editingAccount?.id !== 1}
+              required={Number(editingAccount?.id) !== 1}
               autoComplete="email"
             />
           </div>
