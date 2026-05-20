@@ -45,7 +45,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 100) {
+        if ($dbVer >= 101) {
             $runMigration = false;
         }
     }
@@ -68,6 +68,12 @@ if ($runMigration) {
     $checkColSC = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'is_silent'");
     if ($checkColSC && $checkColSC->num_rows === 0) {
         $conn->query("ALTER TABLE sheet_connections ADD COLUMN is_silent TINYINT(1) DEFAULT 0 COMMENT 'Không chia số, chỉ đồng bộ check trùng'");
+    }
+
+    // Auto-migrate: ensure email_template column exists in sheet_connections
+    $checkColTpl = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'email_template'");
+    if ($checkColTpl && $checkColTpl->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN email_template MEDIUMTEXT NULL COMMENT 'Mẫu nội dung email gửi Sale'");
     }
 
 
@@ -283,7 +289,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '100') ON DUPLICATE KEY UPDATE setting_value = '100'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '101') ON DUPLICATE KEY UPDATE setting_value = '101'");
 }
 
 ?>

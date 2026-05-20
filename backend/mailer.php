@@ -189,11 +189,12 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
 {
     global $conn;
 
-    // Fetch additional fields (email, type) from DB to display completely
+    // Fetch additional fields (email, type, connection_id) from DB to display completely
     $email = '';
     $type = '';
+    $connectionId = 0;
     if ($leadId > 0) {
-        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+        $stmt = $conn->prepare("SELECT email, type, connection_id FROM leads WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $leadId);
             $stmt->execute();
@@ -202,11 +203,12 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
+                $connectionId = (int)($row['connection_id'] ?? 0);
             }
         }
     } else {
         // Fallback by phone if ID not provided
-        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ?");
+        $stmt = $conn->prepare("SELECT email, type, connection_id FROM leads WHERE phone = ?");
         if ($stmt) {
             $stmt->bind_param("s", $leadPhone);
             $stmt->execute();
@@ -215,6 +217,20 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
+                $connectionId = (int)($row['connection_id'] ?? 0);
+            }
+        }
+    }
+
+    $emailTemplate = '';
+    if ($connectionId > 0) {
+        $stmtTpl = $conn->prepare("SELECT email_template FROM sheet_connections WHERE id = ?");
+        if ($stmtTpl) {
+            $stmtTpl->bind_param("i", $connectionId);
+            $stmtTpl->execute();
+            $resTpl = $stmtTpl->get_result();
+            if ($resTpl->num_rows > 0) {
+                $emailTemplate = $resTpl->fetch_assoc()['email_template'] ?? '';
             }
         }
     }
@@ -227,56 +243,70 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
     $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
 
-    // Parse custom fields from leadNote
-    $actualNote = '';
-    $customFieldsHtml = '';
-    
-    if (!empty($leadNote)) {
-        $lines = explode("\n", $leadNote);
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) continue;
-            // Matches [Custom Key]: Value
-            if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches)) {
-                $cKey = htmlspecialchars(trim($matches[1]));
-                $cVal = htmlspecialchars(trim($matches[2]));
-                $customFieldsHtml .= '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">' . $cKey . ':</td>
-                    <td style="padding: 6px 0; font-weight: 600; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
-                </tr>';
-            } else {
-                $actualNote .= htmlspecialchars($line) . '<br/>';
+    $detailBlock = '';
+    if (!empty($emailTemplate)) {
+        // Replace templates
+        $replacements = [
+            '{name}' => htmlspecialchars($leadName),
+            '{phone}' => htmlspecialchars($leadPhone),
+            '{email}' => htmlspecialchars($email),
+            '{source}' => htmlspecialchars($leadSource),
+            '{type}' => htmlspecialchars($type),
+            '{assigned_to}' => htmlspecialchars($consultantName),
+        ];
+
+        $actualNote = '';
+        if (!empty($leadNote)) {
+            $lines = explode("\n", $leadNote);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                // Matches [Custom Key]: Value or Custom Key: Value
+                if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches)) {
+                    $cKey = trim($matches[1]);
+                    $cVal = trim($matches[2]);
+                    $replacements['{' . strtolower($cKey) . '}'] = htmlspecialchars($cVal);
+                    $replacements['{' . $cKey . '}'] = htmlspecialchars($cVal);
+                } else {
+                    $actualNote .= htmlspecialchars($line) . "\n";
+                }
             }
         }
-    }
+        $replacements['{note}'] = nl2br(trim($actualNote));
 
-    // BUG-02 fix: Build report URL dynamically from system_settings or server vars
-    $frontendUrl = '';
-    // 1. Try system_settings table first
-    $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
-    if ($urlSetting && $urlSetting->num_rows > 0) {
-        $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
-    }
-    // 2. Fallback: construct from current server HTTP_HOST
-    if (empty($frontendUrl)) {
-        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        // Strip /backend suffix to get root frontend URL
-        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
-    }
-    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
+        $renderedTemplate = $emailTemplate;
+        foreach ($replacements as $placeholder => $value) {
+            $renderedTemplate = str_replace($placeholder, $value, $renderedTemplate);
+        }
+        // Remove empty placeholders
+        $renderedTemplate = preg_replace('/\{[a-zA-Z0-9_-]+\}/', '', $renderedTemplate);
 
-    $content = '
-        <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
-            Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
-            Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ chiến dịch Inbound.
-        </p>
-        
-        <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
-            <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-                Thông tin chi tiết Khách hàng:
-            </p>
+        $detailBlock = '<div style="font-size: 15px; line-height: 1.6; color: #334155;">' . nl2br($renderedTemplate) . '</div>';
+    } else {
+        // Fallback to table representation (original default)
+        $actualNote = '';
+        $customFieldsHtml = '';
+        if (!empty($leadNote)) {
+            $lines = explode("\n", $leadNote);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                // Matches [Custom Key]: Value
+                if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches)) {
+                    $cKey = htmlspecialchars(trim($matches[1]));
+                    $cVal = htmlspecialchars(trim($matches[2]));
+                    $customFieldsHtml .= '
+                    <tr>
+                        <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">' . $cKey . ':</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
+                    </tr>';
+                } else {
+                    $actualNote .= htmlspecialchars($line) . '<br/>';
+                }
+            }
+        }
+
+        $detailBlock = '
             <table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">Họ và Tên:</td>
@@ -311,7 +341,36 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 </tr>
                 ' : '') . 
                 $customFieldsHtml . '
-            </table>
+            </table>';
+    }
+
+    // BUG-02 fix: Build report URL dynamically from system_settings or server vars
+    $frontendUrl = '';
+    // 1. Try system_settings table first
+    $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+    if ($urlSetting && $urlSetting->num_rows > 0) {
+        $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
+    }
+    // 2. Fallback: construct from current server HTTP_HOST
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Strip /backend suffix to get root frontend URL
+        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+    }
+    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
+
+    $content = '
+        <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
+            Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
+            Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ chiến dịch Inbound.
+        </p>
+        
+        <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
+            <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                Thông tin chi tiết Khách hàng:
+            </p>
+            ' . $detailBlock . '
         </div>
 
 
@@ -556,13 +615,28 @@ function sendDailyReportEmailToAdmins(
     string $saleStatsHtml,
     int $totalTicket
 ) {
+    global $conn;
+
     $subject = 'Báo cáo Tổng kết Ngày - ' . date('d/m/Y');
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
+
+    // Lấy frontend_url từ settings, tránh dùng HTTP_HOST (trỏ tới backend)
+    $frontendUrl = '';
+    if (isset($conn) && $conn) {
+        $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+        if ($urlRes && $urlRes->num_rows > 0) {
+            $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+        }
+    }
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $frontendUrl = $proto . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
-                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">📊</span>
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">&#128202;</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
             <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của hệ thống Domation DATA.</p>
@@ -589,7 +663,7 @@ function sendDailyReportEmailToAdmins(
         </div>
         
         <div style="text-align: center; margin-top: 24px;">
-            <a href="https://' . ($_SERVER['HTTP_HOST'] ?? '') . '/" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0068ff; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
+            <a href="' . $frontendUrl . '/" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0068ff; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
                 TRUY CẬP HỆ THỐNG
             </a>
         </div>

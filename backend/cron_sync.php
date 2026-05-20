@@ -520,3 +520,7 @@ foreach ($connections as $connItem) {
 
 logSync("Cronjob finished.");
 
+// --- Chạy Báo cáo Ngày nếu đã đến giờ ---
+require_once __DIR__ . '/cron_daily_report.php';
+runDailyReportCron($conn);
+

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 19, 2026 lúc 10:42 PM
+-- Thời gian đã tạo: Th5 20, 2026 lúc 02:56 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -37,7 +37,23 @@ CREATE TABLE `accounts` (
   `email` varchar(255) DEFAULT NULL COMMENT 'Email đăng nhập (bắt buộc với admin thường, tùy chọn với Super Admin)',
   `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
   `is_confirmed` tinyint(1) DEFAULT 0 COMMENT 'Xác nhận Email',
-  `confirm_token` varchar(64) DEFAULT NULL COMMENT 'Token xác nhận Email'
+  `confirm_token` varchar(64) DEFAULT NULL COMMENT 'Token xác nhận Email',
+  `last_login` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `admin_logs`
+--
+
+CREATE TABLE `admin_logs` (
+  `id` int(11) NOT NULL,
+  `account_id` int(11) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `details` longtext DEFAULT NULL COMMENT 'JSON details',
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -183,7 +199,7 @@ CREATE TABLE `round_consultants` (
 
 CREATE TABLE `routing_rules` (
   `id` int(11) NOT NULL,
-  `connection_id` int(11) DEFAULT NULL COMMENT 'Nếu NULL thì áp dụng cho tất cả các Sheet',
+  `connection_id` varchar(255) DEFAULT NULL,
   `target_round_id` int(11) DEFAULT NULL,
   `condition_column` varchar(100) NOT NULL,
   `condition_operator` varchar(50) DEFAULT 'contains',
@@ -211,7 +227,10 @@ CREATE TABLE `sheet_connections` (
   `sync_status` varchar(50) DEFAULT 'idle',
   `email_template` mediumtext DEFAULT NULL COMMENT 'Mẫu nội dung email gửi Sale',
   `created_at` datetime DEFAULT current_timestamp(),
-  `require_both_contact` tinyint(1) DEFAULT 0 COMMENT 'Yêu cầu có cả SĐT và Email'
+  `require_both_contact` tinyint(1) DEFAULT 0 COMMENT 'Yêu cầu có cả SĐT và Email',
+  `sync_mode` enum('all','new_only') DEFAULT 'all',
+  `is_initialized` tinyint(1) DEFAULT 0,
+  `is_silent` tinyint(1) DEFAULT 0 COMMENT 'Không chia số, chỉ đồng bộ check trùng'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -259,6 +278,13 @@ ALTER TABLE `accounts`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Chỉ mục cho bảng `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `account_id` (`account_id`);
 
 --
 -- Chỉ mục cho bảng `consultants`
@@ -312,7 +338,15 @@ ALTER TABLE `leads`
   ADD KEY `assigned_to` (`assigned_to`),
   ADD KEY `idx_phone` (`phone`),
   ADD KEY `idx_email` (`email`),
-  ADD KEY `idx_created_at` (`created_at`);
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_connection_id` (`connection_id`);
+
+--
+-- Chỉ mục cho bảng `mail_queue`
+--
+ALTER TABLE `mail_queue`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_status` (`status`);
 
 --
 -- Chỉ mục cho bảng `round_consultants`
@@ -367,6 +401,12 @@ ALTER TABLE `accounts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT cho bảng `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `consultants`
 --
 ALTER TABLE `consultants`
@@ -403,6 +443,12 @@ ALTER TABLE `leads`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT cho bảng `mail_queue`
+--
+ALTER TABLE `mail_queue`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `routing_rules`
 --
 ALTER TABLE `routing_rules`
@@ -423,6 +469,12 @@ ALTER TABLE `ticket_notify_settings`
 --
 -- Ràng buộc đối với các bảng kết xuất
 --
+
+--
+-- Ràng buộc cho bảng `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  ADD CONSTRAINT `admin_logs_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `data_reports`
@@ -469,7 +521,6 @@ ALTER TABLE `round_consultants`
 -- Ràng buộc cho bảng `routing_rules`
 --
 ALTER TABLE `routing_rules`
-  ADD CONSTRAINT `routing_rules_ibfk_1` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `routing_rules_ibfk_2` FOREIGN KEY (`target_round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE;
 
 --

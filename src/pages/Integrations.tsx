@@ -28,6 +28,7 @@ type Connection = {
   sync_interval?: number;
   sync_mode?: 'all' | 'new_only' | string;
   is_silent?: number | boolean;
+  email_template?: string;
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   last_sync_at?: string;
@@ -121,6 +122,7 @@ export const Integrations = () => {
   const [editCustomSyncMins, setEditCustomSyncMins] = useState<number>(15);
   const [editSyncMode, setEditSyncMode] = useState<'all' | 'new_only'>('all');
   const [editIsSilent, setEditIsSilent] = useState(false);
+  const [editEmailTemplate, setEditEmailTemplate] = useState('');
 
   const fetchData = async () => {
     try {
@@ -153,13 +155,6 @@ export const Integrations = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleCopyWebhook = (conn: Connection) => {
-    navigator.clipboard.writeText(`${BASE_WEBHOOK}?token=${conn.webhook_token}`);
-    setCopiedId(conn.id);
-    toast.success('Đã copy đường dẫn Webhook');
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const fetchSheetNames = async (id: string) => {
     setIsFetchingSheets(true);
@@ -215,7 +210,8 @@ export const Integrations = () => {
       is_active: 1,
       sync_interval: finalInterval,
       sync_mode: syncMode,
-      is_silent: isSilent ? 1 : 0
+      is_silent: isSilent ? 1 : 0,
+      email_template: emailTemplate
     };
 
     if (isSaving) return;
@@ -301,7 +297,8 @@ export const Integrations = () => {
       require_both_contact: selected.require_both_contact,
       connection_type: selected.connection_type,
       sync_mode: editSyncMode,
-      is_silent: editIsSilent ? 1 : 0
+      is_silent: editIsSilent ? 1 : 0,
+      email_template: editEmailTemplate
     };
 
     if (isSaving) return;
@@ -615,51 +612,52 @@ export const Integrations = () => {
                       </div>
                     )}
                     {selected.connection_type !== 'landing_page' && (
-                      <>
-                        <button
-                          className="btn outline"
-                          style={{ padding: '6px 12px', fontSize: '0.8125rem', height: 32, gap: 4 }}
-                          onClick={() => {
-                            let preset: any = 'custom';
-                            let customVal = selected.sync_interval;
-                            if (customVal === 5) preset = '5p';
-                            else if (customVal === 15) preset = '15p';
-                            else if (customVal === 60) preset = '1h';
-                            else if (customVal === 1440) preset = '1d';
-                            
-                            setEditSyncPreset(preset);
-                            setEditCustomSyncMins(customVal || 15);
-                            setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
-                            setEditIsSilent(Boolean(Number(selected.is_silent)));
-                            setShowEditConn(true);
-                          }}
-                        >
-                          <Settings size={14} /> Sửa chu kỳ
-                        </button>
-                        <button
-                          className="btn outline"
-                          style={{ padding: '6px 12px', fontSize: '0.8125rem', height: 32 }}
-                          disabled={isSyncing}
-                          onClick={async () => {
-                            setIsSyncing(true);
-                            try {
-                              const res = await fetchAPI(`force_sync&id=${selected.id}`);
-                              if (res.success) {
-                                toast.success('Đã đồng bộ dữ liệu thủ công!');
-                                fetchData(); // Refresh to update last_sync_at on screen
-                              } else {
-                                toast.error('Đồng bộ thất bại: ' + (res.message || ''));
-                              }
-                            } catch (e: any) {
-                              toast.error('Lỗi kết nối: ' + e.message);
+                      <button
+                        className="btn outline"
+                        style={{ padding: '6px 12px', fontSize: '0.8125rem', height: 32 }}
+                        disabled={isSyncing}
+                        onClick={async () => {
+                          setIsSyncing(true);
+                          try {
+                            const res = await fetchAPI(`force_sync&id=${selected.id}`);
+                            if (res.success) {
+                              toast.success('Đã đồng bộ dữ liệu thủ công!');
+                              fetchData(); // Refresh to update last_sync_at on screen
+                            } else {
+                              toast.error('Đồng bộ thất bại: ' + (res.message || ''));
                             }
-                            setIsSyncing(false);
-                          }}
-                        >
-                          <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
-                        </button>
-                      </>
+                          } catch (e: any) {
+                            toast.error('Lỗi kết nối: ' + e.message);
+                          }
+                          setIsSyncing(false);
+                        }}
+                      >
+                        <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+                      </button>
                     )}
+
+                    <button
+                      className="btn outline"
+                      style={{ padding: 8, borderRadius: 8, height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                      title="Chỉnh sửa cấu hình đồng bộ & email"
+                      onClick={() => {
+                        let preset: any = 'custom';
+                        let customVal = selected.sync_interval;
+                        if (customVal === 5) preset = '5p';
+                        else if (customVal === 15) preset = '15p';
+                        else if (customVal === 60) preset = '1h';
+                        else if (customVal === 1440) preset = '1d';
+                        
+                        setEditSyncPreset(preset);
+                        setEditCustomSyncMins(customVal || 15);
+                        setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
+                        setEditIsSilent(Boolean(Number(selected.is_silent)));
+                        setEditEmailTemplate(selected.email_template || '');
+                        setShowEditConn(true);
+                      }}
+                    >
+                      <Settings size={16} />
+                    </button>
 
                     <ToggleSwitch
                       checked={selected.is_active}
@@ -667,7 +665,7 @@ export const Integrations = () => {
                     />
                     <button
                       onClick={() => { setDeleteId(selected.id); setIsConfirmOpen(true); }}
-                      style={{ padding: 8, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
+                      style={{ padding: 8, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32, width: 32, cursor: 'pointer' }}
                       onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
                       onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
                     >
@@ -701,17 +699,6 @@ export const Integrations = () => {
                   <div style={{ marginTop: '1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }}></span>
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-success)', fontWeight: 600 }}>Cronjob Sync đang hoạt động với ID: {selected.spreadsheet_id}</span>
-                  </div>
-                )}
-
-                {selected.connection_type !== 'landing_page' && (
-                  <div style={{ marginTop: '1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                    <span style={{ flex: 1, padding: '0.625rem 0.875rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {webhookUrl(selected.webhook_token)}
-                    </span>
-                    <button onClick={() => handleCopyWebhook(selected)} className="btn primary sm" style={{ borderRadius: 8, flexShrink: 0, margin: '4px' }}>
-                      {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? 'Đã copy' : 'Copy URL'}
-                    </button>
                   </div>
                 )}
 
@@ -1325,105 +1312,144 @@ fetch("${webhookUrl(selected.webhook_token)}", {
       <CustomModal
         isOpen={showEditConn}
         onClose={() => setShowEditConn(false)}
-        title="Chỉnh sửa cấu hình đồng bộ"
+        title={selected?.connection_type === 'landing_page' ? "Chỉnh sửa cấu hình Landing Page" : "Chỉnh sửa cấu hình đồng bộ"}
         width="600px"
       >
         <div style={{ padding: '1.5rem', background: 'white' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                Cấu hình chu kỳ đồng bộ <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem' }}><Clock size={14} /></div>
+                {selected?.connection_type === 'landing_page' ? 'Cấu hình Landing Page' : 'Cấu hình chu kỳ đồng bộ'}
+                <div style={{ background: 'var(--color-primary)', color: 'white', width: 22, height: 22, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {selected?.connection_type === 'landing_page' ? <Zap size={14} /> : <Clock size={14} />}
+                </div>
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Thay đổi thời gian hệ thống tự động tải dữ liệu từ {selected?.sheet_name || 'Sheets'}.</p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>
+                {selected?.connection_type === 'landing_page'
+                  ? `Thay đổi cấu hình nhận dữ liệu và email cho ${selected?.sheet_name || 'Landing Page'}.`
+                  : `Thay đổi thời gian hệ thống tự động tải dữ liệu từ ${selected?.sheet_name || 'Sheets'}.`}
+              </p>
             </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
-              </div>
+            {selected?.connection_type !== 'landing_page' && (
+              <>
+                {/* Chu kỳ đồng bộ */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
+                  </div>
 
-              <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-                {[
-                  { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
-                  { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
-                  { id: '1h', icon: <Clock size={20} />, time: '1h', label: 'ỔN ĐỊNH' },
-                  { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
-                  { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
-                ].map(preset => (
-                  <div
-                    key={preset.id}
-                    onClick={() => setEditSyncPreset(preset.id as any)}
-                    style={{
-                      border: editSyncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                      background: editSyncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
-                      borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                      transition: 'all 0.2s', opacity: editSyncPreset === preset.id ? 1 : 0.6
-                    }}
+                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                    {[
+                      { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
+                      { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
+                      { id: '1h', icon: <Clock size={20} />, time: '1h', label: 'ỔN ĐỊNH' },
+                      { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
+                      { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
+                    ].map(preset => (
+                      <div
+                        key={preset.id}
+                        onClick={() => setEditSyncPreset(preset.id as any)}
+                        style={{
+                          border: editSyncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
+                          background: editSyncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
+                          borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                          transition: 'all 0.2s', opacity: editSyncPreset === preset.id ? 1 : 0.6
+                        }}
+                      >
+                        <div style={{ color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {editSyncPreset === 'custom' && (
+                    <div style={{ marginTop: 12, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Nhập số phút tùy chỉnh:</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <input
+                          type="number"
+                          className="form-input"
+                          style={{ width: 100 }}
+                          min={1}
+                          max={10080}
+                          value={editCustomSyncMins}
+                          onChange={e => setEditCustomSyncMins(Number(e.target.value))}
+                        />
+                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>phút</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chế độ đồng bộ */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chế độ đồng bộ</label>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div
+                      onClick={() => setEditSyncMode('all')}
+                      style={{
+                        border: editSyncMode === 'all' ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
+                        background: editSyncMode === 'all' ? 'var(--color-primary-light)' : '#ffffff',
+                        borderRadius: 12, padding: '1rem', cursor: 'pointer',
+                        display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'all' ? 1 : 0.6
+                      }}
+                    >
+                      <div style={{ color: editSyncMode === 'all' ? 'var(--color-primary)' : '#94a3b8', marginTop: 2 }}><RefreshCw size={20} /></div>
+                      <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'all' ? 'var(--color-primary)' : '#0f172a' }}>Tất cả dữ liệu</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Phân luồng từ dòng 1 đến cuối. (Phù hợp File mới hoàn toàn)</div>
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setEditSyncMode('new_only')}
+                      style={{
+                        border: editSyncMode === 'new_only' ? '2px solid var(--color-warning)' : '1px solid #e2e8f0',
+                        background: editSyncMode === 'new_only' ? 'var(--color-warning-light)' : '#ffffff',
+                        borderRadius: 12, padding: '1rem', cursor: 'pointer',
+                        display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'new_only' ? 1 : 0.6
+                      }}
+                    >
+                      <div style={{ color: editSyncMode === 'new_only' ? 'var(--color-warning)' : '#94a3b8', marginTop: 2 }}><Zap size={20} /></div>
+                      <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'new_only' ? 'var(--color-warning-dark)' : '#0f172a' }}>Chỉ dữ liệu mới</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Bỏ qua các dòng đã có. Chỉ phân luồng dòng mới phát sinh từ thời điểm bật.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Mẫu nội dung Email */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung Email (Hỗ trợ biến)</label>
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  className="form-input"
+                  rows={6}
+                  style={{ minHeight: 120, background: '#f8fafc', border: '1px solid #cbd5e1', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem', width: '100%', boxSizing: 'border-box' }}
+                  placeholder={"Nhập mẫu email. Ví dụ:\nThông tin khách hàng:\n- Họ tên: {name}\n- Điện thoại: {phone}"}
+                  value={editEmailTemplate}
+                  onChange={e => setEditEmailTemplate(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {SYSTEM_FIELDS.map(f => (
+                  <span
+                    key={f.value}
+                    onClick={() => setEditEmailTemplate(editEmailTemplate + (editEmailTemplate && !editEmailTemplate.endsWith('\n') ? '\n' : '') + `${f.label}: {${f.value}}`)}
+                    style={{ cursor: 'pointer', background: '#f1f5f9', color: '#0f172a', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
                   >
-                    <div style={{ color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
-                  </div>
+                    {'{'}{f.value}{'}'}
+                  </span>
                 ))}
-              </div>
-
-              {editSyncPreset === 'custom' && (
-                <div style={{ marginTop: 12, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Nhập số phút tùy chỉnh:</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <input
-                      type="number"
-                      className="form-input"
-                      style={{ width: 100 }}
-                      min={1}
-                      max={10080}
-                      value={editCustomSyncMins}
-                      onChange={e => setEditCustomSyncMins(Number(e.target.value))}
-                    />
-                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>phút</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chế độ đồng bộ</label>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div
-                  onClick={() => setEditSyncMode('all')}
-                  style={{
-                    border: editSyncMode === 'all' ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                    background: editSyncMode === 'all' ? 'var(--color-primary-light)' : '#ffffff',
-                    borderRadius: 12, padding: '1rem', cursor: 'pointer',
-                    display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'all' ? 1 : 0.6
-                  }}
-                >
-                  <div style={{ color: editSyncMode === 'all' ? 'var(--color-primary)' : '#94a3b8', marginTop: 2 }}><RefreshCw size={20} /></div>
-                  <div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'all' ? 'var(--color-primary)' : '#0f172a' }}>Tất cả dữ liệu</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Phân luồng từ dòng 1 đến cuối. (Phù hợp File mới hoàn toàn)</div>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setEditSyncMode('new_only')}
-                  style={{
-                    border: editSyncMode === 'new_only' ? '2px solid var(--color-warning)' : '1px solid #e2e8f0',
-                    background: editSyncMode === 'new_only' ? 'var(--color-warning-light)' : '#ffffff',
-                    borderRadius: 12, padding: '1rem', cursor: 'pointer',
-                    display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'new_only' ? 1 : 0.6
-                  }}
-                >
-                  <div style={{ color: editSyncMode === 'new_only' ? 'var(--color-warning)' : '#94a3b8', marginTop: 2 }}><Zap size={20} /></div>
-                  <div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'new_only' ? 'var(--color-warning-dark)' : '#0f172a' }}>Chỉ dữ liệu mới</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Bỏ qua các dòng đã có. Chỉ phân luồng dòng mới phát sinh từ thời điểm bật.</div>
-                  </div>
-                </div>
               </div>
             </div>
 

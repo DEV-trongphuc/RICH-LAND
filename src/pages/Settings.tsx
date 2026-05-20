@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton } from '../components/ui/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -11,7 +12,7 @@ export const Settings = () => {
   const [testing, setTesting] = useState(false);
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report'>('processing');
   
   // States
   const [provider, setProvider] = useState('appscript');
@@ -34,6 +35,7 @@ export const Settings = () => {
   const [zaloWebhookSecret, setZaloWebhookSecret] = useState('');
   const [zaloBotLink, setZaloBotLink] = useState('');
   const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
+  const [dailyReportAdmins, setDailyReportAdmins] = useState<number[]>([]);
 
   // Fallback round config
   const [rounds, setRounds] = useState<any[]>([]);
@@ -76,6 +78,12 @@ export const Settings = () => {
         if (json.data.zalo_webhook_secret) setZaloWebhookSecret(json.data.zalo_webhook_secret);
         if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
         if (json.data.zalo_daily_report_time) setZaloDailyReportTime(json.data.zalo_daily_report_time);
+        if (json.data.daily_report_admins) {
+          try {
+            const parsed = JSON.parse(json.data.daily_report_admins);
+            if (Array.isArray(parsed)) setDailyReportAdmins(parsed.map(Number));
+          } catch { /* ignore */ }
+        }
         if (json.data.fallback_round_id) setFallbackRoundId(json.data.fallback_round_id);
         if (json.data.fallback_type) setFallbackType(json.data.fallback_type);
         if (json.data.fallback_admin_id) setFallbackAdminId(json.data.fallback_admin_id);
@@ -109,6 +117,7 @@ export const Settings = () => {
       zalo_webhook_secret: zaloWebhookSecret,
       zalo_bot_link: zaloBotLink,
       zalo_daily_report_time: zaloDailyReportTime,
+      daily_report_admins: dailyReportAdmins,
       fallback_round_id: fallbackRoundId,
       fallback_type: fallbackType,
       fallback_admin_id: fallbackAdminId,
@@ -199,6 +208,12 @@ export const Settings = () => {
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
           <MessageCircle size={18} /> Cấu hình Zalo Bot
+        </button>
+        <button 
+          onClick={() => setActiveTab('report')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'report' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <BarChart2 size={18} /> Báo cáo Ngày
         </button>
       </div>
 
@@ -383,31 +398,17 @@ function doPost(e) {
               </div>
             </div>
 
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
-                <input
-                  className="form-input"
-                  placeholder="VD: https://zalo.me/1185588456243371597"
-                  value={zaloBotLink}
-                  onChange={e => setZaloBotLink(e.target.value)}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Link chèn vào Email chào mừng TVV.
-                </p>
-              </div>
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Giờ gửi Báo cáo Ngày (VD: 17:00)</label>
-                <input
-                  type="time"
-                  className="form-input"
-                  value={zaloDailyReportTime}
-                  onChange={e => setZaloDailyReportTime(e.target.value)}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Tự động gửi thống kê chia Data/Ticket cho Admin.
-                </p>
-              </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
+              <input
+                className="form-input"
+                placeholder="VD: https://zalo.me/1185588456243371597"
+                value={zaloBotLink}
+                onChange={e => setZaloBotLink(e.target.value)}
+              />
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                Link chèn vào Email chào mừng TVV.
+              </p>
             </div>
             
             <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
@@ -420,6 +421,109 @@ function doPost(e) {
               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
                 Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
               </p>
+            </div>
+          </div>
+          )}
+
+          {/* ===== TAB: BÁO CÁO NGÀY ===== */}
+          {activeTab === 'report' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s' }}>
+
+            {/* Giờ gửi */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}><Clock size={16} /></span>
+                Lịch gửi Báo cáo Tự động
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '0.875rem 1rem', minWidth: 220 }}>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>
+                    <strong>Cửa sổ thời gian:</strong> Nếu gửi lúc <strong>{zaloDailyReportTime || '17:00'}</strong>, hệ thống sẽ tổng kết chia số từ <strong>{zaloDailyReportTime || '17:00'} hôm qua</strong> đến <strong>{zaloDailyReportTime || '17:00'} hôm nay</strong> — không bỏ sót data đêm.
+                  </p>
+                </div>
+                <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={zaloDailyReportTime}
+                    onChange={e => setZaloDailyReportTime(e.target.value)}
+                    style={{ flex: 1, height: '100%' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Chọn Admin nhận báo cáo */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-flex', background: '#0ea5e9', color: 'white', padding: 4, borderRadius: 6 }}><Users size={16} /></span>
+                Admin nhận Báo cáo
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                Chọn các tài khoản sẽ nhận báo cáo qua <strong>Email</strong> và <strong>Zalo Bot</strong>. Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {accounts.filter(a => a.role === 'admin' || a.id === 1).map((admin: any) => {
+                  const isSelected = dailyReportAdmins.includes(Number(admin.id));
+                  return (
+                    <label
+                      key={admin.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.875rem',
+                        padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer',
+                        border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setDailyReportAdmins(prev =>
+                            isSelected ? prev.filter(id => id !== Number(admin.id)) : [...prev, Number(admin.id)]
+                          );
+                        }}
+                        style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+                      />
+                      <Avatar name={admin.name || admin.username} size={36} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                          {admin.name || admin.username}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          {admin.email && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Mail size={11} /> {admin.email}
+                            </span>
+                          )}
+                          {admin.zalo_chat_id ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
+                              <MessageCircle size={11} /> Zalo đã liên kết
+                            </span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                              <MessageCircle size={11} /> Chưa liên kết Zalo
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>Đã chọn</span>
+                      )}
+                    </label>
+                  );
+                })}
+                {accounts.filter(a => a.role === 'admin' || a.id === 1).length === 0 && (
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>Chưa có tài khoản Admin nào trong hệ thống.</p>
+                )}
+              </div>
+              {dailyReportAdmins.length === 0 && (
+                <div style={{ marginTop: '0.75rem', padding: '0.625rem 0.875rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Activity size={14} style={{ color: '#b45309', flexShrink: 0 }} />
+                  <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho <strong>tất cả tài khoản Admin</strong>.</p>
+                </div>
+              )}
             </div>
           </div>
           )}

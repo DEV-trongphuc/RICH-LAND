@@ -1026,9 +1026,10 @@ switch ($action) {
         $connectionType = $input['connection_type'] ?? 'sheets';
         $syncMode = $input['sync_mode'] ?? 'all';
         $isSilent = (int) ($input['is_silent'] ?? 0);
+        $emailTemplate = $input['email_template'] ?? null;
 
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
-        $stmt->bind_param("sssiiissi", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent);
+        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, email_template, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
+        $stmt->bind_param("sssiiissis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $emailTemplate);
         $stmt->execute();
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;
@@ -1044,9 +1045,10 @@ switch ($action) {
         $connectionType = $input['connection_type'] ?? 'sheets';
         $syncMode = $input['sync_mode'] ?? 'all';
         $isSilent = (int) ($input['is_silent'] ?? 0);
+        $emailTemplate = $input['email_template'] ?? null;
 
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=? WHERE id=?");
-        $stmt->bind_param("ssiiissii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $id);
+        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, email_template=? WHERE id=?");
+        $stmt->bind_param("ssiiissisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $emailTemplate, $id);
         $stmt->execute();
         echo json_encode(['success' => true]);
         break;
@@ -1765,6 +1767,10 @@ switch ($action) {
         }
         $stmt = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES (?, ?)");
         foreach ($input as $k => $v) {
+            // Array values (e.g. daily_report_admins) must be JSON-encoded before storage
+            if (is_array($v)) {
+                $v = json_encode($v, JSON_UNESCAPED_UNICODE);
+            }
             $stmt->bind_param("ss", $k, $v);
             $stmt->execute();
         }
