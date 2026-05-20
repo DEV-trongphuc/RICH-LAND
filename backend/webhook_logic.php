@@ -66,16 +66,26 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
         }
     }
 
-    // 2. Check keys in payload
+    // 2. Check keys in payload (Scan ONLY values, not JSON keys/headers)
     if (!empty($exclusions['keys'])) {
         $blacklistKeys = array_map('trim', explode(',', mb_strtolower($exclusions['keys'], 'UTF-8')));
         $scanData = $data;
         unset($scanData['_meta']); // Do not scan internal metadata
-        $payloadStr = mb_strtolower(json_encode($scanData, JSON_UNESCAPED_UNICODE), 'UTF-8');
+        
+        // Flatten array to extract only values (ignore column headers / JSON keys)
+        $values = [];
+        array_walk_recursive($scanData, function($v) use (&$values) {
+            if (!is_null($v) && !is_bool($v)) {
+                $values[] = $v;
+            }
+        });
+        
+        $payloadStr = mb_strtolower(implode(' | ', $values), 'UTF-8');
+        
         foreach ($blacklistKeys as $key) {
             if (empty($key)) continue;
-            if (strpos($payloadStr, $key) !== false) {
-                return true; // Match found in payload
+            if (mb_strpos($payloadStr, $key, 0, 'UTF-8') !== false) {
+                return true; // Match found in payload values
             }
         }
     }

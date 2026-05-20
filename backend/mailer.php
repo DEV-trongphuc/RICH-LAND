@@ -21,7 +21,7 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
             <div style="background: linear-gradient(135deg, #eab308, #ea580c); padding: 40px 20px; text-align: center;">
                 <div style="margin-bottom: 16px; text-align: center;">
                     <div style="display: inline-block; background: rgba(255,255,255,0.25); border-radius: 50%; width: 56px; height: 56px; line-height: 56px; text-align: center; vertical-align: middle;">
-                        <span style="font-size: 28px; line-height: 56px; vertical-align: middle;">🤖</span>
+                        <img src="https://open.domation.net/sale_data/Compress_ICON.png" alt="Domation Logo" style="width: 32px; height: 32px; vertical-align: middle; display: inline-block; border-radius: 50%;" />
                     </div>
                 </div>
                 <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: 2px; text-align: center;">DOMATION</h1>

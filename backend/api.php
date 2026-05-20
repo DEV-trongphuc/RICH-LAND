@@ -1846,8 +1846,8 @@ switch ($action) {
             // Build confirm link
             $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
-            $confirmLink = $frontendUrl . "/backend/confirm.php?token=" . $token;
+            $basePath = preg_replace('/\/api\.php.*$/i', '', $_SERVER['REQUEST_URI'] ?? '');
+            $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token;
 
             require_once 'mailer.php';
             sendAdminConfirmationEmail($email, $name, $confirmLink);
@@ -2062,8 +2062,8 @@ switch ($action) {
             if ($stmt->execute()) {
                 $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
-                $confirmLink = $frontendUrl . "/backend/confirm.php?token=" . $token;
+                $basePath = preg_replace('/\/api\.php.*$/i', '', $_SERVER['REQUEST_URI'] ?? '');
+                $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token;
 
                 require_once 'mailer.php';
                 sendAdminConfirmationEmail($account['email'], $account['name'], $confirmLink);
