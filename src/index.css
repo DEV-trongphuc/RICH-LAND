@@ -1897,3 +1897,108 @@ th.col-check {
   color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
+
+/* Sales Portal Responsive Mobile Layouts */
+@media (max-width: 768px) {
+  .portal-header {
+    padding: 0.6rem 0.8rem !important;
+    gap: 0.5rem !important;
+  }
+  .portal-header-logo img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .portal-header-logo h1 {
+    font-size: 0.95rem !important;
+  }
+  .portal-header-logo span {
+    font-size: 0.55rem !important;
+  }
+  .portal-header-user {
+    gap: 0.5rem !important;
+  }
+  .portal-header-user-info {
+    display: none !important;
+  }
+  .portal-header-logout {
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
+    border-radius: 8px !important;
+  }
+
+  .portal-main-content {
+    padding: 0.75rem !important;
+  }
+
+  .portal-filters-row {
+    padding: 0.75rem !important;
+    margin-bottom: 1rem !important;
+    border-radius: 12px !important;
+  }
+  .portal-filters-row h2 {
+    font-size: 0.95rem !important;
+  }
+  .portal-filters-row p {
+    font-size: 0.7rem !important;
+  }
+  .portal-filters-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .portal-filter-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
+    width: 100% !important;
+  }
+  .portal-filter-item span {
+    font-size: 0.65rem !important;
+    margin-bottom: 2px !important;
+  }
+  .portal-filter-item > div {
+    width: 100% !important;
+  }
+  .portal-filter-label {
+    display: none !important;
+  }
+  .portal-filter-apply-btn {
+    grid-column: span 2 !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 8px !important;
+    font-size: 0.8rem !important;
+    margin-top: 4px !important;
+  }
+
+  .portal-kpis-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 1rem !important;
+  }
+  .portal-kpis-grid .card {
+    padding: 0.75rem !important;
+    border-radius: 12px !important;
+  }
+  .portal-kpis-grid .card span {
+    font-size: 0.65rem !important;
+  }
+  .portal-kpi-val {
+    font-size: 1.35rem !important;
+    margin: 4px 0 0 !important;
+  }
+  .portal-kpi-subtext {
+    display: none !important;
+  }
+
+  .portal-charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .portal-charts-grid .card {
+    padding: 0.75rem !important;
+    border-radius: 12px !important;
+  }
+}
+

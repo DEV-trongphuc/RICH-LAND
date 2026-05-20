@@ -387,13 +387,13 @@ export const SalePortal = () => {
   return (
     <div style={{ height: '100vh', width: '100vw', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top Header Navigation */}
-      <header style={{
+      <header className="portal-header" style={{
         background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
         color: 'white', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 50,
         boxShadow: '0 4px 20px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between',
         alignItems: 'center', flexWrap: 'wrap', gap: '1rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="portal-header-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%',
             background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
@@ -416,13 +416,14 @@ export const SalePortal = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ textAlign: 'right' }}>
+        <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div className="portal-header-user-info" style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{user?.name}</div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{user?.email}</div>
           </div>
           <button
             onClick={handleLogout}
+            className="portal-header-logout"
             style={{
               background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: '10px', color: 'white', padding: '8px 14px', fontSize: '0.85rem',
@@ -438,10 +439,10 @@ export const SalePortal = () => {
       </header>
 
       {/* Main Container */}
-      <main className="no-scrollbar" style={{ flex: 1, padding: '2rem', maxWidth: 1400, width: '100%', margin: '0 auto', overflowY: 'auto' }}>
+      <main className="no-scrollbar portal-main-content" style={{ flex: 1, padding: '2rem', maxWidth: 1400, width: '100%', margin: '0 auto', overflowY: 'auto' }}>
         
         {/* Top Filter and Actions Row */}
-        <div style={{
+        <div className="portal-filters-row" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',
           background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
@@ -452,10 +453,10 @@ export const SalePortal = () => {
             <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0' }}>Thống kê & phân tích dựa trên bộ lọc được chọn.</p>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="portal-filters-list" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Round Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>VÒNG:</span>
+            <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>VÒNG:</span>
               <CustomSelect
                 options={[
                   { value: '', label: 'Tất cả vòng' },
@@ -469,8 +470,8 @@ export const SalePortal = () => {
 
             {/* Sale Filter (Only for non-sale roles) */}
             {user?.role !== 'sale' && data.consultants && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>TƯ VẤN VIÊN:</span>
+              <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>TƯ VẤN VIÊN:</span>
                 <CustomSelect
                   options={[
                     { value: '', label: 'Tất cả TVV' },
@@ -486,8 +487,8 @@ export const SalePortal = () => {
             )}
             
             {/* Date Mode Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>THỜI GIAN:</span>
+            <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>THỜI GIAN:</span>
               <CustomSelect
                 options={[
                   { value: 'all', label: 'Tất cả thời gian' },
@@ -508,7 +509,7 @@ export const SalePortal = () => {
 
             {/* Custom Date Inputs */}
             {showCustomDate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="portal-filter-custom-date" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="date"
                   value={startDate}
@@ -534,6 +535,7 @@ export const SalePortal = () => {
             {/* Apply filters button */}
             <button
               onClick={handleApplyFilters}
+              className="portal-filter-apply-btn"
               style={{
                 background: '#7c3aed', color: 'white', border: 'none',
                 borderRadius: '10px', padding: '9px 18px', fontSize: '0.85rem', fontWeight: 700,
@@ -549,7 +551,7 @@ export const SalePortal = () => {
         </div>
 
         {/* KPI Dashboard Row */}
-        <section style={{
+        <section className="portal-kpis-grid" style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '1.25rem', marginBottom: '2rem'
         }}>
@@ -564,10 +566,10 @@ export const SalePortal = () => {
                 <FileText size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
               {data.stats.total_received}
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng data được bàn giao</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng data được bàn giao</span>
           </div>
 
           {/* Card 2: Tickets Total */}
@@ -581,10 +583,10 @@ export const SalePortal = () => {
                 <AlertCircle size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
               {data.stats.tickets_total}
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng số ticket đã gửi đi</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng số ticket đã gửi đi</span>
           </div>
 
           {/* Card 3: Pending */}
@@ -598,10 +600,10 @@ export const SalePortal = () => {
                 <Clock size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#f59e0b' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#f59e0b' }}>
               {data.stats.tickets_pending}
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Đang chờ Admin xử lý</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Đang chờ Admin xử lý</span>
           </div>
 
           {/* Card 4: Approved */}
@@ -615,10 +617,10 @@ export const SalePortal = () => {
                 <CheckCircle2 size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#10b981' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#10b981' }}>
               {data.stats.tickets_approved}
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket hợp lệ & đã được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket hợp lệ & đã được bù</span>
           </div>
 
           {/* Card 5: Rejected */}
@@ -632,15 +634,15 @@ export const SalePortal = () => {
                 <XCircle size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#ef4444' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#ef4444' }}>
               {data.stats.tickets_rejected}
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket bị từ chối / Không được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket bị từ chối / Không được bù</span>
           </div>
         </section>
 
         {/* Charts & Analytical Section */}
-        <section style={{
+        <section className="portal-charts-grid" style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
           gap: '1.5rem', marginBottom: '2rem'
         }}>
