@@ -18,6 +18,27 @@ if ($res->num_rows > 0) {
     $updateStmt->bind_param("i", $admin['id']);
     
     if ($updateStmt->execute()) {
+        // Fetch settings
+        $frontendUrl = './';
+        $botLink = '';
+        $settingsRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('frontend_url', 'zalo_bot_link')");
+        if ($settingsRes) {
+            while ($row = $settingsRes->fetch_assoc()) {
+                if ($row['setting_key'] === 'frontend_url' && !empty($row['setting_value'])) {
+                    $frontendUrl = rtrim($row['setting_value'], '/');
+                }
+                if ($row['setting_key'] === 'zalo_bot_link') {
+                    $botLink = $row['setting_value'];
+                }
+            }
+        }
+
+        // Send Zalo Active Email immediately
+        if (!empty($botLink)) {
+            require_once 'mailer.php';
+            sendWelcomeEmailToAdminTicket($admin['id'], $admin['email'] ?? '', $admin['name'], $botLink, true);
+        }
+
         echo '<!DOCTYPE html>
         <html lang="vi">
         <head>
@@ -39,7 +60,7 @@ if ($res->num_rows > 0) {
                 <div class="icon">✓</div>
                 <h1>Xác nhận thành công!</h1>
                 <p>Cảm ơn ' . htmlspecialchars($admin['name']) . '. Email của bạn đã được xác nhận. Bạn có thể đăng nhập vào CRM ngay bây giờ.</p>
-                <a href="../">Về trang Đăng nhập</a>
+                <a href="' . htmlspecialchars($frontendUrl) . '">Về trang Đăng nhập</a>
             </div>
         </body>
         </html>';

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -226,7 +226,10 @@ export const Accounts = () => {
                     <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Avatar name={acc.name} size={36} />
-                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{acc.name}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {acc.name}
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
+                        </div>
                       </div>
                     </td>
                     <td data-label="Email đăng nhập" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
@@ -253,22 +256,6 @@ export const Accounts = () => {
                       {acc.zalo_chat_id ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{acc.zalo_chat_id}</span>
-                          <button
-                            onClick={() => handleUnlinkZalo(acc.id)}
-                            style={{
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              background: '#fee2e2',
-                              color: '#ef4444',
-                              border: 'none',
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              cursor: 'pointer'
-                            }}
-                            title="Hủy liên kết Zalo"
-                          >
-                            Hủy
-                          </button>
                         </div>
                       ) : (
                         <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>Chưa có</span>
@@ -277,6 +264,11 @@ export const Accounts = () => {
                     <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>{getRoleBadge(acc.role)}</td>
                     <td data-label="Thao tác" className="col-actions" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        {acc.zalo_chat_id && (
+                          <button onClick={() => handleUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                            <Link2Off size={16} />
+                          </button>
+                        )}
                         <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
                           <Edit3 size={16} />
                         </button>

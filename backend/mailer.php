@@ -335,7 +335,8 @@ function sendWelcomeEmailToSale(
     int $consultantId,
     string $consultantEmail,
     string $consultantName,
-    string $zaloBotLink
+    string $zaloBotLink,
+    bool $sync = false
 ) {
     $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation DATA';
     $fName = htmlspecialchars($consultantName ?: 'Bạn');
@@ -372,7 +373,7 @@ function sendWelcomeEmailToSale(
         </p>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, '', $content, '');
+    sendEmailNotification($consultantEmail, $subject, '', $content, '', $sync);
 }
 
 /**
@@ -383,9 +384,10 @@ function sendWelcomeEmailToAdminTicket(
     int $adminId,
     string $adminEmail,
     string $adminName,
-    string $zaloBotLink
+    string $zaloBotLink,
+    bool $sync = false
 ) {
-    $subject = '🎫 Yêu cầu xác thực Zalo Bot nhận thông báo Ticket';
+    $subject = '🎫 Yêu cầu xác thực Zalo Bot';
     $fName = htmlspecialchars($adminName ?: 'Quản trị viên');
 
     $content = '
@@ -394,17 +396,17 @@ function sendWelcomeEmailToAdminTicket(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">🛡️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo xử lý Báo cáo lỗi (Ticket) từ hệ thống.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo từ hệ thống quản trị DOMATION.</p>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
             <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
-                Để có thể <strong>nhận thông báo tức thì qua Zalo</strong> mỗi khi có Sale BÁO CÁO DATA, vui lòng thực hiện xác thực Zalo Bot theo 2 bước đơn giản:
+                Để có thể <strong>nhận thông báo tức thì qua Zalo</strong> (tin nhắn lỗi, cảnh báo, fallback data), vui lòng thực hiện xác thực Zalo Bot theo 2 bước đơn giản:
             </p>
             <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
                 <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Xác thực Zalo Bot"</strong> bên dưới.</li>
-                <li>Gửi tin nhắn cho Bot với mã số ID của bạn: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . $adminId . '</strong></li>
-                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Chỉ cần copy mã ID ở trên và gửi thẳng cho Zalo Bot)</em></li>
+                <li>Gửi tin nhắn cho Bot với mã xác thực của bạn: <br/><strong style="color: #d97706; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">A' . $adminId . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Chỉ cần copy mã xác thực ở trên và gửi thẳng cho Zalo Bot)</em></li>
             </ol>
         </div>
 
@@ -416,7 +418,7 @@ function sendWelcomeEmailToAdminTicket(
         </div>
     ';
 
-    sendEmailNotification($adminEmail, $subject, '', $content, '');
+    sendEmailNotification($adminEmail, $subject, '', $content, '', $sync);
 }
 
 /**
@@ -449,7 +451,7 @@ function sendAdminConfirmationEmail(
         </div>
     ';
 
-    sendEmailNotification($adminEmail, $subject, '', $content, '');
+    sendEmailNotification($adminEmail, $subject, '', $content, '', true);
 }
 
 /**

@@ -116,12 +116,20 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         
         $userId = 0;
         $email = '';
+        $targetType = ''; // 'admin', 'sale', or ''
         
-        if (preg_match('/^(\d+)[\-\s]+([^\s]+)$/', $cleanText, $matches)) {
+        if (preg_match('/^(a|admin|ad)[\-\s]*(\d+)$/i', $cleanText, $matches)) {
+            $targetType = 'admin';
+            $userId = (int)$matches[2];
+        } else if (preg_match('/^(s|sale|tvv)[\-\s]*(\d+)$/i', $cleanText, $matches)) {
+            $targetType = 'sale';
+            $userId = (int)$matches[2];
+        } else if (preg_match('/^(\d+)[\-\s]+([^\s]+)$/', $cleanText, $matches)) {
             $userId = (int)$matches[1];
             $email = strtolower(trim($matches[2]));
         } else if (preg_match('/^\d+$/', $cleanText)) {
             $userId = (int)$cleanText;
+            $targetType = 'sale'; // Mặc định nếu chỉ nhập số thì dành cho Sale
         } else if (filter_var($cleanText, FILTER_VALIDATE_EMAIL)) {
             $email = strtolower($cleanText);
         }
@@ -156,41 +164,45 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
             // 1. Tìm trong hệ thống Sale (consultants)
             $sale = null;
-            if ($userId > 0 && !empty($email)) {
-                $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? AND email = ? LIMIT 1");
-                if ($stmtFind) $stmtFind->bind_param("is", $userId, $email);
-            } else if ($userId > 0) {
-                $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-                if ($stmtFind) $stmtFind->bind_param("i", $userId);
-            } else {
-                $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE email = ? LIMIT 1");
-                if ($stmtFind) $stmtFind->bind_param("s", $email);
-            }
-            
-            if ($stmtFind && $stmtFind->execute()) {
-                $res = $stmtFind->get_result();
-                if ($res && $res->num_rows > 0) {
-                    $sale = $res->fetch_assoc();
+            if ($targetType === '' || $targetType === 'sale') {
+                if ($userId > 0 && !empty($email)) {
+                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? AND email = ? LIMIT 1");
+                    if ($stmtFind) $stmtFind->bind_param("is", $userId, $email);
+                } else if ($userId > 0) {
+                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                    if ($stmtFind) $stmtFind->bind_param("i", $userId);
+                } else {
+                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE email = ? LIMIT 1");
+                    if ($stmtFind) $stmtFind->bind_param("s", $email);
+                }
+                
+                if ($stmtFind && $stmtFind->execute()) {
+                    $res = $stmtFind->get_result();
+                    if ($res && $res->num_rows > 0) {
+                        $sale = $res->fetch_assoc();
+                    }
                 }
             }
 
             // 2. Tìm trong hệ thống Quản trị (accounts)
             $admin = null;
-            if ($userId > 0 && !empty($email)) {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
-                if ($stmtAdmin) $stmtAdmin->bind_param("is", $userId, $email);
-            } else if ($userId > 0) {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? LIMIT 1");
-                if ($stmtAdmin) $stmtAdmin->bind_param("i", $userId);
-            } else {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE email = ? LIMIT 1");
-                if ($stmtAdmin) $stmtAdmin->bind_param("s", $email);
-            }
-            
-            if ($stmtAdmin && $stmtAdmin->execute()) {
-                $resAdmin = $stmtAdmin->get_result();
-                if ($resAdmin && $resAdmin->num_rows > 0) {
-                    $admin = $resAdmin->fetch_assoc();
+            if ($targetType === '' || $targetType === 'admin') {
+                if ($userId > 0 && !empty($email)) {
+                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
+                    if ($stmtAdmin) $stmtAdmin->bind_param("is", $userId, $email);
+                } else if ($userId > 0) {
+                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? LIMIT 1");
+                    if ($stmtAdmin) $stmtAdmin->bind_param("i", $userId);
+                } else {
+                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE email = ? LIMIT 1");
+                    if ($stmtAdmin) $stmtAdmin->bind_param("s", $email);
+                }
+                
+                if ($stmtAdmin && $stmtAdmin->execute()) {
+                    $resAdmin = $stmtAdmin->get_result();
+                    if ($resAdmin && $resAdmin->num_rows > 0) {
+                        $admin = $resAdmin->fetch_assoc();
+                    }
                 }
             }
 

@@ -503,7 +503,7 @@ switch ($action) {
             if (!empty($row['setting_value']))
                 $botLink = $row['setting_value'];
         }
-        sendWelcomeEmailToSale($newId, $email, $name, $botLink);
+        sendWelcomeEmailToSale($newId, $email, $name, $botLink, true);
 
         echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         break;

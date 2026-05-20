@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Edit2, Trash2, UserX, Clock, X, Mail, User, Shield, Users, MessageCircle } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -226,6 +226,7 @@ export const Consultants = () => {
                           <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                             {u.name}
                           </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {u.id}</div>
                         </div>
                       </div>
                     </td>
@@ -240,25 +241,6 @@ export const Consultants = () => {
                           }}>
                             <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
                           </span>
-                          <button
-                            onClick={() => handleUnlinkZalo(u.id)}
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: 4,
-                              background: '#fee2e2',
-                              color: '#ef4444',
-                              border: 'none',
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 2
-                            }}
-                            title="Hủy liên kết Zalo"
-                          >
-                            Hủy
-                          </button>
                         </div>
                       ) : (
                         <span style={{ 
@@ -297,11 +279,16 @@ export const Consultants = () => {
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
                         {(u.zalo_chat_id || u.email) && (
                           <button onClick={() => { setQuickMessageTarget(u); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Gửi tin nhắn nhanh (Email/Zalo)">
-                            <MessageCircle size={14} />
+                            <MessageCircle size={16} />
                           </button>
                         )}
-                        <button onClick={() => openEditModal(u)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8 }}>
-                          <Edit2 size={14} />
+                        {u.zalo_chat_id && (
+                          <button onClick={() => handleUnlinkZalo(u.id)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                            <Link2Off size={16} />
+                          </button>
+                        )}
+                        <button onClick={() => openEditModal(u)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }} title="Sửa thông tin">
+                          <Edit3 size={16} />
                         </button>
                         <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }}>
                           <Trash2 size={14} />
