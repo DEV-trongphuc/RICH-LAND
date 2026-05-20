@@ -12,6 +12,19 @@ require_once __DIR__ . '/webhook_logic.php';
 // Check if a connection ID is requested
 $selected_conn_id = isset($_GET['connection_id']) ? (int)$_GET['connection_id'] : null;
 
+// Handle Reset Hash Action
+if (isset($_GET['action']) && $_GET['action'] === 'reset_hash' && isset($_GET['row_hash'])) {
+    $reset_conn_id = isset($_GET['connection_id']) ? (int)$_GET['connection_id'] : 0;
+    $row_hash = trim($_GET['row_hash']);
+    if ($reset_conn_id > 0 && !empty($row_hash)) {
+        $stmt = $conn->prepare("DELETE FROM sheet_sync_records WHERE connection_id = ? AND row_hash = ?");
+        $stmt->bind_param("is", $reset_conn_id, $row_hash);
+        $stmt->execute();
+        header("Location: verify_sheet.php?connection_id=" . $reset_conn_id . "&reset_success=1");
+        exit;
+    }
+}
+
 // Get all active connections
 $connections = [];
 $res = $conn->query("SELECT id, sheet_name, spreadsheet_id, connection_type, require_both_contact, is_silent, sync_mode FROM sheet_connections WHERE is_active = 1");
@@ -76,6 +89,36 @@ if ($connItem) {
             }
             return implode("\n", $values);
         };
+
+        $getLeadDetailLocal = function($conn, $phone, $email) {
+            if (empty($phone) && empty($email)) return null;
+            $where = [];
+            $params = [];
+            $types = '';
+            if (!empty($phone)) {
+                $where[] = "phone = ?";
+                $params[] = $phone;
+                $types .= 's';
+            }
+            if (!empty($email)) {
+                $where[] = "email = ?";
+                $params[] = $email;
+                $types .= 's';
+            }
+            $whereClause = implode(" OR ", $where);
+            $stmt = $conn->prepare("SELECT l.id, c.name as consultant_name FROM leads l LEFT JOIN consultants c ON l.assigned_to = c.id WHERE $whereClause ORDER BY l.last_interaction_date DESC LIMIT 1");
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $stmt->close();
+            if ($res && $res->num_rows > 0) {
+                return $res->fetch_assoc();
+            }
+            return null;
+        };
+
 
         // Fetch CSV from Google Sheets
         $csvUrl = "https://docs.google.com/spreadsheets/d/" . trim($connItem['spreadsheet_id']) . "/gviz/tq?tqx=out:csv";
@@ -155,7 +198,18 @@ if ($connItem) {
             if (isset($hashMap[$rowHash])) {
                 // Check if this lead actually exists in CRM
                 $crmCheck = checkCRMInteraction($conn, $phone, $email);
-                $existMsg = $crmCheck['isDuplicate'] ? "Khách hàng đang có trong CRM (ID Lead: " . $crmCheck['leadId'] . ", Sale: " . $crmCheck['assignedName'] . ")" : "Đã đồng bộ nhưng Lead không còn trong bảng leads (có thể đã bị xóa)";
+                
+                $leadId = '';
+                $assignedName = '';
+                if ($crmCheck['isDuplicate']) {
+                    $lDetail = $getLeadDetailLocal($conn, $phone, $email);
+                    if ($lDetail) {
+                        $leadId = $lDetail['id'];
+                        $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
+                    }
+                }
+                
+                $existMsg = $crmCheck['isDuplicate'] ? "Khách hàng đang có trong CRM (ID Lead: " . $leadId . ", Sale: " . $assignedName . ")" : "Đã đồng bộ nhưng Lead không còn trong bảng leads (có thể đã bị xóa)";
                 
                 $diagnosticRows[] = [
                     'row_num' => $rowCount,
@@ -163,7 +217,8 @@ if ($connItem) {
                     'status' => 'ALREADY_SYNCED',
                     'message' => 'Đã quét qua trước đó (Lần cuối: ' . $hashMap[$rowHash] . '). ' . $existMsg,
                     'class' => 'table-success',
-                    'extracted' => $extracted
+                    'extracted' => $extracted,
+                    'is_duplicate' => $crmCheck['isDuplicate']
                 ];
                 continue;
             }
@@ -218,8 +273,16 @@ if ($connItem) {
             }
 
             if ($crmCheck['isDuplicate']) {
+                $leadId = '';
+                $assignedName = '';
+                $lDetail = $getLeadDetailLocal($conn, $phone, $email);
+                if ($lDetail) {
+                    $leadId = $lDetail['id'];
+                    $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
+                }
+
                 if ($crmCheck['monthsSinceLastInteraction'] < $dupCheckMonths) {
-                    $msg = "Khách hàng TRÙNG trong CRM (Tương tác cuối cách đây " . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng < hạn định " . $dupCheckMonths . " tháng). Sẽ gửi nhắc nhở cho Sale: " . $crmCheck['assignedName'];
+                    $msg = "Khách hàng TRÙNG trong CRM (Tương tác cuối cách đây " . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng < hạn định " . $dupCheckMonths . " tháng). Sẽ gửi nhắc nhở cho Sale: " . $assignedName;
                     $cls = 'table-info';
                 } else {
                     $msg = "Khách hàng TRÙNG trong CRM nhưng đã quá hạn định check trùng (" . number_format($crmCheck['monthsSinceLastInteraction'], 1) . " tháng >= " . $dupCheckMonths . " tháng). Sẽ chia mới cho Sale tiếp theo.";
@@ -332,6 +395,13 @@ if ($connItem) {
 </head>
 <body>
 <div class="container">
+    <?php if (isset($_GET['reset_success'])): ?>
+        <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
+            <strong>Thành công!</strong> Đã xóa lịch sử quét dòng này. Dòng dữ liệu này sẽ được đồng bộ lại ở lần chạy cronjob/quét tiếp theo.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+
     <div class="row mb-4">
         <div class="col-12 text-center">
             <h1 class="text-success mb-2">🔍 GOOGLE SHEETS SYNC DIAGNOSTIC TOOL</h1>
@@ -430,6 +500,11 @@ if ($connItem) {
                                     </td>
                                     <td>
                                         <?= htmlspecialchars($row['message']) ?>
+                                        <?php if ($row['status'] === 'ALREADY_SYNCED' && empty($row['is_duplicate'])): ?>
+                                            <div class="mt-2">
+                                                <a href="?action=reset_hash&connection_id=<?= $connItem['id'] ?>&row_hash=<?= $row['extracted']['hash'] ?>" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Bạn có chắc chắn muốn xóa lịch sử quét dòng này để đồng bộ lại không?')">🔄 Reset để đồng bộ lại</a>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (isset($row['extracted']['hash'])): ?>
                                             <div class="text-secondary mt-1" style="font-size: 0.75rem;">Mã MD5 Row Hash: <code><?= $row['extracted']['hash'] ?></code></div>
                                         <?php endif; ?>
