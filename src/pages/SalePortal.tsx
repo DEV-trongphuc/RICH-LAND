@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  LogOut, Search, Filter, AlertCircle, CheckCircle2, 
-  XCircle, Clock, FileText, 
+import {
+  LogOut, Search, Filter, AlertCircle, CheckCircle2,
+  XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send
 } from 'lucide-react';
 import {
@@ -210,7 +210,7 @@ export const SalePortal = () => {
         round_id: selectedLead.round_id,
         reason: fullReason
       };
-      
+
       const res = await fetch('https://open.domation.net/sale_data/api.php?action=submit_report', {
         method: 'POST',
         headers: {
@@ -220,7 +220,7 @@ export const SalePortal = () => {
         body: JSON.stringify(payload)
       });
       const json = await res.json();
-      
+
       if (json.success) {
         toast.success('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.');
         setReportModalOpen(false);
@@ -286,11 +286,11 @@ export const SalePortal = () => {
             boxShadow: '0 4px 12px rgba(124,58,237,0.3)', overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.9)'
           }}>
-            <img 
-              src="https://crm-domation.vercel.app/LOGO.jpg" 
+            <img
+              src="https://crm-domation.vercel.app/LOGO.jpg"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              alt="logo" 
+              alt="logo"
             />
           </div>
 
@@ -298,7 +298,7 @@ export const SalePortal = () => {
             CỔNG TƯ VẤN VIÊN
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.925rem', marginTop: 6, lineHeight: 1.5 }}>
-            Vui lòng đăng nhập bằng tài khoản Google để tra cứu danh sách khách hàng và quản lý tickets.
+            Vui lòng đăng nhập bằng tài khoản Google nhận mail để tra cứu danh sách khách hàng và quản lý tickets.
           </p>
 
           <div style={{ margin: '2rem 0' }}>
@@ -351,9 +351,9 @@ export const SalePortal = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
                 <div ref={googleBtnRef} style={{ minHeight: 44 }}></div>
-                
+
                 {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>Đang kết nối Google API...</div>}
-                
+
                 {googleError && (
                   <div style={{
                     padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fee2e2',
@@ -401,11 +401,11 @@ export const SalePortal = () => {
             flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.2)', overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.9)'
           }}>
-            <img 
-              src="https://crm-domation.vercel.app/LOGO.jpg" 
+            <img
+              src="https://crm-domation.vercel.app/LOGO.jpg"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              alt="logo" 
+              alt="logo"
             />
           </div>
           <div>
@@ -440,7 +440,7 @@ export const SalePortal = () => {
 
       {/* Main Container */}
       <main className="no-scrollbar portal-main-content" style={{ flex: 1, padding: '2rem', maxWidth: 1400, width: '100%', margin: '0 auto', overflowY: 'auto' }}>
-        
+
         {/* Top Filter and Actions Row */}
         <div className="portal-filters-row" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -452,7 +452,7 @@ export const SalePortal = () => {
             <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Tổng quan hiệu suất</h2>
             <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0' }}>Thống kê & phân tích dựa trên bộ lọc được chọn.</p>
           </div>
-          
+
           <div className="portal-filters-list" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Round Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -485,7 +485,7 @@ export const SalePortal = () => {
                 />
               </div>
             )}
-            
+
             {/* Date Mode Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>THỜI GIAN:</span>
@@ -685,12 +685,12 @@ export const SalePortal = () => {
                 TỶ LỆ PHÂN BỔ THEO VÒNG (ROUND)
               </h3>
             </div>
-            
+
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem', justifyContent: 'center' }}>
               {data.by_round && data.by_round.length > 0 ? (
                 data.by_round.map((r: any, idx: number) => {
-                  const percentage = data.stats.total_received > 0 
-                    ? Math.round((r.count / data.stats.total_received) * 100) 
+                  const percentage = data.stats.total_received > 0
+                    ? Math.round((r.count / data.stats.total_received) * 100)
                     : 0;
                   const colors = ['#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
                   const themeColor = colors[idx % colors.length];
@@ -802,9 +802,9 @@ export const SalePortal = () => {
                 </thead>
                 <tbody>
                   {data.leads.map((lead: any, index: number) => (
-                    <tr 
-                      key={lead.log_id} 
-                      style={{ 
+                    <tr
+                      key={lead.log_id}
+                      style={{
                         borderBottom: '1px solid #f1f5f9',
                         background: index % 2 === 0 ? 'white' : '#fafafa',
                         transition: 'background 0.2s'
@@ -814,7 +814,7 @@ export const SalePortal = () => {
                     >
                       {/* KHÁCH HÀNG */}
                       <td style={{ padding: '1rem 1.25rem' }}>
-                        <div 
+                        <div
                           onClick={() => {
                             setActiveDetailLead(lead);
                             setDetailModalOpen(true);
@@ -823,9 +823,9 @@ export const SalePortal = () => {
                           title="Xem chi tiết"
                         >
                           <Avatar name={lead.lead_name || 'Khách hàng'} size={32} />
-                          <span 
-                            style={{ 
-                              fontWeight: 700, 
+                          <span
+                            style={{
+                              fontWeight: 700,
                               color: '#0f172a',
                               cursor: 'pointer'
                             }}
@@ -848,14 +848,14 @@ export const SalePortal = () => {
                       {/* VÒNG / PHÂN BỔ CHO */}
                       {user?.role === 'sale' ? (
                         <td style={{ padding: '1rem 1.25rem' }}>
-                          <span style={{ 
-                            display: 'inline-flex', 
-                            padding: '4px 10px', 
-                            borderRadius: '12px', 
-                            background: '#e0e7ff', 
-                            color: '#4338ca', 
-                            fontSize: '0.75rem', 
-                            fontWeight: 700 
+                          <span style={{
+                            display: 'inline-flex',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            background: '#e0e7ff',
+                            color: '#4338ca',
+                            fontSize: '0.75rem',
+                            fontWeight: 700
                           }}>
                             {lead.round_name || 'Mặc định'}
                           </span>
@@ -899,7 +899,7 @@ export const SalePortal = () => {
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           {lead.report_status === 'pending' && (
-                            <div 
+                            <div
                               style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', cursor: 'pointer' }}
                               title="Ticket chờ duyệt (Bấm để xem chi tiết)"
                               onClick={() => {
@@ -911,7 +911,7 @@ export const SalePortal = () => {
                             </div>
                           )}
                           {lead.report_status === 'approved' && (
-                            <div 
+                            <div
                               style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#d1fae5', color: '#065f46', cursor: 'pointer' }}
                               title="Ticket đã duyệt bù (Bấm để xem chi tiết)"
                               onClick={() => {
@@ -923,9 +923,9 @@ export const SalePortal = () => {
                             </div>
                           )}
                           {lead.report_status === 'rejected' && (
-                            <div 
-                              style={{ 
-                                display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fee2e2', color: '#991b1b', cursor: 'pointer' 
+                            <div
+                              style={{
+                                display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fee2e2', color: '#991b1b', cursor: 'pointer'
                               }}
                               title={`Ticket từ chối bù: ${lead.report_reject_reason || 'Không cung cấp'} (Bấm để xem chi tiết)`}
                               onClick={() => {
@@ -1063,7 +1063,7 @@ export const SalePortal = () => {
               <span style={{ fontWeight: 700, color: '#64748b' }}>Họ và tên:</span>
               <span style={{ fontWeight: 700, color: '#0f172a' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
               <span style={{ fontWeight: 700, color: '#64748b' }}>Số điện thoại:</span>
               <span style={{ fontWeight: 700, color: '#d97706' }}>{activeDetailLead.phone}</span>
@@ -1122,7 +1122,7 @@ export const SalePortal = () => {
                 padding: '12px', borderRadius: '10px', border: '1px solid currentColor', marginTop: '8px'
               }}>
                 <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 4 }}>
-                  <AlertCircle size={16} /> 
+                  <AlertCircle size={16} />
                   <span>
                     Báo cáo lỗi: {activeDetailLead.report_status === 'approved' ? 'Đã duyệt bù' : activeDetailLead.report_status === 'pending' ? 'Chờ quản trị viên duyệt' : 'Đã bị từ chối'}
                   </span>

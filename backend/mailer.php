@@ -364,7 +364,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
             Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
-            Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ chiến dịch Inbound.
+            Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ ' . (!empty($roundName) ? 'vòng ' . htmlspecialchars($roundName) : 'chiến dịch Inbound') . '.
         </p>
         
         <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
