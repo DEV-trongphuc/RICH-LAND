@@ -14,6 +14,7 @@ const SYSTEM_FIELDS = [
   { value: 'type', label: 'Loại Data' },
   { value: 'note', label: 'Ghi Chú' },
   { value: 'assigned_to', label: 'Sale phụ trách (Trùng số nhắc lại)' },
+  { value: 'saleperson', label: 'Salesperson (Tên/Email Sale)' },
 ];
 
 const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "https://open.domation.net/sale_data/webhook.php";
@@ -28,6 +29,7 @@ type Connection = {
   sync_interval?: number;
   sync_mode?: 'all' | 'new_only' | string;
   is_silent?: number | boolean;
+  sync_saleperson?: number | boolean;
   email_template?: string;
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
@@ -90,6 +92,7 @@ export const Integrations = () => {
   const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [customSyncMins, setCustomSyncMins] = useState<number>(15);
   const [isSilent, setIsSilent] = useState(false);
+  const [syncSaleperson, setSyncSaleperson] = useState(false);
   const [tempMappings, setTempMappings] = useState<{ sheet_col: string, sys_field: string, custom_label?: string }[]>([]);
   const [fetchedColumns, setFetchedColumns] = useState<string[]>([]);
   const [isFetchingColumns, setIsFetchingColumns] = useState(false);
@@ -122,7 +125,16 @@ export const Integrations = () => {
   const [editCustomSyncMins, setEditCustomSyncMins] = useState<number>(15);
   const [editSyncMode, setEditSyncMode] = useState<'all' | 'new_only'>('all');
   const [editIsSilent, setEditIsSilent] = useState(false);
+  const [editSyncSaleperson, setEditSyncSaleperson] = useState(false);
   const [editEmailTemplate, setEditEmailTemplate] = useState('');
+
+  const getSelectFields = () => {
+    const isSyncActive = selected?.sync_saleperson || (showEditConn && editSyncSaleperson) || (showAddConn && syncSaleperson);
+    if (isSyncActive) {
+      return SYSTEM_FIELDS;
+    }
+    return SYSTEM_FIELDS.filter(f => f.value !== 'saleperson');
+  };
 
   const fetchData = async () => {
     try {
@@ -137,6 +149,7 @@ export const Integrations = () => {
           sync_interval: Number(c.sync_interval),
           connection_type: c.connection_type,
           is_silent: Boolean(Number(c.is_silent)),
+          sync_saleperson: Boolean(Number(c.sync_saleperson)),
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
@@ -211,6 +224,7 @@ export const Integrations = () => {
       sync_interval: finalInterval,
       sync_mode: syncMode,
       is_silent: isSilent ? 1 : 0,
+      sync_saleperson: syncSaleperson ? 1 : 0,
       email_template: emailTemplate
     };
 
@@ -239,6 +253,7 @@ export const Integrations = () => {
         setCustomSyncMins(15);
         setSyncMode('all');
         setIsSilent(false);
+        setSyncSaleperson(false);
         setTempMappings([]);
         setAddStep(1);
         setShowAddConn(false);
@@ -298,6 +313,7 @@ export const Integrations = () => {
       connection_type: selected.connection_type,
       sync_mode: editSyncMode,
       is_silent: editIsSilent ? 1 : 0,
+      sync_saleperson: editSyncSaleperson ? 1 : 0,
       email_template: editEmailTemplate
     };
 
@@ -517,9 +533,11 @@ export const Integrations = () => {
                   background: selected?.id === conn.id ? 'var(--color-primary-light)' : 'var(--color-bg)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
                   border: selected?.id === conn.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
-                }}>
+                }} title={conn.is_silent ? "Chỉ đồng bộ check trùng" : undefined}>
                   {conn.connection_type === 'landing_page' ? (
                     <Zap size={20} color={selected?.id === conn.id ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+                  ) : conn.is_silent ? (
+                    <Copy size={20} color="#eab308" style={{ opacity: selected?.id === conn.id ? 1 : 0.7 }} />
                   ) : (
                     <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 20, height: 20, objectFit: 'contain', opacity: selected?.id === conn.id ? 1 : 0.6 }} alt="Google Sheets" />
                   )}
@@ -559,9 +577,11 @@ export const Integrations = () => {
                     <div style={{
                       width: 44, height: 44, borderRadius: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
+                    }} title={selected.is_silent ? "Chỉ đồng bộ check trùng" : undefined}>
                       {selected.connection_type === 'landing_page' ? (
                         <Zap size={24} color="var(--color-primary)" />
+                      ) : selected.is_silent ? (
+                        <Copy size={24} color="#eab308" />
                       ) : (
                         <img src="https://mailmeteor.com/logos/assets/PNG/Google_Sheets_Logo_512px.png" style={{ width: 24, height: 24, objectFit: 'contain' }} alt="Google Sheets" />
                       )}
@@ -652,6 +672,7 @@ export const Integrations = () => {
                         setEditCustomSyncMins(customVal || 15);
                         setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
                         setEditIsSilent(Boolean(Number(selected.is_silent)));
+                        setEditSyncSaleperson(Boolean(Number(selected.sync_saleperson)));
                         const existingTemplate = selected.email_template || '';
                         setEditEmailTemplate(
                           existingTemplate ||
@@ -831,7 +852,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     <div style={{ flex: '1 1 180px' }}>
                       <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>Trường hệ thống</label>
                       <CustomSelect
-                        options={SYSTEM_FIELDS}
+                        options={getSelectFields()}
                         value={newMappingField}
                         onChange={(val) => setNewMappingField(String(val))}
                       />
@@ -1125,9 +1146,35 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
                 <ToggleSwitch
                   checked={isSilent}
-                  onChange={setIsSilent}
+                  onChange={(val) => {
+                    setIsSilent(val);
+                    if (!val) setSyncSaleperson(false);
+                  }}
                 />
               </div>
+
+              {isSilent && (
+                <>
+                  <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease-in-out' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
+                      <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
+                    </div>
+                    <ToggleSwitch
+                      checked={syncSaleperson}
+                      onChange={setSyncSaleperson}
+                    />
+                  </div>
+                  {syncSaleperson && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '0.5rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
+                      </div>
+                      Vui lòng tiến hành <strong>Cấu hình trường (Mapping)</strong> ở Bước kế tiếp: Map cột chứa Email (hoặc Tên) của Sale trên Google Sheets với trường hệ thống <strong>"Salesperson (Tên/Email Sale)"</strong> để kích hoạt tính năng này.
+                    </div>
+                  )}
+                </>
+              )}
 
               {syncPreset === 'custom' && (
                 <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
@@ -1186,7 +1233,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
                 <div style={{ flex: '1 1 160px' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Trường hệ thống</label>
-                  <CustomSelect options={SYSTEM_FIELDS} value={newMappingField} onChange={v => setNewMappingField(String(v))} />
+                  <CustomSelect options={getSelectFields()} value={newMappingField} onChange={v => setNewMappingField(String(v))} />
                 </div>
                 <div style={{ flex: '1 1 200px' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
@@ -1281,7 +1328,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  {SYSTEM_FIELDS.map(f => (
+                  {getSelectFields().map(f => (
                     <span key={f.value} onClick={() => setEmailTemplate(emailTemplate + `\n${f.label}: {${f.value}}`)} style={{ cursor: 'pointer', background: '#f1f5f9', color: '#0f172a', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid #e2e8f0' }}>
                       {'{'}{f.value}{'}'}
                     </span>
@@ -1451,7 +1498,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 />
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                {SYSTEM_FIELDS.map(f => (
+                {getSelectFields().map(f => (
                   <span
                     key={f.value}
                     onClick={() => setEditEmailTemplate(editEmailTemplate + (editEmailTemplate && !editEmailTemplate.endsWith('\n') ? '\n' : '') + `${f.label}: {${f.value}}`)}
@@ -1470,9 +1517,35 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
               <ToggleSwitch
                 checked={editIsSilent}
-                onChange={setEditIsSilent}
+                onChange={(val) => {
+                  setEditIsSilent(val);
+                  if (!val) setEditSyncSaleperson(false);
+                }}
               />
             </div>
+
+            {editIsSilent && (
+              <>
+                <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', transition: 'all 0.3s ease-in-out' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
+                    <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
+                  </div>
+                  <ToggleSwitch
+                    checked={editSyncSaleperson}
+                    onChange={setEditSyncSaleperson}
+                  />
+                </div>
+                {editSyncSaleperson && (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
+                    </div>
+                    Hãy đảm bảo đã vào mục <strong>Cấu hình trường (Mapping)</strong> ở bảng chi tiết ngoài màn hình chính để map cột tương ứng với trường hệ thống <strong>"Salesperson (Tên/Email Sale)"</strong>.
+                  </div>
+                )}
+              </>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
               <button className="btn outline" onClick={() => setShowEditConn(false)} style={{ padding: '0.5rem 1.25rem' }}>Hủy bỏ</button>

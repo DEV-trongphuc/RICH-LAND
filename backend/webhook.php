@@ -39,7 +39,7 @@ $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
 $connData = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, spreadsheet_id FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, sync_saleperson, spreadsheet_id FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -57,7 +57,7 @@ if (!empty($token)) {
     }
     $stmt->close();
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, webhook_token FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, sync_saleperson, webhook_token FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -83,6 +83,7 @@ $connectionId = $connData['id'];
 $requirePhone = $connData['require_both_contact'];
 $connectionType = $connData['connection_type'] ?? 'sheets';
 $isSilent = (int) ($connData['is_silent'] ?? 0);
+$syncSaleperson = (int) ($connData['sync_saleperson'] ?? 0);
 
 if ($connectionType === 'landing_page') {
     // API Landing Page Logic: map standard fields natively, bundle everything else to note
@@ -217,13 +218,18 @@ if ($dupCheckMonths <= 0) {
 
 if ($isSilent == 1) {
     $assignedToId = null;
-    if ($connectionType === 'landing_page') {
-        $assignedToVal = trim($data['assigned_to'] ?? '');
-    } else {
-        $assignedToVal = extractMappedValues($mappings, 'assigned_to', $data);
-    }
-    if (!empty($assignedToVal)) {
-        $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+    if ($syncSaleperson == 1) {
+        if ($connectionType === 'landing_page') {
+            $assignedToVal = trim($data['saleperson'] ?? $data['assigned_to'] ?? '');
+        } else {
+            $assignedToVal = extractMappedValues($mappings, 'saleperson', $data);
+            if (empty($assignedToVal)) {
+                $assignedToVal = extractMappedValues($mappings, 'assigned_to', $data);
+            }
+        }
+        if (!empty($assignedToVal)) {
+            $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+        }
     }
     
     $conn->begin_transaction();
@@ -242,6 +248,24 @@ if ($isSilent == 1) {
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
         exit();
     }
+
+    // If duplicate, check if we need to send duplicate reminder
+    if ($crmCheckResult['isDuplicate'] && $syncSaleperson == 1) {
+        // Send reminder ONLY if we have a sale in CRM and a sale in the webhook/payload, and they match
+        if (!empty($crmCheckResult['assignedTo']) && !empty($assignedToId) && (int)$crmCheckResult['assignedTo'] === (int)$assignedToId) {
+            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+            $stmtC->bind_param("i", $assignedToId);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            if ($cRow) {
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
+                sendLeadReminderZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, $note, $source);
+            }
+        }
+    }
+
     echo json_encode(["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."]);
     exit();
 }

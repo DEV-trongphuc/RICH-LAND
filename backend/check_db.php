@@ -11,7 +11,7 @@ require_once __DIR__ . '/db_connect.php';
 header('Content-Type: text/plain; charset=UTF-8');
 
 echo "=== CONNECTIONS ===\n";
-$res = $conn->query("SELECT id, sheet_name, spreadsheet_id, connection_type, is_active, require_both_contact, is_silent FROM sheet_connections");
+$res = $conn->query("SELECT id, sheet_name, spreadsheet_id, connection_type, is_active, require_both_contact, is_silent, sync_saleperson FROM sheet_connections");
 while ($row = $res->fetch_assoc()) {
     print_r($row);
 }

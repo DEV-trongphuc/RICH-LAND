@@ -64,7 +64,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_hash' && isset($_GET['r
 
 // Get all active connections
 $connections = [];
-$res = $conn->query("SELECT id, sheet_name, spreadsheet_id, connection_type, require_both_contact, is_silent, sync_mode FROM sheet_connections WHERE is_active = 1");
+$res = $conn->query("SELECT id, sheet_name, spreadsheet_id, connection_type, require_both_contact, is_silent, sync_saleperson, sync_mode FROM sheet_connections WHERE is_active = 1");
 if ($res) {
     while ($row = $res->fetch_assoc()) {
         $connections[] = $row;
@@ -311,11 +311,42 @@ if ($connItem) {
 
             if (!empty($connItem['is_silent'])) {
                 if ($crmCheck['isDuplicate']) {
-                    $msg = "Khách hàng TRÙNG trong CRM (Chỉ đồng bộ thông tin/ghi chú mới, KHÔNG định tuyến chia số hay gửi nhắc nhở).";
+                    if (!empty($connItem['sync_saleperson'])) {
+                        // Extract salesperson name/email from sheet
+                        $assignedToVal = $extractMappedValuesLocal($mappings, 'saleperson', $rowData);
+                        if (empty($assignedToVal)) {
+                            $assignedToVal = $extractMappedValuesLocal($mappings, 'assigned_to', $rowData);
+                        }
+                        $matchedSale = null;
+                        if (!empty($assignedToVal)) {
+                            $matchedSaleId = findConsultantByEmailOrName($conn, $assignedToVal);
+                            if ($matchedSaleId) {
+                                $stmtC = $conn->prepare("SELECT name FROM consultants WHERE id = ?");
+                                $stmtC->bind_param("i", $matchedSaleId);
+                                $stmtC->execute();
+                                $matchedSale = $stmtC->get_result()->fetch_assoc()['name'] ?? null;
+                                $stmtC->close();
+                            }
+                        }
+                        
+                        $crmLeadDetail = $getLeadDetailLocal($conn, $phone, $email);
+                        $crmOwner = $crmLeadDetail['consultant_name'] ?? null;
+
+                        if ($crmOwner && $matchedSale && $crmOwner === $matchedSale) {
+                            $msg = "Khách hàng TRÙNG trong CRM và thuộc Sale: $crmOwner. Sẽ gửi thông báo báo trùng cho Sale này.";
+                            $cls = 'table-info';
+                        } else {
+                            $msg = "Khách hàng TRÙNG trong CRM (CRM Owner: " . ($crmOwner ?: "Trống") . ", Sheet Sale: " . ($matchedSale ?: "Trống") . "). Không khớp hoặc thiếu Sale, chỉ lưu ngầm không gửi nhắc nhở.";
+                            $cls = 'table-primary';
+                        }
+                    } else {
+                        $msg = "Khách hàng TRÙNG trong CRM (Chỉ đồng bộ thông tin/ghi chú mới, KHÔNG định tuyến chia số hay gửi nhắc nhở).";
+                        $cls = 'table-primary';
+                    }
                 } else {
                     $msg = "Dòng dữ liệu MỚI HOÀN TOÀN (Chỉ đồng bộ thông tin vào leads, KHÔNG định tuyến chia số).";
+                    $cls = 'table-primary';
                 }
-                $cls = 'table-primary';
             } else {
                 if ($crmCheck['isDuplicate']) {
                     $leadId = '';

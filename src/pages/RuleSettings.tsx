@@ -277,7 +277,7 @@ export const RuleSettings = () => {
         const conns = connRes.data.map((c: any) => ({
           ...c,
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
-        }));
+        })).filter((c: any) => !Boolean(Number(c.is_silent)));
         setConnections(conns);
       }
     } catch (e: any) {

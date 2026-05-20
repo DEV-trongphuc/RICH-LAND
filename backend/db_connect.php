@@ -301,6 +301,12 @@ if ($runMigration) {
     // Auto-migrate: thêm cài đặt mặc định cho last_daily_report_timestamp nếu chưa có
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_daily_report_timestamp', '')");
 
+    // Auto-migrate: thêm cột sync_saleperson vào sheet_connections
+    $chkSyncSaleperson = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'sync_saleperson'");
+    if ($chkSyncSaleperson && $chkSyncSaleperson->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN sync_saleperson TINYINT(1) DEFAULT 0 COMMENT 'Đồng bộ salesperson bằng email'");
+    }
+
     // Auto-migrate: thêm cài đặt mặc định cho báo cáo tuần
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_day', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_time', '08:00')");

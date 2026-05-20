@@ -254,9 +254,14 @@ foreach ($connections as $connItem) {
 
             if (!empty($connItem['is_silent'])) {
                 $assignedToId = null;
-                $assignedToVal = extractMappedValues($mappings, 'assigned_to', $rowData);
-                if (!empty($assignedToVal)) {
-                    $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+                if (!empty($connItem['sync_saleperson'])) {
+                    $assignedToVal = extractMappedValues($mappings, 'saleperson', $rowData);
+                    if (empty($assignedToVal)) {
+                        $assignedToVal = extractMappedValues($mappings, 'assigned_to', $rowData);
+                    }
+                    if (!empty($assignedToVal)) {
+                        $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+                    }
                 }
                 
                 $conn->begin_transaction();
@@ -278,7 +283,29 @@ foreach ($connections as $connItem) {
                 } catch (Exception $txE) {
                     $conn->rollback();
                     logSync("Transaction failed for silent row: " . $txE->getMessage());
+                    continue;
                 }
+
+                // If duplicate, check if we need to send duplicate reminder
+                if ($crmCheckResult['isDuplicate'] && !empty($connItem['sync_saleperson'])) {
+                    // Send reminder ONLY if we have a sale in CRM and a sale in the sheet row, and they match
+                    if (!empty($crmCheckResult['assignedTo']) && !empty($assignedToId) && (int)$crmCheckResult['assignedTo'] === (int)$assignedToId) {
+                        static $consultantCache = [];
+                        if (!isset($consultantCache[$assignedToId])) {
+                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                            $stmtC->bind_param("i", $assignedToId);
+                            $stmtC->execute();
+                            $consultantCache[$assignedToId] = $stmtC->get_result()->fetch_assoc();
+                        }
+                        $cRow = $consultantCache[$assignedToId];
+                        
+                        if ($cRow) {
+                            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
+                            sendLeadReminderZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, $note, $source);
+                        }
+                    }
+                }
+                
                 continue;
             }
 
