@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, Bell } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -45,9 +45,11 @@ export const Accounts = () => {
   const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsPage, setLogsPage] = useState(1);
 
   const fetchLogs = async () => {
     setLoadingLogs(true);
+    setLogsPage(1);
     try {
       const json = await fetchAPI('get_admin_logs');
       if (json.success) setLogs(json.data);
@@ -273,6 +275,10 @@ export const Accounts = () => {
     return <span style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Viewer</span>;
   };
 
+  const LOGS_PER_PAGE = 50;
+  const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
+  const paginatedLogs = logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       <div className="page-header">
@@ -479,19 +485,20 @@ export const Accounts = () => {
           {loadingLogs ? (
             <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải nhật ký...</div>
           ) : (
-            <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+            <>
+              <div className="table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
               <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Người thực hiện</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Hành động</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Chi tiết</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>IP Address</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Thời gian</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Người thực hiện</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Hành động</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Chi tiết</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>IP Address</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map(log => {
+                  {paginatedLogs.map(log => {
                     const renderLogDetails = (detailsRaw: any) => {
                       try {
                         const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
@@ -553,9 +560,13 @@ export const Accounts = () => {
                           }
 
                           if (key === 'keys' && Array.isArray(val)) {
+                            const showAll = val.length <= 5;
+                            const visibleKeys = showAll ? val : val.slice(0, 4);
+                            const remainingCount = val.length - 4;
+                            const tooltipText = !showAll ? val.slice(4).join(', ') : '';
                             return (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                                {val.map((k: string) => (
+                                {visibleKeys.map((k: string) => (
                                   <span key={k} style={{ 
                                     display: 'inline-flex', 
                                     padding: '2px 8px', 
@@ -569,6 +580,24 @@ export const Accounts = () => {
                                     {k}
                                   </span>
                                 ))}
+                                {!showAll && (
+                                  <span 
+                                    title={tooltipText}
+                                    style={{ 
+                                      display: 'inline-flex', 
+                                      padding: '2px 8px', 
+                                      borderRadius: '6px', 
+                                      background: 'rgba(59, 130, 246, 0.1)',
+                                      border: '1px dashed rgba(59, 130, 246, 0.3)',
+                                      color: '#3b82f6',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      cursor: 'help'
+                                    }}
+                                  >
+                                    +{remainingCount} khác...
+                                  </span>
+                                )}
                               </div>
                             );
                           }
@@ -708,6 +737,61 @@ export const Accounts = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {!loadingLogs && totalLogPages > 0 && (
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(logsPage - 1) * LOGS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(logsPage * LOGS_PER_PAGE, logs.length)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{logs.length}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => setLogsPage(prev => Math.max(prev - 1, 1))}
+                    disabled={logsPage === 1}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: logsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: logsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: logsPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Array.from({ length: Math.min(5, totalLogPages) }, (_, i) => {
+                      let startPage = 1;
+                      if (totalLogPages > 5) {
+                        if (logsPage > 3) {
+                          startPage = logsPage - 2;
+                          if (startPage + 4 > totalLogPages) {
+                            startPage = totalLogPages - 4;
+                          }
+                        }
+                      }
+                      const pageNum = startPage + i;
+                      return (
+                         <button
+                           key={pageNum}
+                           onClick={() => setLogsPage(pageNum)}
+                           style={{ 
+                             width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                             border: logsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                             background: logsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                             color: logsPage === pageNum ? 'white' : 'var(--color-text)',
+                             cursor: 'pointer'
+                           }}
+                         >
+                           {pageNum}
+                         </button>
+                      );
+                    })}
+                  </div>
+                  <button 
+                    onClick={() => setLogsPage(prev => Math.min(prev + 1, totalLogPages))}
+                    disabled={logsPage === totalLogPages || totalLogPages === 0}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: logsPage === totalLogPages || totalLogPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: logsPage === totalLogPages || totalLogPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: logsPage === totalLogPages || totalLogPages === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
