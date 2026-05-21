@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -16,6 +16,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import { CardSkeleton } from '../components/ui/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
@@ -85,7 +86,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                     </span>
                   );
                 }
-                
+
                 const cIds = rule.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
                 return cIds.map((cId: number) => {
                   if (cId === -1) {
@@ -121,7 +122,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                 });
               })()}
             </div>
-            
+
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Điều kiện kích hoạt</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {(() => {
@@ -129,13 +130,13 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                 if (rule.conditions_json) {
                   try {
                     parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
-                  } catch(e) {
+                  } catch (e) {
                     parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
                   }
                 } else {
                   parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
                 }
-                
+
                 // Normalize to new structure: { conditions: [...] }
                 let normalizedBranches = [];
                 if (Array.isArray(parsed) && parsed.length > 0) {
@@ -194,22 +195,22 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
               })()}
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--color-border)' }}>
             <ArrowRight size={24} strokeWidth={1.5} />
           </div>
-          
+
           <div style={{ flex: '0 0 250px' }}>
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Hành động xử lý</p>
             <div style={{
               background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.15))',
-              border: '1px solid var(--color-primary)', 
-              color: 'var(--color-primary)', 
-              padding: '8px 16px', 
-              borderRadius: 50, 
-              fontWeight: 600, 
+              border: '1px solid var(--color-primary)',
+              color: 'var(--color-primary)',
+              padding: '8px 16px',
+              borderRadius: 50,
+              fontWeight: 600,
               fontSize: '0.875rem',
-              display: 'flex', alignItems: 'center', gap: 10, 
+              display: 'flex', alignItems: 'center', gap: 10,
               boxShadow: '0 2px 8px rgba(124, 58, 237, 0.15)'
             }}>
               <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -261,11 +262,71 @@ export const RuleSettings = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
-  const [branches, setBranches] = useState<any[]>([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
+  const [branches, setBranches] = useState<any[]>([{ conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }]);
   const [targetRound, setTargetRound] = useState<number | ''>('');
   const [connectionId, setConnectionId] = useState<any[]>(['all']);
   const [connections, setConnections] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<number | 'all' | null>('all');
+
+  // Simulator states
+  const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
+  const [simulateLoading, setSimulateLoading] = useState(false);
+  const [simulatePayload, setSimulatePayload] = useState({
+    name: 'Nguyễn Văn A',
+    phone: '0987654321',
+    email: 'test@example.com',
+    source: 'Facebook Ads',
+    type: 'Đăng ký khóa học',
+    note: 'Cần tư vấn lộ trình học nhanh'
+  });
+  const [simulateConnectionId, setSimulateConnectionId] = useState<string>('all');
+  const [simulateConnectionType, setSimulateConnectionType] = useState<string>('sheets');
+  const [simulateCustomFields, setSimulateCustomFields] = useState<{ key: string; val: string }[]>([]);
+  const [simulateResult, setSimulateResult] = useState<any>(null);
+
+  const openSimulateModal = () => {
+    setSimulateResult(null);
+    setIsSimulateModalOpen(true);
+  };
+
+  const handleRunSimulation = async () => {
+    setSimulateLoading(true);
+    setSimulateResult(null);
+    try {
+      const dataPayload: Record<string, string> = {
+        name: simulatePayload.name,
+        phone: simulatePayload.phone,
+        email: simulatePayload.email,
+        source: simulatePayload.source,
+        type: simulatePayload.type,
+        note: simulatePayload.note
+      };
+
+      simulateCustomFields.forEach(field => {
+        if (field.key.trim() !== '') {
+          dataPayload[field.key.trim()] = field.val;
+        }
+      });
+
+      const res = await fetchAPI('preview_routing', {
+        method: 'POST',
+        body: JSON.stringify({
+          data: dataPayload,
+          connection_id: simulateConnectionId,
+          connection_type: simulateConnectionType
+        })
+      });
+
+      if (res.success) {
+        setSimulateResult(res);
+      } else {
+        toast.error(res.message || 'Lỗi mô phỏng');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi khi kết nối mô phỏng: ' + err.message);
+    }
+    setSimulateLoading(false);
+  };
 
   const fetchConnections = async () => {
     try {
@@ -344,7 +405,7 @@ export const RuleSettings = () => {
       return;
     }
     setEditingRule(null);
-    
+
     // Pre-fill connection based on active filter
     if (activeFilter !== 'all' && activeFilter !== null) {
       setConnectionId([activeFilter]);
@@ -353,15 +414,15 @@ export const RuleSettings = () => {
     } else {
       setConnectionId(['all']);
     }
-    
-    setBranches([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
+
+    setBranches([{ conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }]);
     setTargetRound(rounds[0]?.id || '');
     setIsModalOpen(true);
   };
 
   const openEditModal = (rule: any) => {
     setEditingRule(rule);
-    
+
     let initialConns = ['all'];
     if (rule.connection_id !== null && rule.connection_id !== '') {
       initialConns = rule.connection_id.toString().split(',').map((v: string) => {
@@ -377,7 +438,7 @@ export const RuleSettings = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           if (parsed[0].col) {
             // Legacy flat array
-            setBranches([ { conditions: parsed, inject: { enabled: false, fields: [] } } ]);
+            setBranches([{ conditions: parsed, inject: { enabled: false, fields: [] } }]);
           } else if (Array.isArray(parsed[0])) {
             // Legacy array of arrays
             setBranches(parsed.map((b: any) => ({ conditions: b, inject: { enabled: false, fields: [] } })));
@@ -386,13 +447,13 @@ export const RuleSettings = () => {
             setBranches(parsed);
           }
         } else {
-          setBranches([ { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } } ]);
+          setBranches([{ conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }]);
         }
       } catch (e) {
-        setBranches([ { conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } } ]);
+        setBranches([{ conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } }]);
       }
     } else {
-      setBranches([ { conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } } ]);
+      setBranches([{ conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } }]);
     }
     setTargetRound(rule.target_round_id);
     setIsModalOpen(true);
@@ -503,7 +564,7 @@ export const RuleSettings = () => {
   const filteredRules = rules.filter(r => {
     if (activeFilter === 'all') return true;
     if (activeFilter === null) return r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
-    
+
     if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') return false;
     const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
     return cIds.includes(activeFilter);
@@ -518,9 +579,14 @@ export const RuleSettings = () => {
           </h1>
           <p className="page-subtitle">Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.</p>
         </div>
-        <button className="btn primary" onClick={openAddModal}>
-          <Plus size={18} /> Thêm Quy tắc mới
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn outline" onClick={openSimulateModal} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+            <Play size={16} style={{ fill: 'currentColor' }} /> Thử nghiệm Định tuyến
+          </button>
+          <button className="btn primary" onClick={openAddModal}>
+            <Plus size={18} /> Thêm Quy tắc mới
+          </button>
+        </div>
       </div>
 
       <div style={{
@@ -570,7 +636,7 @@ export const RuleSettings = () => {
       <div className="card" style={{ overflow: 'visible', paddingBottom: '2rem' }}>
         {loading ? (
           <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[1,2,3].map(i => <CardSkeleton key={i} height={90} />)}
+            {[1, 2, 3].map(i => <CardSkeleton key={i} height={90} />)}
           </div>
         ) : filteredRules.length === 0 ? (
           <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
@@ -599,7 +665,7 @@ export const RuleSettings = () => {
               </SortableContext>
             </DndContext>
             <div style={{ padding: '0 1rem', marginTop: '1rem' }}>
-              <button 
+              <button
                 onClick={openAddModal}
                 style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
               >
@@ -647,7 +713,7 @@ export const RuleSettings = () => {
                     </button>
                   )}
                 </div>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {branch.conditions.map((c: any, i: number) => {
                     const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
@@ -738,9 +804,9 @@ export const RuleSettings = () => {
                             className="btn ghost"
                             style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
                             onClick={() => {
-                               const newB = [...branches];
-                               newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
-                               setBranches(newB);
+                              const newB = [...branches];
+                              newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
+                              setBranches(newB);
                             }}
                             title="Xóa điều kiện này"
                           >
@@ -755,27 +821,27 @@ export const RuleSettings = () => {
                     <button
                       type="button"
                       onClick={() => {
-                         const newB = [...branches];
-                         newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
-                         setBranches(newB);
+                        const newB = [...branches];
+                        newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
+                        setBranches(newB);
                       }}
                       style={{ background: '#f3e8ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Plus size={14} /> Thêm điều kiện
                     </button>
                   </div>
-                  
+
                   {/* INJECT DATA FIELDS TOGGLE */}
                   <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed #e2e8f0', paddingTop: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: branch.inject?.enabled ? '1rem' : 0 }}>
-                      <div 
+                      <div
                         onClick={() => {
                           const newB = [...branches];
                           if (!newB[bIndex].inject) newB[bIndex].inject = { enabled: false, fields: [] };
                           const isEnabled = !newB[bIndex].inject.enabled;
                           newB[bIndex].inject.enabled = isEnabled;
                           if (isEnabled && newB[bIndex].inject.fields.length === 0) {
-                             newB[bIndex].inject.fields.push({ col: 'source', val: '' });
+                            newB[bIndex].inject.fields.push({ col: 'source', val: '' });
                           }
                           setBranches(newB);
                         }}
@@ -804,94 +870,94 @@ export const RuleSettings = () => {
                       </div>
                       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Tự động gán trường dữ liệu (Inject Data)</span>
                     </div>
-                    
+
                     {branch.inject?.enabled && (
-                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                         {branch.inject.fields.map((f: any, fi: number) => {
-                           const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
-                           return (
-                             <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                               <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
-                                 <CustomSelect
-                                   options={[
-                                     { value: 'source', label: 'Nguồn Khách (Source)' },
-                                     { value: 'type', label: 'Loại Khách (Type)' },
-                                     { value: 'note', label: 'Ghi Chú (Note)' },
-                                     { value: 'name', label: 'Tên Khách Hàng (Name)' },
-                                     { value: 'custom_trigger', label: 'Tùy chỉnh (Custom Key)...' }
-                                   ]}
-                                   value={isCustomMode ? 'custom_trigger' : f.col}
-                                   onChange={val => {
-                                      const newB = [...branches];
-                                      if (val === 'custom_trigger') {
-                                         newB[bIndex].inject.fields[fi].isCustom = true;
-                                         if (['source', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
-                                             newB[bIndex].inject.fields[fi].col = '';
-                                         }
-                                      } else {
-                                         newB[bIndex].inject.fields[fi].isCustom = false;
-                                         newB[bIndex].inject.fields[fi].col = String(val);
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        {branch.inject.fields.map((f: any, fi: number) => {
+                          const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
+                          return (
+                            <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                                <CustomSelect
+                                  options={[
+                                    { value: 'source', label: 'Nguồn Khách (Source)' },
+                                    { value: 'type', label: 'Loại Khách (Type)' },
+                                    { value: 'note', label: 'Ghi Chú (Note)' },
+                                    { value: 'name', label: 'Tên Khách Hàng (Name)' },
+                                    { value: 'custom_trigger', label: 'Tùy chỉnh (Custom Key)...' }
+                                  ]}
+                                  value={isCustomMode ? 'custom_trigger' : f.col}
+                                  onChange={val => {
+                                    const newB = [...branches];
+                                    if (val === 'custom_trigger') {
+                                      newB[bIndex].inject.fields[fi].isCustom = true;
+                                      if (['source', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
+                                        newB[bIndex].inject.fields[fi].col = '';
                                       }
-                                      setBranches(newB);
-                                   }}
-                                 />
-                               </div>
-                               
-                               {isCustomMode && (
-                                 <div style={{ flex: 1, minWidth: 120 }}>
-                                   <input
-                                     style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
-                                     placeholder="Tên trường custom (vd: utm_source)..."
-                                     value={f.col}
-                                     onChange={e => {
-                                        const newB = [...branches];
-                                        newB[bIndex].inject.fields[fi].col = e.target.value;
-                                        setBranches(newB);
-                                     }}
-                                   />
-                                 </div>
-                               )}
-                               
-                               <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
-                                 <input
-                                   style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
-                                   placeholder="Giá trị muốn gán tự động..."
-                                   value={f.val}
-                                   onChange={e => {
+                                    } else {
+                                      newB[bIndex].inject.fields[fi].isCustom = false;
+                                      newB[bIndex].inject.fields[fi].col = String(val);
+                                    }
+                                    setBranches(newB);
+                                  }}
+                                />
+                              </div>
+
+                              {isCustomMode && (
+                                <div style={{ flex: 1, minWidth: 120 }}>
+                                  <input
+                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                    placeholder="Tên trường custom (vd: utm_source)..."
+                                    value={f.col}
+                                    onChange={e => {
                                       const newB = [...branches];
-                                      newB[bIndex].inject.fields[fi].val = e.target.value;
+                                      newB[bIndex].inject.fields[fi].col = e.target.value;
                                       setBranches(newB);
-                                   }}
-                                 />
-                               </div>
-                               
-                               <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: '6px' }} onClick={() => {
-                                  const newB = [...branches];
-                                  newB[bIndex].inject.fields = branch.inject.fields.filter((_: any, idx: number) => idx !== fi);
-                                  setBranches(newB);
-                               }}>
-                                 <Trash2 size={16} />
-                               </button>
-                             </div>
-                           );
-                         })}
-                         <button type="button" className="btn ghost" style={{ alignSelf: 'flex-start', fontSize: '0.8125rem', marginTop: 4 }} onClick={() => {
-                            const newB = [...branches];
-                            newB[bIndex].inject.fields.push({ col: 'source', val: '' });
-                            setBranches(newB);
-                         }}>
-                           <Plus size={14} /> Thêm trường
-                         </button>
-                       </div>
+                                    }}
+                                  />
+                                </div>
+                              )}
+
+                              <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
+                                <input
+                                  style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                  placeholder="Giá trị muốn gán tự động..."
+                                  value={f.val}
+                                  onChange={e => {
+                                    const newB = [...branches];
+                                    newB[bIndex].inject.fields[fi].val = e.target.value;
+                                    setBranches(newB);
+                                  }}
+                                />
+                              </div>
+
+                              <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: '6px' }} onClick={() => {
+                                const newB = [...branches];
+                                newB[bIndex].inject.fields = branch.inject.fields.filter((_: any, idx: number) => idx !== fi);
+                                setBranches(newB);
+                              }}>
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                        <button type="button" className="btn ghost" style={{ alignSelf: 'flex-start', fontSize: '0.8125rem', marginTop: 4 }} onClick={() => {
+                          const newB = [...branches];
+                          newB[bIndex].inject.fields.push({ col: 'source', val: '' });
+                          setBranches(newB);
+                        }}>
+                          <Plus size={14} /> Thêm trường
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          
+
           <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
-            <button 
+            <button
               type="button"
               onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
               style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
@@ -944,6 +1010,413 @@ export const RuleSettings = () => {
             <button className="btn primary" onClick={() => navigate('/integrations')}>Đi tới Tích hợp</button>
           </div>
         </div>
+      </CustomModal>
+
+      {/* Simulator Modal (Hộp thử nghiệm) */}
+      <CustomModal
+        isOpen={isSimulateModalOpen}
+        onClose={() => setIsSimulateModalOpen(false)}
+        title="Thử nghiệm Định tuyến Lead"
+        width="1050px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+            Giả lập một lead mới đi vào hệ thống định tuyến để kiểm tra xem rule nào khớp và Sale nào sẽ nhận được data.
+          </p>
+
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+            {/* Cột trái: Nhập thông tin (Form) */}
+            <div style={{ flex: '1 1 450px', background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Server size={16} color="var(--color-primary)" /> Thông tin Lead Giả lập
+              </h4>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Họ và Tên</label>
+                <input
+                  className="form-input"
+                  value={simulatePayload.name}
+                  onChange={e => setSimulatePayload({ ...simulatePayload, name: e.target.value })}
+                  placeholder="VD: Nguyễn Văn A"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Số điện thoại</label>
+                  <input
+                    className="form-input"
+                    value={simulatePayload.phone}
+                    onChange={e => setSimulatePayload({ ...simulatePayload, phone: e.target.value })}
+                    placeholder="VD: 0987654321"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Email</label>
+                  <input
+                    className="form-input"
+                    value={simulatePayload.email}
+                    onChange={e => setSimulatePayload({ ...simulatePayload, email: e.target.value })}
+                    placeholder="VD: test@domain.com"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Nguồn (Source)</label>
+                  <input
+                    className="form-input"
+                    value={simulatePayload.source}
+                    onChange={e => setSimulatePayload({ ...simulatePayload, source: e.target.value })}
+                    placeholder="VD: Facebook Ads"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Loại (Type)</label>
+                  <input
+                    className="form-input"
+                    value={simulatePayload.type}
+                    onChange={e => setSimulatePayload({ ...simulatePayload, type: e.target.value })}
+                    placeholder="VD: Dang ky hoc"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Ghi chú (Note)</label>
+                <input
+                  className="form-input"
+                  value={simulatePayload.note}
+                  onChange={e => setSimulatePayload({ ...simulatePayload, note: e.target.value })}
+                  placeholder="VD: Tư vấn buổi tối"
+                />
+              </div>
+
+              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#475569' }}>Cấu hình Kết nối & Loại nguồn nhận</h5>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Nguồn tích hợp</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'all', label: 'Tất cả kết nối', icon: <Globe size={14} color="#6366f1" /> },
+                        ...connections.map(c => ({ value: c.id.toString(), label: c.sheet_name, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
+                      ]}
+                      value={simulateConnectionId}
+                      onChange={v => setSimulateConnectionId(String(v))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Loại kết nối</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'sheets', label: 'Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> },
+                        { value: 'landing_page', label: 'Landing Page API', icon: <Zap size={14} color="#f59e0b" /> },
+                        { value: 'manual', label: 'Nhập tay', icon: <Keyboard size={14} color="#ec4899" /> }
+                      ]}
+                      value={simulateConnectionType}
+                      onChange={v => setSimulateConnectionType(String(v))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom fields list */}
+              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: '#475569' }}>Trường dữ liệu tùy chỉnh (Cột Sheets custom)</h5>
+                  <button
+                    type="button"
+                    onClick={() => setSimulateCustomFields([...simulateCustomFields, { key: '', val: '' }])}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <Plus size={14} /> Thêm trường
+                  </button>
+                </div>
+
+                {simulateCustomFields.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {simulateCustomFields.map((f, fi) => (
+                      <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input
+                          style={{ flex: 1, padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                          placeholder="Tên cột (vd: utm_medium)..."
+                          value={f.key}
+                          onChange={e => {
+                            const newF = [...simulateCustomFields];
+                            newF[fi].key = e.target.value;
+                            setSimulateCustomFields(newF);
+                          }}
+                        />
+                        <input
+                          style={{ flex: 1.5, padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                          placeholder="Giá trị..."
+                          value={f.val}
+                          onChange={e => {
+                            const newF = [...simulateCustomFields];
+                            newF[fi].val = e.target.value;
+                            setSimulateCustomFields(newF);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSimulateCustomFields(simulateCustomFields.filter((_, idx) => idx !== fi))}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: 4 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="btn primary"
+                onClick={handleRunSimulation}
+                disabled={simulateLoading}
+                style={{ width: '100%', padding: '0.75rem', marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700 }}
+              >
+                {simulateLoading ? (
+                  <>
+                    <RefreshCw size={16} className="spin" /> Đang chạy mô phỏng...
+                  </>
+                ) : (
+                  <>
+                    <Play size={16} fill="white" /> Bắt đầu Mô phỏng
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Cột phải: Kết quả Trace */}
+            <div style={{ flex: '1.2 1 500px', display: 'flex', flexDirection: 'column', minHeight: '500px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase' }}>
+                  Kết quả phân tích đường đi
+                </h4>
+              </div>
+
+              <div className="no-scrollbar" style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#fff' }}>
+                {simulateLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: '#64748b' }}>
+                    <div style={{ width: 40, height: 40, border: '4px solid #f1f5f9', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    <span style={{ fontSize: '0.875rem' }}>Đang chạy phân tích quy tắc hệ thống...</span>
+                  </div>
+                ) : !simulateResult ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, border: '2px dashed #e2e8f0', borderRadius: '8px', padding: '3rem 1.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1rem' }}>
+                      <Play size={24} fill="currentColor" style={{ marginLeft: 3 }} />
+                    </div>
+                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Chưa chạy thử nghiệm</h5>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', maxWidth: 350, margin: 0 }}>Vui lòng điền thông tin lead giả lập ở cột bên trái và bấm nút "Bắt đầu Mô phỏng".</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Hộp đích đến */}
+                    <div style={{
+                      background: (simulateResult.is_fallback_admin || simulateResult.is_fallback)
+                        ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
+                        : (simulateResult.consultant ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'),
+                      border: '1px solid ' + ((simulateResult.is_fallback_admin || simulateResult.is_fallback) ? '#fbbf24' : (simulateResult.consultant ? '#34d399' : '#f87171')),
+                      borderRadius: '10px',
+                      padding: '0.75rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{ flexShrink: 0 }}>
+                        {simulateResult.consultant ? (
+                          <Avatar name={simulateResult.consultant.name} size={36} />
+                        ) : (
+                          <div style={{
+                            background: '#fff',
+                            color: '#ef4444',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                            width: 36, height: 36,
+                            borderRadius: '50%'
+                          }}>
+                            <XCircle size={20} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                            {simulateResult.consultant ? simulateResult.consultant.name : 'Không tìm thấy người nhận'}
+                          </h4>
+                          <span style={{
+                            fontSize: '0.625rem',
+                            fontWeight: 800,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            background: (simulateResult.is_fallback_admin || simulateResult.is_fallback) ? '#d97706' : (simulateResult.consultant ? '#10b981' : '#ef4444'),
+                            color: '#fff',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.2px'
+                          }}>
+                            {simulateResult.is_fallback_admin
+                              ? 'Fallback (Admin)'
+                              : (simulateResult.is_fallback ? 'Fallback (Mặc định)' : (simulateResult.consultant ? 'Thành công' : 'Không khớp'))}
+                          </span>
+                        </div>
+
+                        {simulateResult.consultant && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.775rem', color: '#475569' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <MapPin size={12} color="var(--color-primary)" /> <strong>Vòng chia:</strong> {simulateResult.consultant.round_name}
+                              </div>
+                              {simulateResult.consultant.email && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b' }}>
+                                  <Mail size={12} color="var(--color-text-muted)" /> <strong>Email:</strong> {simulateResult.consultant.email}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Giải thích logic chọn Sale */}
+                            {simulateResult.consultant.consultant_id > 0 && (
+                              <div style={{
+                                marginTop: '4px',
+                                borderTop: '1px dashed rgba(0,0,0,0.06)',
+                                paddingTop: '4px',
+                                fontSize: '0.75rem',
+                                color: '#475569'
+                              }}>
+                                <strong>Lý do:</strong>{' '}
+                                {simulateResult.consultant.is_compensation ? (
+                                  <span style={{ color: '#10b981', fontWeight: 600 }}>
+                                    Được nhận đền bù số lỗi (còn nợ: {simulateResult.consultant.compensation_count} số).
+                                  </span>
+                                ) : simulateResult.consultant.is_mid_turn ? (
+                                  <span style={{ color: '#3b82f6', fontWeight: 600 }}>
+                                    Đang trong lượt nhận gộp (còn {simulateResult.consultant.current_turn_remaining} số).
+                                  </span>
+                                ) : (
+                                  <span>
+                                    Xoay vòng thông thường (Skip: {simulateResult.consultant.skip_count}/{simulateResult.consultant.receive_ratio - 1}).
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Injected Fields */}
+                    {simulateResult.injected_fields && Object.keys(simulateResult.injected_fields).length > 0 && (
+                      <div style={{ padding: '0.75rem 1rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '10px' }}>
+                        <h5 style={{ fontSize: '0.8rem', fontWeight: 700, margin: '0 0 6px', color: '#5b21b6', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Zap size={14} color="#7c3aed" /> Ghi đè thuộc tính (Inject Data):
+                        </h5>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {Object.entries(simulateResult.injected_fields).map(([key, val]: any) => (
+                            <span key={key} style={{ fontSize: '0.75rem', background: '#fff', border: '1px solid #c084fc', padding: '2px 8px', borderRadius: '6px', color: '#7c3aed' }}>
+                              <strong>{key}</strong> -&gt; "{val}"
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Danh sách Trace Logs */}
+                    <div>
+                      <h5 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569', margin: '0 0 10px', textTransform: 'uppercase' }}>
+                        Chi tiết quy trình quét quy tắc (Trace Logs)
+                      </h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {simulateResult.trace && simulateResult.trace.map((t: any, idx: number) => {
+                          const isMatched = t.status === 'matched';
+                          const isSkipped = t.status === 'skipped';
+                          return (
+                            <div key={idx} style={{
+                              border: '1px solid ' + (isMatched ? '#a7f3d0' : (isSkipped ? '#e2e8f0' : '#fecaca')),
+                              borderRadius: '8px',
+                              overflow: 'hidden'
+                            }}>
+                              {/* Header của Rule Trace */}
+                              <div style={{
+                                background: isMatched ? '#f0fdf4' : (isSkipped ? '#f8fafc' : '#fdf2f2'),
+                                padding: '8px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderBottom: '1px solid ' + (isMatched ? '#a7f3d0' : (isSkipped ? '#e2e8f0' : '#fecaca'))
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <div style={{
+                                    width: 8, height: 8, borderRadius: '50%',
+                                    background: isMatched ? '#10b981' : (isSkipped ? '#94a3b8' : '#ef4444')
+                                  }} />
+                                  <span style={{ fontSize: '0.825rem', fontWeight: 700, color: isMatched ? '#065f46' : (isSkipped ? '#475569' : '#991b1b') }}>
+                                    {t.description}
+                                  </span>
+                                </div>
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: isMatched ? '#d1fae5' : (isSkipped ? '#e2e8f0' : '#fee2e2'),
+                                  color: isMatched ? '#065f46' : (isSkipped ? '#475569' : '#991b1b'),
+                                  textTransform: 'uppercase'
+                                }}>
+                                  {isMatched ? 'Khớp' : (isSkipped ? 'Bỏ qua' : 'Lỗi')}
+                                </span>
+                              </div>
+
+                              {/* Chi tiết điều kiện kiểm tra */}
+                              <div style={{ padding: '8px 12px', background: '#fff', fontSize: '0.775rem', color: '#64748b' }}>
+                                {isSkipped ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontStyle: 'italic' }}>
+                                    <AlertCircle size={14} /> {t.reason}
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {t.conditions && t.conditions.map((c: any, ci: number) => (
+                                      <div key={ci} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                          <span style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, color: '#334155' }}>
+                                            {c.col}
+                                          </span>
+                                          <span style={{ fontStyle: 'italic', fontSize: '0.725rem' }}>
+                                            {OP_LABELS[c.op] || c.op}
+                                          </span>
+                                          {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
+                                            <span style={{ fontWeight: 600 }}>
+                                              "{c.val}"
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span style={{ fontWeight: 700, color: c.matched ? '#10b981' : '#ef4444' }}>
+                                          {c.matched ? 'Đạt' : 'Không đạt'}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4, fontSize: '0.725rem', fontStyle: 'italic', color: '#94a3b8' }}>
+                                      Kết luận: {t.reason}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+
       </CustomModal>
     </div>
   );

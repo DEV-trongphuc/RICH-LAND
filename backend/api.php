@@ -3551,23 +3551,152 @@ switch ($action) {
 
         $input = json_decode(file_get_contents('php://input'), true);
         $data = $input['data'] ?? [];
+        $connectionId = isset($input['connection_id']) ? ($input['connection_id'] === 'all' || $input['connection_id'] === '' ? null : (int)$input['connection_id']) : null;
+        $connectionType = $input['connection_type'] ?? 'manual';
 
         $phone = normalizePhone($data['phone'] ?? '');
-        $email = $data['email'] ?? '';
-        $name = $data['name'] ?? '';
-        $source = $data['source'] ?? '';
-        $type = $data['type'] ?? '';
-        $note = $data['note'] ?? '';
+        $email = trim($data['email'] ?? '');
+        $name = trim($data['name'] ?? '');
+        $source = trim($data['source'] ?? '');
+        $type = trim($data['type'] ?? '');
+        $note = trim($data['note'] ?? '');
 
-        $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'manual');
-        $assignedRoundId = null;
-
-        if (is_array($ruleResult)) {
-            $assignedRoundId = $ruleResult['target_round_id'];
-        } else {
-            $assignedRoundId = $ruleResult;
+        // Fetch all rules from routing_rules
+        $rulesRes = $conn->query("SELECT rr.*, r.round_name FROM routing_rules rr LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id ORDER BY rr.priority ASC");
+        $rules = [];
+        if ($rulesRes) {
+            while ($rRow = $rulesRes->fetch_assoc()) {
+                $rules[] = $rRow;
+            }
         }
 
+        $trace = [];
+        $assignedRoundId = null;
+        $matchedRule = null;
+        $injectedFields = [];
+
+        foreach ($rules as $index => $rule) {
+            $ruleNum = $index + 1;
+            $ruleDesc = "Quy tắc #$ruleNum: " . ($rule['round_name'] ?? 'Không rõ');
+            
+            // Check connection restriction
+            if (!empty($rule['connection_id'])) {
+                $ruleConnIds = array_map('trim', explode(',', (string)$rule['connection_id']));
+                $isMatched = false;
+                foreach ($ruleConnIds as $ruleConnIdStr) {
+                    $ruleConnId = (int)$ruleConnIdStr;
+                    if ($ruleConnId === -1 && $connectionType === 'sheets') { $isMatched = true; break; }
+                    if ($ruleConnId === -2 && $connectionType === 'landing_page') { $isMatched = true; break; }
+                    if ($ruleConnId === -3 && $connectionType === 'manual') { $isMatched = true; break; }
+                    if ($ruleConnId > 0 && $ruleConnId == $connectionId) { $isMatched = true; break; }
+                }
+                
+                if (!$isMatched) {
+                    $trace[] = [
+                        'rule_id' => $rule['id'],
+                        'description' => $ruleDesc,
+                        'status' => 'skipped',
+                        'reason' => 'Không áp dụng cho nguồn kết nối hiện tại (' . htmlspecialchars($connectionType) . ').'
+                    ];
+                    continue;
+                }
+            }
+
+            // Check conditions
+            $isMatch = false;
+            $conditionsDetail = [];
+            
+            if (!empty($rule['conditions_json'])) {
+                $parsed = json_decode($rule['conditions_json'], true);
+                if (is_array($parsed) && count($parsed) > 0) {
+                    $branches = [];
+                    if (isset($parsed[0]['col'])) {
+                        $branches = [['conditions' => $parsed]];
+                    } else if (isset($parsed[0][0]['col'])) {
+                        foreach ($parsed as $b) {
+                            $branches[] = ['conditions' => $b];
+                        }
+                    } else if (isset($parsed[0]['conditions'])) {
+                        $branches = $parsed;
+                    }
+
+                    $logicalOp = strtoupper($rule['logical_operator'] ?? 'AND');
+                    
+                    foreach ($branches as $bIdx => $branchObj) {
+                        $conds = $branchObj['conditions'] ?? [];
+                        $branchMatch = ($logicalOp === 'AND'); 
+                        if ($logicalOp === 'OR' && empty($conds)) $branchMatch = true;
+                        
+                        $branchCondsDetail = [];
+                        foreach ($conds as $cond) {
+                            $resVal = evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connectionId);
+                            $branchCondsDetail[] = [
+                                'col' => $cond['col'],
+                                'op' => $cond['op'],
+                                'val' => $cond['val'],
+                                'matched' => $resVal
+                            ];
+                            if ($logicalOp === 'AND') {
+                                if (!$resVal) {
+                                    $branchMatch = false;
+                                }
+                            } else { 
+                                if ($resVal) {
+                                    $branchMatch = true;
+                                }
+                            }
+                        }
+                        
+                        if ($branchMatch) {
+                            $isMatch = true;
+                            if (isset($branchObj['inject']) && !empty($branchObj['inject']['enabled']) && !empty($branchObj['inject']['fields'])) {
+                                foreach ($branchObj['inject']['fields'] as $f) {
+                                    if (!empty($f['col'])) {
+                                        $injectedFields[$f['col']] = $f['val'];
+                                    }
+                                }
+                            }
+                            $conditionsDetail = $branchCondsDetail;
+                            break;
+                        } else if (empty($conditionsDetail)) {
+                            $conditionsDetail = $branchCondsDetail;
+                        }
+                    }
+                }
+            } else {
+                $resVal = evaluateSingleCondition($data, $source, $type, $rule['condition_column'], $rule['condition_operator'], $rule['condition_value'], $connectionId);
+                $isMatch = $resVal;
+                $conditionsDetail[] = [
+                    'col' => $rule['condition_column'],
+                    'op' => $rule['condition_operator'],
+                    'val' => $rule['condition_value'],
+                    'matched' => $resVal
+                ];
+            }
+
+            if ($isMatch) {
+                $assignedRoundId = (int)$rule['target_round_id'];
+                $matchedRule = $rule;
+                $trace[] = [
+                    'rule_id' => $rule['id'],
+                    'description' => $ruleDesc,
+                    'status' => 'matched',
+                    'reason' => 'Khớp toàn bộ điều kiện quy tắc.',
+                    'conditions' => $conditionsDetail
+                ];
+                break;
+            } else {
+                $trace[] = [
+                    'rule_id' => $rule['id'],
+                    'description' => $ruleDesc,
+                    'status' => 'failed',
+                    'reason' => 'Điều kiện kiểm tra không khớp.',
+                    'conditions' => $conditionsDetail
+                ];
+            }
+        }
+
+        // Fallback checks
         $isFallback = false;
         $isFallbackAdmin = false;
         $fallbackAdminName = '';
@@ -3601,52 +3730,51 @@ switch ($action) {
             }
         }
 
-        if ($isFallbackAdmin) {
-            echo json_encode([
-                'success' => true,
-                'round_id' => null,
-                'consultant' => [
-                    'consultant_id' => 0,
-                    'name' => 'Admin Fallback: ' . $fallbackAdminName,
-                    'email' => 'Fallback'
-                ],
-                'message' => 'Không khớp luật. Sẽ phân bổ thẳng cho Admin Fallback.'
-            ]);
-            break;
-        }
-
-        if (!$assignedRoundId) {
-            echo json_encode(['success' => true, 'round_id' => null, 'consultant' => null, 'message' => 'Không khớp luật nào']);
-            break;
-        }
-
-        // Find expected consultant using the new simulation logic
         $consultant = null;
-        $simulated = simulateNextConsultantInRound($conn, $assignedRoundId);
+        if ($assignedRoundId) {
+            $simulated = simulateNextConsultantInRound($conn, $assignedRoundId);
+            if ($simulated) {
+                $consultant = [
+                    'consultant_id' => $simulated['id'],
+                    'name' => $simulated['name'],
+                    'email' => $simulated['email'] ?? '',
+                    'receive_ratio' => $simulated['receive_ratio'],
+                    'data_per_turn' => $simulated['data_per_turn'],
+                    'current_turn_remaining' => $simulated['current_turn_remaining'],
+                    'skip_count' => $simulated['skip_count'] ?? 0,
+                    'compensation_count' => $simulated['compensation_count'] ?? 0,
+                    'is_compensation' => (intval($simulated['compensation_count'] ?? 0) > 0),
+                    'is_mid_turn' => (intval($simulated['current_turn_remaining'] ?? 0) > 0)
+                ];
 
-        if ($simulated) {
-            // Re-format to match frontend expectations
-            $consultant = [
-                'consultant_id' => $simulated['id'],
-                'name' => $simulated['name'],
-                'receive_ratio' => $simulated['receive_ratio'],
-                'data_per_turn' => $simulated['data_per_turn'],
-                'current_turn_remaining' => $simulated['current_turn_remaining']
-            ];
-
-            // Add round name
-            $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-            $stmtR->bind_param("i", $assignedRoundId);
-            $stmtR->execute();
-            $rRes = $stmtR->get_result();
-            if ($rRes->num_rows > 0) {
-                $consultant['round_name'] = $rRes->fetch_assoc()['round_name'];
-            } else {
-                $consultant['round_name'] = 'Không rõ';
+                $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                $stmtR->bind_param("i", $assignedRoundId);
+                $stmtR->execute();
+                $rRes = $stmtR->get_result();
+                if ($rRes->num_rows > 0) {
+                    $consultant['round_name'] = $rRes->fetch_assoc()['round_name'];
+                } else {
+                    $consultant['round_name'] = 'Không rõ';
+                }
             }
+        } else if ($isFallbackAdmin) {
+            $consultant = [
+                'consultant_id' => 0,
+                'name' => $fallbackAdminName,
+                'email' => 'Admin Fallback',
+                'round_name' => 'Không có (Fallback về Admin)'
+            ];
         }
 
-        echo json_encode(['success' => true, 'round_id' => $assignedRoundId, 'consultant' => $consultant, 'is_fallback' => $isFallback]);
+        echo json_encode([
+            'success' => true,
+            'round_id' => $assignedRoundId,
+            'consultant' => $consultant,
+            'is_fallback' => $isFallback,
+            'is_fallback_admin' => $isFallbackAdmin,
+            'injected_fields' => $injectedFields,
+            'trace' => $trace
+        ]);
         break;
 
     case 'manual_insert_lead':
