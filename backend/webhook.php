@@ -244,7 +244,7 @@ if ($isSilent == 1) {
     try {
         if ($crmCheckResult['isDuplicate']) {
             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
-            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId);
+            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId, null, $name);
         } else {
             $leadId = insertLead($conn, $data, $assignedToId, $phone, $email, $name, $source, $type, $note, $connectionId);
         }
@@ -284,7 +284,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     $conn->begin_transaction();
     try {
         // Update last interaction
-        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId);
+        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId, null, $name);
         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
         $conn->commit();
 
@@ -419,7 +419,7 @@ try {
 
     if ($crmCheckResult['isDuplicate']) {
         // Existed but older than 6 months -> new assignment
-        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId);
+        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId, null, $name);
     } else {
         $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);
     }

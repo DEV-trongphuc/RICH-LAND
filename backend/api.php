@@ -4394,7 +4394,7 @@ switch ($action) {
                 if ($isSilent == 1) {
                     if ($crmCheck['isDuplicate']) {
                         $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate, $name);
                         $duplicateCount++;
                         logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
                     } else {
@@ -4406,7 +4406,7 @@ switch ($action) {
                 } else {
                     if ($crmCheck['isDuplicate']) {
                         $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
+                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate, $name);
                         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
                         $duplicateCount++;
                         
@@ -4862,13 +4862,6 @@ switch ($action) {
 
                     // Log distribution
                     logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin");
-
-                    // Track assigned report
-                    $today = date('Y-m-d');
-                    $stmtStats = $conn->prepare("INSERT INTO daily_reports (date, round_id, consultant_id, total_assigned) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE total_assigned = total_assigned + 1");
-                    $stmtStats->bind_param("sii", $today, $assignedRoundId, $consultantId);
-                    $stmtStats->execute();
-                    $stmtStats->close();
 
                     $conn->commit();
 

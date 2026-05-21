@@ -603,13 +603,13 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE 
-                                name = IF(VALUES(name) != '' AND name = '', VALUES(name), name),
-                                email = IF(VALUES(email) != '' AND email = '', VALUES(email), email),
+                                name = IF(VALUES(name) IS NOT NULL AND VALUES(name) != '' AND (name = '' OR name IS NULL), VALUES(name), name),
+                                email = IF(VALUES(email) IS NOT NULL AND VALUES(email) != '' AND (email = '' OR email IS NULL), VALUES(email), email),
                                 source = VALUES(source),
                                 type = VALUES(type),
                                 note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n', VALUES(note)))),
                                 last_interaction_date = VALUES(last_interaction_date),
-                                assigned_to = VALUES(assigned_to),
+                                assigned_to = IF(assigned_to IS NULL OR assigned_to = 0, VALUES(assigned_to), assigned_to),
                                 connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id)");
     $stmt->bind_param("sssssssii", $phone, $email, $name, $source, $type, $note, $dateVal, $assignedConsultantId, $connectionId);
     $stmt->execute();
@@ -636,7 +636,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null) {
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null) {
     $phone = normalizePhone($phone);
     if (empty($phone) && empty($email)) return null;
     
@@ -676,12 +676,31 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     if ($id) {
         $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
         if ($assignedConsultantId) {
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = ?, assigned_to = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
-            $uStmt->bind_param("sssssiiii", $source, $type, $note, $note, $dateVal, $assignedConsultantId, $connectionId, $connectionId, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET 
+                name = IF(? != '' AND (name = '' OR name IS NULL), ?, name),
+                email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),
+                phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
+                source = ?, 
+                type = ?, 
+                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), 
+                last_interaction_date = ?, 
+                assigned_to = ?, 
+                connection_id = IF(? IS NOT NULL, ?, connection_id) 
+                WHERE id = ?");
+            $uStmt->bind_param("sssssssssssiiii", $name, $name, $email, $email, $phone, $phone, $source, $type, $note, $note, $dateVal, $assignedConsultantId, $connectionId, $connectionId, $id);
         } else {
             // Don't overwrite assigned_to when lead is pending/unassigned
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
-            $uStmt->bind_param("sssssiii", $source, $type, $note, $note, $dateVal, $connectionId, $connectionId, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET 
+                name = IF(? != '' AND (name = '' OR name IS NULL), ?, name),
+                email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),
+                phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
+                source = ?, 
+                type = ?, 
+                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), 
+                last_interaction_date = ?, 
+                connection_id = IF(? IS NOT NULL, ?, connection_id) 
+                WHERE id = ?");
+            $uStmt->bind_param("sssssssssssiii", $name, $name, $email, $email, $phone, $phone, $source, $type, $note, $note, $dateVal, $connectionId, $connectionId, $id);
         }
         $uStmt->execute();
         $uStmt->close();

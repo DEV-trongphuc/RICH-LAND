@@ -379,7 +379,7 @@ foreach ($connections as $connItem) {
                 try {
                     if ($crmCheckResult['isDuplicate']) {
                         $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id']);
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name);
                     } else {
                         $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                     }
@@ -427,7 +427,7 @@ foreach ($connections as $connItem) {
                 
                 $conn->begin_transaction();
                 try {
-                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id']);
+                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
                     logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng via cron_sync.');
                     
                     // Record hash so we don't spam duplicate logs on next run
@@ -569,7 +569,7 @@ foreach ($connections as $connItem) {
                 }
 
                 if ($crmCheckResult['isDuplicate']) {
-                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id']);
+                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id'], null, $name);
                 } else {
                     $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                 }
