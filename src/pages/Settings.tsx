@@ -3,6 +3,7 @@ import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, C
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton } from '../components/ui/Skeleton';
@@ -129,6 +130,9 @@ export const Settings = () => {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
+  const [confirmDeleteLogsOpen, setConfirmDeleteLogsOpen] = useState(false);
+  const [logsToDelete, setLogsToDelete] = useState<{ log_id: number; lead_id: number }[]>([]);
+  const [confirmImportOpen, setConfirmImportOpen] = useState(false);
 
   const fetchImportHistory = async () => {
     setLoadingHistory(true);
@@ -143,15 +147,14 @@ export const Settings = () => {
     setLoadingHistory(false);
   };
 
-  const handleDeleteHistory = async (logsToDelete: { log_id: number; lead_id: number }[]) => {
-    if (!logsToDelete || logsToDelete.length === 0) return;
+  const handleDeleteHistory = (logs: { log_id: number; lead_id: number }[]) => {
+    if (!logs || logs.length === 0) return;
+    setLogsToDelete(logs);
+    setConfirmDeleteLogsOpen(true);
+  };
 
-    const confirmMessage = logsToDelete.length === 1
-      ? "Bạn có chắc chắn muốn xóa bản ghi nhập này không? Thao tác này cũng sẽ xóa Lead tương ứng khỏi CRM."
-      : `Bạn có chắc chắn muốn xóa ${logsToDelete.length} bản ghi nhập đã chọn? Thao tác này cũng sẽ xóa các Lead tương ứng khỏi CRM.`;
-
-    if (!window.confirm(confirmMessage)) return;
-
+  const executeDeleteHistory = async () => {
+    if (logsToDelete.length === 0) return;
     try {
       const logIds = logsToDelete.map(item => item.log_id);
       const leadIds = logsToDelete.map(item => item.lead_id);
@@ -171,6 +174,8 @@ export const Settings = () => {
     } catch (err: any) {
       toast.error(err.message || "Lỗi kết nối hệ thống");
     }
+    setConfirmDeleteLogsOpen(false);
+    setLogsToDelete([]);
   };
   const [resultsPage, setResultsPage] = useState(1);
   const [importSubTab, setImportSubTab] = useState<'list' | 'upload'>('list');
@@ -492,7 +497,7 @@ export const Settings = () => {
     }
   };
 
-  const handleImportLeads = async () => {
+  const handleImportLeads = () => {
     if (selectedSheetId !== 'local') {
       toast.error("Tính năng nhập dữ liệu trực tiếp hiện tại chỉ áp dụng khi tải file Excel hoặc CSV từ máy tính.");
       return;
@@ -505,10 +510,11 @@ export const Settings = () => {
       toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng và nhập liệu!");
       return;
     }
+    setConfirmImportOpen(true);
+  };
 
-    const confirmImport = window.confirm(`Bạn có chắc chắn muốn nhập ${localRows.length} dòng dữ liệu từ file vào hệ thống không?`);
-    if (!confirmImport) return;
-
+  const executeImportLeads = async () => {
+    setConfirmImportOpen(false);
     setImporting(true);
     try {
       const mappedLeads = localRows.map(row => ({
@@ -2371,6 +2377,29 @@ function doPost(e) {
           </div>
         </div>
       </CustomModal>
+
+      <ConfirmModal
+        isOpen={confirmDeleteLogsOpen}
+        onClose={() => setConfirmDeleteLogsOpen(false)}
+        onConfirm={executeDeleteHistory}
+        title="Xác nhận xóa bản ghi"
+        message={logsToDelete.length === 1
+          ? "Bạn có chắc chắn muốn xóa bản ghi nhập này không? Thao tác này cũng sẽ xóa Lead tương ứng khỏi CRM."
+          : `Bạn có chắc chắn muốn xóa ${logsToDelete.length} bản ghi nhập đã chọn? Thao tác này cũng sẽ xóa các Lead tương ứng khỏi CRM.`}
+        confirmText="Xóa bản ghi"
+        cancelText="Hủy"
+      />
+
+      <ConfirmModal
+        isOpen={confirmImportOpen}
+        onClose={() => setConfirmImportOpen(false)}
+        onConfirm={executeImportLeads}
+        title="Xác nhận nhập dữ liệu"
+        message={`Bạn có chắc chắn muốn nhập ${localRows.length} dòng dữ liệu từ file vào hệ thống không?`}
+        confirmText="Bắt đầu nhập"
+        cancelText="Hủy"
+        confirmType="primary"
+      />
     </div>
   );
 };
