@@ -87,6 +87,14 @@ export const Dashboard = () => {
     return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
   }, [dateFilter]);
 
+  useEffect(() => {
+    const handleLeadAdded = () => {
+      fetchDashboard();
+    };
+    window.addEventListener('lead-added', handleLeadAdded);
+    return () => window.removeEventListener('lead-added', handleLeadAdded);
+  }, [dateFilter]);
+
   const kpiCards = [
     {
       id: 'total',

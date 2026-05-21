@@ -19,6 +19,69 @@ const beautifyPhone = (phoneStr: string): string => {
   return cleaned;
 };
 
+const removeAccents = (str: string): string => {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+};
+
+const getDeduplicatedNotes = (notes: string[]): string => {
+  if (notes.length === 0) return '';
+  
+  const trimmedNotes = notes.map(n => n.trim()).filter(n => n.length > 0);
+  if (trimmedNotes.length === 0) return '';
+
+  const normalize = (str: string): string => {
+    return removeAccents(str)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+  };
+
+  const deduplicated: string[] = [];
+  
+  const sortedNotes = [...new Set(trimmedNotes)].sort((a, b) => {
+    return normalize(b).length - normalize(a).length;
+  });
+
+  for (const note of sortedNotes) {
+    const norm = normalize(note);
+    if (!norm) {
+      if (note.trim() && !deduplicated.includes(note.trim())) {
+        deduplicated.push(note.trim());
+      }
+      continue;
+    }
+
+    const isRedundant = deduplicated.some(acceptedNote => {
+      const normAccepted = normalize(acceptedNote);
+      return normAccepted.includes(norm);
+    });
+
+    if (!isRedundant) {
+      deduplicated.push(note);
+    }
+  }
+
+  const finalNotes = trimmedNotes.filter(originalNote => {
+    const originalNorm = normalize(originalNote);
+    return deduplicated.some(keepNote => {
+      return originalNote === keepNote || (originalNorm && normalize(keepNote) === originalNorm);
+    });
+  });
+
+  const uniqueFinalNotes: string[] = [];
+  finalNotes.forEach(n => {
+    if (!uniqueFinalNotes.includes(n)) {
+      uniqueFinalNotes.push(n);
+    }
+  });
+
+  return uniqueFinalNotes.join(' - ');
+};
+
 export const QuickAddLeadModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
@@ -288,7 +351,7 @@ export const QuickAddLeadModal = () => {
           extraNotes.push(`${k}: ${valStr}`);
         }
       });
-      note = extraNotes.join(' - ');
+      note = getDeduplicatedNotes(extraNotes);
 
       setManualData({
         name: name || manualData.name,
@@ -305,6 +368,80 @@ export const QuickAddLeadModal = () => {
     if (val.includes('\t')) {
       const lines = val.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
       if (lines.length > 0) {
+        const keyRegex = /^(họ tên|ho ten|tên|ten|name|khách hàng|khach hang|sđt|sdt|đt|dt|phone|điện thoại|tel|email|mail|nguồn|nguon|source|kênh|kenh|loại|loai|type|nhu cầu|nhu cau|ghi chú|ghi chu|note|nội dung|số điện thoại|so dien thoai|họ và tên|ho va ten|địa chỉ email|dia chi email|lớp|lop|khóa học|khoa hoc|tình trạng|tinh trang|học vấn|hoc van|tiếng anh|tieng anh|chương trình|chuong trinh|khách note|khach note)$/i;
+        
+        let kvLinesCount = 0;
+        let totalTabLines = 0;
+        lines.forEach(line => {
+          if (line.includes('\t')) {
+            totalTabLines++;
+            const parts = line.split('\t');
+            if (parts.length >= 2 && keyRegex.test(parts[0].trim())) {
+              kvLinesCount++;
+            }
+          }
+        });
+
+        let isVerticalTabList = false;
+        if (totalTabLines > 0) {
+          if (lines.length === 1) {
+            const parts = lines[0].split('\t');
+            if (parts.length === 2) {
+              const k = parts[0].trim();
+              const v = parts[1].trim();
+              if (keyRegex.test(k) && !keyRegex.test(v)) {
+                isVerticalTabList = true;
+              }
+            }
+          } else {
+            if (kvLinesCount >= Math.min(2, totalTabLines)) {
+              isVerticalTabList = true;
+            }
+          }
+        }
+
+        if (isVerticalTabList) {
+          lines.forEach(line => {
+            if (line.includes('\t')) {
+              const parts = line.split('\t');
+              const k = parts[0].trim();
+              const v = parts.slice(1).join('\t').trim();
+              if (!v) return;
+
+              const kLower = k.toLowerCase();
+              if (/^(họ tên|ho ten|tên|ten|name|khách hàng|khach hang|họ và tên|ho va ten)$/i.test(kLower)) {
+                name = v;
+              } else if (/^(sđt|sdt|đt|dt|phone|điện thoại|tel|số điện thoại|so dien thoai)$/i.test(kLower)) {
+                phone = beautifyPhone(v);
+              } else if (/^(email|mail|địa chỉ email|dia chi email)$/i.test(kLower)) {
+                email = v;
+              } else if (/^(nguồn|nguon|source|kênh|kenh)$/i.test(kLower)) {
+                source = normalizeSource(v);
+              } else if (/^(loại|loai|type|nhu cầu|nhu cau|lớp|lop|khóa học|khoa hoc|chương trình|chuong trinh)$/i.test(kLower)) {
+                type = v;
+              } else if (/^(ghi chú|ghi chu|note|nội dung|tình trạng|tinh trang)$/i.test(kLower)) {
+                extraNotes.push(v);
+              } else {
+                extraNotes.push(`${k}: ${v}`);
+              }
+            } else {
+              extraNotes.push(line);
+            }
+          });
+
+          note = getDeduplicatedNotes(extraNotes);
+
+          setManualData({
+            name: name.trim() || manualData.name,
+            phone: beautifyPhone(phone) || manualData.phone,
+            email: email.trim() || manualData.email,
+            source: source.trim() || manualData.source,
+            type: type.trim() || manualData.type,
+            note: note.trim() || manualData.note,
+          });
+          return;
+        }
+
         const firstLineCells = lines[0].split('\t').map(c => c.trim().toLowerCase());
         const isHeader = firstLineCells.some(cell =>
           /^(họ tên|ho ten|tên|ten|name|khách hàng|khach hang|sđt|sdt|đt|dt|phone|điện thoại|tel|email|mail|nguồn|nguon|source|kênh|kenh|loại|loai|type|nhu cầu|nhu cau|ghi chú|ghi chu|note|nội dung|số điện thoại|so dien thoai|họ và tên|ho va ten|địa chỉ email|dia chi email|lớp|lop|khóa học|khoa hoc|tình trạng|tinh trang)$/i.test(cell)
@@ -344,7 +481,7 @@ export const QuickAddLeadModal = () => {
               extraNotes.push(cellVal);
             }
           });
-          note = extraNotes.join(' - ');
+          note = getDeduplicatedNotes(extraNotes);
         } else {
           email = extractEmail(val);
           phone = extractPhone(val);
@@ -370,7 +507,7 @@ export const QuickAddLeadModal = () => {
               extraNotes.push(cell);
             }
           });
-          note = extraNotes.join(' - ');
+          note = getDeduplicatedNotes(extraNotes);
         }
 
         setManualData({
@@ -423,7 +560,7 @@ export const QuickAddLeadModal = () => {
       if (remainingText) {
         extraNotes.push(remainingText);
       }
-      note = extraNotes.join(' - ');
+      note = getDeduplicatedNotes(extraNotes);
 
       setManualData({
         name: name || manualData.name,
@@ -470,7 +607,7 @@ export const QuickAddLeadModal = () => {
           extraNotes.push(line);
         }
       });
-      note = extraNotes.join(' - ');
+      note = getDeduplicatedNotes(extraNotes);
 
       setManualData({
         name: name || manualData.name,
@@ -644,7 +781,7 @@ export const QuickAddLeadModal = () => {
         extraNotes.push(cleanSegForNotes);
       });
 
-      note = extraNotes.join(' - ');
+      note = getDeduplicatedNotes(extraNotes);
     } else {
       const text = segments[0] || val;
       email = extractEmail(text);
@@ -718,7 +855,7 @@ export const QuickAddLeadModal = () => {
       if (cleanedNote) {
         extraNotes.unshift(cleanedNote);
       }
-      note = extraNotes.join(' - ');
+      note = getDeduplicatedNotes(extraNotes);
     }
 
     if (!source) {

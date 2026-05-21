@@ -166,6 +166,14 @@ export const SalePortal = () => {
     loadPortalData();
   }, [token, user, roundId, dateMode, saleIdFilter]);
 
+  useEffect(() => {
+    const handleLeadAdded = () => {
+      loadPortalData();
+    };
+    window.addEventListener('lead-added', handleLeadAdded);
+    return () => window.removeEventListener('lead-added', handleLeadAdded);
+  }, [token, user, roundId, dateMode, saleIdFilter]);
+
   // Handle manual apply for Custom date and search button
   const handleApplyFilters = () => {
     loadPortalData();

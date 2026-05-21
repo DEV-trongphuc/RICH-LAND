@@ -98,6 +98,14 @@ export const Rounds = () => {
     fetchConsultants();
   }, []);
 
+  useEffect(() => {
+    const handleLeadAdded = () => {
+      fetchRounds();
+    };
+    window.addEventListener('lead-added', handleLeadAdded);
+    return () => window.removeEventListener('lead-added', handleLeadAdded);
+  }, []);
+
   const openAddModal = () => {
     setEditingRound(null);
     setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false });

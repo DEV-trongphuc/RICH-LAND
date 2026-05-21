@@ -245,12 +245,16 @@ graph TD
 ### 4.4. Kiểm tra Trùng Lead và Phân bổ lại (Duplicate Check & Reassignment)
 Nằm tại hàm `checkCRMInteraction()` của `webhook_logic.php`:
 *   Hệ thống kiểm tra xem SĐT hoặc Email của lead mới đã tồn tại trong CRM chưa.
+*   Trước khi kiểm tra trùng lặp CRM, hệ thống luôn đánh giá trước bộ quy tắc định tuyến (`evaluateRules()`) để xác định đúng Vòng xoay phân phối mục tiêu (`target_round_id`). Điều này giúp:
+    *   Áp dụng các cấu hình tiêm/ghi đè dữ liệu tĩnh (`inject` fields) trước tiên.
+    *   Lấy cấu hình danh sách CC Email (`cc_emails`) và tên vòng xoay (`round_name`) tương ứng của Vòng xoay đó để đồng bộ hóa cho thông báo nhắc nhở trùng.
 *   Nếu **đã tồn tại**, hệ thống tính khoảng cách thời gian (tháng) từ lúc tạo lead cũ đến nay.
 *   **Xử lý trùng lặp**:
     *   Nếu tư vấn viên cũ (người đã nhận số lần đầu) đang ở trạng thái hoạt động (`status = 'active'`), lead trùng này sẽ được gán ngược lại cho chính Sale cũ đó (đánh dấu log trạng thái là `reminder` - nhắc lại).
     *   Nếu tư vấn viên cũ đang tạm ngưng hoặc nghỉ phép (`status` là `inactive` hoặc `leave`), việc xử lý phụ thuộc vào cấu hình hệ thống `reassign_if_owner_inactive`:
         *   Nếu bật (`= 1`): Coi lead như mới hoàn toàn, chạy xoay vòng phân bổ cho Sale mới đang hoạt động.
         *   Nếu tắt (`= 0`): Vẫn gán lại cho Sale cũ bất chấp tình trạng hoạt động của họ.
+*   **Dòng thời gian lịch sử gần nhất**: Đối với các lead trùng lặp được kích hoạt thông báo nhắc nhở (Zalo / Email), hệ thống sẽ truy xuất lịch sử 5 lần phân phối/tương tác gần nhất bằng hàm `getLeadHistoryTimeline($conn, $leadId)` và hiển thị thành khối timeline trực quan trong thông tin gửi cho tư vấn viên.
 
 ### 4.5. Cơ chế Khóa Đồng Thời (Concurrency Prevention)
 Để loại bỏ các hành động gọi Webhook trùng lặp song song (Concurrency race condition) khi người dùng bấm submit landing page nhiều lần hoặc Google Sheets đẩy lặp sự kiện:

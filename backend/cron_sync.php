@@ -353,269 +353,84 @@ foreach ($connections as $connItem) {
             }
 
             try {
-                // --- 1. Check CRM (Duplication & dynamic threshold rule) ---
-                $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+                // --- 1. Evaluate Dynamic Rules to determine Target Round & Apply Injects ---
+                $rowDataForRules = $rowData;
+                $rowDataForRules['phone'] = $phone;
+                $rowDataForRules['email'] = $email;
+                $rowDataForRules['name'] = $name;
+                $rowDataForRules['note'] = $note;
+                $rowDataForRules['source'] = $source;
+                $rowDataForRules['type'] = $type;
 
-            // Load dynamic duplicate check threshold from system settings cache
-            $fbSettings = get_system_setting($conn);
-            $dupCheckMonths = (int)($fbSettings['duplicate_check_months'] ?? 6);
-            if ($dupCheckMonths <= 0) {
-                $dupCheckMonths = 6;
-            }
+                $ruleResult = evaluateRules($conn, $rowDataForRules, $source, $type, $connItem['id'], 'sheets');
+                $targetRoundId = null;
+                $inject = [];
+                $cronStatus = 'unassigned';
+                $cronMessage = 'No matching rule found via cron_sync.';
+                $isFallbackAdmin = false;
+                $fallbackAdminData = null;
+                $fallbackCcEmails = '';
 
-            if (!empty($connItem['is_silent'])) {
-                $assignedToId = null;
-                if (!empty($connItem['sync_saleperson'])) {
-                    $assignedToVal = extractMappedValues($mappings, 'saleperson', $rowData);
-                    if (empty($assignedToVal)) {
-                        $assignedToVal = extractMappedValues($mappings, 'assigned_to', $rowData);
-                    }
-                    if (!empty($assignedToVal)) {
-                        $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
-                    }
-                }
-                
-                $conn->begin_transaction();
-                try {
-                    if ($crmCheckResult['isDuplicate']) {
-                        $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name);
-                    } else {
-                        $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
-                    }
-                    $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
-                    logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+                if (is_array($ruleResult)) {
+                    $targetRoundId = $ruleResult['target_round_id'];
+                    $inject = $ruleResult['inject'] ?? [];
                     
-                    $recordStmt->bind_param("is", $connItem['id'], $rowHash);
-                    $recordStmt->execute();
-                    $hashMap[$rowHash] = true;
-                    
-                    $conn->commit();
-                } catch (Exception $txE) {
-                    $conn->rollback();
-                    logSync("Transaction failed for silent row: " . $txE->getMessage());
-                    continue;
-                }
-
-                // If duplicate, check if we need to send duplicate reminder
-                if ($crmCheckResult['isDuplicate'] && !empty($connItem['sync_saleperson'])) {
-                    $ownerId = $crmCheckResult['assignedTo'];
-                    if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
-                        static $consultantCache = [];
-                        if (!isset($consultantCache[$ownerId])) {
-                            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $ownerId);
-                            $stmtC->execute();
-                            $consultantCache[$ownerId] = $stmtC->get_result()->fetch_assoc();
-                            $stmtC->close();
-                        }
-                        $cRow = $consultantCache[$ownerId];
-                        
-                        if ($cRow && $cRow['status'] === 'active') {
-                            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
-                            sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source);
-                        }
-                    }
-                }
-                
-                continue;
-            }
-
-            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
-                // Duplicate < threshold months, skip assigning to new round but update last interaction
-                $assignedTo = $crmCheckResult['assignedTo'];
-                
-                $conn->begin_transaction();
-                try {
-                    $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
-                    logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng via cron_sync.');
-                    
-                    // Record hash so we don't spam duplicate logs on next run
-                    $recordStmt->bind_param("is", $connItem['id'], $rowHash);
-                    $recordStmt->execute();
-                    $hashMap[$rowHash] = true;
-                    
-                    $conn->commit();
-                } catch (Exception $txE) {
-                    $conn->rollback();
-                    logSync("Transaction failed for duplicate row: " . $txE->getMessage());
-                    continue;
-                }
-                
-                static $consultantCache = [];
-                if (!isset($consultantCache[$assignedTo])) {
-                    $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-                    $stmtC->bind_param("i", $assignedTo);
-                    $stmtC->execute();
-                    $consultantCache[$assignedTo] = $stmtC->get_result()->fetch_assoc();
-                    $stmtC->close();
-                }
-                $cRow = $consultantCache[$assignedTo];
-                
-                if ($cRow && $cRow['status'] === 'active') {
-                    sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
-                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source);
-                }
-                
-                continue;
-            }
-
-            // --- 2. Evaluate Dynamic Rules to determine Target Round ---
-            $rowData['phone'] = $phone;
-            $rowData['email'] = $email;
-            $rowData['name'] = $name;
-            $rowData['note'] = $note;
-            $rowData['source'] = $source;
-            $rowData['type'] = $type;
-
-            $ruleResult = evaluateRules($conn, $rowData, $source, $type, $connItem['id']);
-            $targetRoundId = null;
-            $assignedConsultantId = null;
-            $cronStatus = 'unassigned';
-            $cronMessage = 'No matching rule found via cron_sync.';
-            $isFallbackAdmin = false;
-            $fallbackAdminData = null;
-            $fallbackCcEmails = '';
-
-            if (is_array($ruleResult)) {
-                $targetRoundId = $ruleResult['target_round_id'];
-                $inject = $ruleResult['inject'] ?? [];
-                
-                // Áp dụng ghi đè dữ liệu (Inject Fields)
-                $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
-                foreach ($inject as $k => $v) {
-                    if (in_array($k, $standardFields)) {
-                        if ($k === 'source') $source = $v;
-                        if ($k === 'type') $type = $v;
-                        if ($k === 'note') $note = $v;
-                        if ($k === 'name') $name = $v;
-                        if ($k === 'phone') $phone = normalizePhone($v);
-                        if ($k === 'email') $email = trim($v);
-                    } else {
-                        // Append custom fields to note
-                        $note .= "\n[$k]: $v";
-                    }
-                }
-            } else {
-                $targetRoundId = $ruleResult;
-            }
-
-            if (!$targetRoundId) {
-                $fbSettings = get_system_setting($conn);
-                
-                $fbType = $fbSettings['fallback_type'] ?? 'round';
-                $fbCc = $fbSettings['fallback_cc_email'] ?? '';
-                
-                if ($fbType === 'admin') {
-                    $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
-                    if ($fbAdminId > 0) {
-                        static $fallbackAdminCache = [];
-                        if (!isset($fallbackAdminCache[$fbAdminId])) {
-                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
-                            $admStmt->bind_param("i", $fbAdminId);
-                            $admStmt->execute();
-                            $admRes = $admStmt->get_result();
-                            $fallbackAdminCache[$fbAdminId] = ($admRes->num_rows > 0) ? $admRes->fetch_assoc() : null;
-                            $admStmt->close();
-                        }
-                        
-                        $fallbackAdminData = $fallbackAdminCache[$fbAdminId];
-                        if ($fallbackAdminData) {
-                            $isFallbackAdmin = true;
-                            $cronStatus = 'assigned';
-                            $cronMessage = 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
-                            $fallbackCcEmails = $fbCc;
+                    // Áp dụng ghi đè dữ liệu (Inject Fields)
+                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+                    foreach ($inject as $k => $v) {
+                        if (in_array($k, $standardFields)) {
+                            if ($k === 'source') $source = $v;
+                            if ($k === 'type') $type = $v;
+                            if ($k === 'note') $note = $v;
+                            if ($k === 'name') $name = $v;
+                            if ($k === 'phone') $phone = normalizePhone($v);
+                            if ($k === 'email') $email = trim($v);
+                        } else {
+                            // Append custom fields to note
+                            $note .= "\n[$k]: $v";
                         }
                     }
                 } else {
-                    $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
-                    if ($fbRoundId > 0) {
-                        $targetRoundId = $fbRoundId;
-                        $cronMessage = 'No matching rule found. Routed to fallback round.';
-                    }
+                    $targetRoundId = $ruleResult;
                 }
-            }
 
-            // --- 3. Round-Robin Assignment & 4. Process Lead (Unified Transaction) ---
-            $conn->begin_transaction();
-            try {
-                if ($targetRoundId) {
-                    $assignResult = getNextConsultantInRound($conn, $targetRoundId);
-                    if ($assignResult) {
-                        $assignedConsultantId = $assignResult['id'];
-                        $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                        $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
-
-                        // Check working hours
-                        $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
-                        $whStmt->bind_param("i", $assignedConsultantId);
-                        $whStmt->execute();
-                        $whRes = $whStmt->get_result();
-                        if ($whRes && $whRow = $whRes->fetch_assoc()) {
-                            $whStart = $whRow['work_start_time'] ?? '00:00';
-                            $whEnd = $whRow['work_end_time'] ?? '23:59';
-                            $currentTime = date('H:i');
-                            if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
-                                $cronStatus = 'pending_work_hours';
-                                $cronMessage .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                if (!$targetRoundId) {
+                    $fbSettings = get_system_setting($conn);
+                    
+                    $fbType = $fbSettings['fallback_type'] ?? 'round';
+                    $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                    
+                    if ($fbType === 'admin') {
+                        $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
+                        if ($fbAdminId > 0) {
+                            static $fallbackAdminCache = [];
+                            if (!isset($fallbackAdminCache[$fbAdminId])) {
+                                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                                $admStmt->bind_param("i", $fbAdminId);
+                                $admStmt->execute();
+                                $admRes = $admStmt->get_result();
+                                $fallbackAdminCache[$fbAdminId] = ($admRes->num_rows > 0) ? $admRes->fetch_assoc() : null;
+                                $admStmt->close();
+                            }
+                            
+                            $fallbackAdminData = $fallbackAdminCache[$fbAdminId];
+                            if ($fallbackAdminData) {
+                                $isFallbackAdmin = true;
+                                $cronStatus = 'assigned';
+                                $cronMessage = 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
+                                $fallbackCcEmails = $fbCc;
                             }
                         }
-                        $whStmt->close();
                     } else {
-                        $assignedConsultantId = null;
-                        $cronStatus = 'pending';
-                        $cronMessage = 'No active consultants in this round via cron_sync.';
+                        $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
+                        if ($fbRoundId > 0) {
+                            $targetRoundId = $fbRoundId;
+                            $cronMessage = 'No matching rule found. Routed to fallback round.';
+                        }
                     }
                 }
 
-                if ($crmCheckResult['isDuplicate']) {
-                    $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id'], null, $name);
-                } else {
-                    $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
-                }
-                logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
-                
-                // Record hash so we don't process this row again on next cron run
-                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
-                $recordStmt->execute();
-                $hashMap[$rowHash] = true;
-                
-                $conn->commit();
-            } catch (Exception $txE) {
-                $conn->rollback();
-                logSync("Transaction failed for row: " . $txE->getMessage());
-                continue;
-            }
-
-            // Notifications
-            if ($isFallbackAdmin && $fallbackAdminData && !empty($leadId)) {
-                sendLeadAssignedEmailToSale(
-                    $fallbackAdminData['email'], 
-                    $fallbackAdminData['name'], 
-                    $name, 
-                    $phone, 
-                    $note, 
-                    $source, 
-                    $fallbackCcEmails, 
-                    'Fallback Admin', 
-                    $leadId, 
-                    0, 
-                    0
-                );
-                if (!empty($fallbackAdminData['zalo_chat_id'])) {
-                    require_once __DIR__ . '/zalo_bot.php';
-                    sendLeadAssignedZaloMessageToAdmin(
-                        $fallbackAdminData['zalo_chat_id'], 
-                        $fallbackAdminData['name'], 
-                        $name, 
-                        $phone, 
-                        $note, 
-                        $source
-                    );
-                }
-                $syncedCount++;
-            } else if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId) && $assignedConsultantId) {
-                // Notify Sale (mailer.php already loaded above)
+                // Fetch round details (cc_emails, round_name)
                 $ccEmails = '';
                 $roundName = '';
                 if ($targetRoundId) {
@@ -632,27 +447,218 @@ foreach ($connections as $connItem) {
                         $ccEmails = $roundCache[$targetRoundId]['cc_emails'] ?? '';
                         $roundName = $roundCache[$targetRoundId]['round_name'] ?? '';
                     }
+                } else if ($isFallbackAdmin && !empty($fallbackCcEmails)) {
+                    $ccEmails = $fallbackCcEmails;
                 }
-                
-                static $assignedConsultantCache = [];
-                if (!isset($assignedConsultantCache[$assignedConsultantId])) {
-                    $stmtC2 = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ?");
-                    $stmtC2->bind_param("i", $assignedConsultantId);
-                    $stmtC2->execute();
-                    $assignedConsultantCache[$assignedConsultantId] = $stmtC2->get_result()->fetch_assoc();
-                    $stmtC2->close();
+
+                // --- 2. Check CRM (Duplication & dynamic threshold rule) ---
+                $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+
+                // Load dynamic duplicate check threshold from system settings cache
+                $fbSettings = get_system_setting($conn);
+                $dupCheckMonths = (int)($fbSettings['duplicate_check_months'] ?? 6);
+                if ($dupCheckMonths <= 0) {
+                    $dupCheckMonths = 6;
                 }
-                $c = $assignedConsultantCache[$assignedConsultantId];
-                
-                if ($c) {
-                    // Gửi Email
-                    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+
+                if (!empty($connItem['is_silent'])) {
+                    $assignedToId = null;
+                    if (!empty($connItem['sync_saleperson'])) {
+                        $assignedToVal = extractMappedValues($mappings, 'saleperson', $rowData);
+                        if (empty($assignedToVal)) {
+                            $assignedToVal = extractMappedValues($mappings, 'assigned_to', $rowData);
+                        }
+                        if (!empty($assignedToVal)) {
+                            $assignedToId = findConsultantByEmailOrName($conn, $assignedToVal);
+                        }
+                    }
                     
-                    // Gửi Zalo Message (Đồng bộ Đa Kênh)
-                    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
+                    $conn->begin_transaction();
+                    try {
+                        if ($crmCheckResult['isDuplicate']) {
+                            $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name);
+                        } else {
+                            $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                        }
+                        $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
+                        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+                        
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                        logSync("Transaction failed for silent row: " . $txE->getMessage());
+                        continue;
+                    }
+
+                    // If duplicate, check if we need to send duplicate reminder
+                    if ($crmCheckResult['isDuplicate'] && !empty($connItem['sync_saleperson'])) {
+                        $ownerId = $crmCheckResult['assignedTo'];
+                        if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
+                            static $consultantCache = [];
+                            if (!isset($consultantCache[$ownerId])) {
+                                $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+                                $stmtC->bind_param("i", $ownerId);
+                                $stmtC->execute();
+                                $consultantCache[$ownerId] = $stmtC->get_result()->fetch_assoc();
+                                $stmtC->close();
+                            }
+                            $cRow = $consultantCache[$ownerId];
+                            
+                            if ($cRow && $cRow['status'] === 'active') {
+                                $timeline = getLeadHistoryTimeline($conn, $leadId);
+                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+                                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+                            }
+                        }
+                    }
+                    
+                    continue;
                 }
-                $syncedCount++;
-            }
+
+                if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+                    // Duplicate < threshold months, skip assigning to new round but update last interaction
+                    $assignedTo = $crmCheckResult['assignedTo'];
+                    
+                    $conn->begin_transaction();
+                    try {
+                        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
+                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng via cron_sync.');
+                        
+                        // Record hash so we don't spam duplicate logs on next run
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                        logSync("Transaction failed for duplicate row: " . $txE->getMessage());
+                        continue;
+                    }
+                    
+                    static $consultantCache = [];
+                    if (!isset($consultantCache[$assignedTo])) {
+                        $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+                        $stmtC->bind_param("i", $assignedTo);
+                        $stmtC->execute();
+                        $consultantCache[$assignedTo] = $stmtC->get_result()->fetch_assoc();
+                        $stmtC->close();
+                    }
+                    $cRow = $consultantCache[$assignedTo];
+                    
+                    if ($cRow && $cRow['status'] === 'active') {
+                        $timeline = getLeadHistoryTimeline($conn, $leadId);
+                        sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+                        sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+                    }
+                    
+                    continue;
+                }
+
+                // --- 3. Round-Robin Assignment & 4. Process Lead (Unified Transaction) ---
+                $conn->begin_transaction();
+                try {
+                    if ($targetRoundId) {
+                        $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+                        if ($assignResult) {
+                            $assignedConsultantId = $assignResult['id'];
+                            $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                            $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
+
+                            // Check working hours
+                            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+                            $whStmt->bind_param("i", $assignedConsultantId);
+                            $whStmt->execute();
+                            $whRes = $whStmt->get_result();
+                            if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                                $whStart = $whRow['work_start_time'] ?? '00:00';
+                                $whEnd = $whRow['work_end_time'] ?? '23:59';
+                                $currentTime = date('H:i');
+                                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                                    $cronStatus = 'pending_work_hours';
+                                    $cronMessage .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                                }
+                            }
+                            $whStmt->close();
+                        } else {
+                            $assignedConsultantId = null;
+                            $cronStatus = 'pending';
+                            $cronMessage = 'No active consultants in this round via cron_sync.';
+                        }
+                    }
+
+                    if ($crmCheckResult['isDuplicate']) {
+                        $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id'], null, $name);
+                    } else {
+                        $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                    }
+                    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
+                    
+                    // Record hash so we don't process this row again on next cron run
+                    $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                    $recordStmt->execute();
+                    $hashMap[$rowHash] = true;
+                    
+                    $conn->commit();
+                } catch (Exception $txE) {
+                    $conn->rollback();
+                    logSync("Transaction failed for row: " . $txE->getMessage());
+                    continue;
+                }
+
+                // Notifications
+                if ($isFallbackAdmin && $fallbackAdminData && !empty($leadId)) {
+                    sendLeadAssignedEmailToSale(
+                        $fallbackAdminData['email'], 
+                        $fallbackAdminData['name'], 
+                        $name, 
+                        $phone, 
+                        $note, 
+                        $source, 
+                        $fallbackCcEmails, 
+                        'Fallback Admin', 
+                        $leadId, 
+                        0, 
+                        0
+                    );
+                    if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                        require_once __DIR__ . '/zalo_bot.php';
+                        sendLeadAssignedZaloMessageToAdmin(
+                            $fallbackAdminData['zalo_chat_id'], 
+                            $fallbackAdminData['name'], 
+                            $name, 
+                            $phone, 
+                            $note, 
+                            $source
+                        );
+                    }
+                    $syncedCount++;
+                } else if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId) && $assignedConsultantId) {
+                    // Notify Sale (mailer.php already loaded above)
+                    static $assignedConsultantCache = [];
+                    if (!isset($assignedConsultantCache[$assignedConsultantId])) {
+                        $stmtC2 = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ?");
+                        $stmtC2->bind_param("i", $assignedConsultantId);
+                        $stmtC2->execute();
+                        $assignedConsultantCache[$assignedConsultantId] = $stmtC2->get_result()->fetch_assoc();
+                        $stmtC2->close();
+                    }
+                    $c = $assignedConsultantCache[$assignedConsultantId];
+                    
+                    if ($c) {
+                        // Gửi Email
+                        sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+                        
+                        // Gửi Zalo Message (Đồng bộ Đa Kênh)
+                        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
+                    }
+                    $syncedCount++;
+                }
             } finally {
                 $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
                 if ($relStmt) {

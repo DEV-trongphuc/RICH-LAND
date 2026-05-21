@@ -135,7 +135,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $timeline = [])
 {
     $subject = "Khách hàng cũ đăng ký lại — " . $leadName;
 
@@ -143,6 +143,42 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
     $fPhone = !empty($leadPhone) ? htmlspecialchars($leadPhone) : 'Không có';
     $fSource = !empty($leadSource) ? htmlspecialchars($leadSource) : 'Không có';
     $fNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : 'Không có';
+    $fRound = !empty($roundName) ? htmlspecialchars($roundName) : '';
+
+    $roundRow = '';
+    if (!empty($fRound)) {
+        $roundRow = '
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Vòng:</td>
+                <td style="padding: 8px 0; font-weight: 700; color: #0f172a;">' . $fRound . '</td>
+            </tr>';
+    }
+
+    $historyBlock = '';
+    if (!empty($timeline) && is_array($timeline)) {
+        $historyBlock = '
+            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <p style="color: #0f172a; font-size: 14px; margin: 0 0 12px; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;">Lịch sử phân bổ gần nhất</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">';
+        foreach ($timeline as $t) {
+            $tRound = !empty($t['round_name']) ? ' | Vòng: ' . htmlspecialchars($t['round_name']) : '';
+            $tSale = !empty($t['consultant_name']) ? ' | Sale: ' . htmlspecialchars($t['consultant_name']) : '';
+            $historyBlock .= '
+                <tr>
+                    <td style="padding: 6px 0; color: #64748b; width: 130px; vertical-align: top;">' . htmlspecialchars($t['received_at']) . '</td>
+                    <td style="padding: 6px 0; vertical-align: top;">
+                        <strong>' . htmlspecialchars($t['status']) . '</strong>' . $tRound . $tSale;
+            if (!empty($t['message'])) {
+                $historyBlock .= '<br/><span style="color: #64748b; font-size: 12px;">' . htmlspecialchars($t['message']) . '</span>';
+            }
+            $historyBlock .= '
+                    </td>
+                </tr>';
+        }
+        $historyBlock .= '
+                </table>
+            </div>';
+    }
 
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
@@ -167,9 +203,9 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
                 <tr>
                     <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Nguồn:</td>
                     <td style="padding: 8px 0;">' . $fSource . '</td>
-                </tr>
+                </tr>' . $roundRow . '
             </table>
-        </div>
+        </div>' . $historyBlock . '
 
         <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px 24px; border-radius: 0 12px 12px 0; margin-bottom: 32px;">
             <p style="color: #92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px;">Ghi chú mới</p>
@@ -181,7 +217,7 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
         </div>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, '', $content, '');
+    sendEmailNotification($consultantEmail, $subject, '', $content, $ccEmailString);
 }
 
 

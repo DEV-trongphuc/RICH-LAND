@@ -182,7 +182,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 /**
  * Gửi thông báo nhắc nhở Khách hàng cũ đăng ký lại cho Sale qua Zalo
  */
-function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [])
 {
     global $conn;
 
@@ -217,15 +217,43 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     $fSource = !empty($leadSource) ? $leadSource : "Không có";
     $fNote = !empty($leadNote) ? $leadNote : "Không có";
 
+    $historyText = '';
+    if (!empty($timeline) && is_array($timeline)) {
+        $lines = [];
+        foreach ($timeline as $t) {
+            $parts = [];
+            if (!empty($t['round_name'])) $parts[] = "Vòng: " . $t['round_name'];
+            if (!empty($t['consultant_name'])) $parts[] = "Sale: " . $t['consultant_name'];
+            $extra = !empty($parts) ? " (" . implode(" | ", $parts) . ")" : "";
+            $line = "  • " . $t['received_at'] . " - " . $t['status'] . $extra;
+            if (!empty($t['message'])) {
+                $line .= "\n    └─ " . $t['message'];
+            }
+            $lines[] = $line;
+        }
+        $historyText = implode("\n", $lines);
+    }
+
     $text = "[ KHÁCH HÀNG ĐĂNG KÝ LẠI - KHÔNG TÍNH VÒNG LEAD]\n\n"
         . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
-        . "  • Nguồn: $fSource\n"
-        . "\n❖ GHI CHÚ MỚI:\n"
-        . "  $fNote\n\n"
-        . "Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
+        . "  • Nguồn: $fSource\n";
+    
+    if (!empty($roundName)) {
+        $text .= "  • Vòng: $roundName\n";
+    }
+
+    $text .= "\n❖ GHI CHÚ MỚI:\n"
+        . "  $fNote\n";
+
+    if (!empty($historyText)) {
+        $text .= "\n❖ LỊCH SỬ GẦN NHẤT:\n"
+            . $historyText . "\n";
+    }
+
+    $text .= "\nVui lòng liên hệ lại với khách hàng sớm nhất có thể!";
 
     return sendZaloMessage($botToken, $chatId, $text);
 }

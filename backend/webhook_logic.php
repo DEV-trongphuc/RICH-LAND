@@ -873,4 +873,53 @@ function isConsultantInWorkHours($timeStr, $start, $end) {
     }
 }
 
+/**
+ * Lấy lịch sử phân bổ gần nhất của Lead để hiển thị khi nhắc trùng
+ */
+function getLeadHistoryTimeline($conn, $leadId) {
+    $timeline = [];
+    if (empty($leadId)) return $timeline;
+
+    $stmt = $conn->prepare("
+        SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, dr.round_name 
+        FROM distribution_logs dl 
+        LEFT JOIN consultants c ON dl.assigned_to = c.id 
+        LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
+        WHERE dl.lead_id = ? 
+        ORDER BY dl.received_at DESC 
+        LIMIT 5
+    ");
+    if ($stmt) {
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $statusTranslations = [
+            'assigned' => 'Đã bàn giao',
+            'reminder' => 'Nhắc trùng',
+            'compensation' => 'Bù lượt',
+            'silent' => 'Đồng bộ ẩn',
+            'pending_work_hours' => 'Chờ khung giờ',
+            'pending' => 'Chờ xử lý',
+            'unassigned' => 'Chưa phân bổ'
+        ];
+
+        while ($row = $res->fetch_assoc()) {
+            $statusRaw = $row['status'] ?? '';
+            $statusText = $statusTranslations[$statusRaw] ?? $statusRaw;
+            
+            $timeline[] = [
+                'received_at' => $row['received_at'],
+                'status' => $statusText,
+                'message' => $row['message'],
+                'consultant_name' => $row['consultant_name'],
+                'round_name' => $row['round_name']
+            ];
+        }
+        $stmt->close();
+    }
+    return $timeline;
+}
+
+
 

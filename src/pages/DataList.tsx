@@ -150,6 +150,7 @@ export const DataList = () => {
         setSelectedLead(null);
         setReassignConsId('');
         fetchLeads();
+        window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
         toast.error('Lỗi: ' + (res.message || 'Không thể giao lại')); // BUG-03 fix
       }
