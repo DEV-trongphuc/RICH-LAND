@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/db_connect.php';
 require_once __DIR__ . '/zalo_bot.php';
+require_once __DIR__ . '/webhook_logic.php';
 
 header("Content-Type: application/json");
 
@@ -126,7 +127,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         // --- KẾT THÚC TEST COMMAND ---
 
         // --- XỬ LÝ COMMANDS BÁO CÁO NHANH (ADMIN ONLY) ---
-        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0) {
+        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/round') === 0) {
             // Kiểm tra phân quyền Admin
             $isAdmin = false;
             $adminName = '';
@@ -165,7 +166,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                           . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n\n"
                           . "  • [/accept mã_ticket]: Duyệt nhanh ticket lỗi (Ví dụ: [/accept 12]).\n\n\n"
                           . "👥 3. Quản lý nhân sự:\n\n"
-                          . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.";
+                          . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.\n\n"
+                          . "  • [/round]: Xem các vòng phân bổ đang hoạt động và Sale tiếp theo nhận số.";
                 sendZaloMessage($botToken, $chatId, $toolsMsg);
                 exit;
             }
@@ -452,6 +454,62 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $salesMsg .= "❌ Không tìm thấy tư vấn viên nào trên hệ thống.";
                 }
                 sendZaloMessage($botToken, $chatId, $salesMsg);
+                exit;
+            }
+
+            if (strpos($textLower, '/round') === 0) {
+                // Liệt kê các vòng phân bổ đang hoạt động
+                $resRounds = $conn->query("
+                    SELECT id, round_name 
+                    FROM distribution_rounds 
+                    WHERE is_active = 1 
+                    ORDER BY id ASC
+                ");
+                
+                $roundMsg = "🔄 [ TRẠNG THÁI VÒNG PHÂN BỔ ]\n\n";
+                
+                if ($resRounds && $resRounds->num_rows > 0) {
+                    $roundCount = 1;
+                    while ($rowR = $resRounds->fetch_assoc()) {
+                        $roundId = (int)$rowR['id'];
+                        $roundName = $rowR['round_name'];
+                        
+                        // Lấy Sale tiếp theo dự kiến bằng hàm mô phỏng không ghi DB
+                        $nextSale = simulateNextConsultantInRound($conn, $roundId);
+                        
+                        $roundMsg .= "$roundCount. Vòng: $roundName\n";
+                        
+                        if ($nextSale) {
+                            $reason = 'Lượt xoay vòng';
+                            $details = '';
+                            if (intval($nextSale['compensation_count']) > 0) {
+                                $reason = 'Đền bù data lỗi';
+                                $details = ' (còn ' . $nextSale['compensation_count'] . ' lượt)';
+                            } else if (intval($nextSale['current_turn_remaining']) > 0) {
+                                $reason = 'Đang nhận số';
+                                $details = ' (còn ' . $nextSale['current_turn_remaining'] . ' data)';
+                            } else {
+                                $ratio = max(1, (int)($nextSale['receive_ratio'] ?? 1));
+                                $skip = (int)($nextSale['skip_count'] ?? 0);
+                                if ($ratio > 1) {
+                                    $details = " (Tỉ lệ: 1/{$ratio}, Bỏ qua: {$skip}/" . ($ratio - 1) . ")";
+                                } else {
+                                    $details = " (Tỉ lệ: 1/1)";
+                                }
+                            }
+                            $roundMsg .= "   ↳ Sale sắp tới: " . $nextSale['name'] . " - " . $reason . $details . "\n\n";
+                        } else {
+                            $roundMsg .= "   ↳ Sale sắp tới: Không có Sale hoạt động trong vòng này! ⚠️\n\n";
+                        }
+                        
+                        $roundCount++;
+                    }
+                    $roundMsg = rtrim($roundMsg);
+                } else {
+                    $roundMsg .= "✅ Hiện không có vòng phân bổ nào đang hoạt động.";
+                }
+                
+                sendZaloMessage($botToken, $chatId, $roundMsg);
                 exit;
             }
         }
