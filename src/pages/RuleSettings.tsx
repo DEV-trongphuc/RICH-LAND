@@ -286,6 +286,16 @@ export const RuleSettings = () => {
 
   const openSimulateModal = () => {
     setSimulateResult(null);
+    setSimulateConnectionId('all');
+    const hasSheets = connections.some(c => c.connection_type === 'sheets');
+    const hasLP = connections.some(c => c.connection_type === 'landing_page');
+    if (hasSheets) {
+      setSimulateConnectionType('sheets');
+    } else if (hasLP) {
+      setSimulateConnectionType('landing_page');
+    } else {
+      setSimulateConnectionType('manual');
+    }
     setIsSimulateModalOpen(true);
   };
 
@@ -375,6 +385,10 @@ export const RuleSettings = () => {
     fetchRounds();
     fetchConnections();
   }, []);
+
+  useEffect(() => {
+    setSimulateConnectionId('all');
+  }, [simulateConnectionType]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -1095,24 +1109,42 @@ export const RuleSettings = () => {
 
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
                 <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#475569' }}>Cấu hình Kết nối & Loại nguồn nhận</h5>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Nguồn tích hợp</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'all', label: 'Tất cả kết nối', icon: <Globe size={14} color="#6366f1" /> },
-                        ...connections.map(c => ({ value: c.id.toString(), label: c.sheet_name, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
-                      ]}
-                      value={simulateConnectionId}
-                      onChange={v => setSimulateConnectionId(String(v))}
-                    />
-                  </div>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: simulateConnectionType === 'manual' ? '1fr' : '1fr 1fr', 
+                  gap: '1rem' 
+                }}>
+                  {simulateConnectionType !== 'manual' && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Nguồn tích hợp</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: 'Tất cả kết nối', icon: <Globe size={14} color="#6366f1" /> },
+                          ...connections
+                            .filter(c => c.connection_type === simulateConnectionType)
+                            .map(c => ({
+                              value: c.id.toString(),
+                              label: c.sheet_name,
+                              icon: c.connection_type === 'landing_page'
+                                ? <Zap size={14} color="#f59e0b" />
+                                : <FileSpreadsheet size={14} color="#10b981" />
+                            }))
+                        ]}
+                        value={simulateConnectionId}
+                        onChange={v => setSimulateConnectionId(String(v))}
+                      />
+                    </div>
+                  )}
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Loại kết nối</label>
                     <CustomSelect
                       options={[
-                        { value: 'sheets', label: 'Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> },
-                        { value: 'landing_page', label: 'Landing Page API', icon: <Zap size={14} color="#f59e0b" /> },
+                        ...(connections.some(c => c.connection_type === 'sheets') ? [
+                          { value: 'sheets', label: 'Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> }
+                        ] : []),
+                        ...(connections.some(c => c.connection_type === 'landing_page') ? [
+                          { value: 'landing_page', label: 'Landing Page API', icon: <Zap size={14} color="#f59e0b" /> }
+                        ] : []),
                         { value: 'manual', label: 'Nhập tay', icon: <Keyboard size={14} color="#ec4899" /> }
                       ]}
                       value={simulateConnectionType}
