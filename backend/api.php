@@ -3873,18 +3873,20 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $log_id = (int) ($input['log_id'] ?? 0);
         $new_consultant_id = (int) ($input['new_consultant_id'] ?? 0);
+        $compensate_old_sale = isset($input['compensate_old_sale']) ? (bool)$input['compensate_old_sale'] : false;
 
         if (!$log_id || !$new_consultant_id) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID Log hoặc ID TVV mới']);
             break;
         }
 
-        // 1. Fetch lead details and new consultant details
+        // 1. Fetch lead details, old consultant details, and new consultant details
         $stmt = $conn->prepare("
-            SELECT dl.lead_id, dl.round_id, l.name as lead_name, l.phone, l.note, l.source, r.cc_emails
+            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, dl.status as log_status, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, r.cc_emails
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            LEFT JOIN consultants c_old ON dl.assigned_to = c_old.id
             WHERE dl.id = ?
         ");
         $stmt->bind_param("i", $log_id);
@@ -3896,7 +3898,45 @@ switch ($action) {
         }
         $log_data = $res->fetch_assoc();
         $lead_id = $log_data['lead_id'];
+        $old_consultant_id = $log_data['old_consultant_id'] ? (int)$log_data['old_consultant_id'] : null;
+        $old_consultant_name = $log_data['old_consultant_name'] ?? '';
         $cc_emails = $log_data['cc_emails'] ?? '';
+        $lead_phone = $log_data['phone'] ?? '';
+        $lead_email = $log_data['lead_email'] ?? '';
+        $log_status = $log_data['log_status'] ?? '';
+
+        // Check if this lead is duplicate (has duplicate history)
+        $isDuplicateLead = false;
+        if ($log_status === 'reminder') {
+            $isDuplicateLead = true;
+        } else if (!empty($lead_phone) || !empty($lead_email)) {
+            $dupQuery = "SELECT id FROM leads WHERE id != ? AND (";
+            $dupParams = [$lead_id];
+            $dupTypes = 'i';
+            $orParts = [];
+            if (!empty($lead_phone)) {
+                $orParts[] = "phone = ?";
+                $dupParams[] = $lead_phone;
+                $dupTypes .= 's';
+            }
+            if (!empty($lead_email)) {
+                $orParts[] = "email = ?";
+                $dupParams[] = $lead_email;
+                $dupTypes .= 's';
+            }
+            $dupQuery .= implode(" OR ", $orParts) . ") LIMIT 1";
+            
+            $stmtDup = $conn->prepare($dupQuery);
+            if ($stmtDup) {
+                $stmtDup->bind_param($dupTypes, ...$dupParams);
+                $stmtDup->execute();
+                $resDup = $stmtDup->get_result();
+                if ($resDup->num_rows > 0) {
+                    $isDuplicateLead = true;
+                }
+                $stmtDup->close();
+            }
+        }
 
         // Fetch new consultant details
         $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
@@ -3914,9 +3954,11 @@ switch ($action) {
         $conn->begin_transaction();
         try {
             // 2. Perform updates
+            $newLogStatus = $isDuplicateLead ? 'reminder' : 'assigned';
+
             // Update distribution_logs
-            $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = 'assigned' WHERE id = ?");
-            $stmtU1->bind_param("ii", $new_consultant_id, $log_id);
+            $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = ? WHERE id = ?");
+            $stmtU1->bind_param("isi", $new_consultant_id, $newLogStatus, $log_id);
             $stmtU1->execute();
 
             // Update leads
@@ -3924,18 +3966,47 @@ switch ($action) {
             $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
             $stmtU2->execute();
 
+            if ($compensate_old_sale && $old_consultant_id) {
+                // Check if the consultant is enrolled in the round
+                $chkEnroll = $conn->prepare("SELECT 1 FROM round_consultants WHERE round_id = ? AND consultant_id = ? LIMIT 1");
+                $chkEnroll->bind_param("ii", $log_data['round_id'], $old_consultant_id);
+                $chkEnroll->execute();
+                $hasEnroll = $chkEnroll->get_result()->num_rows > 0;
+                $chkEnroll->close();
+
+                if ($hasEnroll) {
+                    $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                    $updComp->bind_param("ii", $log_data['round_id'], $old_consultant_id);
+                    $updComp->execute();
+                    $updComp->close();
+                } else {
+                    // If not enrolled, insert a record with compensation count = 1
+                    $insComp = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, 1, 1, 1)");
+                    $insComp->bind_param("ii", $log_data['round_id'], $old_consultant_id);
+                    $insComp->execute();
+                    $insComp->close();
+                }
+            }
+
             logAdminAction($conn, $decodedUser['id'], 'REASSIGN_LEAD', [
                 'log_id' => $log_id,
                 'lead_id' => $lead_id,
                 'lead_name' => $log_data['lead_name'],
                 'phone' => $log_data['phone'],
+                'old_consultant_id' => $old_consultant_id,
+                'old_consultant_name' => $old_consultant_name,
                 'new_consultant_id' => $new_consultant_id,
-                'new_consultant_name' => $new_cons_name
+                'new_consultant_name' => $new_cons_name,
+                'is_duplicate' => $isDuplicateLead,
+                'compensated' => $compensate_old_sale
             ]);
             $conn->commit();
 
-            // 3. Send email to new consultant (NEW-05 fix: include round_name and IDs in email)
+            // 3. Send notifications to new consultant
             require_once __DIR__ . '/mailer.php';
+            require_once __DIR__ . '/zalo_bot.php';
+            require_once __DIR__ . '/webhook_logic.php'; // For getLeadHistoryTimeline
+
             // Fetch round name
             $roundNameStr = '';
             $roundId = (int) ($log_data['round_id'] ?? 0);
@@ -3947,32 +4018,56 @@ switch ($action) {
                 if ($rRes->num_rows > 0)
                     $roundNameStr = $rRes->fetch_assoc()['round_name'] ?? '';
             }
-            sendLeadAssignedEmailToSale(
-                $new_cons_email,
-                $new_cons_name,
-                $log_data['lead_name'] ?: 'Khach hang an danh',
-                $log_data['phone'] ?: '',
-                $log_data['note'] ?: '',
-                $log_data['source'] ?: '',
-                $cc_emails,
-                $roundNameStr,
-                $lead_id,
-                $new_consultant_id,
-                $roundId
-            );
 
-            require_once __DIR__ . '/zalo_bot.php';
-            sendLeadAssignedZaloMessageToSale(
-                $new_consultant_id,
-                $new_cons_name,
-                $log_data['lead_name'] ?: 'Khach hang an danh',
-                $log_data['phone'] ?: '',
-                $log_data['note'] ?: '',
-                $log_data['source'] ?: '',
-                $roundNameStr,
-                $lead_id,
-                $roundId
-            );
+            if ($isDuplicateLead) {
+                $timeline = getLeadHistoryTimeline($conn, $lead_id);
+                sendLeadReminderEmailToSale(
+                    $new_cons_email,
+                    $new_cons_name,
+                    $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                    $log_data['phone'] ?: '',
+                    $log_data['note'] ?: '',
+                    $log_data['source'] ?: '',
+                    $cc_emails,
+                    $roundNameStr,
+                    $timeline
+                );
+                sendLeadReminderZaloMessageToSale(
+                    $new_consultant_id,
+                    $new_cons_name,
+                    $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                    $log_data['phone'] ?: '',
+                    $log_data['note'] ?: '',
+                    $log_data['source'] ?: '',
+                    $roundNameStr,
+                    $timeline
+                );
+            } else {
+                sendLeadAssignedEmailToSale(
+                    $new_cons_email,
+                    $new_cons_name,
+                    $log_data['lead_name'] ?: 'Khach hang an danh',
+                    $log_data['phone'] ?: '',
+                    $log_data['note'] ?: '',
+                    $log_data['source'] ?: '',
+                    $cc_emails,
+                    $roundNameStr,
+                    $lead_id,
+                    $new_consultant_id,
+                    $roundId
+                );
+                sendLeadAssignedZaloMessageToSale(
+                    $new_consultant_id,
+                    $new_cons_name,
+                    $log_data['lead_name'] ?: 'Khach hang an danh',
+                    $log_data['phone'] ?: '',
+                    $log_data['note'] ?: '',
+                    $log_data['source'] ?: '',
+                    $roundNameStr,
+                    $lead_id,
+                    $roundId
+                );
+            }
 
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -4932,7 +5027,58 @@ switch ($action) {
         }
 
         try {
-            if (!$assignedRoundId && !$isFallbackAdmin) {
+            // Check CRM duplicate (both phone & email)
+            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+            $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+            if ($dupCheckMonths <= 0) {
+                $dupCheckMonths = 6;
+            }
+
+            if (!$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+                $assignedTo = $crmCheckResult['assignedTo'];
+                $conn->begin_transaction();
+                
+                // Update last interaction
+                $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, null, null, $name);
+                logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).');
+                $conn->commit();
+
+                $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+                $stmtC->bind_param("i", $assignedTo);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                
+                if ($cRow && $cRow['status'] === 'active') {
+                    require_once __DIR__ . '/mailer.php';
+                    require_once __DIR__ . '/zalo_bot.php';
+                    
+                    $timeline = getLeadHistoryTimeline($conn, $leadId);
+                    sendLeadReminderEmailToSale(
+                        $cRow['email'],
+                        $cRow['name'],
+                        $name,
+                        $phone,
+                        $note,
+                        $source,
+                        '',
+                        '',
+                        $timeline
+                    );
+                    sendLeadReminderZaloMessageToSale(
+                        $assignedTo,
+                        $cRow['name'],
+                        $name,
+                        $phone,
+                        $note,
+                        $source,
+                        '',
+                        $timeline
+                    );
+                }
+                
+                echo json_encode(['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')]);
+            } else if (!$assignedRoundId && !$isFallbackAdmin) {
                 // Cannot assign
                 $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
                 echo json_encode(['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.']);
@@ -5001,6 +5147,26 @@ switch ($action) {
 
                 } else if ($consultantId) {
                     $status = $isComp ? 'compensation' : 'assigned';
+                    
+                    // Check working hours
+                    $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+                    $whStmt->bind_param("i", $consultantId);
+                    $whStmt->execute();
+                    $whRes = $whStmt->get_result();
+                    $isOutsideWorkHours = false;
+                    $whStart = '00:00';
+                    $whEnd = '23:59';
+                    if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                        $whStart = $whRow['work_start_time'] ?? '00:00';
+                        $whEnd = $whRow['work_end_time'] ?? '23:59';
+                        $currentTime = date('H:i');
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                            $status = 'pending_work_hours';
+                            $isOutsideWorkHours = true;
+                        }
+                    }
+                    $whStmt->close();
+
                     $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
 
                     $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
@@ -5010,60 +5176,66 @@ switch ($action) {
                     $stmtRound->close();
 
                     // Log distribution
-                    logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin");
+                    $logMsg = $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin";
+                    if ($isOutsideWorkHours) {
+                        $logMsg .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                    }
+                    logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg);
 
                     $conn->commit();
 
-                    // Fire notification using Mailer and Zalo
-                    require_once __DIR__ . '/mailer.php';
-                    require_once __DIR__ . '/zalo_bot.php';
+                    // Fire notification using Mailer and Zalo ONLY if within working hours
+                    if (!$isOutsideWorkHours) {
+                        require_once __DIR__ . '/mailer.php';
+                        require_once __DIR__ . '/zalo_bot.php';
 
-                    $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                    $stmtC->bind_param("i", $consultantId);
-                    $stmtC->execute();
-                    $cRes = $stmtC->get_result();
-                    if ($cRes->num_rows > 0) {
-                        $c = $cRes->fetch_assoc();
-                        $ccEmails = '';
-                        $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
-                        $stmtQ->bind_param("i", $assignedRoundId);
-                        $stmtQ->execute();
-                        $qRound = $stmtQ->get_result();
-                        if ($qRound && $qRound->num_rows > 0) {
-                            $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                        $stmtC->bind_param("i", $consultantId);
+                        $stmtC->execute();
+                        $cRes = $stmtC->get_result();
+                        if ($cRes->num_rows > 0) {
+                            $c = $cRes->fetch_assoc();
+                            $ccEmails = '';
+                            $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
+                            $stmtQ->bind_param("i", $assignedRoundId);
+                            $stmtQ->execute();
+                            $qRound = $stmtQ->get_result();
+                            if ($qRound && $qRound->num_rows > 0) {
+                                $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                            }
+                            $stmtQ->close();
+
+                            $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+
+                            sendLeadAssignedEmailToSale(
+                                $c['email'],
+                                $c['name'],
+                                $fName,
+                                $phone ?: '',
+                                $note ?: '',
+                                $source ?: '',
+                                $ccEmails,
+                                $roundName,
+                                $leadId,
+                                $consultantId,
+                                $assignedRoundId
+                            );
+                            sendLeadAssignedZaloMessageToSale(
+                                $consultantId,
+                                $c['name'],
+                                $fName,
+                                $phone ?: '',
+                                $note ?: '',
+                                $source ?: '',
+                                $roundName,
+                                $leadId,
+                                $assignedRoundId
+                            );
                         }
-                        $stmtQ->close();
-
-                        $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-
-                        sendLeadAssignedEmailToSale(
-                            $c['email'],
-                            $c['name'],
-                            $fName,
-                            $phone ?: '',
-                            $note ?: '',
-                            $source ?: '',
-                            $ccEmails,
-                            $roundName,
-                            $leadId,
-                            $consultantId,
-                            $assignedRoundId
-                        );
-                        sendLeadAssignedZaloMessageToSale(
-                            $consultantId,
-                            $c['name'],
-                            $fName,
-                            $phone ?: '',
-                            $note ?: '',
-                            $source ?: '',
-                            $roundName,
-                            $leadId,
-                            $assignedRoundId
-                        );
+                        $stmtC->close();
                     }
-                    $stmtC->close();
 
-                    echo json_encode(['success' => true, 'message' => 'Data đã được giao thành công.']);
+                    echo json_encode(['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.']);
                 } else {
                     // Insert unassigned
                     $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);

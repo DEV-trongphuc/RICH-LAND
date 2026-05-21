@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
-import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { useSearchParams } from 'react-router-dom';
@@ -148,7 +147,7 @@ export const DataList = () => {
     }
   };
 
-  const handleReassign = async () => {
+  const handleReassign = async (compensate: boolean = false) => {
     if (!selectedLead || !reassignConsId) return;
     setIsReassigning(true);
     try {
@@ -156,13 +155,18 @@ export const DataList = () => {
         method: 'POST',
         body: JSON.stringify({
           log_id: selectedLead.id,
-          new_consultant_id: Number(reassignConsId)
+          new_consultant_id: Number(reassignConsId),
+          compensate_old_sale: compensate
         })
       });
       if (res.success) {
-        toast.success('Giao lại Tư vấn viên thành công!'); // BUG-03 fix: was alert()
+        toast.success(compensate 
+          ? 'Giao lại Tư vấn viên & Đền bù thành công!' 
+          : 'Giao lại Tư vấn viên thành công!'
+        );
         setSelectedLead(null);
         setReassignConsId('');
+        setConfirmReassignOpen(false);
         fetchLeads();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
@@ -693,15 +697,66 @@ export const DataList = () => {
         )}
       </CustomModal>
 
-      <ConfirmModal
+      <CustomModal
         isOpen={confirmReassignOpen}
         onClose={() => setConfirmReassignOpen(false)}
-        onConfirm={handleReassign}
         title="Xác nhận Giao lại Lead"
-        message={`Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead "${selectedLead?.name || ''}" sang cho Tư vấn viên "${consultants.find(c => Number(c.id) === Number(reassignConsId))?.name || 'Tư vấn viên mới'}" không?`}
-        confirmText="Xác nhận giao"
-        cancelText="Hủy"
-      />
+        width={500}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', 
+              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead <strong>"{selectedLead?.name}"</strong> sang cho Tư vấn viên <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
+              </p>
+              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
+                  Lead này hiện đang thuộc về: <strong>{selectedLead.assigned_to_name}</strong>. Bạn muốn bù data cho <strong>{selectedLead.assigned_to_name}</strong> chứ?
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>Hủy</button>
+            
+            {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
+              <>
+                <button 
+                  className="btn secondary" 
+                  onClick={() => handleReassign(false)}
+                  style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
+                  disabled={isReassigning}
+                >
+                  Chuyển luôn, Không bù
+                </button>
+                <button 
+                  className="btn success" 
+                  onClick={() => handleReassign(true)}
+                  style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                  disabled={isReassigning}
+                >
+                  Chuyển & Bù cho sale cũ
+                </button>
+              </>
+            ) : (
+              <button 
+                className="btn primary" 
+                onClick={() => handleReassign(false)}
+                disabled={isReassigning}
+              >
+                Xác nhận chuyển
+              </button>
+            )}
+          </div>
+        </div>
+      </CustomModal>
 
       <style>{`
         .spin { animation: spin 1s linear infinite; }
