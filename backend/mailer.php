@@ -621,7 +621,8 @@ function sendDailyReportEmailToAdmins(
     string $adminName,
     int $totalData,
     string $saleStatsHtml,
-    int $totalTicket
+    int $totalTicket,
+    int $totalReminder = 0
 ) {
     global $conn;
 
@@ -641,6 +642,11 @@ function sendDailyReportEmailToAdmins(
         $frontendUrl = $proto . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 
+    $titleSuffix = $totalData . ' data';
+    if ($totalReminder > 0) {
+        $titleSuffix = 'Tổng: ' . ($totalData + $totalReminder) . ' (Chia số: ' . $totalData . ', Nhắc lại: ' . $totalReminder . ')';
+    }
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #fef08a; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
@@ -652,7 +658,7 @@ function sendDailyReportEmailToAdmins(
 
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
             <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <h3 style="margin: 0; color: #0f172a; font-size: 16px;">Phân bổ Data mới (' . $totalData . ')</h3>
+                <h3 style="margin: 0; color: #0f172a; font-size: 16px;">Phân bổ Data mới (' . $titleSuffix . ')</h3>
             </div>
             <div style="padding: 20px;">
                 <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.6;">

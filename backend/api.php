@@ -4022,7 +4022,7 @@ switch ($action) {
                         'consultant_id' => $assignedTo,
                         'name' => $cRow['name'],
                         'email' => $cRow['email'],
-                        'round_name' => 'sẽ nhắc lại ko tính vòng vì trùng dưới ' . $dupCheckMonths . ' tháng',
+                        'round_name' => 'Nhắc lại - trùng dưới ' . $dupCheckMonths . ' tháng',
                         'reason' => 'Khách cũ đăng ký lại trong hạn định ' . $dupCheckMonths . ' tháng. Chuyển thẳng cho Sale cũ: ' . $cRow['name'] . '.'
                     ],
                     'trace' => [
@@ -4394,19 +4394,19 @@ switch ($action) {
                 if ($isSilent == 1) {
                     if ($crmCheck['isDuplicate']) {
                         $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate, $name);
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name);
                         $duplicateCount++;
                         logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
                     } else {
                         $ownerId = $fileConsultantId;
-                        $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
+                        $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
                         $newCount++;
                         logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).');
                     }
                 } else {
                     if ($crmCheck['isDuplicate']) {
                         $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate, $name);
+                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name);
                         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
                         $duplicateCount++;
                         
@@ -4432,7 +4432,7 @@ switch ($action) {
                             $isFromRules = true;
                         }
                         
-                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
+                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
                         $newCount++;
                         
                         if ($assignedToId) {

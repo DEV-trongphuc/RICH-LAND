@@ -284,3 +284,152 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
 
     return sendZaloMessage($botToken, $chatId, $msg);
 }
+
+/**
+ * Tạo báo cáo phân bổ và ticket trong khoảng thời gian xác định
+ */
+function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel = '') {
+    $stmtData = $conn->prepare("
+        SELECT c.name, 
+               SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'error') THEN 1 ELSE 0 END) as normal_total,
+               SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_total
+            FROM distribution_logs dl 
+            JOIN consultants c ON dl.assigned_to = c.id 
+            WHERE dl.received_at >= ?
+              AND dl.received_at <= ?
+              AND dl.status IN ('assigned', 'compensation', 'error', 'reminder')
+            GROUP BY c.id
+            ORDER BY normal_total DESC, reminder_total DESC
+    ");
+    if (!$stmtData) {
+        return "⚠️ Lỗi hệ thống: Không thể chuẩn bị câu lệnh truy vấn dữ liệu.";
+    }
+    
+    $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
+    $stmtData->execute();
+    $resData = $stmtData->get_result();
+    
+    $saleStats = "";
+    $totalData = 0;
+    $totalReminder = 0;
+    if ($resData) {
+        while ($row = $resData->fetch_assoc()) {
+            $normalTotal = (int)$row['normal_total'];
+            $reminderTotal = (int)$row['reminder_total'];
+            
+            $saleStats .= "  👤 " . $row['name'] . ": " . $normalTotal . " data\n";
+            if ($reminderTotal > 0) {
+                $saleStats .= "     ↳ 🔄 Nhắc lại: " . $reminderTotal . "\n";
+            }
+            $totalData += $normalTotal;
+            $totalReminder += $reminderTotal;
+        }
+    }
+    $stmtData->close();
+    
+    if (empty($saleStats)) {
+        $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
+    }
+    
+    $stmtTicket = $conn->prepare("
+        SELECT COUNT(*) as total 
+        FROM data_reports 
+        WHERE created_at >= ?
+          AND created_at <= ?
+    ");
+    $totalTicket = 0;
+    if ($stmtTicket) {
+        $stmtTicket->bind_param("ss", $startTimestamp, $endTimestamp);
+        $stmtTicket->execute();
+        $resTicket = $stmtTicket->get_result();
+        if ($resTicket && $row = $resTicket->fetch_assoc()) {
+            $totalTicket = $row['total'];
+        }
+        $stmtTicket->close();
+    }
+    
+    $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n";
+    $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
+    $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
+    if ($totalReminder > 0) {
+        $msg .= "   (Tổng cộng: " . ($totalData + $totalReminder) . " | Chia số: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
+    } else {
+        $msg .= "   ($totalData data)\n";
+    }
+    $msg .= "------------------------------\n";
+    $msg .= $saleStats . "\n";
+    $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
+    $msg .= "  • Tổng ticket phát sinh: $totalTicket" . ($totalTicket > 0 ? " ⚠️" : "") . "\n\n";
+    $msg .= "-------------------\n";
+    $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
+    $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
+    
+    return $msg;
+}
+
+/**
+ * Phân tích khoảng ngày báo cáo từ text
+ */
+function parseReportDateRange($text) {
+    // Chuẩn hóa khoảng trắng
+    $text = preg_replace('/\s+/', ' ', trim($text));
+    preg_match_all('/\b\d{1,2}[\/\-\.\s]\d{1,2}([\/\-\.\s]\d{4})?\b/', $text, $matches);
+    
+    if (empty($matches[0])) {
+        return null;
+    }
+    
+    $date1Str = $matches[0][0];
+    $date2Str = isset($matches[0][1]) ? $matches[0][1] : '';
+    
+    $d1 = parseSingleDate($date1Str);
+    if (!$d1) return null;
+    
+    if (empty($date2Str)) {
+        return [
+            'start' => $d1 . ' 00:00:00',
+            'end' => $d1 . ' 23:59:59',
+            'label' => date('d/m/Y', strtotime($d1))
+        ];
+    }
+    
+    $d2 = parseSingleDate($date2Str);
+    if (!$d2) return null;
+    
+    if (strtotime($d1) > strtotime($d2)) {
+        $temp = $d1;
+        $d1 = $d2;
+        $d2 = $temp;
+    }
+    
+    return [
+        'start' => $d1 . ' 00:00:00',
+        'end' => $d2 . ' 23:59:59',
+        'label' => date('d/m/Y', strtotime($d1)) . ' → ' . date('d/m/Y', strtotime($d2))
+    ];
+}
+
+/**
+ * Phân tích ngày đơn lẻ
+ */
+function parseSingleDate($str) {
+    $str = preg_replace('/[\/\-\.\s]+/', '/', trim($str));
+    
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $str, $m)) {
+        $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+        $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+        $year = $m[3];
+        if (checkdate((int)$month, (int)$day, (int)$year)) {
+            return "$year-$month-$day";
+        }
+    }
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $str, $m)) {
+        $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+        $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+        $year = date('Y');
+        if (checkdate((int)$month, (int)$day, (int)$year)) {
+            return "$year-$month-$day";
+        }
+    }
+    return null;
+}

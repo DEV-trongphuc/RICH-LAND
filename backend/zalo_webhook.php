@@ -76,7 +76,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         $textLower = strtolower(trim($text));
 
         // --- XỬ LÝ TEST COMMAND ---
-        if ($textLower === 'test_data' || $textLower === 'test_data_admin') {
+        if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textLower === 'test_report') {
             if (!empty($botToken)) {
                 if ($textLower === 'test_data') {
                     $zaloMsg = "[ THÔNG BÁO DATA MỚI ]\n\n"
@@ -100,6 +100,23 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                              . "  Khách thuê bao, gọi 3 lần không bắt máy.\n\n"
                              . "Vui lòng đăng nhập CRM để duyệt/từ chối Ticket này.";
                     sendZaloMessage($botToken, $chatId, $zaloMsg);
+                } else if ($textLower === 'test_report') {
+                    $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
+                    $reportTimeDisplay = date('H:i', strtotime($reportTime));
+                    $zaloMsg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n"
+                             . "⏱️ Kỳ báo cáo: {$reportTimeDisplay} " . date('d/m/Y', strtotime('-1 day')) . " → {$reportTimeDisplay} " . date('d/m/Y') . "\n\n"
+                             . "📥 TỔNG QUAN CHIA SỐ:\n"
+                             . "   (Tổng cộng: 5 | Chia số: 4 | Nhắc lại: 1)\n"
+                             . "-------------------\n"
+                             . "  👤 Nguyễn Văn A: 3 data\n"
+                             . "  👤 Trần Thị B: 1 data\n"
+                             . "     ↳ 🔄 Nhắc lại: 1\n\n"
+                             . "🎫 BÁO CÁO LỖI (TICKET):\n"
+                             . "  • Tổng ticket phát sinh: 1 ⚠️\n\n"
+                             . "-------------------\n"
+                             . "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n"
+                             . "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
+                    sendZaloMessage($botToken, $chatId, $zaloMsg);
                 }
             }
             
@@ -107,6 +124,337 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             exit;
         }
         // --- KẾT THÚC TEST COMMAND ---
+
+        // --- XỬ LÝ COMMANDS BÁO CÁO NHANH (ADMIN ONLY) ---
+        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0) {
+            // Kiểm tra phân quyền Admin
+            $isAdmin = false;
+            $adminName = '';
+            $adminAccountId = 0;
+            $stmtCheck = $conn->prepare("SELECT id, name FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
+            if ($stmtCheck) {
+                $stmtCheck->bind_param("s", $chatId);
+                $stmtCheck->execute();
+                $resCheck = $stmtCheck->get_result();
+                if ($resCheck && $rowCheck = $resCheck->fetch_assoc()) {
+                    $isAdmin = true;
+                    $adminName = $rowCheck['name'] ?: 'Quản trị viên';
+                    $adminAccountId = (int)$rowCheck['id'];
+                }
+                $stmtCheck->close();
+            }
+
+            if (!$isAdmin) {
+                sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh này chỉ dành cho Quản trị viên đã xác thực Zalo trên hệ thống.");
+                exit;
+            }
+
+            if (strpos($textLower, '/tools') === 0) {
+                $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
+                $reportTimeDisplay = date('H:i', strtotime($reportTime));
+
+                $toolsMsg = "🛠️ [ DANH SÁCH LỆNH BÁO CÁO NHANH ]\n\n"
+                          . "Chào $adminName, dưới đây là các câu lệnh bạn có thể sử dụng:\n\n"
+                          . "📈 1. Báo cáo phân bổ:\n\n"
+                          . "  • [/report] hoặc [/report homnay]: Báo cáo từ {$reportTimeDisplay} hôm qua đến hiện tại.\n\n"
+                          . "  • [/report homqua]: Báo cáo của ngày hôm qua ({$reportTimeDisplay} hôm kia → {$reportTimeDisplay} hôm qua).\n\n"
+                          . "  • [/report dd/mm]: Báo cáo nguyên ngày dd/mm (00:00 → 23:59).\n\n"
+                          . "  • [/report dd/mm to dd/mm]: Báo cáo khoảng ngày.\n\n\n"
+                          . "🎫 2. Quản lý Ticket (Báo lỗi):\n\n"
+                          . "  • [/ticket pending]: Xem danh sách ticket đang chờ duyệt.\n\n"
+                          . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n\n"
+                          . "  • [/accept mã_ticket]: Duyệt nhanh ticket lỗi (Ví dụ: [/accept 12]).\n\n\n"
+                          . "👥 3. Quản lý nhân sự:\n\n"
+                          . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.";
+                sendZaloMessage($botToken, $chatId, $toolsMsg);
+                exit;
+            }
+
+            if (strpos($textLower, '/report') === 0) {
+                $cmdArg = trim(substr($text, 7)); // Bỏ qua "/report"
+                $startTimestamp = '';
+                $endTimestamp = '';
+                $windowLabel = '';
+
+                // Lấy giờ báo cáo hàng ngày từ cài đặt hệ thống
+                $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
+
+                if (empty($cmdArg) || $cmdArg === 'homnay' || $cmdArg === 'today') {
+                    // Từ $reportTime ngày hôm trước (hoặc ngày hiện tại nếu trước $reportTime) đến hiện tại
+                    $today = date('Y-m-d');
+                    $currentTime = date('H:i');
+                    if ($currentTime >= $reportTime) {
+                        $startTimestamp = date('Y-m-d H:i:s', strtotime('today ' . $reportTime));
+                    } else {
+                        $startTimestamp = date('Y-m-d H:i:s', strtotime('yesterday ' . $reportTime));
+                    }
+                    $endTimestamp = date('Y-m-d H:i:s');
+                    $windowLabel = date('H:i d/m/Y', strtotime($startTimestamp)) . " → Hiện tại";
+                } else if ($cmdArg === 'homqua' || $cmdArg === 'yesterday') {
+                    // Từ $reportTime hôm kia đến $reportTime hôm qua
+                    $startTimestamp = date('Y-m-d H:i:s', strtotime('yesterday -1 day ' . $reportTime));
+                    $endTimestamp = date('Y-m-d H:i:s', strtotime('yesterday ' . $reportTime));
+                    $windowLabel = date('H:i d/m/Y', strtotime($startTimestamp)) . " → " . date('H:i d/m/Y', strtotime($endTimestamp));
+                } else {
+                    // Parse date range dd/mm hoặc dd/mm to dd/mm
+                    $range = parseReportDateRange($cmdArg);
+                    if ($range) {
+                        $startTimestamp = $range['start'];
+                        $endTimestamp = $range['end'];
+                        $windowLabel = $range['label'];
+                    }
+                }
+
+                if (empty($startTimestamp) || empty($endTimestamp)) {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Cú pháp ngày tháng không hợp lệ. Vui lòng gõ theo mẫu:\n- `/report 21/05` hoặc `/report 20/05 to 21/05`.\n- Hoặc gõ `/tools` để xem tất cả các lệnh.");
+                    exit;
+                }
+
+                $reportMsg = getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel);
+                sendZaloMessage($botToken, $chatId, $reportMsg);
+                exit;
+            }
+
+            if (strpos($textLower, '/ticket') === 0) {
+                $cmdArg = trim(substr($text, 7)); // Bỏ qua "/ticket"
+                if ($cmdArg === 'pending') {
+                    // Truy vấn ticket đang chờ duyệt
+                    $stmtTick = $conn->query("
+                        SELECT dr.id, c.name as sale_name, l.name as lead_name, dr.reason, dr.created_at 
+                        FROM data_reports dr 
+                        JOIN consultants c ON dr.consultant_id = c.id 
+                        JOIN leads l ON dr.lead_id = l.id 
+                        WHERE dr.status = 'pending' 
+                        ORDER BY dr.created_at ASC 
+                        LIMIT 5
+                    ");
+                    $tickMsg = "🎫 [ DANH SÁCH TICKET CHỜ DUYỆT ]\n\n";
+                    if ($stmtTick && $stmtTick->num_rows > 0) {
+                        $count = 1;
+                        while ($rowTick = $stmtTick->fetch_assoc()) {
+                            $tickMsg .= "$count. 🎫 Mã ticket: #" . $rowTick['id'] . "\n"
+                                     . "   👤 Sale: " . $rowTick['sale_name'] . "\n"
+                                     . "   👤 KH: " . $rowTick['lead_name'] . "\n"
+                                     . "   📝 Lý do: " . $rowTick['reason'] . "\n"
+                                     . "   🕒 Thời gian: " . date('d/m H:i', strtotime($rowTick['created_at'])) . "\n"
+                                     . "   👉 Duyệt: Gõ `/accept " . $rowTick['id'] . "`\n\n";
+                            $count++;
+                        }
+                        $tickMsg .= "💡 Duyệt nhanh bằng cách gõ `/accept [mã_ticket]` (Ví dụ: `/accept 12`).";
+                    } else {
+                        $tickMsg .= "✅ Hiện không có ticket nào đang chờ duyệt.";
+                    }
+                    sendZaloMessage($botToken, $chatId, $tickMsg);
+                    exit;
+                } else if ($cmdArg === 'homnay' || $cmdArg === 'today') {
+                    // Thống kê ticket hôm nay từ 00:00 đến nay
+                    $todayStart = date('Y-m-d 00:00:00');
+                    $todayEnd = date('Y-m-d 23:59:59');
+                    
+                    $stmtStats = $conn->prepare("
+                        SELECT status, COUNT(*) as count 
+                        FROM data_reports 
+                        WHERE created_at >= ? AND created_at <= ? 
+                        GROUP BY status
+                    ");
+                    $statsMsg = "🎫 [ THỐNG KÊ TICKET HÔM NAY ]\n"
+                              . "🕒 Thời gian: " . date('d/m/Y') . "\n\n";
+                    if ($stmtStats) {
+                        $stmtStats->bind_param("ss", $todayStart, $todayEnd);
+                        $stmtStats->execute();
+                        $resStats = $stmtStats->get_result();
+                        
+                        $pending = 0;
+                        $approved = 0;
+                        $rejected = 0;
+                        while ($row = $resStats->fetch_assoc()) {
+                            if ($row['status'] === 'pending') $pending = $row['count'];
+                            if ($row['status'] === 'approved') $approved = $row['count'];
+                            if ($row['status'] === 'rejected') $rejected = $row['count'];
+                        }
+                        $stmtStats->close();
+                        
+                        $total = $pending + $approved + $rejected;
+                        $statsMsg .= "📊 Tổng ticket phát sinh: $total\n"
+                                  . "  ⏳ Chờ duyệt: $pending\n"
+                                  . "  ✅ Đã duyệt: $approved\n"
+                                  . "  ❌ Đã từ chối: $rejected";
+                    } else {
+                        $statsMsg .= "⚠️ Lỗi truy vấn dữ liệu ticket.";
+                    }
+                    sendZaloMessage($botToken, $chatId, $statsMsg);
+                    exit;
+                } else {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Vui lòng sử dụng `/ticket pending` hoặc `/ticket homnay`.");
+                    exit;
+                }
+            }
+
+            if (strpos($textLower, '/accept') === 0) {
+                $ticketId = (int)ltrim(trim(substr($text, 7)), '#');
+                if ($ticketId <= 0) {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Vui lòng cung cấp mã ticket hợp lệ. Ví dụ: `/accept 12`.");
+                    exit;
+                }
+
+                $conn->begin_transaction();
+                try {
+                    // 1. Lấy thông tin report
+                    $stmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
+                    if (!$stmt) {
+                        throw new Exception("Lỗi truy vấn DB.");
+                    }
+                    $stmt->bind_param("i", $ticketId);
+                    $stmt->execute();
+                    $report = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+
+                    if (!$report) {
+                        throw new Exception("Không tìm thấy ticket lỗi mã #$ticketId.");
+                    }
+                    if ($report['status'] !== 'pending') {
+                        throw new Exception("Ticket #$ticketId đã được xử lý từ trước (Trạng thái hiện tại: " . $report['status'] . ").");
+                    }
+
+                    // 2. Cập nhật status báo cáo thành approved
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_at=NOW() WHERE id=?");
+                    if (!$updRep) {
+                        throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
+                    }
+                    $updRep->bind_param("i", $ticketId);
+                    $updRep->execute();
+                    $updRep->close();
+
+                    // 3. Cập nhật ghi chú của Lead và đánh dấu phân bổ lỗi
+                    $faultyMsg = "[LỖI - ĐÃ DUYỆT QUA ZALO]: " . $report['reason'];
+                    $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+                    if (!$updLead) {
+                        throw new Exception("Lỗi cập nhật Lead.");
+                    }
+                    $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
+                    $updLead->execute();
+                    $updLead->close();
+
+                    // Đánh dấu distribution_logs là error
+                    $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                    if (!$updLog) {
+                        throw new Exception("Lỗi cập nhật Distribution Logs.");
+                    }
+                    $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
+                    $updLog->execute();
+                    $updLog->close();
+
+                    // 4. Cộng thêm 1 lượt đền bù cho consultant trong vòng đó
+                    $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
+                    if (!$updComp) {
+                        throw new Exception("Lỗi cập nhật Round Consultants.");
+                    }
+                    $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
+                    $updComp->execute();
+                    $updComp->close();
+
+                    // Ghi log hành động admin
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Zalo Bot';
+                    $detailsJson = json_encode(['report_id' => $ticketId, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id']], JSON_UNESCAPED_UNICODE);
+                    $stmtLog = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, ip_address) VALUES (?, 'APPROVE_REPORT_ZALO', ?, ?)");
+                    if ($stmtLog) {
+                        $stmtLog->bind_param("iss", $adminAccountId, $detailsJson, $ip);
+                        $stmtLog->execute();
+                        $stmtLog->close();
+                    }
+
+                    $conn->commit();
+
+                    // Lấy thông tin Sale & Lead để gửi thông báo
+                    $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                    $consultant = null;
+                    if ($consultStmt) {
+                        $consultStmt->bind_param("i", $report['consultant_id']);
+                        $consultStmt->execute();
+                        $consultant = $consultStmt->get_result()->fetch_assoc();
+                        $consultStmt->close();
+                    }
+
+                    $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
+                    $lead = null;
+                    if ($leadStmt) {
+                        $leadStmt->bind_param("i", $report['lead_id']);
+                        $leadStmt->execute();
+                        $lead = $leadStmt->get_result()->fetch_assoc();
+                        $leadStmt->close();
+                    }
+
+                    $cName = $consultant['name'] ?? 'Tư vấn viên';
+                    $lName = $lead['name'] ?? 'Khách hàng';
+                    $lPhone = $lead['phone'] ?? 'Không rõ';
+
+                    // Gửi thông báo xác nhận thành công cho Admin duyệt qua Zalo
+                    $successAdminMsg = "✅ Đã duyệt thành công ticket #$ticketId của Sale $cName.\n"
+                                     . "• Khách hàng: $lName ($lPhone)\n"
+                                     . "• Lý do lỗi: {$report['reason']}\n"
+                                     . "• Hệ thống đã ghi nhận 1 lượt bù data cho Sale này.";
+                    sendZaloMessage($botToken, $chatId, $successAdminMsg);
+
+                    // Thông báo qua Zalo Bot cho Sale
+                    if ($consultant && !empty($consultant['zalo_chat_id'])) {
+                        $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
+                            . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT.\n\n"
+                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                            . "  • Khách hàng: $lName ($lPhone)\n"
+                            . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                            . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                        sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                    }
+
+                    // Thông báo qua Email cho Sale
+                    if ($consultant && !empty($consultant['email'])) {
+                        require_once __DIR__ . '/mailer.php';
+                        $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                        $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
+                                      <p>Chào $cName,</p>
+                                      <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công qua Zalo.</p>
+                                      <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                        sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                    }
+
+                } catch (Exception $ex) {
+                    $conn->rollback();
+                    sendZaloMessage($botToken, $chatId, "❌ Lỗi: " . $ex->getMessage());
+                }
+                exit;
+            }
+
+            if (strpos($textLower, '/sales') === 0) {
+                // Liệt kê các TVV đang hoạt động/off/leave
+                $resSales = $conn->query("
+                    SELECT name, status, leave_start, leave_end 
+                    FROM consultants 
+                    ORDER BY status ASC, name ASC
+                ");
+                $salesMsg = "👥 [ TRẠNG THÁI TƯ VẤN VIÊN ]\n\n";
+                if ($resSales && $resSales->num_rows > 0) {
+                    while ($rowS = $resSales->fetch_assoc()) {
+                        $statusStr = '';
+                        if ($rowS['status'] === 'active') {
+                            $statusStr = '🟢 Đang nhận số';
+                        } else if ($rowS['status'] === 'leave') {
+                            $leaveInfo = '';
+                            if (!empty($rowS['leave_start']) && !empty($rowS['leave_end'])) {
+                                $leaveInfo = ' (' . date('d/m', strtotime($rowS['leave_start'])) . ' → ' . date('d/m', strtotime($rowS['leave_end'])) . ')';
+                            }
+                            $statusStr = '🔴 Nghỉ phép' . $leaveInfo;
+                        } else {
+                            $statusStr = '⚪ Tạm ngưng';
+                        }
+                        $salesMsg .= "  👤 " . $rowS['name'] . ": $statusStr\n";
+                    }
+                } else {
+                    $salesMsg .= "❌ Không tìm thấy tư vấn viên nào trên hệ thống.";
+                }
+                sendZaloMessage($botToken, $chatId, $salesMsg);
+                exit;
+            }
+        }
 
         // Cú pháp mới: hỗ trợ [ID] hoặc [Email] hoặc [ID]-[Email] / [ID] [Email]
         $cleanText = trim($text);

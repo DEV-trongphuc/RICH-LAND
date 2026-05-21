@@ -56,14 +56,16 @@ function runDailyReportCron($conn) {
         
         // 2. Dùng cửa sổ thời gian từ lần chạy báo cáo trước đến nay để tránh bỏ sót hoặc trùng lặp data
         $stmtData = $conn->prepare("
-            SELECT c.name, COUNT(dl.id) as total 
+            SELECT c.name, 
+                   SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'error') THEN 1 ELSE 0 END) as normal_total,
+                   SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_total
             FROM distribution_logs dl 
             JOIN consultants c ON dl.assigned_to = c.id 
             WHERE dl.received_at >= ?
               AND dl.received_at <= ?
-              AND dl.status IN ('assigned', 'compensation', 'error')
+              AND dl.status IN ('assigned', 'compensation', 'error', 'reminder')
             GROUP BY c.id
-            ORDER BY total DESC
+            ORDER BY normal_total DESC, reminder_total DESC
         ");
         $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
         $stmtData->execute();
@@ -72,11 +74,23 @@ function runDailyReportCron($conn) {
         $saleStats = "";
         $saleStatsHtml = "";
         $totalData = 0;
+        $totalReminder = 0;
         if ($resData) {
             while ($row = $resData->fetch_assoc()) {
-                $saleStats .= "  • " . $row['name'] . ": " . $row['total'] . " data\n";
-                $saleStatsHtml .= "<li><strong>" . htmlspecialchars($row['name']) . "</strong>: " . $row['total'] . " data</li>";
-                $totalData += $row['total'];
+                $normalTotal = (int)$row['normal_total'];
+                $reminderTotal = (int)$row['reminder_total'];
+                
+                $saleStats .= "  👤 " . $row['name'] . ": " . $normalTotal . " data\n";
+                $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($row['name']) . "</strong>: " . $normalTotal . " data";
+                
+                if ($reminderTotal > 0) {
+                    $saleStats .= "     ↳ 🔄 Nhắc lại: " . $reminderTotal . "\n";
+                    $saleStatsHtml .= "<br/><span style=\"color: #64748b; font-size: 13px; margin-left: 15px;\">↳ 🔄 Nhắc lại: " . $reminderTotal . "</span>";
+                }
+                
+                $saleStatsHtml .= "</li>";
+                $totalData += $normalTotal;
+                $totalReminder += $reminderTotal;
             }
         }
         $stmtData->close();
@@ -139,12 +153,21 @@ function runDailyReportCron($conn) {
             $windowStart = date('H:i d/m/Y', strtotime($startTimestamp));
             $windowEnd = date('H:i d/m/Y', strtotime($endTimestamp));
 
-            $msg = "[ BÁO CÁO TỔNG KẾT NGÀY ]\n";
-            $msg .= "Kỳ báo cáo: $windowStart → $windowEnd\n\n";
-            $msg .= "❖ TỔNG QUAN CHIA SỐ: ($totalData data)\n";
+            $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n";
+            $msg .= "⏱️ Kỳ báo cáo: $windowStart → $windowEnd\n\n";
+            $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
+            if ($totalReminder > 0) {
+                $msg .= "   (Tổng cộng: " . ($totalData + $totalReminder) . " | Chia số: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
+            } else {
+                $msg .= "   ($totalData data)\n";
+            }
+            $msg .= "------------------------------\n";
             $msg .= $saleStats . "\n";
-            $msg .= "❖ BÁO CÁO LỖI (TICKET):\n";
-            $msg .= "  • Tổng ticket phát sinh: $totalTicket\n";
+            $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
+            $msg .= "  • Tổng ticket phát sinh: $totalTicket" . ($totalTicket > 0 ? " ⚠️" : "") . "\n\n";
+            $msg .= "-------------------\n";
+            $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
+            $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
             
             // Collect all Admin Zalo chat IDs for parallel batch execution
             $adminChatIds = [];
@@ -165,7 +188,8 @@ function runDailyReportCron($conn) {
                         $adm['name'] ?: 'Quản trị viên',
                         $totalData,
                         $saleStatsHtml,
-                        $totalTicket
+                        $totalTicket,
+                        $totalReminder
                     );
                 }
             }
