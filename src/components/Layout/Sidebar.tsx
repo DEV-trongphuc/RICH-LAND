@@ -95,8 +95,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           width: 42, height: 42, borderRadius: '50%',
           background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.2)', overflow: 'hidden',
-          border: '2px solid rgba(255,255,255,0.9)'
+          flexShrink: 0, 
+          boxShadow: '0 0 12px rgba(192, 132, 252, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3)', 
+          overflow: 'hidden',
+          border: '2px solid rgba(192, 132, 252, 0.8)'
         }}>
           <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
