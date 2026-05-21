@@ -53,10 +53,12 @@ export const DataList = () => {
   const statusFilter = searchParams.get('status') || 'all';
   const dateFilter = searchParams.get('date') || 'this_month';
   const consultantFilter = searchParams.get('consultant') || 'all';
+  const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [rounds, setRounds] = useState<{ id: number; round_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
@@ -64,7 +66,7 @@ export const DataList = () => {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_logs&page=${currentPage}&pageSize=${ITEMS_PER_PAGE}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&search=${encodeURIComponent(searchTerm)}`);
+      const json = await fetchAPI(`get_logs&page=${currentPage}&pageSize=${ITEMS_PER_PAGE}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&round=${encodeURIComponent(roundFilter)}&search=${encodeURIComponent(searchTerm)}`);
       if (json.success) {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
@@ -98,6 +100,7 @@ export const DataList = () => {
 
   useEffect(() => {
     fetchConsultants();
+    fetchRounds();
   }, []);
 
   useEffect(() => {
@@ -128,6 +131,17 @@ export const DataList = () => {
       const json = await fetchAPI('get_consultants');
       if (json.success) {
         setConsultants(json.data.filter((c: any) => c.status === 'active'));
+      }
+    } catch (e: any) {
+      console.error(e.message);
+    }
+  };
+
+  const fetchRounds = async () => {
+    try {
+      const json = await fetchAPI('get_rounds');
+      if (json.success) {
+        setRounds(json.data);
       }
     } catch (e: any) {
       console.error(e.message);
@@ -219,7 +233,7 @@ export const DataList = () => {
     try {
       const token = localStorage.getItem('domation_token') || '';
       const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
-      const exportUrl = `${baseUrl}?action=export_csv&token=${encodeURIComponent(token)}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&search=${encodeURIComponent(searchTerm)}`;
+      const exportUrl = `${baseUrl}?action=export_csv&token=${encodeURIComponent(token)}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&round=${encodeURIComponent(roundFilter)}&search=${encodeURIComponent(searchTerm)}`;
       
       const link = document.createElement('a');
       link.href = exportUrl;
@@ -280,13 +294,28 @@ export const DataList = () => {
       </div>
 
       {/* Filters */}
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexShrink: 0, flexWrap: 'wrap' }}>
-        <div className="responsive-filter-item" style={{ position: 'relative', width: 300 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} />
+      <div 
+        className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} 
+        style={{ 
+          display: 'flex', 
+          gap: '0.75rem', 
+          marginBottom: '1.25rem', 
+          flexShrink: 0, 
+          flexWrap: 'wrap',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-light)',
+          borderRadius: '12px',
+          padding: '0.75rem 1rem',
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+        }}
+      >
+        <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
+          <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-muted)' }} />
           <input 
             className="form-input" 
             placeholder="Tìm theo tên, SĐT, email..." 
-            style={{ paddingLeft: 36, width: '100%' }}
+            style={{ paddingLeft: 36, width: '100%', height: 38, fontSize: '0.875rem' }}
             value={searchTerm}
             onChange={e => updateParams('search', e.target.value)}
           />
@@ -305,7 +334,7 @@ export const DataList = () => {
             ]}
             value={dateFilter}
             onChange={val => updateParams('date', val.toString())}
-            width={200}
+            width={160}
           />
         </div>
 
@@ -325,7 +354,22 @@ export const DataList = () => {
             ]}
             value={statusFilter}
             onChange={val => updateParams('status', val.toString())}
-            width={200}
+            width={170}
+          />
+        </div>
+
+        <div className="responsive-filter-item">
+          <CustomSelect 
+            options={[
+              { value: 'all', label: 'Tất cả vòng', icon: <Tag size={16} /> },
+              ...rounds.map(r => ({
+                value: r.round_name,
+                label: r.round_name
+              }))
+            ]}
+            value={roundFilter}
+            onChange={val => updateParams('round', val.toString())}
+            width={160}
           />
         </div>
 
@@ -343,7 +387,7 @@ export const DataList = () => {
             onChange={val => updateParams('consultant', val.toString())}
             showAvatars={true}
             searchable={true}
-            width={220}
+            width={180}
           />
         </div>
         
@@ -352,7 +396,7 @@ export const DataList = () => {
           {limitReached && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600 }}>
               <AlertTriangle size={14} />
-              Đang hiển thị 500/{totalCount} bản ghi. Hãy lọc để xem đầy đủ.
+              Đang hiển thị 500/{totalCount} bản ghi.
             </div>
           )}
           Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> data

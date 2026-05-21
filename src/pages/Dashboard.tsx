@@ -23,6 +23,10 @@ export const Dashboard = () => {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('Tháng này');
+  const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
+
+  const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
+  const displayChartMode = isSingleDay ? 'hour' : chartMode;
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -56,7 +60,7 @@ export const Dashboard = () => {
       // BUG-04 fix: Dùng Promise.all để gọi song song, tiết kiệm ~1-2s
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
       const [statsJson, logsJson] = await Promise.all([
-        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`),
+        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}`),
         fetchAPI('get_logs&exclude_status=silent')
       ]);
       
@@ -85,7 +89,7 @@ export const Dashboard = () => {
     const abortController = new AbortController();
     fetchDashboard(abortController.signal);
     return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
-  }, [dateFilter]);
+  }, [dateFilter, chartMode]);
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -93,7 +97,7 @@ export const Dashboard = () => {
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, [dateFilter]);
+  }, [dateFilter, chartMode]);
 
   const kpiCards = [
     {
@@ -259,9 +263,47 @@ export const Dashboard = () => {
           <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua' ? 'giờ' : 'ngày'}</h3>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {displayChartMode === 'hour' ? 'giờ' : 'ngày'}</h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về {dateFilter === 'Tùy chỉnh' ? 'trong khoảng thời gian đã chọn' : `trong ${dateFilter.toLowerCase()}`}.</p>
               </div>
+              {!isSingleDay && (
+                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)' }}>
+                  <button
+                    onClick={() => setChartMode('day')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: displayChartMode === 'day' ? 'var(--color-surface)' : 'transparent',
+                      color: displayChartMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: displayChartMode === 'day' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    Theo ngày
+                  </button>
+                  <button
+                    onClick={() => setChartMode('hour')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: displayChartMode === 'hour' ? 'var(--color-surface)' : 'transparent',
+                      color: displayChartMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: displayChartMode === 'hour' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    Theo giờ
+                  </button>
+                </div>
+              )}
             </div>
             {stats?.chartData && stats.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>

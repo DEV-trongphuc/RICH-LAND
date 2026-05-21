@@ -936,6 +936,11 @@ switch ($action) {
             $extraCondition .= " AND c.name = '$consultant'";
             $isFilteringActive = true;
         }
+        if (isset($_GET['round']) && $_GET['round'] !== 'all') {
+            $round = $conn->real_escape_string($_GET['round']);
+            $extraCondition .= " AND dr.round_name = '$round'";
+            $isFilteringActive = true;
+        }
         if (isset($_GET['search']) && trim($_GET['search']) !== '') {
             $search = $conn->real_escape_string(trim($_GET['search']));
             $extraCondition .= " AND (l.name LIKE '%$search%' OR l.phone LIKE '%$search%' OR l.email LIKE '%$search%')";
@@ -950,12 +955,14 @@ switch ($action) {
         // Get total count first with all active filters
         $joinLeads = (strpos($extraCondition, 'l.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id" : "";
         $joinConsultants = (strpos($extraCondition, 'c.') !== false) ? "LEFT JOIN consultants c ON dl.assigned_to = c.id" : "";
+        $joinRounds = (strpos($extraCondition, 'dr.') !== false) ? "LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id" : "";
 
         $countRes = $conn->query("
             SELECT COUNT(*) as cnt 
             FROM distribution_logs dl 
             $joinLeads 
             $joinConsultants
+            $joinRounds
             WHERE $dateCondition AND $extraCondition
         ");
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
@@ -1041,6 +1048,7 @@ switch ($action) {
         // Add filters for export
         $statusFilter = $_GET['status'] ?? 'all';
         $consultantFilter = $_GET['consultant'] ?? 'all';
+        $roundFilter = $_GET['round'] ?? 'all';
         $searchFilter = trim($_GET['search'] ?? '');
 
         $sqlFilters = "";
@@ -1051,6 +1059,10 @@ switch ($action) {
         }
         if ($consultantFilter !== 'all') {
             $sqlFilters .= " AND c.name = '" . $conn->real_escape_string($consultantFilter) . "'";
+            $isFilteringActive = true;
+        }
+        if ($roundFilter !== 'all') {
+            $sqlFilters .= " AND dr.round_name = '" . $conn->real_escape_string($roundFilter) . "'";
             $isFilteringActive = true;
         }
         if ($searchFilter !== '') {
@@ -3726,24 +3738,32 @@ switch ($action) {
             return ($change > 0 ? '+' : '') . number_format($change, 1) . '%';
         };
 
-        // Query hourly chart data
+        // Query hourly/daily chart data
+        $chartMode = $_GET['chart_mode'] ?? '';
+        $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
+
         $chartData = [];
-        if ($date === 'Hôm nay' || $date === 'Hôm qua') {
+        if ($useHourly) {
             $hourlySql = "SELECT HOUR(received_at) as h, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY HOUR(received_at) ORDER BY h ASC";
             $res = $conn->query($hourlySql);
             $hourlyMap = [];
-            while ($row = $res->fetch_assoc())
-                $hourlyMap[$row['h']] = $row['vol'];
-            for ($i = 8; $i <= 22; $i += 2) {
-                $vol = ($hourlyMap[$i] ?? 0) + ($hourlyMap[$i + 1] ?? 0); // sum 2 hours
-                $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . ':00', 'volume' => $vol];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $hourlyMap[(int)$row['h']] = (int)$row['vol'];
+                }
+            }
+            for ($i = 0; $i <= 23; $i++) {
+                $vol = $hourlyMap[$i] ?? 0;
+                $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
             }
         } else {
-            // For 7 days
+            // For daily
             $dailySql = "SELECT DATE(received_at) as d, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY DATE(received_at) ORDER BY d ASC";
             $res = $conn->query($dailySql);
-            while ($row = $res->fetch_assoc()) {
-                $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => $row['vol']];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => (int)$row['vol']];
+                }
             }
         }
 
