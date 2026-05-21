@@ -562,9 +562,11 @@ export const DataList = () => {
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
                       <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
                     </div>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Ghi chú / Khác:</span>
-                      <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{selectedLead.note ? selectedLead.note : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ghi chú / Khác:</span>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>
+                        {selectedLead.note ? selectedLead.note.replace(/\\n/g, '\n') : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}
+                      </div>
                     </div>
                   </div>
                 </div>

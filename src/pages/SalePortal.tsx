@@ -1115,7 +1115,7 @@ export const SalePortal = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
               <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
               <span style={{ color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                {activeDetailLead.note || 'Không có ghi chú.'}
+                {activeDetailLead.note ? activeDetailLead.note.replace(/\\n/g, '\n') : 'Không có ghi chú.'}
               </span>
             </div>
 
