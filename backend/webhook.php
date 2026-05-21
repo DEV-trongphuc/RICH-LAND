@@ -194,15 +194,17 @@ if ($lockRes['get_lock'] != 1) {
     exit();
 }
 
+$lockReleased = false;
 // BUG-CRIT-01 fix: Dùng prepared statement cho RELEASE_LOCK, tránh SQL Injection
-register_shutdown_function(function() use ($conn, $lockKey) {
-    if ($conn) {
+register_shutdown_function(function() use ($conn, $lockKey, &$lockReleased) {
+    if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
         $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
         if ($relStmt) {
             $relStmt->bind_param("s", $lockKey);
             $relStmt->execute();
             $relStmt->close();
         }
+        $lockReleased = true;
     }
 });
 
@@ -511,6 +513,17 @@ if ($isFallbackAdmin && $fallbackAdminData) {
         sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
     }
     $stmt->close();
+}
+
+// Release advisory lock before closing connection
+if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
+    $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+    if ($relStmt) {
+        $relStmt->bind_param("s", $lockKey);
+        $relStmt->execute();
+        $relStmt->close();
+    }
+    $lockReleased = true;
 }
 
 $conn->close();
