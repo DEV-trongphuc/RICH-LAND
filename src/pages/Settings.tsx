@@ -147,17 +147,19 @@ export const Settings = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [totalHistoryCount, setTotalHistoryCount] = useState<number>(0);
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
   const [confirmDeleteLogsOpen, setConfirmDeleteLogsOpen] = useState(false);
   const [logsToDelete, setLogsToDelete] = useState<{ log_id: number; lead_id: number }[]>([]);
   const [confirmImportOpen, setConfirmImportOpen] = useState(false);
 
-  const fetchImportHistory = async () => {
+  const fetchImportHistory = async (page: number = 1) => {
     setLoadingHistory(true);
     try {
-      const json = await fetchAPI('get_import_history');
+      const json = await fetchAPI(`get_import_history&page=${page}&pageSize=50`);
       if (json.success) {
         setImportHistory(json.data || []);
+        setTotalHistoryCount(json.total_count ?? (json.data || []).length);
       }
     } catch (err) {
       console.error("Error fetching import history:", err);
@@ -185,7 +187,7 @@ export const Settings = () => {
       if (res.success) {
         toast.success(res.message || "Đã xóa thành công!");
         setSelectedLogs([]);
-        fetchImportHistory();
+        fetchImportHistory(historyPage);
       } else {
         toast.error(res.message || "Lỗi khi xóa dữ liệu");
       }
@@ -288,9 +290,9 @@ export const Settings = () => {
 
   useEffect(() => {
     if (activeTab === 'duplicate_check') {
-      fetchImportHistory();
+      fetchImportHistory(historyPage);
     }
-  }, [activeTab]);
+  }, [activeTab, historyPage]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -586,7 +588,7 @@ export const Settings = () => {
       setSalepersonCol('');
       setImportSubTab('list');
       setHistoryPage(1);
-      await fetchImportHistory();
+      await fetchImportHistory(1);
     } catch (err: any) {
       toast.error("Lỗi nhập dữ liệu: " + err.message);
     }
@@ -1183,8 +1185,8 @@ export const Settings = () => {
                   // Screen 3: Import History List
                   (() => {
                     const historyPageSize = 50;
-                    const totalHistoryPages = Math.ceil(importHistory.length / historyPageSize);
-                    const paginatedHistory = importHistory.slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize);
+                    const totalHistoryPages = Math.ceil(totalHistoryCount / historyPageSize);
+                    const paginatedHistory = importHistory;
 
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1236,7 +1238,7 @@ export const Settings = () => {
                             Các bản ghi dữ liệu đã được nhập gần đây:
                           </span>
                           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            Tổng cộng: {importHistory.length} bản ghi
+                            Tổng cộng: {totalHistoryCount} bản ghi
                           </span>
                         </div>
 
@@ -1368,7 +1370,7 @@ export const Settings = () => {
                         {totalHistoryPages > 1 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
                             <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
-                              Hiển thị {(historyPage - 1) * historyPageSize + 1} - {Math.min(historyPage * historyPageSize, importHistory.length)} trên {importHistory.length} dòng
+                              Hiển thị {(historyPage - 1) * historyPageSize + 1} - {Math.min(historyPage * historyPageSize, totalHistoryCount)} trên {totalHistoryCount} dòng
                             </span>
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button

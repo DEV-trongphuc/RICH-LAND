@@ -223,6 +223,30 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Forbidden']);
             exit();
         }
+
+        // Count total import history records
+        $countRes = $conn->query("
+            SELECT COUNT(*) as cnt
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            WHERE l.source = 'Excel Import' 
+               OR l.note LIKE '%Nhap du lieu cu%'
+        ");
+        $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
+
+        // Check for pagination
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 50;
+        if ($page < 1) $page = 1;
+        if ($pageSize < 1) $pageSize = 50;
+        $offset = ($page - 1) * $pageSize;
+
+        if (!isset($_GET['page'])) {
+            $limitStr = "LIMIT 10000";
+        } else {
+            $limitStr = "LIMIT $pageSize OFFSET $offset";
+        }
+
         $res = $conn->query("
             SELECT 
                 dl.id as log_id,
@@ -241,7 +265,7 @@ switch ($action) {
             WHERE l.source = 'Excel Import' 
                OR l.note LIKE '%Nhap du lieu cu%'
             ORDER BY dl.id DESC
-            LIMIT 10000
+            $limitStr
         ");
         $data = [];
         while ($row = $res->fetch_assoc()) {
@@ -263,7 +287,7 @@ switch ($action) {
                 'last_interaction_date' => $row['last_interaction_date']
             ];
         }
-        echo json_encode(['success' => true, 'data' => $data]);
+        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount]);
         break;
 
     case 'delete_import_history':
@@ -896,23 +920,62 @@ switch ($action) {
         }
 
         $extraCondition = "1=1";
-        if (isset($_GET['status'])) {
+        $isFilteringActive = false;
+
+        if (isset($_GET['status']) && $_GET['status'] !== 'all') {
             $status = $conn->real_escape_string($_GET['status']);
             $extraCondition .= " AND dl.status = '$status'";
+            $isFilteringActive = true;
         }
         if (isset($_GET['exclude_status'])) {
             $excludeStatus = $conn->real_escape_string($_GET['exclude_status']);
             $extraCondition .= " AND dl.status != '$excludeStatus'";
         }
+        if (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
+            $consultant = $conn->real_escape_string($_GET['consultant']);
+            $extraCondition .= " AND c.name = '$consultant'";
+            $isFilteringActive = true;
+        }
+        if (isset($_GET['search']) && trim($_GET['search']) !== '') {
+            $search = $conn->real_escape_string(trim($_GET['search']));
+            $extraCondition .= " AND (l.name LIKE '%$search%' OR l.phone LIKE '%$search%' OR l.email LIKE '%$search%')";
+            $isFilteringActive = true;
+        }
 
-        // BUG-04 fix: get total count first so UI can warn if truncated
-        $countRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs dl WHERE $dateCondition AND $extraCondition");
+        // Apply silent exclusion rule if no filters active
+        if (!$isFilteringActive) {
+            $extraCondition .= " AND dl.status != 'silent'";
+        }
+
+        // Get total count first with all active filters
+        $countRes = $conn->query("
+            SELECT COUNT(*) as cnt 
+            FROM distribution_logs dl 
+            LEFT JOIN leads l ON dl.lead_id = l.id 
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            WHERE $dateCondition AND $extraCondition
+        ");
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
 
-        $LIMIT = 500;
-        if (isset($_GET['limit']) && $_GET['limit'] === 'all' && isset($decodedUser) && $decodedUser['role'] === 'admin') {
-            $LIMIT = 50000; // Chỉ Admin được phép dump toàn bộ
+        // Check for pagination
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 50;
+        if ($page < 1) $page = 1;
+        if ($pageSize < 1) $pageSize = 50;
+        $offset = ($page - 1) * $pageSize;
+
+        if (!isset($_GET['page'])) {
+            $LIMIT = 500;
+            if (isset($_GET['limit']) && $_GET['limit'] === 'all' && isset($decodedUser) && $decodedUser['role'] === 'admin') {
+                $LIMIT = 50000; // Admin full dump limit
+            }
+            $limitStr = "LIMIT $LIMIT";
+            $responseLimit = $LIMIT;
+        } else {
+            $limitStr = "LIMIT $pageSize OFFSET $offset";
+            $responseLimit = $pageSize;
         }
+
         $res = $conn->query("
             SELECT 
                 dl.id, 
@@ -934,12 +997,12 @@ switch ($action) {
             LEFT JOIN data_reports r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
             WHERE $dateCondition AND $extraCondition
             ORDER BY dl.received_at DESC 
-            LIMIT $LIMIT
+            $limitStr
         ");
         $data = [];
         while ($row = $res->fetch_assoc())
             $data[] = $row;
-        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $LIMIT]);
+        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
         break;
 
     case 'export_csv':
@@ -978,15 +1041,24 @@ switch ($action) {
         $searchFilter = trim($_GET['search'] ?? '');
 
         $sqlFilters = "";
+        $isFilteringActive = false;
         if ($statusFilter !== 'all') {
             $sqlFilters .= " AND dl.status = '" . $conn->real_escape_string($statusFilter) . "'";
+            $isFilteringActive = true;
         }
         if ($consultantFilter !== 'all') {
             $sqlFilters .= " AND c.name = '" . $conn->real_escape_string($consultantFilter) . "'";
+            $isFilteringActive = true;
         }
         if ($searchFilter !== '') {
             $s = $conn->real_escape_string($searchFilter);
             $sqlFilters .= " AND (l.name LIKE '%$s%' OR l.phone LIKE '%$s%' OR l.email LIKE '%$s%')";
+            $isFilteringActive = true;
+        }
+
+        // Apply silent exclusion rule if no filters active
+        if (!$isFilteringActive) {
+            $sqlFilters .= " AND dl.status != 'silent'";
         }
 
         header('Content-Type: text/csv; charset=utf-8');

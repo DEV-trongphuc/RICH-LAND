@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -53,6 +53,7 @@ export const DataList = () => {
   const statusFilter = searchParams.get('status') || 'all';
   const dateFilter = searchParams.get('date') || 'this_month';
   const consultantFilter = searchParams.get('consultant') || 'all';
+  const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -63,7 +64,7 @@ export const DataList = () => {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'this_month')}&limit=all`);
+      const json = await fetchAPI(`get_logs&page=${currentPage}&pageSize=${ITEMS_PER_PAGE}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&search=${encodeURIComponent(searchTerm)}`);
       if (json.success) {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
@@ -93,8 +94,11 @@ export const DataList = () => {
 
   useEffect(() => {
     fetchLeads();
+  }, [searchParams]);
+
+  useEffect(() => {
     fetchConsultants();
-  }, [searchParams.get('date')]);
+  }, []);
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -102,17 +106,17 @@ export const DataList = () => {
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, []);
+  }, [searchParams]);
 
   const updateParams = (key: string, value: string) => {
     setSearchParams(prev => {
       if (value === 'all' || value === '') prev.delete(key);
       else prev.set(key, value);
+      if (key !== 'page') prev.delete('page');
       return prev;
     }, { replace: true });
   };
 
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
@@ -157,86 +161,80 @@ export const DataList = () => {
 
   const ITEMS_PER_PAGE = 50;
 
-  // BUG-05 fix: Implement CSV export from current filtered data
-  // BUG-05 fix: Implement CSV export from current filtered data using Backend Stream to prevent browser/server OOM
+  // BUG-05 fix: Implement CSV export using Backend Stream to prevent browser/server OOM
   const handleExportCSV = () => {
+    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+      toast.loading('Đang chuẩn bị dữ liệu xuất CSV (Demo)...', { id: 'export' });
+      try {
+        if (leads.length === 0) {
+          toast.error('Không có dữ liệu để xuất!', { id: 'export' });
+          return;
+        }
+
+        const headers = ['ID', 'Họ Tên', 'SĐT', 'Email', 'Vòng', 'Phân bổ cho', 'Trạng thái', 'Nguồn', 'Ghi chú', 'Thời gian'];
+        const rows = leads.map(lead => [
+          lead.id,
+          lead.name,
+          lead.phone,
+          lead.email,
+          lead.round_name || '',
+          lead.assigned_to_name || 'Chưa phân bổ',
+          lead.status === 'assigned' ? 'Đã chia' :
+          lead.status === 'compensation' ? 'Data Bù' :
+          lead.status === 'pending' ? 'Chờ chia' :
+          lead.status === 'silent' ? 'Chỉ đồng bộ' :
+          lead.status === 'reminder' ? 'Nhắc lại' : lead.status,
+          lead.source || '',
+          lead.note || '',
+          lead.created_at
+        ]);
+
+        const csvContent = "\uFEFF" + [
+          headers.join(','),
+          ...rows.map(row => row.map(val => {
+            const str = String(val === null || val === undefined ? '' : val).replace(/"/g, '""');
+            return `"${str}"`;
+          }).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `export_${new Date().toISOString().slice(0,19).replace(/[-T:]/g, '')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
+      } catch (err) {
+        toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
+      }
+      return;
+    }
+
     toast.loading('Đang chuẩn bị dữ liệu xuất CSV...', { id: 'export' });
     try {
-      if (filteredLeads.length === 0) {
-        toast.error('Không có dữ liệu để xuất!', { id: 'export' });
-        return;
-      }
-
-      // Định nghĩa các cột xuất
-      const headers = ['ID', 'Họ Tên', 'SĐT', 'Email', 'Vòng', 'Phân bổ cho', 'Trạng thái', 'Nguồn', 'Ghi chú', 'Thời gian'];
+      const token = localStorage.getItem('domation_token') || '';
+      const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
+      const exportUrl = `${baseUrl}?action=export_csv&token=${encodeURIComponent(token)}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&search=${encodeURIComponent(searchTerm)}`;
       
-      const rows = filteredLeads.map(lead => [
-        lead.id,
-        lead.name,
-        lead.phone,
-        lead.email,
-        lead.round_name || '',
-        lead.assigned_to_name || 'Chưa phân bổ',
-        lead.status === 'assigned' ? 'Đã chia' :
-        lead.status === 'compensation' ? 'Data Bù' :
-        lead.status === 'pending' ? 'Chờ chia' :
-        lead.status === 'silent' ? 'Chỉ đồng bộ' :
-        lead.status === 'reminder' ? 'Nhắc lại' : lead.status,
-        lead.source || '',
-        lead.note || '',
-        lead.created_at
-      ]);
-
-      // Tạo nội dung CSV kèm UTF-8 BOM
-      const csvContent = "\uFEFF" + [
-        headers.join(','),
-        ...rows.map(row => row.map(val => {
-          const str = String(val === null || val === undefined ? '' : val).replace(/"/g, '""');
-          return `"${str}"`;
-        }).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = exportUrl;
       link.setAttribute('download', `export_${new Date().toISOString().slice(0,19).replace(/[-T:]/g, '')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
       
-      toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
+      toast.success('Đang tải xuống file CSV...', { id: 'export' });
     } catch (err) {
       toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
     }
   };
 
-  const filteredLeads = useMemo(() => {
-    const isFilteringActive = searchTerm.trim().length > 0 || statusFilter !== 'all' || consultantFilter !== 'all';
-    
-    return leads.filter(lead => {
-      // By default, do not show silent leads unless filtering is active
-      if (!isFilteringActive && lead.status === 'silent') {
-        return false;
-      }
-      
-      const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            lead.phone.includes(searchTerm) || 
-                            lead.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-      const matchesConsultant = consultantFilter === 'all' || lead.assigned_to_name === consultantFilter;
-      return matchesSearch && matchesStatus && matchesConsultant;
-    });
-  }, [searchTerm, statusFilter, dateFilter, consultantFilter, leads]);
-
-  const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-  // Reset to page 1 when filters change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, consultantFilter]);
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const paginatedLeads = leads;
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -334,10 +332,10 @@ export const DataList = () => {
           <CustomSelect 
             options={[
               { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
-              ...Array.from(new Set(leads.map(l => l.assigned_to_name).filter(n => n && n !== '-'))).map(name => ({
-                value: name as string,
-                label: name as string,
-                avatar: '' // We use name for Avatar initials
+              ...consultants.map(c => ({
+                value: c.name,
+                label: c.name,
+                avatar: ''
               }))
             ]}
             value={consultantFilter}
@@ -356,7 +354,7 @@ export const DataList = () => {
               Đang hiển thị 500/{totalCount} bản ghi. Hãy lọc để xem đầy đủ.
             </div>
           )}
-          Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{filteredLeads.length}</strong> data
+          Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> data
         </div>
       </div>
 
@@ -461,11 +459,11 @@ export const DataList = () => {
         {totalPages > 0 && (
           <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, filteredLeads.length)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{filteredLeads.length}</span>
+              Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
                 disabled={currentPage === 1}
                 style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
               >
@@ -473,16 +471,20 @@ export const DataList = () => {
               </button>
               <div style={{ display: 'flex', gap: 4 }}>
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Logic to show a window of pages around current
-                  let pageNum = i + 1;
-                  if (totalPages > 5 && currentPage > 3) {
-                    pageNum = currentPage - 2 + i;
-                    if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                  let startPage = 1;
+                  if (totalPages > 5) {
+                    if (currentPage > 3) {
+                      startPage = currentPage - 2;
+                      if (startPage + 4 > totalPages) {
+                        startPage = totalPages - 4;
+                      }
+                    }
                   }
+                  const pageNum = startPage + i;
                   return (
                     <button
                       key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
+                      onClick={() => updateParams('page', pageNum.toString())}
                       style={{ 
                         width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
                         border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
@@ -497,9 +499,9 @@ export const DataList = () => {
                 })}
               </div>
               <button 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
               >
                 <ChevronRight size={16} />
               </button>
