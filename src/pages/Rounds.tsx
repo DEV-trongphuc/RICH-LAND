@@ -336,6 +336,20 @@ export const Rounds = () => {
             </div>
           ) : rounds.map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+            const consIds = r.consultant_ids ? r.consultant_ids.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+            let compensatedConsultant = null;
+            for (let i = 0; i < consIds.length; i++) {
+              const cId = consIds[i];
+              const compCount = r.compensations ? (r.compensations[cId] || 0) : 0;
+              if (compCount > 0) {
+                compensatedConsultant = {
+                  id: cId,
+                  name: consList[i],
+                  count: compCount
+                };
+                break;
+              }
+            }
             const color = ROUND_COLORS[idx % ROUND_COLORS.length];
 
             return viewMode === 'grid' ? (
@@ -402,11 +416,29 @@ export const Rounds = () => {
                       )}
                     </div>
 
-                    {r.next_assigned_name && (
-                      <div style={{ padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Zap size={14} color="var(--color-primary)" />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                    {compensatedConsultant ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                        <div style={{ padding: '0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Zap size={14} color="var(--color-warning)" style={{ fill: 'var(--color-warning)' }} />
+                          <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
+                            Đang bù data: <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> (Còn {compensatedConsultant.count} lượt)
+                          </span>
+                        </div>
+                        {r.next_assigned_name && (
+                          <div style={{ paddingLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                              Lượt xoay tiếp theo: <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      r.next_assigned_name && (
+                        <div style={{ padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Zap size={14} color="var(--color-primary)" />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                        </div>
+                      )
                     )}
                   </div>
 
@@ -477,11 +509,27 @@ export const Rounds = () => {
                     )}
                   </div>
 
-                  {r.next_assigned_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Zap size={12} color="var(--color-primary)" />
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                  {compensatedConsultant ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Zap size={12} color="var(--color-warning)" style={{ fill: 'var(--color-warning)' }} />
+                        <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
+                          Đang bù data: <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> (Còn {compensatedConsultant.count} lượt)
+                        </span>
+                      </div>
+                      {r.next_assigned_name && (
+                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500, paddingLeft: 16 }}>
+                          Lượt xoay tiếp theo: <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
+                        </span>
+                      )}
                     </div>
+                  ) : (
+                    r.next_assigned_name && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Zap size={12} color="var(--color-primary)" />
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                      </div>
+                    )
                   )}
                 </div>
 
