@@ -204,6 +204,98 @@ function getTicketNotifyAdmins($conn) {
 }
 
 switch ($action) {
+    case 'get_import_history':
+        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'assistant')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            exit();
+        }
+        $res = $conn->query("
+            SELECT 
+                dl.id as log_id,
+                l.id as lead_id,
+                l.name,
+                l.phone,
+                l.email,
+                dl.status as distribution_status,
+                dl.message as distribution_message,
+                c.name as consultant_name,
+                c.status as consultant_status,
+                l.last_interaction_date
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            WHERE l.source = 'Excel Import' 
+               OR l.note LIKE '%Nhap du lieu cu%'
+            ORDER BY dl.id DESC
+            LIMIT 100
+        ");
+        $data = [];
+        while ($row = $res->fetch_assoc()) {
+            $isDuplicate = (
+                strpos($row['distribution_message'], 'Trung') !== false || 
+                strpos($row['distribution_message'], 'trung') !== false || 
+                $row['distribution_status'] === 'duplicate' || 
+                $row['distribution_status'] === 'reminder'
+            );
+            $data[] = [
+                'log_id' => (int)$row['log_id'],
+                'lead_id' => (int)$row['lead_id'],
+                'name' => $row['name'],
+                'phone' => $row['phone'],
+                'email' => $row['email'],
+                'has_record' => $isDuplicate ? true : false,
+                'consultant_name' => $row['consultant_name'],
+                'consultant_status' => $row['consultant_status'],
+                'last_interaction_date' => $row['last_interaction_date']
+            ];
+        }
+        echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'delete_import_history':
+        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'assistant')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            exit();
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $logIds = $input['log_ids'] ?? [];
+        $leadIds = $input['lead_ids'] ?? [];
+
+        if (empty($logIds) && empty($leadIds)) {
+            echo json_encode(['success' => false, 'message' => 'Không có bản ghi nào được chọn để xóa.']);
+            break;
+        }
+
+        $conn->begin_transaction();
+        try {
+            if (!empty($logIds)) {
+                $placeholders = implode(',', array_fill(0, count($logIds), '?'));
+                $stmt = $conn->prepare("DELETE FROM distribution_logs WHERE id IN ($placeholders)");
+                $types = str_repeat('i', count($logIds));
+                $stmt->bind_param($types, ...$logIds);
+                $stmt->execute();
+                $stmt->close();
+            }
+
+            if (!empty($leadIds)) {
+                $placeholders = implode(',', array_fill(0, count($leadIds), '?'));
+                $stmt = $conn->prepare("DELETE FROM leads WHERE id IN ($placeholders) AND (source = 'Excel Import' OR note LIKE '%Nhap du lieu cu%')");
+                $types = str_repeat('i', count($leadIds));
+                $stmt->bind_param($types, ...$leadIds);
+                $stmt->execute();
+                $stmt->close();
+            }
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'message' => 'Xóa bản ghi thành công.']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi xóa dữ liệu: ' . $e->getMessage()]);
+        }
+        break;
+
     case 'login':
         $input = json_decode(file_get_contents('php://input'), true);
         // FEATURE: Đăng nhập bằng Email thay vì username
@@ -3214,7 +3306,7 @@ switch ($action) {
         }
 
         // Query current period stats using GROUP BY for index optimization
-        $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition GROUP BY status";
+        $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
         $statsResRaw = $conn->query($statsSql);
         $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         if ($statsResRaw) {
@@ -3234,7 +3326,7 @@ switch ($action) {
         }
 
         // Query previous period stats for % change
-        $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition GROUP BY status";
+        $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition AND status != 'silent' GROUP BY status";
         $prevStatsResRaw = $conn->query($prevStatsSql);
         $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         if ($prevStatsResRaw) {
@@ -3265,7 +3357,7 @@ switch ($action) {
         // Query hourly chart data
         $chartData = [];
         if ($date === 'Hôm nay' || $date === 'Hôm qua') {
-            $hourlySql = "SELECT HOUR(received_at) as h, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition GROUP BY HOUR(received_at) ORDER BY h ASC";
+            $hourlySql = "SELECT HOUR(received_at) as h, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY HOUR(received_at) ORDER BY h ASC";
             $res = $conn->query($hourlySql);
             $hourlyMap = [];
             while ($row = $res->fetch_assoc())
@@ -3276,7 +3368,7 @@ switch ($action) {
             }
         } else {
             // For 7 days
-            $dailySql = "SELECT DATE(received_at) as d, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition GROUP BY DATE(received_at) ORDER BY d ASC";
+            $dailySql = "SELECT DATE(received_at) as d, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY DATE(received_at) ORDER BY d ASC";
             $res = $conn->query($dailySql);
             while ($row = $res->fetch_assoc()) {
                 $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => $row['vol']];
@@ -3331,7 +3423,7 @@ switch ($action) {
                       FROM distribution_logs dl 
                       JOIN leads l ON dl.lead_id = l.id
                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-                      WHERE $dateCondition 
+                      WHERE $dateCondition AND dl.status != 'silent'
                       GROUP BY COALESCE(sc.sheet_name, l.source) ORDER BY count DESC";
         $sourceResRaw = $conn->query($sourceSql);
         $sourceStats = [];
@@ -3931,7 +4023,7 @@ switch ($action) {
             $email = trim($lead['email'] ?? '');
             $name = trim($lead['name'] ?? '');
             
-            $crmCheck = checkCRMInteraction($conn, $phone, $email);
+            $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
             
             $leadId = null;
             $assignedName = 'Không rõ';
@@ -3993,8 +4085,9 @@ switch ($action) {
         require_once __DIR__ . '/webhook_logic.php';
         $input = json_decode(file_get_contents('php://input'), true);
         $leads = $input['leads'] ?? [];
-        $isSilent = isset($input['is_silent']) ? (int)$input['is_silent'] : 1;
-        $syncSaleperson = isset($input['sync_saleperson']) ? (int)$input['sync_saleperson'] : 1;
+        // Tat ca dữ liệu ánh xạ luon luon silent (khong dinh tuyen, khong bao sale)
+        $isSilent = 1;
+        $syncSaleperson = 0;
         
         $importedCount = 0;
         $duplicateCount = 0;
@@ -4019,26 +4112,40 @@ switch ($action) {
                     $fileConsultantId = findConsultantByEmailOrName($conn, $salepersonVal);
                 }
                 
-                $crmCheck = checkCRMInteraction($conn, $phone, $email);
+                $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
                 
                 if ($isSilent == 1) {
                     if ($crmCheck['isDuplicate']) {
                         $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
                         $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
                         $duplicateCount++;
+                        logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
                     } else {
                         $ownerId = $fileConsultantId;
                         $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
                         $newCount++;
+                        logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).');
                     }
-                    
-                    logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen.');
                 } else {
                     if ($crmCheck['isDuplicate']) {
                         $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
                         $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
                         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
                         $duplicateCount++;
+                        
+                        if ($syncSaleperson == 1 && !empty($assignedTo)) {
+                            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+                            $stmtC->bind_param("i", $assignedTo);
+                            $stmtC->execute();
+                            $cRow = $stmtC->get_result()->fetch_assoc();
+                            $stmtC->close();
+                            if ($cRow && $cRow['status'] === 'active') {
+                                require_once __DIR__ . '/mailer.php';
+                                require_once __DIR__ . '/zalo_bot.php';
+                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
+                                sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
+                            }
+                        }
                     } else {
                         $assignedToId = $fileConsultantId;
                         $isFromRules = false;
@@ -4212,7 +4319,7 @@ switch ($action) {
             $email = trim($lead['email'] ?? '');
             $name = trim($lead['name'] ?? '');
             
-            $crmCheck = checkCRMInteraction($conn, $phone, $email);
+            $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
             $leadId = null;
             $assignedName = 'Không rõ';
             $lastInteractionDate = null;

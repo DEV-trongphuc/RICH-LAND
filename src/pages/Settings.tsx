@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, Search } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -9,25 +9,57 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import * as XLSX from 'xlsx';
 
+const thStyle: React.CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  background: '#f8fafc',
+  zIndex: 1,
+  padding: '10px 16px',
+  boxShadow: 'inset 0 -1px 0 var(--color-border)',
+  textAlign: 'left'
+};
+
+const maskPhone = (phone: string) => {
+  if (!phone) return '';
+  const trimmed = phone.trim();
+  if (trimmed.length <= 6) {
+    return trimmed.slice(0, 2) + '*'.repeat(trimmed.length - 2);
+  }
+  return trimmed.slice(0, 3) + '****' + trimmed.slice(-3);
+};
+
+const maskEmail = (email: string) => {
+  if (!email) return '';
+  const trimmed = email.trim();
+  const parts = trimmed.split('@');
+  if (parts.length !== 2) return trimmed;
+  const name = parts[0];
+  const domain = parts[1];
+  if (name.length <= 3) {
+    return name.slice(0, 1) + '***@' + domain;
+  }
+  return name.slice(0, 2) + '***' + name.slice(-1) + '@' + domain;
+};
+
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  
+
   // Tab State
   const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check'>('processing');
-  
+
   // States
   const [provider, setProvider] = useState('appscript');
   const [appscriptUrl, setAppscriptUrl] = useState('');
   const [frontendUrl, setFrontendUrl] = useState('');
-  
+
   const [sesHost, setSesHost] = useState('');
   const [sesUser, setSesUser] = useState('');
   const [sesPass, setSesPass] = useState('');
   const [sesSenderEmail, setSesSenderEmail] = useState('');
   const [sesSenderName, setSesSenderName] = useState('DOMATION TEAM');
-  
+
   const [testEmail, setTestEmail] = useState('');
   const [testType, setTestType] = useState('system');
   // Collapse state for Input Webhook Code
@@ -70,7 +102,7 @@ export const Settings = () => {
   // Rule edit modal state
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null); // null = add, rule object = edit
-  
+
   // Rule form states
   const [ruleName, setRuleName] = useState('');
   const [ruleActive, setRuleActive] = useState(true);
@@ -90,13 +122,59 @@ export const Settings = () => {
   const [dateCol, setDateCol] = useState<string>('');
   const [salepersonCol, setSalepersonCol] = useState<string>('');
   const [checking, setChecking] = useState(false);
-  const [importIsSilent, setImportIsSilent] = useState<boolean>(true);
-  const [importNotifySale, setImportNotifySale] = useState<boolean>(true);
   const [importing, setImporting] = useState<boolean>(false);
   const [checkedResults, setCheckedResults] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'duplicate' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [importHistory, setImportHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
+
+  const fetchImportHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const json = await fetchAPI('get_import_history');
+      if (json.success) {
+        setImportHistory(json.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching import history:", err);
+    }
+    setLoadingHistory(false);
+  };
+
+  const handleDeleteHistory = async (logsToDelete: { log_id: number; lead_id: number }[]) => {
+    if (!logsToDelete || logsToDelete.length === 0) return;
+
+    const confirmMessage = logsToDelete.length === 1
+      ? "Bạn có chắc chắn muốn xóa bản ghi nhập này không? Thao tác này cũng sẽ xóa Lead tương ứng khỏi CRM."
+      : `Bạn có chắc chắn muốn xóa ${logsToDelete.length} bản ghi nhập đã chọn? Thao tác này cũng sẽ xóa các Lead tương ứng khỏi CRM.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const logIds = logsToDelete.map(item => item.log_id);
+      const leadIds = logsToDelete.map(item => item.lead_id);
+
+      const res = await fetchAPI('delete_import_history', {
+        method: 'POST',
+        body: JSON.stringify({ log_ids: logIds, lead_ids: leadIds })
+      });
+
+      if (res.success) {
+        toast.success(res.message || "Đã xóa thành công!");
+        setSelectedLogs([]);
+        fetchImportHistory();
+      } else {
+        toast.error(res.message || "Lỗi khi xóa dữ liệu");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi kết nối hệ thống");
+    }
+  };
   const [resultsPage, setResultsPage] = useState(1);
+  const [importSubTab, setImportSubTab] = useState<'list' | 'upload'>('list');
+  const [historyPage, setHistoryPage] = useState(1);
 
   const fetchSettings = async () => {
     try {
@@ -119,7 +197,7 @@ export const Settings = () => {
       if (connectionsJson.success) {
         setConnections(connectionsJson.data || []);
       }
-      
+
       const json = await fetchAPI('get_settings');
       if (json.success && json.data) {
         if (json.data.email_provider) {
@@ -172,6 +250,7 @@ export const Settings = () => {
 
   useEffect(() => {
     fetchSettings();
+    fetchImportHistory();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
     if (tabParam && ['processing', 'mail', 'zalo', 'report'].includes(tabParam)) {
@@ -215,7 +294,7 @@ export const Settings = () => {
       ticket_auto_approve_keywords: ticketAutoApproveKeywords,
       ticket_auto_approve_rules: ticketAutoApproveRules
     };
-    
+
     try {
       const json = await fetchAPI('save_settings', {
         method: 'POST',
@@ -293,20 +372,20 @@ export const Settings = () => {
         if (data.length > 0) {
           const fileHeaders = data[0].map(h => String(h || '').trim());
           setHeaders(fileHeaders);
-          
+
           // Find default columns by heuristic names
           const phoneIdx = fileHeaders.findIndex(h => /sđt|phone|điện thoại|sdt/i.test(h));
           const emailIdx = fileHeaders.findIndex(h => /email|mail/i.test(h));
           const nameIdx = fileHeaders.findIndex(h => /tên|name|họ tên/i.test(h));
           const dateIdx = fileHeaders.findIndex(h => /ngày|date|time|ngày tạo|ngày đăng ký|created_at/i.test(h));
           const salepersonIdx = fileHeaders.findIndex(h => /sale|nv|nhân viên|phụ trách|salesperson|assigned|owner/i.test(h));
-          
+
           if (phoneIdx !== -1) setPhoneCol(fileHeaders[phoneIdx]);
           if (emailIdx !== -1) setEmailCol(fileHeaders[emailIdx]);
           if (nameIdx !== -1) setNameCol(fileHeaders[nameIdx]);
           if (dateIdx !== -1) setDateCol(fileHeaders[dateIdx]);
           if (salepersonIdx !== -1) setSalepersonCol(fileHeaders[salepersonIdx]);
-          
+
           // Parse rows
           const rows: any[] = [];
           for (let i = 1; i < data.length; i++) {
@@ -351,7 +430,7 @@ export const Settings = () => {
   const handleRunBatchCheck = async () => {
     setCheckedResults([]);
     setResultsPage(1);
-    
+
     if (selectedSheetId === 'local') {
       if (localRows.length === 0) {
         toast.error("Vui lòng tải lên file Excel hoặc CSV!");
@@ -361,7 +440,7 @@ export const Settings = () => {
         toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng!");
         return;
       }
-      
+
       setChecking(true);
       try {
         const mappedLeads = localRows.map(row => ({
@@ -369,7 +448,7 @@ export const Settings = () => {
           email: emailCol ? String(row[emailCol] || '').trim() : '',
           name: nameCol ? String(row[nameCol] || '').trim() : ''
         }));
-        
+
         // Chunk requests of 200 items to prevent gate timeout
         const chunkSize = 200;
         let allResults: any[] = [];
@@ -386,6 +465,7 @@ export const Settings = () => {
           }
         }
         setCheckedResults(allResults);
+        setImportSubTab('list');
         toast.success(`Đã hoàn tất lọc trùng ${allResults.length} dòng.`);
       } catch (err: any) {
         toast.error("Lỗi lọc trùng: " + err.message);
@@ -400,6 +480,7 @@ export const Settings = () => {
         });
         if (res.success) {
           setCheckedResults(res.results);
+          setImportSubTab('list');
           toast.success(`Đã hoàn tất lọc trùng ${res.results.length} dòng từ Google Sheet.`);
         } else {
           toast.error(res.message || "Lỗi khi tải và kiểm tra dữ liệu Google Sheet.");
@@ -449,8 +530,8 @@ export const Settings = () => {
           method: 'POST',
           body: JSON.stringify({
             leads: chunk,
-            is_silent: importIsSilent ? 1 : 0,
-            sync_saleperson: importNotifySale ? 1 : 0
+            is_silent: 1,
+            sync_saleperson: 0
           })
         });
         if (res.success) {
@@ -463,9 +544,20 @@ export const Settings = () => {
       }
 
       toast.success(`Nhập dữ liệu thành công! Đã xử lý ${totalImported} dòng (${totalNew} lead mới, ${totalDup} lead trùng).`);
-      
-      // Auto-trigger duplicate check refresh
-      await handleRunBatchCheck();
+
+      // Clear file state, results state and show the list sub-tab with refreshed history
+      setCheckedResults([]);
+      setLocalFile(null);
+      setLocalRows([]);
+      setHeaders([]);
+      setPhoneCol('');
+      setEmailCol('');
+      setNameCol('');
+      setDateCol('');
+      setSalepersonCol('');
+      setImportSubTab('list');
+      setHistoryPage(1);
+      await fetchImportHistory();
     } catch (err: any) {
       toast.error("Lỗi nhập dữ liệu: " + err.message);
     }
@@ -474,7 +566,7 @@ export const Settings = () => {
 
   const handleExportResults = () => {
     if (!checkedResults || checkedResults.length === 0) return;
-    
+
     // Combine original rows with checking results
     const exportData = checkedResults.map((res, idx) => {
       const original = selectedSheetId === 'local' ? (localRows[idx] || {}) : { 'Họ và tên': res.name, 'Số điện thoại': res.phone, 'Email': res.email };
@@ -487,7 +579,7 @@ export const Settings = () => {
         'Số tháng kể từ tương tác cuối': res.months_since_last_interaction !== null ? Number(res.months_since_last_interaction).toFixed(1) : ''
       };
     });
-    
+
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Kết quả lọc trùng");
@@ -497,14 +589,14 @@ export const Settings = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
-      <div className="page-header" style={{ 
-        position: 'sticky', 
-        top: '-2rem', 
-        zIndex: 90, 
-        background: 'var(--color-bg)', 
-        paddingTop: '1.5rem', 
-        paddingBottom: '1rem', 
-        borderBottom: '1px solid var(--color-border)', 
+      <div className="page-header" style={{
+        position: 'sticky',
+        top: '-2rem',
+        zIndex: 90,
+        background: 'var(--color-bg)',
+        paddingTop: '1.5rem',
+        paddingBottom: '1rem',
+        borderBottom: '1px solid var(--color-border)',
         marginBottom: '2rem',
         display: 'flex',
         alignItems: 'center',
@@ -523,31 +615,31 @@ export const Settings = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-        <button 
+        <button
           onClick={() => setActiveTab('processing')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
           <SettingsIcon size={18} /> Cấu hình Xử lý
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('mail')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
           <Mail size={18} /> Cấu hình Email
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('zalo')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
           <MessageCircle size={18} /> Cấu hình Zalo Bot
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('report')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'report' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
-          <BarChart2 size={18} /> Báo cáo Ngày
+          <BarChart2 size={18} /> Báo cáo
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('duplicate_check')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'duplicate_check' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
         >
@@ -563,677 +655,785 @@ export const Settings = () => {
           <div style={{ flex: 1, minWidth: 0 }}><CardSkeleton height={200} /></div>
         </div>
       ) : (
-      <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-        {/* Left Column */}
-        <div style={{ flex: activeTab === 'duplicate_check' ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
-          
-          <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
-                    <RefreshCw size={16} />
-                  </span>
-                  Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)
-                </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
-                  Tải lên file Excel hoặc CSV chứa dữ liệu khách hàng cũ để đồng bộ và lưu vào CRM làm dữ liệu đối chiếu trùng lặp.
-                </p>
-              </div>
+        <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: activeTab === 'duplicate_check' ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+            <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {checkedResults.length > 0 ? (
+                  // Screen 1: Checked Results Table
+                  (() => {
+                    const total = checkedResults.length;
+                    const dupCount = checkedResults.filter(r => r.has_record).length;
+                    const newCount = total - dupCount;
+                    const dupPercent = ((dupCount / total) * 100).toFixed(1);
+                    const newPercent = ((newCount / total) * 100).toFixed(1);
 
-              {/* File Upload Zone */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px dashed var(--color-border)', paddingBottom: '1.25rem' }}>
-                <div style={{ width: '100%' }}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Chọn file hoặc kéo thả (.xlsx, .xls, .csv)</label>
-                  <div style={{ position: 'relative', width: '100%' }}>
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      onChange={handleFileUpload}
-                      style={{ display: 'none' }}
-                      id="bulk-file-upload"
-                    />
-                    {localFile ? (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 16px',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 10,
-                        background: '#f0fdf4',
-                        borderLeft: '4px solid #10b981',
-                        width: '100%'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ background: '#d1fae5', padding: 8, borderRadius: 8, color: '#047857', display: 'flex', alignItems: 'center' }}>
-                            <FileSpreadsheet size={18} />
+                    const filtered = checkedResults.filter(res => {
+                      if (filterType === 'duplicate' && !res.has_record) return false;
+                      if (filterType === 'new' && res.has_record) return false;
+                      if (searchTerm) {
+                        const search = searchTerm.toLowerCase();
+                        return String(res.phone || '').toLowerCase().includes(search) ||
+                          String(res.email || '').toLowerCase().includes(search) ||
+                          String(res.name || '').toLowerCase().includes(search);
+                      }
+                      return true;
+                    });
+
+                    const pageSize = 50;
+                    const totalPages = Math.ceil(filtered.length / pageSize);
+                    const paginatedResults = filtered.slice((resultsPage - 1) * pageSize, resultsPage * pageSize);
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Results Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                              <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                                <RefreshCw size={16} />
+                              </span>
+                              Kết quả lọc trùng
+                            </h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                              Tổng cộng {total} dòng dữ liệu vừa được kiểm tra trùng lặp với hệ thống CRM.
+                            </p>
                           </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
-                              {localFile.name}
+                          <button
+                            onClick={() => {
+                              setCheckedResults([]);
+                              setLocalFile(null);
+                              setLocalRows([]);
+                              setImportSubTab('list');
+                            }}
+                            className="btn outline"
+                            style={{ gap: 6, padding: '8px 16px', height: 38, fontWeight: 700, borderColor: '#ef4444', color: '#ef4444' }}
+                          >
+                            ← Quay lại Lịch sử
+                          </button>
+                        </div>
+
+                        {/* Summary Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tổng Data</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>{total}</div>
+                          </div>
+                          <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: 10, border: '1px solid #fee2e2' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase' }}>Trùng CRM</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b91c1c', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                              {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef4444' }}>({dupPercent}%)</span>
                             </div>
-                            <div style={{ fontSize: '0.725rem', color: '#047857', fontWeight: 500 }}>
-                              {(localFile.size / 1024).toFixed(1)} KB • {localRows.length} dòng dữ liệu
+                          </div>
+                          <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 10, border: '1px solid #d1fae5' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#047857', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                              {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>({newPercent}%)</span>
                             </div>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLocalFile(null);
-                            setLocalRows([]);
-                            setHeaders([]);
-                            setPhoneCol('');
-                            setEmailCol('');
-                            setNameCol('');
-                            setDateCol('');
-                            setSalepersonCol('');
-                            setCheckedResults([]);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                            padding: 6,
-                            borderRadius: 6,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+
+                        {/* Filters */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" className={`btn ${filterType === 'all' ? 'primary' : 'outline'}`} style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32 }} onClick={() => { setFilterType('all'); setResultsPage(1); }}>Tất cả ({total})</button>
+                            <button type="button" className={`btn ${filterType === 'duplicate' ? 'danger' : 'outline'}`} style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32, background: filterType === 'duplicate' ? 'var(--color-danger)' : '', color: filterType === 'duplicate' ? 'white' : '' }} onClick={() => { setFilterType('duplicate'); setResultsPage(1); }}>Trùng lặp ({dupCount})</button>
+                            <button type="button" className={`btn ${filterType === 'new' ? 'success' : 'outline'}`} style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32, background: filterType === 'new' ? 'var(--color-success)' : '', color: filterType === 'new' ? 'white' : '' }} onClick={() => { setFilterType('new'); setResultsPage(1); }}>Mới ({newCount})</button>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%', maxWidth: '400px', flex: '1 1 300px' }}>
+                            <input className="form-input" placeholder="Tìm kiếm theo Tên, SĐT, Email..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setResultsPage(1); }} style={{ height: 34, fontSize: '0.825rem' }} />
+                            <button type="button" className="btn success" style={{ gap: 6, padding: '6px 14px', height: 34, flexShrink: 0, fontWeight: 700 }} onClick={handleExportResults}><Download size={14} /> Xuất File</button>
+                          </div>
+                        </div>
+
+                        {/* Table View */}
+                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: '#fff' }}>
+                          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc' }}>
+                                <th style={{ ...thStyle, width: '50px' }}>STT</th>
+                                <th style={thStyle}>Khách hàng</th>
+                                <th style={thStyle}>Liên hệ</th>
+                                <th style={thStyle}>Sale Sở Hữu</th>
+                                <th style={thStyle}>Tương Tác Cuối</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paginatedResults.length > 0 ? (
+                                paginatedResults.map((item, idx) => {
+                                  const globalIdx = (resultsPage - 1) * pageSize + idx + 1;
+                                  const statusBadge = item.has_record
+                                    ? <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#b91c1c', fontWeight: 700 }}>TRÙNG CRM</span>
+                                    : <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: '#d1fae5', color: '#047857', fontWeight: 700 }}>MỚI</span>;
+
+                                  let ownerStatusBadge = null;
+                                  if (item.consultant_status) {
+                                    const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
+                                    const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
+                                    const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
+                                    ownerStatusBadge = <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>{statusLabel}</span>;
+                                  }
+
+                                  return (
+                                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                                      <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                          <Avatar name={item.name || 'Không có tên'} size={32} />
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                                            <div>{statusBadge}</div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        {item.consultant_name ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Avatar name={item.consultant_name} size={24} />
+                                            <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
+                                            {ownerStatusBadge}
+                                          </div>
+                                        ) : <span style={{ color: 'var(--color-text-muted)' }}>-</span>}
+                                      </td>
+                                      <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
+                                        {item.last_interaction_date ? (
+                                          <span>
+                                            {item.last_interaction_date.split(' ')[0]}
+                                            <br /><span style={{ fontSize: '0.75rem' }}>({item.months_since_last_interaction !== null ? Number(item.months_since_last_interaction).toFixed(1) : ''} tháng)</span>
+                                          </span>
+                                        ) : <span>-</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              ) : <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Không tìm thấy kết quả phù hợp.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pagination Footer */}
+                        {totalPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                            <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
+                              Hiển thị {(resultsPage - 1) * pageSize + 1} - {Math.min(resultsPage * pageSize, filtered.length)} trên {filtered.length} dòng
+                            </span>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                type="button"
+                                className="btn outline"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                                disabled={resultsPage === 1}
+                                onClick={() => setResultsPage(p => p - 1)}
+                              >
+                                Trước
+                              </button>
+                              <span style={{ padding: '4px 10px', fontSize: '0.775rem', fontWeight: 600 }}>
+                                Trang {resultsPage} / {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn outline"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                                disabled={resultsPage === totalPages}
+                                onClick={() => setResultsPage(p => p + 1)}
+                              >
+                                Sau
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <label
-                        htmlFor="bulk-file-upload"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={handleFileDrop}
+                    );
+                  })()
+                ) : importSubTab === 'upload' ? (
+                  // Screen 2: Upload / Mapping UI
+                  <>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                          <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                            <Upload size={16} />
+                          </span>
+                          Nhập dữ liệu mới từ File
+                        </h3>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                          Tải lên file Excel hoặc CSV chứa dữ liệu khách hàng cũ để đồng bộ và lưu vào CRM làm dữ liệu đối chiếu trùng lặp.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setImportSubTab('list');
+                          setLocalFile(null);
+                          setLocalRows([]);
+                        }}
+                        className="btn outline"
+                        style={{ gap: 6, padding: '8px 16px', height: 38, fontWeight: 700 }}
+                      >
+                        ← Quay lại danh sách
+                      </button>
+                    </div>
+
+                    {/* File Upload Zone */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px dashed var(--color-border)', paddingBottom: '1.25rem' }}>
+                      <div style={{ width: '100%' }}>
+                        <label className="form-label" style={{ fontWeight: 600 }}>Chọn file hoặc kéo thả (.xlsx, .xls, .csv)</label>
+                        <div style={{ position: 'relative', width: '100%' }}>
+                          <input
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            onChange={handleFileUpload}
+                            style={{ display: 'none' }}
+                            id="bulk-file-upload"
+                          />
+                          {localFile ? (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '10px 16px',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 10,
+                              background: '#f0fdf4',
+                              borderLeft: '4px solid #10b981',
+                              width: '100%'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ background: '#d1fae5', padding: 8, borderRadius: 8, color: '#047857', display: 'flex', alignItems: 'center' }}>
+                                  <FileSpreadsheet size={18} />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
+                                    {localFile.name}
+                                  </div>
+                                  <div style={{ fontSize: '0.725rem', color: '#047857', fontWeight: 500 }}>
+                                    {(localFile.size / 1024).toFixed(1)} KB • {localRows.length} dòng dữ liệu
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLocalFile(null);
+                                  setLocalRows([]);
+                                  setHeaders([]);
+                                  setPhoneCol('');
+                                  setEmailCol('');
+                                  setNameCol('');
+                                  setDateCol('');
+                                  setSalepersonCol('');
+                                  setCheckedResults([]);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: 6,
+                                  borderRadius: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor="bulk-file-upload"
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={handleFileDrop}
+                              style={{
+                                width: '100%',
+                                minHeight: '110px',
+                                border: '2px dashed var(--color-border)',
+                                background: '#f8fafc',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                borderRadius: '10px',
+                                padding: '16px',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                e.currentTarget.style.background = '#f1f5f9';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)';
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                            >
+                              <div style={{
+                                display: 'inline-flex',
+                                background: 'rgba(99, 102, 241, 0.1)',
+                                color: 'var(--color-primary)',
+                                padding: '8px',
+                                borderRadius: '50%'
+                              }}>
+                                <Upload size={20} />
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  Nhấp để duyệt tệp hoặc kéo thả vào đây
+                                </span>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                                  Hỗ trợ định dạng .xlsx, .xls, .csv
+                                </p>
+                              </div>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Column Mapping */}
+                    {headers.length > 0 && (
+                      <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <SettingsIcon size={14} /> Ánh xạ cột lọc trùng
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Số Điện Thoại (Bắt buộc)</label>
+                            <CustomSelect
+                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              value={phoneCol}
+                              onChange={val => setPhoneCol(String(val))}
+                              width="100%"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Email (Tùy chọn)</label>
+                            <CustomSelect
+                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              value={emailCol}
+                              onChange={val => setEmailCol(String(val))}
+                              width="100%"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Họ Tên (Tùy chọn)</label>
+                            <CustomSelect
+                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              value={nameCol}
+                              onChange={val => setNameCol(String(val))}
+                              width="100%"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                              Cột Ngày (Tùy chọn)
+                            </label>
+                            <CustomSelect
+                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              value={dateCol}
+                              onChange={val => setDateCol(String(val))}
+                              width="100%"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                              Cột Sale phụ trách (Tùy chọn)
+                            </label>
+                            <CustomSelect
+                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              value={salepersonCol}
+                              onChange={val => setSalepersonCol(String(val))}
+                              width="100%"
+                            />
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
+                          * Định dạng ngày được chấp nhận: <strong>dd-mm-yyyy</strong> (ví dụ: 20-05-2026) hoặc <strong>yyyy-mm-dd</strong>. Hệ thống sẽ tự động đưa về định dạng chuẩn của ngày và bỏ qua phần giờ để so khớp đối chiếu hợp lý.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Cấu hình lưu dữ liệu vào CRM */}
+                    {headers.length > 0 && (
+                      <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Shield size={14} color="var(--color-primary)" /> Quy tắc nhập dữ liệu vào CRM
+                        </h4>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                          Tất cả dữ liệu ánh xạ lịch sử khi nhập <strong>luôn luôn chạy ở chế độ Đồng bộ ngầm (Silent Mode)</strong>. Hệ thống sẽ chỉ ghi nhận lịch sử và gán cho Sale sở hữu mà không phân bổ lại cho Sale khác, đồng thời hoàn toàn không gửi bất kỳ thông báo nhắc nhở nào để tránh gây phiền hà cho đội ngũ Sale.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Submit Actions */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'flex-start' }}>
+                      <button
+                        type="button"
+                        onClick={handleRunBatchCheck}
+                        disabled={checking || localRows.length === 0}
                         style={{
-                          width: '100%',
-                          minHeight: '110px',
-                          border: '2px dashed var(--color-border)',
-                          background: '#f8fafc',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.5rem',
-                          borderRadius: '10px',
-                          padding: '16px',
-                          transition: 'all 0.2s ease-in-out'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.background = '#f1f5f9';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--color-border)';
-                          e.currentTarget.style.background = '#f8fafc';
+                          minWidth: 160,
+                          height: 42,
+                          fontWeight: 700,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                          color: 'white',
+                          border: 'none',
+                          cursor: checking || localRows.length === 0 ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        <div style={{
+                        {checking ? <Activity size={16} className="spin" /> : "Chạy lọc trùng"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImportLeads}
+                        disabled={checking || importing || localRows.length === 0}
+                        style={{
+                          minWidth: 180,
+                          height: 42,
+                          fontWeight: 700,
+                          gap: 8,
+                          borderRadius: 8,
+                          background: checking || importing || localRows.length === 0 ? '#e2e8f0' : 'linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%)',
+                          color: checking || importing || localRows.length === 0 ? '#94a3b8' : 'white',
+                          border: 'none',
+                          cursor: checking || importing || localRows.length === 0 ? 'not-allowed' : 'pointer',
                           display: 'inline-flex',
-                          background: 'rgba(99, 102, 241, 0.1)',
-                          color: 'var(--color-primary)',
-                          padding: '8px',
-                          borderRadius: '50%'
-                        }}>
-                          <Upload size={20} />
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: checking || importing || localRows.length === 0 ? 'none' : '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                      >
+                        {importing ? (
+                          <>
+                            <Activity size={16} className="spin" /> Đang nhập dữ liệu...
+                          </>
+                        ) : (
+                          <>
+                            <Database size={16} /> Bắt đầu Nhập dữ liệu
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Guidelines */}
+                    <div style={{
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      fontSize: '0.75rem',
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      width: '100%',
+                      textAlign: 'left',
+                      lineHeight: 1.5,
+                      border: '1px solid #bae6fd',
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'flex-start'
+                    }}>
+                      <span style={{ fontSize: '1rem' }}>💡</span>
+                      <div>
+                        <strong>Cơ chế khớp trùng CRM:</strong> Công cụ đối chiếu thời gian thực bằng cách sử dụng chung một hàm nghiệp vụ với luồng xử lý Webhook và Google Sheets. Hệ thống chỉ đánh dấu Trùng lặp đối với Sale đang <strong>Hoạt động</strong>. Nếu Sale sở hữu đang <strong>Nghỉ phép</strong> hoặc <strong>Nghỉ việc</strong>, hệ thống tự động đánh dấu là lead được phép chia mới cho Sale khác.
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  // Screen 3: Import History List
+                  (() => {
+                    const historyPageSize = 50;
+                    const totalHistoryPages = Math.ceil(importHistory.length / historyPageSize);
+                    const paginatedHistory = importHistory.slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize);
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* History Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                              <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                                <RefreshCw size={16} />
+                              </span>
+                              Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)
+                            </h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                              Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            {selectedLogs.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const logsToDelete = importHistory.filter(item => selectedLogs.includes(item.log_id));
+                                  handleDeleteHistory(logsToDelete);
+                                }}
+                                className="btn danger"
+                                style={{ gap: 6, padding: '8px 16px', height: 38, fontWeight: 700, display: 'flex', alignItems: 'center', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8 }}
+                              >
+                                <Trash2 size={16} />
+                                Xóa đã chọn ({selectedLogs.length})
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setImportSubTab('upload');
+                              }}
+                              className="btn primary"
+                              style={{ gap: 6, padding: '8px 16px', height: 38, fontWeight: 700 }}
+                            >
+                              + Thêm mới
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            Nhấp để duyệt tệp hoặc kéo thả vào đây
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                            Các bản ghi dữ liệu đã được nhập gần đây:
                           </span>
-                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                            Hỗ trợ định dạng .xlsx, .xls, .csv
-                          </p>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            Tổng cộng: {importHistory.length} bản ghi
+                          </span>
                         </div>
-                      </label>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              {/* Column Mapping (only for local files) */}
-              {selectedSheetId === 'local' && headers.length > 0 && (
-                <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <SettingsIcon size={14} /> Ánh xạ cột lọc trùng
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Số Điện Thoại (Bắt buộc)</label>
-                      <CustomSelect
-                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
-                        value={phoneCol}
-                        onChange={val => setPhoneCol(String(val))}
-                        width="100%"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Email (Tùy chọn)</label>
-                      <CustomSelect
-                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
-                        value={emailCol}
-                        onChange={val => setEmailCol(String(val))}
-                        width="100%"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Họ Tên (Tùy chọn)</label>
-                      <CustomSelect
-                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
-                        value={nameCol}
-                        onChange={val => setNameCol(String(val))}
-                        width="100%"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Cột Ngày (Tùy chọn)
-                      </label>
-                      <CustomSelect
-                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
-                        value={dateCol}
-                        onChange={val => setDateCol(String(val))}
-                        width="100%"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Cột Sale phụ trách (Tùy chọn)
-                      </label>
-                      <CustomSelect
-                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
-                        value={salepersonCol}
-                        onChange={val => setSalepersonCol(String(val))}
-                        width="100%"
-                      />
-                    </div>
-                  </div>
-                  <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
-                    * Định dạng ngày được chấp nhận: <strong>dd-mm-yyyy</strong> (ví dụ: 20-05-2026) hoặc <strong>yyyy-mm-dd</strong>. Hệ thống sẽ tự động đưa về định dạng chuẩn của ngày và bỏ qua phần giờ để so khớp đối chiếu hợp lý.
-                  </p>
-                </div>
-              )}
-
-              {/* Cấu hình lưu dữ liệu vào CRM (chỉ cho local files) */}
-              {selectedSheetId === 'local' && headers.length > 0 && (
-                <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Shield size={14} /> Cấu hình lưu dữ liệu vào CRM
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                    <div
-                      onClick={() => setImportIsSilent(!importIsSilent)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        borderRadius: 8,
-                        border: importIsSilent ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ pointerEvents: 'none', marginTop: 3 }}>
-                        <ToggleSwitch
-                          checked={importIsSilent}
-                          onChange={() => {}}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
-                        <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                          Lead mới hoặc trùng sẽ chỉ lưu vào hệ thống làm dữ liệu đối chiếu, không phân phối chia số cho Sale mới.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      onClick={() => setImportNotifySale(!importNotifySale)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        borderRadius: 8,
-                        border: importNotifySale ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ pointerEvents: 'none', marginTop: 3 }}>
-                        <ToggleSwitch
-                          checked={importNotifySale}
-                          onChange={() => {}}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Nhắc nhở sale cũ nếu trùng số</div>
-                        <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                          Gửi thông báo Zalo hoặc Email cho Sale cũ đang sở hữu lead này để chăm sóc lại.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit Actions */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'flex-start' }}>
-                <button
-                  type="button"
-                  onClick={handleImportLeads}
-                  disabled={checking || importing || localRows.length === 0}
-                  style={{
-                    minWidth: 180,
-                    height: 42,
-                    fontWeight: 700,
-                    gap: 8,
-                    borderRadius: 8,
-                    background: checking || importing || localRows.length === 0 ? '#e2e8f0' : 'linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%)',
-                    color: checking || importing || localRows.length === 0 ? '#94a3b8' : 'white',
-                    border: 'none',
-                    cursor: checking || importing || localRows.length === 0 ? 'not-allowed' : 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: checking || importing || localRows.length === 0 ? 'none' : '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)',
-                    transition: 'all 0.2s ease-in-out'
-                  }}
-                  onMouseOver={(e) => {
-                    if (!checking && !importing && localRows.length > 0) {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 6px 8px -1px rgba(59, 130, 246, 0.3), 0 3px 6px -1px rgba(59, 130, 246, 0.15)';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!checking && !importing && localRows.length > 0) {
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)';
-                    }
-                  }}
-                >
-                  {importing ? (
-                    <>
-                      <Activity size={16} className="spin" /> Đang nhập dữ liệu...
-                    </>
-                  ) : (
-                    <>
-                      <Database size={16} /> Bắt đầu Nhập dữ liệu
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Empty state guide */}
-              {checkedResults.length === 0 && (
-                <div style={{
-                  background: '#f8fafc',
-                  border: '1px dashed #e2e8f0',
-                  borderRadius: 12,
-                  padding: '2rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '1.5rem',
-                  marginTop: '0.5rem',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ color: 'var(--color-primary)', opacity: 0.8 }}>
-                    <Search size={32} />
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                      Hướng dẫn 3 bước kiểm tra trùng lặp nhanh
-                    </h4>
-                    <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: '4px 0 0', maxWidth: '500px', lineHeight: 1.5 }}>
-                      Sử dụng công cụ để phát hiện các số điện thoại hoặc email đã tồn tại trong hệ thống, xem trạng thái hoạt động của Sale sở hữu trước khi nhập dữ liệu mới.
-                    </p>
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                    gap: '1.25rem',
-                    width: '100%',
-                    maxWidth: '640px',
-                    marginTop: '0.5rem'
-                  }}>
-                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
-                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Chọn Nguồn</strong>
-                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Tải file Excel/CSV hoặc chọn Google Sheet có sẵn</span>
-                    </div>
-                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
-                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Ánh Xạ Cột</strong>
-                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Chọn cột tương ứng chứa SĐT, Email và Họ Tên</span>
-                    </div>
-                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
-                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Chạy Lọc Trùng</strong>
-                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Xem kết quả phân loại chi tiết và xuất file Excel đối chiếu</span>
-                    </div>
-                  </div>
-                  
-                  <div style={{
-                    background: '#e0f2fe',
-                    color: '#0369a1',
-                    fontSize: '0.75rem',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    maxWidth: '640px',
-                    width: '100%',
-                    textAlign: 'left',
-                    lineHeight: 1.5,
-                    border: '1px solid #bae6fd',
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'flex-start'
-                  }}>
-                    <span style={{ fontSize: '1rem' }}>💡</span>
-                    <div>
-                      <strong>Cơ chế khớp trùng CRM:</strong> Công cụ đối chiếu thời gian thực bằng cách sử dụng chung một hàm nghiệp vụ với luồng xử lý Webhook và Google Sheets. Hệ thống chỉ đánh dấu Trùng lặp đối với Sale đang <strong>Hoạt động</strong>. Nếu Sale sở hữu đang <strong>Nghỉ phép</strong> hoặc <strong>Nghỉ việc</strong>, hệ thống tự động đánh dấu là lead được phép chia mới cho Sale khác.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Checked Results Block */}
-              {checkedResults.length > 0 && (() => {
-                const total = checkedResults.length;
-                const dupCount = checkedResults.filter(r => r.has_record).length;
-                const newCount = total - dupCount;
-                const dupPercent = ((dupCount / total) * 100).toFixed(1);
-                const newPercent = ((newCount / total) * 100).toFixed(1);
-
-                // Apply Filters and Search
-                const filtered = checkedResults.filter(res => {
-                  if (filterType === 'duplicate' && !res.has_record) return false;
-                  if (filterType === 'new' && res.has_record) return false;
-                  if (searchTerm) {
-                    const search = searchTerm.toLowerCase();
-                    const phoneMatch = String(res.phone || '').toLowerCase().includes(search);
-                    const emailMatch = String(res.email || '').toLowerCase().includes(search);
-                    const nameMatch = String(res.name || '').toLowerCase().includes(search);
-                    return phoneMatch || emailMatch || nameMatch;
-                  }
-                  return true;
-                });
-
-                // Pagination
-                const pageSize = 15;
-                const totalPages = Math.ceil(filtered.length / pageSize);
-                const paginatedResults = filtered.slice((resultsPage - 1) * pageSize, resultsPage * pageSize);
-
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.5rem' }}>
-                    {/* Summary Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                      <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tổng Data</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>{total}</div>
-                      </div>
-                      <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: 10, border: '1px solid #fee2e2' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase' }}>Trùng CRM</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b91c1c', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef4444' }}>({dupPercent}%)</span>
-                        </div>
-                      </div>
-                      <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 10, border: '1px solid #d1fae5' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#047857', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>({newPercent}%)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Filter and Download Header */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          type="button"
-                          className={`btn ${filterType === 'all' ? 'primary' : 'outline'}`}
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32 }}
-                          onClick={() => { setFilterType('all'); setResultsPage(1); }}
-                        >
-                          Tất cả ({total})
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn ${filterType === 'duplicate' ? 'danger' : 'outline'}`}
-                          style={{
-                            padding: '6px 12px', fontSize: '0.8rem', height: 32,
-                            background: filterType === 'duplicate' ? 'var(--color-danger)' : '',
-                            color: filterType === 'duplicate' ? 'white' : ''
-                          }}
-                          onClick={() => { setFilterType('duplicate'); setResultsPage(1); }}
-                        >
-                          Trùng lặp ({dupCount})
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn ${filterType === 'new' ? 'success' : 'outline'}`}
-                          style={{
-                            padding: '6px 12px', fontSize: '0.8rem', height: 32,
-                            background: filterType === 'new' ? 'var(--color-success)' : '',
-                            color: filterType === 'new' ? 'white' : ''
-                          }}
-                          onClick={() => { setFilterType('new'); setResultsPage(1); }}
-                        >
-                          Mới ({newCount})
-                        </button>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%', maxWidth: '400px', flex: '1 1 300px' }}>
-                        <input
-                          className="form-input"
-                          placeholder="Tìm kiếm theo Tên, SĐT, Email..."
-                          value={searchTerm}
-                          onChange={e => { setSearchTerm(e.target.value); setResultsPage(1); }}
-                          style={{ height: 34, fontSize: '0.825rem' }}
-                        />
-                        <button
-                          type="button"
-                          className="btn success"
-                          style={{ gap: 6, padding: '6px 14px', height: 34, flexShrink: 0, fontWeight: 700 }}
-                          onClick={handleExportResults}
-                        >
-                          <Download size={14} /> Xuất File Excel
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Table View */}
-                    <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', background: '#fff' }}>
-                      <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                            <th style={{ padding: '10px 16px', width: '50px' }}>STT</th>
-                            <th style={{ padding: '10px 16px' }}>Họ và Tên</th>
-                            <th style={{ padding: '10px 16px' }}>Số Điện Thoại</th>
-                            <th style={{ padding: '10px 16px' }}>Email</th>
-                            <th style={{ padding: '10px 16px' }}>Trạng Thái CRM</th>
-                            <th style={{ padding: '10px 16px' }}>Sale Sở Hữu</th>
-                            <th style={{ padding: '10px 16px' }}>Tương Tác Cuối</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paginatedResults.length > 0 ? (
-                            paginatedResults.map((item, idx) => {
-                              const globalIdx = (resultsPage - 1) * pageSize + idx + 1;
-                              const statusColor = item.has_record ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
-                              const statusTextCol = item.has_record ? '#b91c1c' : '#047857';
-                              
-                              let ownerStatusBadge = null;
-                              if (item.consultant_status) {
-                                const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
-                                const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
-                                const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
-                                ownerStatusBadge = (
-                                  <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>
-                                    {statusLabel}
-                                  </span>
-                                );
-                              }
-
-                              return (
-                                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                                  <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
-                                  <td style={{ padding: '10px 16px', fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1' }}>Chưa cập nhật</em>}</td>
-                                  <td style={{ padding: '10px 16px', fontFamily: 'monospace' }}>{item.phone || <em style={{ color: '#cbd5e1' }}>Trống</em>}</td>
-                                  <td style={{ padding: '10px 16px' }}>{item.email || <em style={{ color: '#cbd5e1' }}>Trống</em>}</td>
-                                  <td style={{ padding: '10px 16px' }}>
-                                    <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 800, background: statusColor, color: statusTextCol }}>
-                                      {item.has_record ? 'TRÙNG LẶP' : 'MỚI HOÀN TOÀN'}
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: '10px 16px' }}>
-                                    {item.has_record ? (
-                                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <strong>{item.consultant_name}</strong>
-                                        {ownerStatusBadge}
-                                      </div>
-                                    ) : (
-                                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                    )}
-                                  </td>
-                                  <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
-                                    {item.last_interaction_date ? (
-                                      <span>
-                                        {item.last_interaction_date.split(' ')[0]}{' '}
-                                        <span style={{ fontSize: '0.75rem' }}>({item.months_since_last_interaction !== null ? Number(item.months_since_last_interaction).toFixed(1) : ''} tháng)</span>
-                                      </span>
-                                    ) : (
-                                      <span>-</span>
-                                    )}
+                        {/* Table View */}
+                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: '#fff' }}>
+                          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc' }}>
+                                <th style={{ ...thStyle, width: '40px', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={paginatedHistory.length > 0 && paginatedHistory.every(item => selectedLogs.includes(item.log_id))}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        const pageLogIds = paginatedHistory.map(item => item.log_id);
+                                        setSelectedLogs(prev => Array.from(new Set([...prev, ...pageLogIds])));
+                                      } else {
+                                        const pageLogIds = paginatedHistory.map(item => item.log_id);
+                                        setSelectedLogs(prev => prev.filter(id => !pageLogIds.includes(id)));
+                                      }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                </th>
+                                <th style={{ ...thStyle, width: '50px' }}>STT</th>
+                                <th style={thStyle}>Khách hàng</th>
+                                <th style={thStyle}>Liên hệ</th>
+                                <th style={thStyle}>Sale Sở Hữu</th>
+                                <th style={thStyle}>Tương Tác Cuối</th>
+                                <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>Hành động</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {loadingHistory ? (
+                                <tr>
+                                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                                    Đang tải lịch sử nhập...
                                   </td>
                                 </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                                Không tìm thấy kết quả phù hợp với bộ lọc.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                              ) : paginatedHistory.length > 0 ? (
+                                paginatedHistory.map((item, idx) => {
+                                  const globalIdx = (historyPage - 1) * historyPageSize + idx + 1;
+                                  let ownerStatusBadge = null;
+                                  if (item.consultant_status) {
+                                    const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
+                                    const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
+                                    const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
+                                    ownerStatusBadge = <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>{statusLabel}</span>;
+                                  }
 
-                    {/* Pagination Footer */}
-                    {totalPages > 1 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
-                        <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
-                          Hiển thị {(resultsPage - 1) * pageSize + 1} - {Math.min(resultsPage * pageSize, filtered.length)} trên {filtered.length} dòng
-                        </span>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            type="button"
-                            className="btn outline"
-                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
-                            disabled={resultsPage === 1}
-                            onClick={() => setResultsPage(p => p - 1)}
-                          >
-                            Trước
-                          </button>
-                          <span style={{ padding: '4px 10px', fontSize: '0.775rem', fontWeight: 600 }}>
-                            Trang {resultsPage} / {totalPages}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn outline"
-                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
-                            disabled={resultsPage === totalPages}
-                            onClick={() => setResultsPage(p => p + 1)}
-                          >
-                            Sau
-                          </button>
+                                  const isSelected = selectedLogs.includes(item.log_id);
+
+                                  return (
+                                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s', backgroundColor: isSelected ? '#f8fafc' : 'transparent' }}>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedLogs(prev => [...prev, item.log_id]);
+                                            } else {
+                                              setSelectedLogs(prev => prev.filter(id => id !== item.log_id));
+                                            }
+                                          }}
+                                          style={{ cursor: 'pointer' }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                          <Avatar name={item.name || 'Không có tên'} size={32} />
+                                          <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 16px' }}>
+                                        {item.consultant_name ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Avatar name={item.consultant_name} size={24} />
+                                            <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
+                                            {ownerStatusBadge}
+                                          </div>
+                                        ) : <span style={{ color: 'var(--color-text-muted)' }}>-</span>}
+                                      </td>
+                                      <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
+                                        {item.last_interaction_date ? (
+                                          <span>
+                                            {item.last_interaction_date.split(' ')[0]}
+                                          </span>
+                                        ) : <span>-</span>}
+                                      </td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            handleDeleteHistory([item]);
+                                          }}
+                                          style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px' }}
+                                          title="Xóa bản ghi này"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              ) : (
+                                <tr>
+                                  <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem 2rem', color: 'var(--color-text-muted)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ fontSize: '1.5rem' }}>📋</span>
+                                      <span>Chưa có dữ liệu đối chiếu hoặc lịch sử nhập. Vui lòng bấm nút "+ Thêm mới" ở trên để bắt đầu.</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
+
+                        {/* Pagination Footer */}
+                        {totalHistoryPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                            <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
+                              Hiển thị {(historyPage - 1) * historyPageSize + 1} - {Math.min(historyPage * historyPageSize, importHistory.length)} trên {importHistory.length} dòng
+                            </span>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                type="button"
+                                className="btn outline"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                                disabled={historyPage === 1}
+                                onClick={() => setHistoryPage(p => p - 1)}
+                              >
+                                Trước
+                              </button>
+                              <span style={{ padding: '4px 10px', fontSize: '0.775rem', fontWeight: 600 }}>
+                                Trang {historyPage} / {totalHistoryPages}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn outline"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                                disabled={historyPage === totalHistoryPages}
+                                onClick={() => setHistoryPage(p => p + 1)}
+                              >
+                                Sau
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          <div style={{ display: activeTab === 'mail' ? 'block' : 'none', animation: activeTab === 'mail' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
-              <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
-            </h3>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Chọn phương thức gửi</label>
-              <CustomSelect 
-                options={providerOptions}
-                value={provider}
-                onChange={val => {
-                  const pVal = String(val);
-                  setProvider(pVal);
-                  if (pVal === 'appscript') {
-                    setShowInputScript(true);
-                  }
-                }}
-              />
+                    );
+                  })()
+                )}
+              </div>
             </div>
 
-            {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
-            <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)</label>
-              <input
-                className="form-input"
-                placeholder="Ví dụ: https://sale.domation.net"
-                value={frontendUrl}
-                onChange={e => setFrontendUrl(e.target.value)}
-              />
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.</p>
-            </div>
+            <div style={{ display: activeTab === 'mail' ? 'block' : 'none', animation: activeTab === 'mail' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div className="card" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
+                  <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
+                </h3>
 
-            {provider === 'appscript' && (
-              <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Server size={18} color="#10b981" /> Cấu hình Webhook Apps Script
-                </h4>
-                
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)</label>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                    Mã dưới đây dùng để kích hoạt tính năng <strong>Gửi Email</strong> qua Google. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.
-                  </p>
-                  
-                  {/* Collapsible Script Block */}
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
-                    <div 
-                      style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                      onClick={() => setShowInputScript(!showInputScript)}
-                    >
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Xem mã Apps Script</span>
-                      {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-                    </div>
-                    
-                    {showInputScript && (
-                      <pre style={{ 
-                        background: '#1e293b', color: '#e2e8f0', padding: '1rem', margin: 0,
-                        fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5 
-                      }}>
-{`// ==========================================
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label">Chọn phương thức gửi</label>
+                  <CustomSelect
+                    options={providerOptions}
+                    value={provider}
+                    onChange={val => {
+                      const pVal = String(val);
+                      setProvider(pVal);
+                      if (pVal === 'appscript') {
+                        setShowInputScript(true);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
+                <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)</label>
+                  <input
+                    className="form-input"
+                    placeholder="Ví dụ: https://sale.domation.net"
+                    value={frontendUrl}
+                    onChange={e => setFrontendUrl(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.</p>
+                </div>
+
+                {provider === 'appscript' && (
+                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Server size={18} color="#10b981" /> Cấu hình Webhook Apps Script
+                    </h4>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label className="form-label">Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)</label>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                        Mã dưới đây dùng để kích hoạt tính năng <strong>Gửi Email</strong> qua Google. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.
+                      </p>
+
+                      {/* Collapsible Script Block */}
+                      <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div
+                          style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                          onClick={() => setShowInputScript(!showInputScript)}
+                        >
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Xem mã Apps Script</span>
+                          {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+                        </div>
+
+                        {showInputScript && (
+                          <pre style={{
+                            background: '#1e293b', color: '#e2e8f0', padding: '1rem', margin: 0,
+                            fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
+                          }}>
+                            {`// ==========================================
 // ĐOẠN MÃ XỬ LÝ GỬI EMAIL (DEPLOY AS WEB APP)
 // ==========================================
 
@@ -1258,754 +1458,754 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }`}
-                      </pre>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label">URL Webhook của Google Apps Script (doPost)</label>
-                  <input 
-                    className="form-input" 
-                    placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
-                    value={appscriptUrl}
-                    onChange={e => setAppscriptUrl(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {provider === 'ses' && (
-              <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
-                </h4>
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">SMTP Host</label>
-                    <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Port</label>
-                    <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
-                  </div>
-                </div>
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label">SMTP Username</label>
-                    <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">SMTP Password</label>
-                    <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
-                  </div>
-                </div>
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label className="form-label">Email Người Gửi (From Email)</label>
-                    <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Tên Người Gửi (From Name)</label>
-                    <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          </div>
-
-          {/* Cấu hình Zalo Bot */}
-          <div style={{ display: activeTab === 'zalo' ? 'block' : 'none', animation: activeTab === 'zalo' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-              </span>
-              Cấu hình Zalo Bot (Gửi thông báo Data)
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br/>
-              Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{color: '#0068ff', fontWeight: 600}}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
-            </p>
-
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Bot Token (Zalo cung cấp)</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Ví dụ: 12345689:abc-xyz"
-                  value={zaloBotToken}
-                  onChange={e => setZaloBotToken(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Secret Token (Webhook bảo mật)</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)"
-                  value={zaloWebhookSecret}
-                  onChange={e => setZaloWebhookSecret(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
-              <input
-                className="form-input"
-                placeholder="VD: https://zalo.me/1185588456243371597"
-                value={zaloBotLink}
-                onChange={e => setZaloBotLink(e.target.value)}
-              />
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                Link chèn vào Email chào mừng TVV.
-              </p>
-            </div>
-            
-            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
-              <label className="form-label">Link Webhook khai báo trên Zalo Bot Platform:</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <code style={{ flex: 1, background: '#f8fafc', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: '#0068ff', border: '1px solid #bfdbfe' }}>
-                  https://open.domation.net/sale_data/zalo_webhook.php
-                </code>
-              </div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
-              </p>
-            </div>
-          </div>
-          </div>
-
-          {/* ===== TAB: BÁO CÁO NGÀY ===== */}
-          <div style={{ display: activeTab === 'report' ? 'block' : 'none' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: activeTab === 'report' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-
-            {/* Giờ gửi */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}><Clock size={16} /></span>
-                Lịch gửi Báo cáo Tự động
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '0.875rem 1rem', minWidth: 220 }}>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>
-                    <strong>Cửa sổ thời gian:</strong> Nếu gửi lúc <strong>{zaloDailyReportTime || '17:00'}</strong>, hệ thống sẽ tổng kết chia số từ <strong>{zaloDailyReportTime || '17:00'} hôm qua</strong> đến <strong>{zaloDailyReportTime || '17:00'} hôm nay</strong> — không bỏ sót data đêm.
-                  </p>
-                </div>
-                <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={zaloDailyReportTime}
-                    onChange={e => setZaloDailyReportTime(e.target.value)}
-                    style={{ flex: 1, height: '100%' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Báo cáo Tuần */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-flex', background: '#8b5cf6', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
-                Lịch gửi Báo cáo Tuần (cho Sale)
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                Tự động gửi thống kê nhận data và tình trạng ticket đền bù của tuần qua trực tiếp cho từng Sale qua Email và Zalo.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <label className="form-label">Ngày gửi trong tuần</label>
-                  <CustomSelect 
-                    options={[
-                      { value: '0', label: 'Tắt báo cáo tuần' },
-                      { value: '1', label: 'Thứ 2 hàng tuần' },
-                      { value: '2', label: 'Thứ 3 hàng tuần' },
-                      { value: '3', label: 'Thứ 4 hàng tuần' },
-                      { value: '4', label: 'Thứ 5 hàng tuần' },
-                      { value: '5', label: 'Thứ 6 hàng tuần' },
-                      { value: '6', label: 'Thứ 7 hàng tuần' },
-                      { value: '7', label: 'Chủ Nhật hàng tuần' }
-                    ]}
-                    value={zaloWeeklyReportDay}
-                    onChange={val => setZaloWeeklyReportDay(val.toString())}
-                    width="100%"
-                  />
-                </div>
-                <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
-                  <label className="form-label">Giờ gửi báo cáo</label>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={zaloWeeklyReportTime}
-                    onChange={e => setZaloWeeklyReportTime(e.target.value)}
-                    style={{ flex: 1, height: '42px' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Chọn Admin nhận báo cáo */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-flex', background: '#0ea5e9', color: 'white', padding: 4, borderRadius: 6 }}><Users size={16} /></span>
-                Admin nhận Báo cáo
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                Chọn các tài khoản sẽ nhận báo cáo qua <strong>Email</strong> và <strong>Zalo Bot</strong>. Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map((admin: any) => {
-                  const isSelected = dailyReportAdmins.includes(Number(admin.id));
-                  return (
-                    <label
-                      key={admin.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '0.875rem',
-                        padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer',
-                        border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          setDailyReportAdmins(prev =>
-                            isSelected ? prev.filter(id => id !== Number(admin.id)) : [...prev, Number(admin.id)]
-                          );
-                        }}
-                        style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
-                      />
-                      <Avatar name={admin.name || admin.username} size={36} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
-                          {admin.name || admin.username}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          {admin.email && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Mail size={11} /> {admin.email}
-                            </span>
-                          )}
-                          {admin.zalo_chat_id ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
-                              <MessageCircle size={11} /> Zalo đã liên kết
-                            </span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
-                              <MessageCircle size={11} /> Chưa liên kết Zalo
-                            </span>
-                          )}
-                        </div>
+                          </pre>
+                        )}
                       </div>
-                      {isSelected && (
-                        <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>Đã chọn</span>
-                      )}
-                    </label>
-                  );
-                })}
-                {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).length === 0 && (
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>Chưa có tài khoản Admin nào trong hệ thống.</p>
+                    </div>
+
+                    <div>
+                      <label className="form-label">URL Webhook của Google Apps Script (doPost)</label>
+                      <input
+                        className="form-input"
+                        placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
+                        value={appscriptUrl}
+                        onChange={e => setAppscriptUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {provider === 'ses' && (
+                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
+                    </h4>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label className="form-label">SMTP Host</label>
+                        <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">Port</label>
+                        <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
+                      </div>
+                    </div>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label className="form-label">SMTP Username</label>
+                        <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">SMTP Password</label>
+                        <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label className="form-label">Email Người Gửi (From Email)</label>
+                        <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">Tên Người Gửi (From Name)</label>
+                        <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-              {dailyReportAdmins.length === 0 && (
-                <div style={{ marginTop: '0.75rem', padding: '0.625rem 0.875rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Activity size={14} style={{ color: '#b45309', flexShrink: 0 }} />
-                  <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho <strong>tất cả tài khoản Admin</strong>.</p>
-                </div>
-              )}
-            </div>
-          </div>
-          </div>
-
-          {/* Fallback & Blacklist Configs (Processing Tab) */}
-          <div style={{ display: activeTab === 'processing' ? 'block' : 'none', animation: activeTab === 'processing' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-          <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
-                <Zap size={16} />
-              </span>
-              Cấu hình Xử lý Fallback (Khi không khớp luật)
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong>, hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.
-            </p>
-
-            {/* Selector for Fallback Type */}
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <label 
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '6px', 
-                  padding: '1rem', 
-                  borderRadius: '10px', 
-                  border: fallbackType === 'round' ? '2px solid #ef4444' : '1px solid var(--color-border)', 
-                  background: fallbackType === 'round' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
-                  <input 
-                    type="radio" 
-                    name="fallbackType" 
-                    value="round" 
-                    checked={fallbackType === 'round'} 
-                    onChange={() => setFallbackType('round')}
-                    style={{ accentColor: '#ef4444', margin: 0 }}
-                  />
-                  Phân bổ theo Vòng mặc định
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
-                  Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.
-                </span>
-              </label>
-
-              <label 
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '6px', 
-                  padding: '1rem', 
-                  borderRadius: '10px', 
-                  border: fallbackType === 'admin' ? '2px solid #ef4444' : '1px solid var(--color-border)', 
-                  background: fallbackType === 'admin' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
-                  <input 
-                    type="radio" 
-                    name="fallbackType" 
-                    value="admin" 
-                    checked={fallbackType === 'admin'} 
-                    onChange={() => setFallbackType('admin')}
-                    style={{ accentColor: '#ef4444', margin: 0 }}
-                  />
-                  Giao thẳng cho Admin + CC
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
-                  Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.
-                </span>
-              </label>
             </div>
 
-            {fallbackType === 'round' ? (
-              <div style={{ animation: 'fadeIn 0.3s' }}>
-                <label className="form-label">Chọn Vòng phân bổ mặc định</label>
-                <CustomSelect 
-                  options={[
-                    { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
-                    ...rounds.map(r => ({
-                      value: r.id.toString(),
-                      label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
-                    }))
-                  ]}
-                  value={fallbackRoundId}
-                  onChange={val => setFallbackRoundId(val.toString())}
-                  width="100%"
-                />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
-                <div>
-                  <label className="form-label">Chọn tài khoản Admin nhận data</label>
-                  <CustomSelect 
-                    options={[
-                      { value: '', label: '-- Chọn Admin nhận data --' },
-                      ...accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map(a => ({
-                        value: a.id.toString(),
-                        label: a.name,
-                        sublabel: a.email
-                      }))
-                    ]}
-                    value={fallbackAdminId}
-                    onChange={val => setFallbackAdminId(val.toString())}
-                    width="100%"
-                    showAvatars={true}
-                  />
+            {/* Cấu hình Zalo Bot */}
+            <div style={{ display: activeTab === 'zalo' ? 'block' : 'none', animation: activeTab === 'zalo' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div className="card" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+                  </span>
+                  Cấu hình Zalo Bot (Gửi thông báo Data)
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br />
+                  Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{ color: '#0068ff', fontWeight: 600 }}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
+                </p>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Bot Token (Zalo cung cấp)</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Ví dụ: 12345689:abc-xyz"
+                      value={zaloBotToken}
+                      onChange={e => setZaloBotToken(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Secret Token (Webhook bảo mật)</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)"
+                      value={zaloWebhookSecret}
+                      onChange={e => setZaloWebhookSecret(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="form-label">Địa chỉ Email CC khi xảy ra Fallback</label>
-                  <input 
-                    className="form-input" 
-                    placeholder="Ví dụ: manager@company.com, admin@company.com" 
-                    value={fallbackCcEmail}
-                    onChange={e => setFallbackCcEmail(e.target.value)}
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
+                  <input
+                    className="form-input"
+                    placeholder="VD: https://zalo.me/1185588456243371597"
+                    value={zaloBotLink}
+                    onChange={e => setZaloBotLink(e.target.value)}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Ngăn cách nhiều email bằng dấu phẩy. Hệ thống sẽ gửi bản sao thông báo data fallback về các email này.
+                    Link chèn vào Email chào mừng TVV.
+                  </p>
+                </div>
+
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
+                  <label className="form-label">Link Webhook khai báo trên Zalo Bot Platform:</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <code style={{ flex: 1, background: '#f8fafc', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: '#0068ff', border: '1px solid #bfdbfe' }}>
+                      https://open.domation.net/sale_data/zalo_webhook.php
+                    </code>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
+                    Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
                   </p>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Cấu hình Tự động duyệt Ticket */}
-          <div id="auto-approve" className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-flex', background: '#10b981', color: 'white', padding: 4, borderRadius: 6 }}>
-                <CheckCircle size={16} />
-              </span>
-              Cấu hình Tự Động Duyệt Ticket
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Tự động phê duyệt và cộng lượt đền bù khi lý do báo lỗi của Sale chứa các từ khóa định sẵn. Đồng thời gửi thông báo Zalo/Email tự động.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>Kích hoạt Tự động duyệt</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                    Cho phép hệ thống quét từ khóa và tự động duyệt khi Sale gửi ticket báo lỗi
+            {/* ===== TAB: BÁO CÁO NGÀY ===== */}
+            <div style={{ display: activeTab === 'report' ? 'block' : 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: activeTab === 'report' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+
+                {/* Giờ gửi */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}><Clock size={16} /></span>
+                    Lịch gửi Báo cáo Tự động
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '0.875rem 1rem', minWidth: 220 }}>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>
+                        <strong>Cửa sổ thời gian:</strong> Nếu gửi lúc <strong>{zaloDailyReportTime || '17:00'}</strong>, hệ thống sẽ tổng kết chia số từ <strong>{zaloDailyReportTime || '17:00'} hôm qua</strong> đến <strong>{zaloDailyReportTime || '17:00'} hôm nay</strong> — không bỏ sót data đêm.
+                      </p>
+                    </div>
+                    <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={zaloDailyReportTime}
+                        onChange={e => setZaloDailyReportTime(e.target.value)}
+                        style={{ flex: 1, height: '100%' }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div 
-                  onClick={() => setTicketAutoApproveEnabled(!ticketAutoApproveEnabled)}
-                  style={{
-                    width: 40, height: 22, borderRadius: 11,
-                    background: ticketAutoApproveEnabled ? 'var(--color-success)' : 'var(--color-border)',
-                    position: 'relative', transition: 'background 0.2s', cursor: 'pointer'
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
-                    background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    left: ticketAutoApproveEnabled ? 21 : 3, transition: 'left 0.2s'
-                  }} />
-                </div>
-              </div>
 
-              {ticketAutoApproveEnabled && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                      Danh sách luật duyệt tự động
+                {/* Báo cáo Tuần */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', background: '#8b5cf6', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
+                    Lịch gửi Báo cáo Tuần (cho Sale)
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                    Tự động gửi thống kê nhận data và tình trạng ticket đền bù của tuần qua trực tiếp cho từng Sale qua Email và Zalo.
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label className="form-label">Ngày gửi trong tuần</label>
+                      <CustomSelect
+                        options={[
+                          { value: '0', label: 'Tắt báo cáo tuần' },
+                          { value: '1', label: 'Thứ 2 hàng tuần' },
+                          { value: '2', label: 'Thứ 3 hàng tuần' },
+                          { value: '3', label: 'Thứ 4 hàng tuần' },
+                          { value: '4', label: 'Thứ 5 hàng tuần' },
+                          { value: '5', label: 'Thứ 6 hàng tuần' },
+                          { value: '6', label: 'Thứ 7 hàng tuần' },
+                          { value: '7', label: 'Chủ Nhật hàng tuần' }
+                        ]}
+                        value={zaloWeeklyReportDay}
+                        onChange={val => setZaloWeeklyReportDay(val.toString())}
+                        width="100%"
+                      />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingRule(null);
-                        setRuleName('');
-                        setRuleActive(true);
-                        setRuleRounds(['all']);
-                        setRuleSales(['all']);
-                        setRuleConnections(['all']);
-                        setRuleKeywords('');
-                        setRuleModalOpen(true);
-                      }}
-                      className="btn btn-primary"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
-                    >
-                      <Plus size={16} /> Thêm Luật Mới
-                    </button>
+                    <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
+                      <label className="form-label">Giờ gửi báo cáo</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={zaloWeeklyReportTime}
+                        onChange={e => setZaloWeeklyReportTime(e.target.value)}
+                        style={{ flex: 1, height: '42px' }}
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  {ticketAutoApproveRules.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center', padding: '2rem', border: '2px dashed var(--color-border)',
-                      borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
-                    }}>
-                      Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {ticketAutoApproveRules.map((rule) => {
-                        // Gather human-friendly names
-                        const targetRounds = rule.rounds.includes('all')
-                          ? 'Tất cả vòng'
-                          : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
-
-                        const targetSales = rule.sales.includes('all')
-                          ? 'Tất cả Sales'
-                          : consultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
-
-                        const targetConns = (rule.connections || []).includes('all') || !rule.connections
-                          ? 'Tất cả nguồn'
-                          : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || 'Không xác định';
-
-                        const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
-
-                        return (
-                          <div
-                            key={rule.id}
-                            style={{
-                              border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                              background: rule.active ? 'var(--color-surface)' : 'rgba(0,0,0,0.02)',
-                              padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
-                              position: 'relative', transition: 'all 0.2s',
-                              opacity: rule.active ? 1 : 0.65
+                {/* Chọn Admin nhận báo cáo */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', background: '#0ea5e9', color: 'white', padding: 4, borderRadius: 6 }}><Users size={16} /></span>
+                    Admin nhận Báo cáo
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                    Chọn các tài khoản sẽ nhận báo cáo qua <strong>Email</strong> và <strong>Zalo Bot</strong>. Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map((admin: any) => {
+                      const isSelected = dailyReportAdmins.includes(Number(admin.id));
+                      return (
+                        <label
+                          key={admin.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '0.875rem',
+                            padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer',
+                            border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                            background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              setDailyReportAdmins(prev =>
+                                isSelected ? prev.filter(id => id !== Number(admin.id)) : [...prev, Number(admin.id)]
+                              );
                             }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div>
-                                <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  {rule.name}
-                                  {!rule.active && (
-                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
-                                      Tắt
-                                    </span>
-                                  )}
-                                </h4>
-                              </div>
-
-                              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                {/* Quick toggle */}
-                                <div 
-                                  onClick={() => {
-                                    setTicketAutoApproveRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
-                                  }}
-                                  style={{
-                                    width: 32, height: 18, borderRadius: 9,
-                                    background: rule.active ? 'var(--color-success)' : 'var(--color-border)',
-                                    position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
-                                    alignSelf: 'center', marginRight: '0.5rem'
-                                  }}
-                                >
-                                  <div style={{
-                                    position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
-                                    background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                    left: rule.active ? 16 : 2, transition: 'left 0.2s'
-                                  }} />
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingRule(rule);
-                                    setRuleName(rule.name);
-                                    setRuleActive(rule.active);
-                                    setRuleRounds(rule.rounds);
-                                    setRuleSales(rule.sales);
-                                    setRuleConnections(rule.connections || ['all']);
-                                    setRuleKeywords(Array.isArray(rule.keywords) ? rule.keywords.join(', ') : rule.keywords);
-                                    setRuleModalOpen(true);
-                                  }}
-                                  style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                  className="btn-icon-hover"
-                                  title="Chỉnh sửa"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (window.confirm(`Bạn có chắc chắn muốn xóa luật "${rule.name}"?`)) {
-                                      setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
-                                    }
-                                  }}
-                                  style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                  className="btn-icon-hover"
-                                  title="Xóa"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                            style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+                          />
+                          <Avatar name={admin.name || admin.username} size={36} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                              {admin.name || admin.username}
                             </div>
-
-                            {/* Details/Tags */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
-                              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>Vòng:</span>
-                                <span style={{ fontWeight: 600 }}>{targetRounds}</span>
-                              </div>
-                              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>Sales:</span>
-                                <span style={{ fontWeight: 600 }}>{targetSales}</span>
-                              </div>
-                              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>Nguồn:</span>
-                                <span style={{ fontWeight: 600 }}>{targetConns}</span>
-                              </div>
-                            </div>
-
-                            {/* Keywords list */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>Từ khóa ({kwList.length}):</span>
-                              {kwList.map((kw: string, i: number) => (
-                                <span
-                                  key={i}
-                                  style={{
-                                    fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)',
-                                    color: 'var(--color-success)', borderRadius: 4, fontWeight: 600
-                                  }}
-                                >
-                                  {kw}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                              {admin.email && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Mail size={11} /> {admin.email}
                                 </span>
-                              ))}
+                              )}
+                              {admin.zalo_chat_id ? (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
+                                  <MessageCircle size={11} /> Zalo đã liên kết
+                                </span>
+                              ) : (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                                  <MessageCircle size={11} /> Chưa liên kết Zalo
+                                </span>
+                              )}
                             </div>
                           </div>
-                        );
-                      })}
+                          {isSelected && (
+                            <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>Đã chọn</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                    {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).length === 0 && (
+                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>Chưa có tài khoản Admin nào trong hệ thống.</p>
+                    )}
+                  </div>
+                  {dailyReportAdmins.length === 0 && (
+                    <div style={{ marginTop: '0.75rem', padding: '0.625rem 0.875rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Activity size={14} style={{ color: '#b45309', flexShrink: 0 }} />
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho <strong>tất cả tài khoản Admin</strong>.</p>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
 
-          {/* Cấu hình Lọc trùng */}
-          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
-                <RefreshCw size={16} />
-              </span>
-              Cấu hình Nhận diện & Lọc Trùng Lặp
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <label className="form-label">Thời hạn nhận diện trùng lặp (Tháng)</label>
-                <div style={{ position: 'relative', width: 200 }}>
-                  <input 
-                    type="number" 
-                    min={1} 
-                    className="form-input" 
-                    value={duplicateCheckMonths}
-                    onChange={e => setDuplicateCheckMonths(Math.max(1, Number(e.target.value)))}
-                    style={{ paddingRight: 60 }}
-                  />
-                  <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Tháng</span>
-                </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-                  Mặc định là 6 tháng. Đặt 12 tháng nếu muốn giữ khách cũ cho Sale trong vòng 1 năm.
+            {/* Fallback & Blacklist Configs (Processing Tab) */}
+            <div style={{ display: activeTab === 'processing' ? 'block' : 'none', animation: activeTab === 'processing' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Zap size={16} />
+                  </span>
+                  Cấu hình Xử lý Fallback (Khi không khớp luật)
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong>, hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.
                 </p>
+
+                {/* Selector for Fallback Type */}
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      padding: '1rem',
+                      borderRadius: '10px',
+                      border: fallbackType === 'round' ? '2px solid #ef4444' : '1px solid var(--color-border)',
+                      background: fallbackType === 'round' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                      <input
+                        type="radio"
+                        name="fallbackType"
+                        value="round"
+                        checked={fallbackType === 'round'}
+                        onChange={() => setFallbackType('round')}
+                        style={{ accentColor: '#ef4444', margin: 0 }}
+                      />
+                      Phân bổ theo Vòng mặc định
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                      Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.
+                    </span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      padding: '1rem',
+                      borderRadius: '10px',
+                      border: fallbackType === 'admin' ? '2px solid #ef4444' : '1px solid var(--color-border)',
+                      background: fallbackType === 'admin' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                      <input
+                        type="radio"
+                        name="fallbackType"
+                        value="admin"
+                        checked={fallbackType === 'admin'}
+                        onChange={() => setFallbackType('admin')}
+                        style={{ accentColor: '#ef4444', margin: 0 }}
+                      />
+                      Giao cho Admin
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                      Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.
+                    </span>
+                  </label>
+                </div>
+
+                {fallbackType === 'round' ? (
+                  <div style={{ animation: 'fadeIn 0.3s' }}>
+                    <label className="form-label">Chọn Vòng phân bổ mặc định</label>
+                    <CustomSelect
+                      options={[
+                        { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
+                        ...rounds.map(r => ({
+                          value: r.id.toString(),
+                          label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
+                        }))
+                      ]}
+                      value={fallbackRoundId}
+                      onChange={val => setFallbackRoundId(val.toString())}
+                      width="100%"
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+                    <div>
+                      <label className="form-label">Chọn tài khoản Admin nhận data</label>
+                      <CustomSelect
+                        options={[
+                          { value: '', label: '-- Chọn Admin nhận data --' },
+                          ...accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map(a => ({
+                            value: a.id.toString(),
+                            label: a.name,
+                            sublabel: a.email
+                          }))
+                        ]}
+                        value={fallbackAdminId}
+                        onChange={val => setFallbackAdminId(val.toString())}
+                        width="100%"
+                        showAvatars={true}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Địa chỉ Email CC khi xảy ra Fallback</label>
+                      <input
+                        className="form-input"
+                        placeholder="Ví dụ: manager@company.com, admin@company.com"
+                        value={fallbackCcEmail}
+                        onChange={e => setFallbackCcEmail(e.target.value)}
+                      />
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        Ngăn cách nhiều email bằng dấu phẩy. Hệ thống sẽ gửi bản sao thông báo data fallback về các email này.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <ToggleSwitch 
-                  checked={reassignIfOwnerInactive} 
-                  onChange={setReassignIfOwnerInactive} 
-                />
-                <div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Giao lại khi Sale cũ không còn hoạt động</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                    Nếu khách hàng cũ đăng ký lại nhưng Sale phụ trách cũ đã nghỉ việc hoặc không hoạt động, hệ thống sẽ chia lại cho Sale mới. Nếu tắt, vẫn coi là trùng và cập nhật thông tin nhưng không gửi thông báo/nhắc nhở cho bất kỳ ai.
+              {/* Cấu hình Tự động duyệt Ticket */}
+              <div id="auto-approve" className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#10b981', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <CheckCircle size={16} />
+                  </span>
+                  Cấu hình Tự Động Duyệt Ticket
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  Tự động phê duyệt và cộng lượt đền bù khi lý do báo lỗi của Sale chứa các từ khóa định sẵn. Đồng thời gửi thông báo Zalo/Email tự động.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>Kích hoạt Tự động duyệt</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                        Cho phép hệ thống quét từ khóa và tự động duyệt khi Sale gửi ticket báo lỗi
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setTicketAutoApproveEnabled(!ticketAutoApproveEnabled)}
+                      style={{
+                        width: 40, height: 22, borderRadius: 11,
+                        background: ticketAutoApproveEnabled ? 'var(--color-success)' : 'var(--color-border)',
+                        position: 'relative', transition: 'background 0.2s', cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
+                        background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        left: ticketAutoApproveEnabled ? 21 : 3, transition: 'left 0.2s'
+                      }} />
+                    </div>
+                  </div>
+
+                  {ticketAutoApproveEnabled && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                          Danh sách luật duyệt tự động
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRule(null);
+                            setRuleName('');
+                            setRuleActive(true);
+                            setRuleRounds(['all']);
+                            setRuleSales(['all']);
+                            setRuleConnections(['all']);
+                            setRuleKeywords('');
+                            setRuleModalOpen(true);
+                          }}
+                          className="btn btn-primary"
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
+                        >
+                          <Plus size={16} /> Thêm Luật Mới
+                        </button>
+                      </div>
+
+                      {ticketAutoApproveRules.length === 0 ? (
+                        <div style={{
+                          textAlign: 'center', padding: '2rem', border: '2px dashed var(--color-border)',
+                          borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
+                        }}>
+                          Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {ticketAutoApproveRules.map((rule) => {
+                            // Gather human-friendly names
+                            const targetRounds = rule.rounds.includes('all')
+                              ? 'Tất cả vòng'
+                              : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
+
+                            const targetSales = rule.sales.includes('all')
+                              ? 'Tất cả Sales'
+                              : consultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
+
+                            const targetConns = (rule.connections || []).includes('all') || !rule.connections
+                              ? 'Tất cả nguồn'
+                              : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || 'Không xác định';
+
+                            const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
+
+                            return (
+                              <div
+                                key={rule.id}
+                                style={{
+                                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                                  background: rule.active ? 'var(--color-surface)' : 'rgba(0,0,0,0.02)',
+                                  padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                                  position: 'relative', transition: 'all 0.2s',
+                                  opacity: rule.active ? 1 : 0.65
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                  <div>
+                                    <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      {rule.name}
+                                      {!rule.active && (
+                                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
+                                          Tắt
+                                        </span>
+                                      )}
+                                    </h4>
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {/* Quick toggle */}
+                                    <div
+                                      onClick={() => {
+                                        setTicketAutoApproveRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+                                      }}
+                                      style={{
+                                        width: 32, height: 18, borderRadius: 9,
+                                        background: rule.active ? 'var(--color-success)' : 'var(--color-border)',
+                                        position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+                                        alignSelf: 'center', marginRight: '0.5rem'
+                                      }}
+                                    >
+                                      <div style={{
+                                        position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
+                                        background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        left: rule.active ? 16 : 2, transition: 'left 0.2s'
+                                      }} />
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingRule(rule);
+                                        setRuleName(rule.name);
+                                        setRuleActive(rule.active);
+                                        setRuleRounds(rule.rounds);
+                                        setRuleSales(rule.sales);
+                                        setRuleConnections(rule.connections || ['all']);
+                                        setRuleKeywords(Array.isArray(rule.keywords) ? rule.keywords.join(', ') : rule.keywords);
+                                        setRuleModalOpen(true);
+                                      }}
+                                      style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                      className="btn-icon-hover"
+                                      title="Chỉnh sửa"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (window.confirm(`Bạn có chắc chắn muốn xóa luật "${rule.name}"?`)) {
+                                          setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
+                                        }
+                                      }}
+                                      style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                      className="btn-icon-hover"
+                                      title="Xóa"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Details/Tags */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                  <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>Vòng:</span>
+                                    <span style={{ fontWeight: 600 }}>{targetRounds}</span>
+                                  </div>
+                                  <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>Sales:</span>
+                                    <span style={{ fontWeight: 600 }}>{targetSales}</span>
+                                  </div>
+                                  <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>Nguồn:</span>
+                                    <span style={{ fontWeight: 600 }}>{targetConns}</span>
+                                  </div>
+                                </div>
+
+                                {/* Keywords list */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>Từ khóa ({kwList.length}):</span>
+                                  {kwList.map((kw: string, i: number) => (
+                                    <span
+                                      key={i}
+                                      style={{
+                                        fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)',
+                                        color: 'var(--color-success)', borderRadius: 4, fontWeight: 600
+                                      }}
+                                    >
+                                      {kw}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Cấu hình Lọc trùng */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <RefreshCw size={16} />
+                  </span>
+                  Cấu hình Nhận diện & Lọc Trùng Lặp
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label className="form-label">Thời hạn nhận diện trùng lặp (Tháng)</label>
+                    <div style={{ position: 'relative', width: 200 }}>
+                      <input
+                        type="number"
+                        min={1}
+                        className="form-input"
+                        value={duplicateCheckMonths}
+                        onChange={e => setDuplicateCheckMonths(Math.max(1, Number(e.target.value)))}
+                        style={{ paddingRight: 60 }}
+                      />
+                      <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Tháng</span>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                      Mặc định là 6 tháng. Đặt 12 tháng nếu muốn giữ khách cũ cho Sale trong vòng 1 năm.
+                    </p>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <ToggleSwitch
+                      checked={reassignIfOwnerInactive}
+                      onChange={setReassignIfOwnerInactive}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Giao lại khi Sale cũ không còn hoạt động (Mặc định BẬT)</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                        Nếu bật: Khi phát hiện trùng số nhưng Sale cũ phụ trách số đó đã ngừng hoạt động / nghỉ việc / nghỉ phép, lead sẽ được coi là mới và tự động chia lại cho Sale mới đang hoạt động. Nếu tắt: Giữ nguyên Sale cũ phụ trách, cập nhật tương tác mới và không phân bổ lại. (Lưu ý: Với dữ liệu ánh xạ/import lịch sử, lead luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Blacklist Config Card */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#374151', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Shield size={16} />
+                  </span>
+                  Danh sách đen & Loại trừ Data
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và <strong>KHÔNG</strong> được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      Từ khóa loại trừ (Keys)
+                    </label>
+                    <textarea
+                      className="form-input"
+                      style={{ minHeight: 80, resize: 'vertical' }}
+                      placeholder="Ví dụ: spam, test, rác..."
+                      value={exclusionKeys}
+                      onChange={e => setExclusionKeys(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Ngăn cách bằng dấu phẩy. Nếu dữ liệu (Tên, Nguồn, Ghi chú...) chứa bất kỳ từ khóa nào trong danh sách này, hệ thống sẽ tự động bỏ qua.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      Số điện thoại / Email loại trừ
+                    </label>
+                    <textarea
+                      className="form-input"
+                      style={{ minHeight: 80, resize: 'vertical' }}
+                      placeholder="Ví dụ: 0909123456, admin@test.com..."
+                      value={exclusionContacts}
+                      onChange={e => setExclusionContacts(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Ngăn cách bằng dấu phẩy. Chặn đứng các Data Spam từ số điện thoại hoặc Email cụ thể.
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Blacklist Config Card */}
-          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-flex', background: '#374151', color: 'white', padding: 4, borderRadius: 6 }}>
-                <Shield size={16} />
-              </span>
-              Danh sách đen & Loại trừ Data
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và <strong>KHÔNG</strong> được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Từ khóa loại trừ (Keys)
-                </label>
-                <textarea 
-                  className="form-input" 
-                  style={{ minHeight: 80, resize: 'vertical' }}
-                  placeholder="Ví dụ: spam, test, rác..." 
-                  value={exclusionKeys}
-                  onChange={e => setExclusionKeys(e.target.value)}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Ngăn cách bằng dấu phẩy. Nếu dữ liệu (Tên, Nguồn, Ghi chú...) chứa bất kỳ từ khóa nào trong danh sách này, hệ thống sẽ tự động bỏ qua.
+          {/* Right Column: Testing */}
+          {activeTab !== 'duplicate_check' && (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
+              position: 'sticky',
+              top: '6rem',
+              alignSelf: 'start',
+              minWidth: 0,
+              width: '100%'
+            }}>
+              <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Send size={18} color="var(--color-primary)" /> Gửi Test Email
+                </h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
+                  Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
                 </p>
-              </div>
 
-              <div>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Số điện thoại / Email loại trừ
-                </label>
-                <textarea 
-                  className="form-input" 
-                  style={{ minHeight: 80, resize: 'vertical' }}
-                  placeholder="Ví dụ: 0909123456, admin@test.com..." 
-                  value={exclusionContacts}
-                  onChange={e => setExclusionContacts(e.target.value)}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Ngăn cách bằng dấu phẩy. Chặn đứng các Data Spam từ số điện thoại hoặc Email cụ thể.
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
+                      { value: 'assignment', label: 'Test Template Giao Data' },
+                      { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
+                      { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
+                      { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
+                      { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
+                      { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
+                      { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
+                      { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
+                    ]}
+                    value={testType}
+                    onChange={val => setTestType(val.toString())}
+                    width="100%"
+                    direction="down"
+                  />
+
+                  <input
+                    className="form-input"
+                    placeholder="Nhập email nhận test..."
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                  />
+                  <button
+                    className="btn outline"
+                    style={{ width: '100%', justifyContent: 'center' }}
+                    onClick={handleTestEmail}
+                    disabled={testing}
+                  >
+                    {testing ? <Activity size={16} className="spin" /> : <Send size={16} />}
+                    {testing ? "Đang gửi..." : "Gửi Email Test"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-      </div>
-
-        {/* Right Column: Testing */}
-        {activeTab !== 'duplicate_check' && (
-          <div style={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '1.5rem', 
-            position: 'sticky', 
-            top: '6rem', 
-            alignSelf: 'start',
-            minWidth: 0,
-            width: '100%'
-          }}>
-            <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Send size={18} color="var(--color-primary)" /> Gửi Test Email
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
-                Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <CustomSelect 
-                  options={[
-                    { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
-                    { value: 'assignment', label: 'Test Template Giao Data' },
-                    { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
-                    { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
-                    { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
-                    { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
-                    { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
-                    { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
-                    { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
-                  ]}
-                  value={testType}
-                  onChange={val => setTestType(val.toString())}
-                  width="100%"
-                  direction="down"
-                />
-
-                <input 
-                  className="form-input" 
-                  placeholder="Nhập email nhận test..." 
-                  value={testEmail}
-                  onChange={e => setTestEmail(e.target.value)}
-                />
-                <button 
-                  className="btn outline" 
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={handleTestEmail}
-                  disabled={testing}
-                >
-                  {testing ? <Activity size={16} className="spin" /> : <Send size={16} />} 
-                  {testing ? "Đang gửi..." : "Gửi Email Test"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
       )}
       {/* Custom Modal for Auto-Approve Rule */}
       <CustomModal
@@ -2091,7 +2291,7 @@ function doPost(e) {
               <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>Trạng thái hoạt động</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Kích hoạt hoặc tạm ngưng áp dụng luật này</span>
             </div>
-            <div 
+            <div
               onClick={() => setRuleActive(!ruleActive)}
               style={{
                 width: 44, height: 24, borderRadius: 12,

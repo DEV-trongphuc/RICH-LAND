@@ -28,6 +28,28 @@ export const Dashboard = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const getComparisonLabel = (filter: string) => {
+    switch (filter) {
+      case 'Hôm nay':
+        return 'so với hôm qua';
+      case 'Hôm qua':
+        return 'so với ngày trước đó';
+      case '7 ngày qua':
+        return 'so với 7 ngày trước';
+      case '30 ngày qua':
+        return 'so với 30 ngày trước';
+      case 'Tháng này':
+        return 'so với tháng trước';
+      case 'Tháng trước':
+        return 'so với tháng trước nữa';
+      default:
+        if (filter.includes('đến')) {
+          return 'so với kỳ trước';
+        }
+        return 'so với kỳ trước';
+    }
+  };
+
   const fetchDashboard = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
@@ -44,7 +66,10 @@ export const Dashboard = () => {
       if (statsJson.success) setStats(statsJson.data);
       else console.error('Lỗi tải thống kê:', statsJson.message);
       
-      if (logsJson.success) setRecentLogs(logsJson.data.slice(0, 5));
+      if (logsJson.success) {
+        const nonSilentLogs = logsJson.data.filter((log: any) => log.status !== 'silent');
+        setRecentLogs(nonSilentLogs.slice(0, 5));
+      }
       else console.error('Lỗi tải nhật ký:', logsJson.message);
     } catch (e: any) {
       // BUG-04 fix: Bỏ qua lỗi AbortError (do user đổi filter nhanh) - đây KHÔNG phải lỗi thực sự
@@ -191,7 +216,7 @@ export const Dashboard = () => {
                 <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`} style={{ marginTop: 'auto' }}>
                   {card.up !== false ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                   {card.change || '+0%'}
-                  <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>so với hôm qua</span>
+                  <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>{getComparisonLabel(dateFilter)}</span>
                 </div>
               </div>
             </div>

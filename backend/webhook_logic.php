@@ -196,7 +196,7 @@ function findConsultantByEmailOrName($conn, $value) {
     return null;
 }
 
-function checkCRMInteraction($conn, $phone, $email) {
+function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInactive = false) {
     if (empty($phone) && empty($email)) {
         return [
             'isDuplicate' => false,
@@ -211,15 +211,51 @@ function checkCRMInteraction($conn, $phone, $email) {
     $params = [];
     $types = '';
     
-    $phone = normalizePhone($phone);
+    // Split and normalize multiple phone numbers if present
+    $phones = [];
     if (!empty($phone)) {
+        $phoneParts = preg_split('/[,;\/]|(?:\s+hoặc\s+)|(?:\s+or\s+)|(?:\s+và\s+)|(?:\s+and\s+)|\s+/i', (string)$phone);
+        foreach ($phoneParts as $part) {
+            $part = trim($part);
+            if (empty($part)) continue;
+            $norm = normalizePhone($part);
+            if (!empty($norm) && !in_array($norm, $phones)) {
+                $phones[] = $norm;
+            }
+        }
+    }
+    
+    // Split and clean multiple email addresses if present
+    $emails = [];
+    if (!empty($email)) {
+        $emailParts = preg_split('/[,;\/\s]+/i', (string)$email);
+        foreach ($emailParts as $part) {
+            $part = trim(strtolower($part));
+            if (empty($part)) continue;
+            if (strpos($part, '@') !== false && !in_array($part, $emails)) {
+                $emails[] = $part;
+            }
+        }
+    }
+    
+    if (empty($phones) && empty($emails)) {
+        return [
+            'isDuplicate' => false,
+            'monthsSinceLastInteraction' => 0,
+            'assignedTo' => null,
+            'originalAssignedTo' => null,
+            'consultantStatus' => null
+        ];
+    }
+    
+    foreach ($phones as $p) {
         $where[] = "l.phone = ?";
-        $params[] = $phone;
+        $params[] = $p;
         $types .= 's';
     }
-    if (!empty($email)) {
+    foreach ($emails as $e) {
         $where[] = "l.email = ?";
-        $params[] = $email;
+        $params[] = $e;
         $types .= 's';
     }
     
@@ -250,11 +286,11 @@ function checkCRMInteraction($conn, $phone, $email) {
             $reassignIfOwnerInactive = '1'; // Default to ON (mặc định bật)
         }
         
-        if ($reassignIfOwnerInactive === '1') {
+        if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
             $isDuplicate = ($row['consultant_status'] === 'active');
             $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
         } else {
-            // OFF: Always count as duplicate, keep the original owner
+            // OFF or ignored: Always count as duplicate, keep the original owner
             $isDuplicate = true;
             $assignedTo = $row['assigned_to'];
         }

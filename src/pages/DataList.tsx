@@ -6,6 +6,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 type Lead = {
   id: number;
@@ -13,7 +14,7 @@ type Lead = {
   phone: string;
   email: string;
   source: string;
-  status: 'assigned' | 'pending' | 'duplicate' | 'rule_6_month';
+  status: string;
   assigned_to_name: string;
   round_name: string;
   created_at: string;
@@ -24,7 +25,29 @@ type Lead = {
 
 import { fetchAPI } from '../utils/api';
 
+const maskPhone = (phone: string) => {
+  if (!phone || phone === '-') return phone;
+  const clean = phone.replace(/[^\d+]/g, '');
+  if (clean.length < 8) return phone;
+  const start = clean.slice(0, clean.length - 6);
+  const end = clean.slice(-3);
+  return `${start}***${end}`;
+};
+
+const maskEmail = (email: string) => {
+  if (!email || email === '-') return email;
+  const parts = email.split('@');
+  if (parts.length < 2) return email;
+  const name = parts[0];
+  const domain = parts[1];
+  if (name.length <= 3) {
+    return `${name.slice(0, 1)}***@${domain}`;
+  }
+  return `${name.slice(0, 3)}***${name.slice(-1)}@${domain}`;
+};
+
 export const DataList = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
@@ -159,7 +182,14 @@ export const DataList = () => {
   };
 
   const filteredLeads = useMemo(() => {
+    const isFilteringActive = searchTerm.trim().length > 0 || statusFilter !== 'all' || consultantFilter !== 'all';
+    
     return leads.filter(lead => {
+      // By default, do not show silent leads unless filtering is active
+      if (!isFilteringActive && lead.status === 'silent') {
+        return false;
+      }
+      
       const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             lead.phone.includes(searchTerm) || 
                             lead.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -186,12 +216,13 @@ export const DataList = () => {
       case 'reminder': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>;
       case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
       case 'rule_6_month': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>;
+      case 'silent': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>;
       default: return null;
     }
   };
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease-out', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 66px)', minHeight: 0 }}>
+    <div style={{ animation: 'fadeIn 0.3s ease-out', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', minHeight: 0 }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: '1.25rem', flexShrink: 0 }}>
         <div>
@@ -257,6 +288,7 @@ export const DataList = () => {
               { value: 'reminder', label: 'Nhắc lại' },
               { value: 'duplicate', label: 'Trùng lặp' },
               { value: 'rule_6_month', label: 'Quy định 6 tháng' },
+              { value: 'silent', label: 'Chỉ đồng bộ' },
               { value: 'error', label: 'Bị Lỗi' }
             ]}
             value={statusFilter}
@@ -353,9 +385,9 @@ export const DataList = () => {
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {(lead.phone?.length >= 8) ? `${lead.phone.slice(0, lead.phone.length - 6)}***${lead.phone.slice(-3)}` : lead.phone}
+                        {maskPhone(lead.phone)}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
                     </td>
                     {/* <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td> */}
                     <td style={{ padding: '1rem' }}>
@@ -467,12 +499,16 @@ export const DataList = () => {
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Số điện thoại</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.phone}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Phone</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                    </div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.email}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                    </div>
                   </div>
                 </div>
 
