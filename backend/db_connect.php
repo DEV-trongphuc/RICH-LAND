@@ -46,7 +46,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 105) {
+        if ($dbVer >= 106) {
             $runMigration = false;
         }
     }
@@ -335,9 +335,27 @@ if ($runMigration) {
         $conn->query("ALTER TABLE consultants ADD COLUMN work_end_time VARCHAR(5) DEFAULT '23:59' COMMENT 'Giờ làm việc kết thúc (HH:MM)'");
     }
 
+    // distribution_logs covering index for dashboard optimization
+    $chkIdxDashboardOpt = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_dashboard_opt'");
+    if ($chkIdxDashboardOpt && $chkIdxDashboardOpt->num_rows === 0) {
+        $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_dashboard_opt` (`received_at`, `status`, `assigned_to`, `round_id`)");
+    }
+
+    // data_reports created_at index for sorting
+    $chkIdxReportCreated = $conn->query("SHOW INDEX FROM data_reports WHERE Key_name='idx_created_at'");
+    if ($chkIdxReportCreated && $chkIdxReportCreated->num_rows === 0) {
+        $conn->query("ALTER TABLE data_reports ADD INDEX `idx_created_at` (`created_at`)");
+    }
+
+    // data_reports status index for filtering
+    $chkIdxReportStatus = $conn->query("SHOW INDEX FROM data_reports WHERE Key_name='idx_status'");
+    if ($chkIdxReportStatus && $chkIdxReportStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE data_reports ADD INDEX `idx_status` (`status`)");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '105') ON DUPLICATE KEY UPDATE setting_value = '105'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '106') ON DUPLICATE KEY UPDATE setting_value = '106'");
 }
 
 ?>

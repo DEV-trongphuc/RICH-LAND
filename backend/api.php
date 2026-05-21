@@ -948,11 +948,14 @@ switch ($action) {
         }
 
         // Get total count first with all active filters
+        $joinLeads = (strpos($extraCondition, 'l.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id" : "";
+        $joinConsultants = (strpos($extraCondition, 'c.') !== false) ? "LEFT JOIN consultants c ON dl.assigned_to = c.id" : "";
+
         $countRes = $conn->query("
             SELECT COUNT(*) as cnt 
             FROM distribution_logs dl 
-            LEFT JOIN leads l ON dl.lead_id = l.id 
-            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            $joinLeads 
+            $joinConsultants
             WHERE $dateCondition AND $extraCondition
         ");
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
@@ -2471,38 +2474,164 @@ switch ($action) {
 
 
     case 'get_reports':
-        // NEW-01 fix: use prepared statement for round_id filter (was SQL injection via concatenation)
-        $round_id = isset($_GET['round_id']) ? (int) $_GET['round_id'] : 0;
+        // Retrieve query parameters
+        $round_id = isset($_GET['round_id']) ? (int)$_GET['round_id'] : 0;
+        $status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
+        $consultant = isset($_GET['consultant']) ? trim($_GET['consultant']) : '';
+        $dateFrom = isset($_GET['dateFrom']) ? trim($_GET['dateFrom']) : '';
+        $dateTo = isset($_GET['dateTo']) ? trim($_GET['dateTo']) : '';
+        
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 50;
+        if ($page < 1) $page = 1;
+        if ($pageSize < 1) $pageSize = 50;
+        $offset = ($page - 1) * $pageSize;
+
+        // Build base condition and types/params for prepared statement
+        $conds = [];
+        $params = [];
+        $types = "";
 
         if ($round_id > 0) {
-            $sql = "SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
-                           c.name as consultant_name, c.zalo_chat_id, dr.round_name
-                    FROM data_reports r 
-                    JOIN leads l ON r.lead_id = l.id 
-                    JOIN consultants c ON r.consultant_id = c.id
-                    JOIN distribution_rounds dr ON r.round_id = dr.id
-                    WHERE r.round_id = ?
-                    ORDER BY r.created_at DESC";
-            $stmtR = $conn->prepare($sql);
-            $stmtR->bind_param("i", $round_id);
-            $stmtR->execute();
-            $res = $stmtR->get_result();
-        } else {
-            $res = $conn->query("SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
-                           c.name as consultant_name, c.zalo_chat_id, dr.round_name
-                    FROM data_reports r 
-                    JOIN leads l ON r.lead_id = l.id 
-                    JOIN consultants c ON r.consultant_id = c.id
-                    JOIN distribution_rounds dr ON r.round_id = dr.id
-                    ORDER BY r.created_at DESC");
+            $conds[] = "r.round_id = ?";
+            $params[] = $round_id;
+            $types .= "i";
+        }
+        if ($consultant !== '' && $consultant !== 'all') {
+            $conds[] = "c.name = ?";
+            $params[] = $consultant;
+            $types .= "s";
+        }
+        if ($dateFrom !== '') {
+            $conds[] = "r.created_at >= ?";
+            $params[] = $dateFrom . " 00:00:00";
+            $types .= "s";
+        }
+        if ($dateTo !== '') {
+            $conds[] = "r.created_at <= ?";
+            $params[] = $dateTo . " 23:59:59";
+            $types .= "s";
         }
 
-        $data = [];
-        if ($res) {
-            while ($row = $res->fetch_assoc())
-                $data[] = $row;
+        // Stats Condition
+        $statsConds = $conds;
+        $statsParams = $params;
+        $statsTypes = $types;
+
+        // Records Condition (includes status)
+        $recordsConds = $conds;
+        $recordsParams = $params;
+        $recordsTypes = $types;
+        if ($status !== 'all' && in_array($status, ['pending', 'approved', 'rejected'])) {
+            $recordsConds[] = "r.status = ?";
+            $recordsParams[] = $status;
+            $recordsTypes .= "s";
         }
-        echo json_encode(['success' => true, 'data' => $data]);
+
+        $statsWhere = count($statsConds) > 0 ? "WHERE " . implode(" AND ", $statsConds) : "";
+        $recordsWhere = count($recordsConds) > 0 ? "WHERE " . implode(" AND ", $recordsConds) : "";
+
+        // Query 1: Get Stats per status (for badges)
+        $statsSql = "
+            SELECT r.status, COUNT(*) as cnt 
+            FROM data_reports r
+            JOIN leads l ON r.lead_id = l.id
+            JOIN consultants c ON r.consultant_id = c.id
+            JOIN distribution_rounds dr ON r.round_id = dr.id
+            $statsWhere
+            GROUP BY r.status
+        ";
+        $stmtStats = $conn->prepare($statsSql);
+        if (count($statsParams) > 0) {
+            $stmtStats->bind_param($statsTypes, ...$statsParams);
+        }
+        $stmtStats->execute();
+        $resStats = $stmtStats->get_result();
+        
+        $stats = [
+            'pending' => 0,
+            'approved' => 0,
+            'rejected' => 0,
+            'all' => 0
+        ];
+        while ($row = $resStats->fetch_assoc()) {
+            $st = $row['status'];
+            $cnt = (int)$row['cnt'];
+            if (isset($stats[$st])) {
+                $stats[$st] = $cnt;
+            }
+            $stats['all'] += $cnt;
+        }
+
+        // Query 2: Get total records count for pagination
+        $countSql = "
+            SELECT COUNT(*) as cnt
+            FROM data_reports r
+            JOIN leads l ON r.lead_id = l.id
+            JOIN consultants c ON r.consultant_id = c.id
+            JOIN distribution_rounds dr ON r.round_id = dr.id
+            $recordsWhere
+        ";
+        $stmtCount = $conn->prepare($countSql);
+        if (count($recordsParams) > 0) {
+            $stmtCount->bind_param($recordsTypes, ...$recordsParams);
+        }
+        $stmtCount->execute();
+        $totalCount = (int)($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+
+        // Query 3: Get paginated records
+        $recordsSql = "
+            SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
+                   c.name as consultant_name, c.zalo_chat_id, dr.round_name
+            FROM data_reports r
+            JOIN leads l ON r.lead_id = l.id
+            JOIN consultants c ON r.consultant_id = c.id
+            JOIN distribution_rounds dr ON r.round_id = dr.id
+            $recordsWhere
+            ORDER BY r.created_at DESC
+            LIMIT ? OFFSET ?
+        ";
+        $stmtRecords = $conn->prepare($recordsSql);
+        
+        // Append limit and offset to parameters
+        $recordsParams[] = $pageSize;
+        $recordsParams[] = $offset;
+        $recordsTypes .= "ii";
+        
+        $stmtRecords->bind_param($recordsTypes, ...$recordsParams);
+        $stmtRecords->execute();
+        $resRecords = $stmtRecords->get_result();
+
+        $data = [];
+        if ($resRecords) {
+            while ($row = $resRecords->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+
+        // Query 4: Get unique consultants who have reports
+        $consultantsRes = $conn->query("
+            SELECT DISTINCT c.name 
+            FROM data_reports r 
+            JOIN consultants c ON r.consultant_id = c.id 
+            ORDER BY c.name ASC
+        ");
+        $consultants = [];
+        if ($consultantsRes) {
+            while ($row = $consultantsRes->fetch_assoc()) {
+                $consultants[] = $row['name'];
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data,
+            'stats' => $stats,
+            'consultants' => $consultants,
+            'total_count' => $totalCount,
+            'page' => $page,
+            'pageSize' => $pageSize
+        ]);
         break;
 
     case 'approve_report':

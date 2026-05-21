@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertCircle, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -11,25 +11,55 @@ import { Avatar } from '../components/ui/Avatar';
 
 export const Tickets = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
+  const saleFilter = searchParams.get('consultant') || '';
+  const dateFrom = searchParams.get('dateFrom') || '';
+  const dateTo = searchParams.get('dateTo') || '';
+  const currentPage = Number(searchParams.get('page') || '1');
+
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isActioning, setIsActioning] = useState<number | null>(null);
   const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState<any>({ pending: 0, approved: 0, rejected: 0, all: 0 });
+  const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
 
-  // ── NEW: Sale + Date filters ───────────────────────────────────────────────
-  const [saleFilter, setSaleFilter] = useState('');   // consultant_name
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [ticketAutoApprove, setTicketAutoApprove] = useState(false);
 
+  const ITEMS_PER_PAGE = 50;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  const updateParams = (key: string, value: string) => {
+    setSearchParams(prev => {
+      if (value === 'all' || value === '') prev.delete(key);
+      else prev.set(key, value);
+      if (key !== 'page') prev.delete('page');
+      return prev;
+    }, { replace: true });
+  };
+
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const res = await fetchAPI('get_reports');
-      if (res.success) setReports(res.data);
+      const queryParams = new URLSearchParams();
+      queryParams.set('page', String(currentPage));
+      queryParams.set('pageSize', String(ITEMS_PER_PAGE));
+      if (activeFilter !== 'all') queryParams.set('status', activeFilter);
+      if (saleFilter) queryParams.set('consultant', saleFilter);
+      if (dateFrom) queryParams.set('dateFrom', dateFrom);
+      if (dateTo) queryParams.set('dateTo', dateTo);
+
+      const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
+      if (res.success) {
+        setReports(res.data);
+        setTotalCount(res.total_count ?? 0);
+        if (res.stats) setStats(res.stats);
+        if (res.consultants) setConsultantOptions(res.consultants);
+      }
     } catch (e: any) {
       toast.error('Lỗi tải ticket: ' + e.message);
     }
@@ -38,6 +68,9 @@ export const Tickets = () => {
 
   useEffect(() => {
     fetchReports();
+  }, [searchParams]);
+
+  useEffect(() => {
     fetchAPI('get_settings')
       .then(res => {
         if (res.success && res.data) {
@@ -134,25 +167,10 @@ export const Tickets = () => {
     setIsSendingMsg(false);
   };
 
-  // Unique consultants for the sale filter dropdown
-  const consultantOptions = useMemo(() => {
-    const names = [...new Set(reports.map(r => r.consultant_name).filter(Boolean))].sort();
-    return names;
-  }, [reports]);
+  // Since pagination and filters are handled server-side, reports are already filtered
+  const filteredReports = reports;
 
-  // Apply all filters
-  const filteredReports = useMemo(() => {
-    let list = activeFilter === 'all' ? reports : reports.filter(r => r.status === activeFilter);
-    if (saleFilter) list = list.filter(r => r.consultant_name === saleFilter);
-    if (dateFrom) list = list.filter(r => r.created_at && r.created_at >= dateFrom);
-    if (dateTo) {
-      const toEnd = dateTo + ' 23:59:59';
-      list = list.filter(r => r.created_at && r.created_at <= toEnd);
-    }
-    return list;
-  }, [reports, activeFilter, saleFilter, dateFrom, dateTo]);
-
-  const pendingCount = reports.filter(r => r.status === 'pending').length;
+  const pendingCount = stats.pending;
   const hasActiveFilters = saleFilter || dateFrom || dateTo;
 
   const FILTER_TABS = [
@@ -176,8 +194,8 @@ export const Tickets = () => {
         </div>
         <div className="mobile-filter-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {FILTER_TABS.map(tab => (
-            <button key={tab.key} onClick={() => setActiveFilter(tab.key as any)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
-              {tab.label} {tab.key !== 'all' && `(${reports.filter(r => r.status === tab.key).length})`}
+            <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
+              {tab.label} {`(${stats[tab.key]})`}
             </button>
           ))}
           <button onClick={fetchReports} disabled={loading} title="Làm mới" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
@@ -244,7 +262,7 @@ export const Tickets = () => {
               }))
             ]}
             value={saleFilter}
-            onChange={val => setSaleFilter(val.toString())}
+            onChange={val => updateParams('consultant', val.toString())}
             showAvatars={true}
             searchable={true}
             width={200}
@@ -258,7 +276,7 @@ export const Tickets = () => {
             <input
               type="date"
               value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
+              onChange={e => updateParams('dateFrom', e.target.value)}
               className="mobile-w-full"
               style={{
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
@@ -281,7 +299,7 @@ export const Tickets = () => {
             <input
               type="date"
               value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
+              onChange={e => updateParams('dateTo', e.target.value)}
               className="mobile-w-full"
               style={{
                 fontSize: '0.8rem', padding: '7px 10px 7px 28px',
@@ -302,7 +320,15 @@ export const Tickets = () => {
 
         {/* Clear filters */}
         {hasActiveFilters && (
-          <button onClick={() => { setSaleFilter(''); setDateFrom(''); setDateTo(''); }}
+          <button onClick={() => {
+            setSearchParams(prev => {
+              prev.delete('consultant');
+              prev.delete('dateFrom');
+              prev.delete('dateTo');
+              prev.delete('page');
+              return prev;
+            }, { replace: true });
+          }}
             style={{
               fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
               border: '1.5px solid #fca5a5', background: 'linear-gradient(135deg,#fff5f5,#fee2e2)',
@@ -377,7 +403,7 @@ export const Tickets = () => {
           <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
           <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-            {filteredReports.length}/{reports.length} tickets
+            Tổng cộng: {totalCount} tickets
           </span>
         </div>
       </div>
@@ -489,6 +515,60 @@ export const Tickets = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 0 && (
+          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+              Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                disabled={currentPage === 1}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let startPage = 1;
+                  if (totalPages > 5) {
+                    if (currentPage > 3) {
+                      startPage = currentPage - 2;
+                      if (startPage + 4 > totalPages) {
+                        startPage = totalPages - 4;
+                      }
+                    }
+                  }
+                  const pageNum = startPage + i;
+                  return (
+                     <button
+                       key={pageNum}
+                       onClick={() => updateParams('page', pageNum.toString())}
+                       style={{ 
+                         width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                         border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                         background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                         color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                         cursor: 'pointer'
+                       }}
+                     >
+                       {pageNum}
+                     </button>
+                  );
+                })}
+              </div>
+              <button 
+                onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>
