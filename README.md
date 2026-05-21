@@ -1,73 +1,30 @@
-# React + TypeScript + Vite
+# HỆ THỐNG PHÂN PHỐI LEAD (DOMATION DATA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dự án quản lý, đồng bộ và phân phối khách hàng tiềm năng (lead) từ Google Sheets / Landing Page cho đội ngũ tư vấn viên (Sale / Consultant) qua Email và Zalo Bot.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ⚠️ ĐỌC TRƯỚC KHI THỰC THI (HƯỚNG DẪN DÀNH CHO AI AGENTS & DEVELOPERS)
 
-## React Compiler
+> [!IMPORTANT]
+> Để tiết kiệm Token và tránh các lỗi logic nghiệp vụ, bất kỳ AI Agent hoặc lập trình viên nào khi bắt đầu làm việc với codebase này **BẮT BUỘC** phải tuân thủ hai quy tắc sau:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Đọc [base.md](file:///e:/GIAO_DATA_GOOGLESHEETS/base.md) trước tiên**: Tệp tin [base.md](file:///e:/GIAO_DATA_GOOGLESHEETS/base.md) chứa toàn bộ sơ đồ database schema (tên bảng, cột, khóa ngoại, indexes), sơ đồ luồng nghiệp vụ cốt lõi (thuật toán phân phối xoay vòng Round-Robin, cách tính đền bù, xử lý trùng lặp lead) và danh sách cổng API/Zalo chatbot commands. Việc đọc tệp tin này giúp bạn có cái nhìn toàn cảnh mà không cần quét toàn bộ mã nguồn.
+2. **Cập nhật song song [base.md](file:///e:/GIAO_DATA_GOOGLESHEETS/base.md) khi sửa đổi**: Mỗi khi thực hiện thay đổi cấu trúc dữ liệu (như thêm cột, tạo bảng mới trong database di chuyển di động `db_connect.php`), thêm API action mới trong `api.php`, thay đổi logic nghiệp vụ định tuyến/phân phối trong `webhook_logic.php`, hoặc thay đổi cú pháp chatbot trong `zalo_webhook.php`... bạn **PHẢI** cập nhật thông tin đó vào [base.md](file:///e:/GIAO_DATA_GOOGLESHEETS/base.md) ngay lập tức để duy trì tính nhất quán của tài liệu.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## CẤU TRÚC PHÁT TRIỂN & CHẠY DỰ ÁN
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 1. Yêu cầu môi trường
+*   **Backend**: PHP 8.x + MySQL/MariaDB.
+*   **Frontend**: Node.js + NPM (chạy React TypeScript thông qua Vite).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 2. Thiết lập dự án
+*   **Backend**: Cấu hình tệp tin kết nối và biến môi trường tại `/backend/.env` hoặc `/backend/env.php`.
+*   **Frontend**:
+    *   Cài đặt thư viện: `npm install`
+    *   Chạy môi trường phát triển: `npm run dev`
+    *   Biên dịch sản phẩm: `npm run build`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Thông tin cấu trúc chi tiết, các tham số API và sơ đồ luồng vui lòng xem tại **[base.md](file:///e:/GIAO_DATA_GOOGLESHEETS/base.md)**.

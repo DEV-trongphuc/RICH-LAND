@@ -39,14 +39,23 @@ function normalizePhone($phoneRaw) {
     if ($hasPlusPrefix) {
         // If it starts with +84, it's Vietnamese, convert to leading 0
         if (strpos($clean, '84') === 0) {
-            return '0' . substr($clean, 2);
+            $rest = substr($clean, 2);
+            if (strpos($rest, '0') === 0) {
+                return $rest;
+            }
+            return '0' . $rest;
         }
         return '+' . $clean; // Keep other country codes as foreign numbers
     }
 
     // Handle Vietnamese numbers starting with 84 (without leading +)
-    if (strpos($clean, '84') === 0 && (strlen($clean) === 10 || strlen($clean) === 11 || strlen($clean) === 9)) {
-        $clean = '0' . substr($clean, 2);
+    if (strpos($clean, '84') === 0) {
+        $rest = substr($clean, 2);
+        if (strpos($rest, '0') === 0) {
+            $clean = $rest;
+        } elseif (strlen($clean) === 10 || strlen($clean) === 11 || strlen($clean) === 9) {
+            $clean = '0' . $rest;
+        }
     }
 
     // If it does not start with 0, prepend 0 (Vietnamese numbers missing leading 0, e.g. 90555555 -> 090555555)

@@ -127,7 +127,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         // --- KẾT THÚC TEST COMMAND ---
 
         // --- XỬ LÝ COMMANDS BÁO CÁO NHANH (ADMIN ONLY) ---
-        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/round') === 0) {
+        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/round') === 0 || strpos($textLower, '/check') === 0) {
             // Kiểm tra phân quyền Admin
             $isAdmin = false;
             $adminName = '';
@@ -160,7 +160,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                           . "  • [/report] hoặc [/report homnay]: Báo cáo từ {$reportTimeDisplay} hôm qua đến hiện tại.\n\n"
                           . "  • [/report homqua]: Báo cáo của ngày hôm qua ({$reportTimeDisplay} hôm kia → {$reportTimeDisplay} hôm qua).\n\n"
                           . "  • [/report dd/mm]: Báo cáo nguyên ngày dd/mm (00:00 → 23:59).\n\n"
-                          . "  • [/report dd/mm to dd/mm]: Báo cáo khoảng ngày.\n\n\n"
+                          . "  • [/report dd/mm to dd/mm]: Báo cáo khoảng ngày.\n\n"
+                          . "  • [/check sdt_hoặc_email]: Kiểm tra thông tin Lead (vòng, sale, ghi chú...).\n\n\n"
                           . "🎫 2. Quản lý Ticket (Báo lỗi):\n\n"
                           . "  • [/ticket pending]: Xem danh sách ticket đang chờ duyệt.\n\n"
                           . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n\n"
@@ -510,6 +511,114 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 }
                 
                 sendZaloMessage($botToken, $chatId, $roundMsg);
+                exit;
+            }
+
+            if (strpos($textLower, '/check') === 0) {
+                $cmdArg = trim(substr($text, 6)); // Bỏ qua "/check"
+                if (empty($cmdArg)) {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Vui lòng nhập số điện thoại hoặc email để kiểm tra. Ví dụ:\n- `/check 0987654321`\n- `/check mail@example.com`\n- Gõ `/tools` để xem tất cả câu lệnh.");
+                    exit;
+                }
+                
+                // Chuẩn hóa sđt hoặc email
+                $normalizedPhone = normalizePhone($cmdArg);
+                $emailSearch = $cmdArg;
+                
+                // Truy vấn thông tin Lead và Sale
+                $stmtLead = $conn->prepare("
+                    SELECT l.id, l.phone, l.email, l.name, l.source, l.type, l.note, l.created_at, 
+                           c.name as sale_name
+                    FROM leads l 
+                    LEFT JOIN consultants c ON l.assigned_to = c.id 
+                    WHERE (l.phone = ? AND l.phone IS NOT NULL AND l.phone != '') 
+                       OR (l.email = ? AND l.email IS NOT NULL AND l.email != '')
+                    LIMIT 1
+                ");
+                
+                if ($stmtLead) {
+                    $stmtLead->bind_param("ss", $normalizedPhone, $emailSearch);
+                    $stmtLead->execute();
+                    $resLead = $stmtLead->get_result();
+                    
+                    if ($resLead && $rowLead = $resLead->fetch_assoc()) {
+                        $leadId = (int)$rowLead['id'];
+                        
+                        // Lấy thông tin vòng phân bổ từ log phân bổ gần nhất
+                        $roundName = 'Chưa xác định';
+                        $distStatus = '';
+                        $receivedAt = '';
+                        $stmtLog = $conn->prepare("
+                            SELECT dr.round_name, dl.status, dl.received_at 
+                            FROM distribution_logs dl 
+                            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
+                            WHERE dl.lead_id = ? 
+                            ORDER BY dl.id DESC 
+                            LIMIT 1
+                        ");
+                        if ($stmtLog) {
+                            $stmtLog->bind_param("i", $leadId);
+                            $stmtLog->execute();
+                            $resLog = $stmtLog->get_result();
+                            if ($resLog && $rowLog = $resLog->fetch_assoc()) {
+                                $roundName = $rowLog['round_name'];
+                                $distStatus = $rowLog['status'];
+                                $receivedAt = $rowLog['received_at'];
+                                
+                                if (empty($roundName) || $roundName === 'Chưa xác định') {
+                                    if ($distStatus === 'reminder') {
+                                        $roundName = 'Nhắc lại (Trùng số)';
+                                    } elseif ($distStatus === 'silent') {
+                                        $roundName = 'Đồng bộ ẩn (Không định tuyến)';
+                                    } elseif ($distStatus === 'assigned') {
+                                        $roundName = 'Chỉ định trực tiếp';
+                                    } elseif ($distStatus === 'no_consultant') {
+                                        $roundName = 'Không tìm thấy Sale';
+                                    }
+                                }
+                            }
+                            $stmtLog->close();
+                        }
+                        
+                        $checkMsg = "🔍 [ THÔNG TIN LEAD ]\n\n"
+                                  . "👤 Khách hàng: " . ($rowLead['name'] ?: 'Chưa có tên') . "\n"
+                                  . "📞 Số điện thoại: " . ($rowLead['phone'] ?: 'Không có') . "\n"
+                                  . "✉️ Email: " . ($rowLead['email'] ?: 'Không có') . "\n"
+                                  . "🌐 Nguồn: " . ($rowLead['source'] ?: 'Không có') . "\n"
+                                  . "🏷️ Loại: " . ($rowLead['type'] ?: 'Không có') . "\n"
+                                  . "🕒 Ngày tạo: " . date('d/m/Y H:i', strtotime($rowLead['created_at'])) . "\n\n"
+                                  . "🔄 PHÂN BỔ:\n"
+                                  . "  • Vòng: " . $roundName . "\n"
+                                  . "  • Sale nhận: " . ($rowLead['sale_name'] ?: 'Chưa giao') . "\n";
+                        
+                        if (!empty($receivedAt)) {
+                            $checkMsg .= "  • Thời gian nhận: " . date('d/m/Y H:i:s', strtotime($receivedAt)) . "\n";
+                        }
+                        
+                        if (!empty($distStatus)) {
+                            $statusMap = [
+                                'success' => '✅ Thành công',
+                                'error' => '❌ Lỗi',
+                                'reminder' => '🔄 Nhắc lại',
+                                'silent' => '🔇 Đồng bộ ẩn',
+                                'assigned' => '👤 Chỉ định trực tiếp',
+                                'no_consultant' => '⚠️ Không có Sale nhận',
+                                'pending_work_hours' => '⏳ Chờ ngoài giờ'
+                            ];
+                            $statusEmoji = $statusMap[$distStatus] ?? $distStatus;
+                            $checkMsg .= "  • Trạng thái: " . $statusEmoji . "\n";
+                        }
+                        
+                        $checkMsg .= "\n📝 GHI CHÚ:\n" . ($rowLead['note'] ?: 'Không có ghi chú.');
+                        
+                        sendZaloMessage($botToken, $chatId, $checkMsg);
+                    } else {
+                        sendZaloMessage($botToken, $chatId, "❌ Không tìm thấy Lead nào trong hệ thống khớp với thông tin: \"$cmdArg\"");
+                    }
+                    $stmtLead->close();
+                } else {
+                    sendZaloMessage($botToken, $chatId, "❌ Lỗi hệ thống khi kiểm tra dữ liệu.");
+                }
                 exit;
             }
         }
