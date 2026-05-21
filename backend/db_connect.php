@@ -46,7 +46,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 104) {
+        if ($dbVer >= 105) {
             $runMigration = false;
         }
     }
@@ -313,6 +313,12 @@ if ($runMigration) {
         $conn->query("ALTER TABLE sheet_connections ADD COLUMN is_initialized TINYINT(1) DEFAULT 0 COMMENT 'Đánh dấu đã đồng bộ lần đầu'");
     }
 
+    // Auto-migrate: thêm cột sync_mode vào sheet_connections
+    $chkSyncMode = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'sync_mode'");
+    if ($chkSyncMode && $chkSyncMode->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN sync_mode ENUM('all', 'new_only') DEFAULT 'all' COMMENT 'Chế độ quét dữ liệu' AFTER require_both_contact");
+    }
+
     // Auto-migrate: thêm cài đặt mặc định cho báo cáo tuần
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_day', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_weekly_report_time', '08:00')");
@@ -331,7 +337,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '104') ON DUPLICATE KEY UPDATE setting_value = '104'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '105') ON DUPLICATE KEY UPDATE setting_value = '105'");
 }
 
 ?>

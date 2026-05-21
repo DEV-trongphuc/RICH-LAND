@@ -1049,100 +1049,108 @@ switch ($action) {
         break;
 
     case 'add_consultant':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $name = trim($input['name'] ?? '');
-        $email = trim($input['email'] ?? '');
-        $status = $input['status'] ?? 'active';
-        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
-        // NEW-03 fix: validate required fields
-        if (empty($name)) {
-            echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
-            break;
-        }
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
-            break;
-        }
-        // Check duplicate email
-        $dupChk = $conn->prepare("SELECT id FROM consultants WHERE email = ?");
-        $dupChk->bind_param("s", $email);
-        $dupChk->execute();
-        $isDup = $dupChk->get_result()->num_rows > 0;
-        $dupChk->close();
-        if ($isDup) {
-            echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
-            break;
-        }
-        $work_start_time = trim($input['work_start_time'] ?? '00:00');
-        $work_end_time = trim($input['work_end_time'] ?? '23:59');
-        if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
-        if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $name = trim($input['name'] ?? '');
+            $email = trim($input['email'] ?? '');
+            $status = $input['status'] ?? 'active';
+            $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+            // NEW-03 fix: validate required fields
+            if (empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
+                break;
+            }
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
+                break;
+            }
+            // Check duplicate email
+            $dupChk = $conn->prepare("SELECT id FROM consultants WHERE email = ?");
+            $dupChk->bind_param("s", $email);
+            $dupChk->execute();
+            $isDup = $dupChk->get_result()->num_rows > 0;
+            $dupChk->close();
+            if ($isDup) {
+                echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
+                break;
+            }
+            $work_start_time = trim($input['work_start_time'] ?? '00:00');
+            $work_end_time = trim($input['work_end_time'] ?? '23:59');
+            if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
+            if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
 
-        $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time);
-        $stmt->execute();
-        $newId = $conn->insert_id;
-        $stmt->close();
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time);
+            $stmt->execute();
+            $newId = $conn->insert_id;
+            $stmt->close();
 
-        // Gửi Email Welcome kèm link Zalo Bot
-        require_once 'mailer.php';
-        $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link'");
-        $botLink = "https://zalo.me/1185588456243371597"; // Default
-        if ($settingStmt && $settingStmt->num_rows > 0) {
-            $row = $settingStmt->fetch_assoc();
-            if (!empty($row['setting_value']))
-                $botLink = $row['setting_value'];
+            // Gửi Email Welcome kèm link Zalo Bot
+            require_once 'mailer.php';
+            $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_link'");
+            $botLink = "https://zalo.me/1185588456243371597"; // Default
+            if ($settingStmt && $settingStmt->num_rows > 0) {
+                $row = $settingStmt->fetch_assoc();
+                if (!empty($row['setting_value']))
+                    $botLink = $row['setting_value'];
+            }
+            sendWelcomeEmailToSale($newId, $email, $name, $botLink, true);
+            logAdminAction($conn, $decodedUser['id'], 'ADD_CONSULTANT', ['id' => $newId, 'name' => $name, 'email' => $email, 'status' => $status]);
+
+            echo json_encode(['success' => true, 'id' => $newId]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        sendWelcomeEmailToSale($newId, $email, $name, $botLink, true);
-        logAdminAction($conn, $decodedUser['id'], 'ADD_CONSULTANT', ['id' => $newId, 'name' => $name, 'email' => $email, 'status' => $status]);
-
-        echo json_encode(['success' => true, 'id' => $newId]);
         break;
 
     case 'edit_consultant':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($input['id'] ?? 0);
-        $name = trim($input['name'] ?? '');
-        $email = trim($input['email'] ?? '');
-        $status = $input['status'] ?? 'active';
-        $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
-        $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
-        $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            $name = trim($input['name'] ?? '');
+            $email = trim($input['email'] ?? '');
+            $status = $input['status'] ?? 'active';
+            $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
+            $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
+            $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
 
-        if (!$id) {
-            echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
-            break;
-        }
-        if (empty($name)) {
-            echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
-            break;
-        }
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
-            break;
-        }
-        // Check duplicate email — but exclude self
-        $dupChk2 = $conn->prepare("SELECT id FROM consultants WHERE email = ? AND id != ?");
-        $dupChk2->bind_param("si", $email, $id);
-        $dupChk2->execute();
-        $isDup = $dupChk2->get_result()->num_rows > 0;
-        $dupChk2->close();
-        if ($isDup) {
-            echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
-            break;
-        }
-        $work_start_time = trim($input['work_start_time'] ?? '00:00');
-        $work_end_time = trim($input['work_end_time'] ?? '23:59');
-        if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
-        if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+            if (!$id) {
+                echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+                break;
+            }
+            if (empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
+                break;
+            }
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Email không hợp lệ']);
+                break;
+            }
+            // Check duplicate email — but exclude self
+            $dupChk2 = $conn->prepare("SELECT id FROM consultants WHERE email = ? AND id != ?");
+            $dupChk2->bind_param("si", $email, $id);
+            $dupChk2->execute();
+            $isDup = $dupChk2->get_result()->num_rows > 0;
+            $dupChk2->close();
+            if ($isDup) {
+                echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
+                break;
+            }
+            $work_start_time = trim($input['work_start_time'] ?? '00:00');
+            $work_end_time = trim($input['work_end_time'] ?? '23:59');
+            if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
+            if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
 
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=? WHERE id=?");
-        $stmt->bind_param("ssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=? WHERE id=?");
+            $stmt->bind_param("ssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        $stmt->close();
-        echo json_encode(['success' => true]);
         break;
 
     case 'delete_consultant':
@@ -1625,50 +1633,60 @@ switch ($action) {
         break;
 
     case 'add_connection':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $name = $input['sheet_name'] ?? '';
-        $spreadsheetId = $input['spreadsheet_id'] ?? '';
-        $webhookToken = $input['webhook_token'] ?? '';
-        $isActive = (int) ($input['is_active'] ?? 1);
-        $syncInterval = (int) ($input['sync_interval'] ?? 15);
-        $requireBoth = (int) ($input['require_both_contact'] ?? 0);
-        $connectionType = $input['connection_type'] ?? 'sheets';
-        $syncMode = $input['sync_mode'] ?? 'all';
-        $isSilent = (int) ($input['is_silent'] ?? 0);
-        $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
-        $emailTemplate = $input['email_template'] ?? null;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $name = $input['sheet_name'] ?? '';
+            $spreadsheetId = $input['spreadsheet_id'] ?? '';
+            $webhookToken = $input['webhook_token'] ?? '';
+            $isActive = (int) ($input['is_active'] ?? 1);
+            $syncInterval = (int) ($input['sync_interval'] ?? 15);
+            $requireBoth = (int) ($input['require_both_contact'] ?? 0);
+            $connectionType = $input['connection_type'] ?? 'sheets';
+            $syncMode = $input['sync_mode'] ?? 'all';
+            $isSilent = (int) ($input['is_silent'] ?? 0);
+            $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
+            $emailTemplate = $input['email_template'] ?? null;
 
-        $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
-        $stmt->bind_param("sssiiissiis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $conn->insert_id, 'sheet_name' => $name]);
+            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
+            $stmt->bind_param("sssiiissiis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate);
+            if ($stmt->execute()) {
+                $insertId = $stmt->insert_id;
+                logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $insertId, 'sheet_name' => $name]);
+            } else {
+                $insertId = 0;
+            }
+            $stmt->close();
+            echo json_encode(['success' => true, 'id' => $insertId]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        $insertId = $conn->insert_id;
-        $stmt->close();
-        echo json_encode(['success' => true, 'id' => $insertId]);
         break;
 
     case 'edit_connection':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($input['id'] ?? 0);
-        $name = $input['sheet_name'] ?? '';
-        $spreadsheetId = $input['spreadsheet_id'] ?? '';
-        $isActive = (int) ($input['is_active'] ?? 1);
-        $syncInterval = (int) ($input['sync_interval'] ?? 15);
-        $requireBoth = (int) ($input['require_both_contact'] ?? 0);
-        $connectionType = $input['connection_type'] ?? 'sheets';
-        $syncMode = $input['sync_mode'] ?? 'all';
-        $isSilent = (int) ($input['is_silent'] ?? 0);
-        $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
-        $emailTemplate = $input['email_template'] ?? null;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            $name = $input['sheet_name'] ?? '';
+            $spreadsheetId = $input['spreadsheet_id'] ?? '';
+            $isActive = (int) ($input['is_active'] ?? 1);
+            $syncInterval = (int) ($input['sync_interval'] ?? 15);
+            $requireBoth = (int) ($input['require_both_contact'] ?? 0);
+            $connectionType = $input['connection_type'] ?? 'sheets';
+            $syncMode = $input['sync_mode'] ?? 'all';
+            $isSilent = (int) ($input['is_silent'] ?? 0);
+            $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
+            $emailTemplate = $input['email_template'] ?? null;
 
-        $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL WHERE id=?");
-        $stmt->bind_param("ssiiissiiis", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL WHERE id=?");
+            $stmt->bind_param("ssiiissiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        $stmt->close();
-        echo json_encode(['success' => true]);
         break;
 
     case 'delete_connection':
@@ -1793,27 +1811,35 @@ switch ($action) {
         break;
 
     case 'toggle_connection':
-        $id = (int) ($_GET['id'] ?? 0);
-        $active = (int) ($_GET['active'] ?? 0);
-        $stmt = $conn->prepare("UPDATE sheet_connections SET is_active=? WHERE id=?");
-        $stmt->bind_param("ii", $active, $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONNECTION', ['id' => $id, 'is_active' => $active]);
+        try {
+            $id = (int) ($_GET['id'] ?? 0);
+            $active = (int) ($_GET['active'] ?? 0);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET is_active=? WHERE id=?");
+            $stmt->bind_param("ii", $active, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONNECTION', ['id' => $id, 'is_active' => $active]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        $stmt->close();
-        echo json_encode(['success' => true]);
         break;
 
     case 'toggle_require_both':
-        $id = (int) ($_GET['id'] ?? 0);
-        $require = (int) ($_GET['require'] ?? 0);
-        $stmt = $conn->prepare("UPDATE sheet_connections SET require_both_contact=? WHERE id=?");
-        $stmt->bind_param("ii", $require, $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'TOGGLE_REQUIRE_BOTH', ['id' => $id, 'require_both_contact' => $require]);
+        try {
+            $id = (int) ($_GET['id'] ?? 0);
+            $require = (int) ($_GET['require'] ?? 0);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET require_both_contact=? WHERE id=?");
+            $stmt->bind_param("ii", $require, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'TOGGLE_REQUIRE_BOTH', ['id' => $id, 'require_both_contact' => $require]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        $stmt->close();
-        echo json_encode(['success' => true]);
         break;
 
     case 'get_rules':
@@ -2593,41 +2619,137 @@ switch ($action) {
         break;
 
     case 'add_mapping':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $conn_id = $input['connection_id'] ?? 0;
-        $sheet_col = $input['sheet_column'] ?? '';
-        $sys_field = $input['system_field'] ?? '';
-        $custom_label = $input['custom_label'] ?? null;
-        $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field, custom_label) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isss", $conn_id, $sheet_col, $sys_field, $custom_label);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'ADD_MAPPING', ['connection_id' => $conn_id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $conn_id = (int)($input['connection_id'] ?? 0);
+            $sheet_col = trim($input['sheet_column'] ?? '');
+            $sys_field = trim($input['system_field'] ?? '');
+            $custom_label = isset($input['custom_label']) ? trim($input['custom_label']) : null;
+            if (empty($custom_label)) {
+                $custom_label = null;
+            }
+
+            if ($conn_id <= 0 || empty($sheet_col) || empty($sys_field)) {
+                throw new Exception("Dữ liệu đầu vào không hợp lệ.");
+            }
+
+            // Check connection exists
+            $connCheck = $conn->prepare("SELECT id FROM sheet_connections WHERE id = ?");
+            $connCheck->bind_param("i", $conn_id);
+            $connCheck->execute();
+            if (!$connCheck->get_result()->fetch_assoc()) {
+                $connCheck->close();
+                throw new Exception("Kết nối không tồn tại.");
+            }
+            $connCheck->close();
+
+            // Validate unique system fields
+            $uniqueFields = ['phone', 'email', 'name', 'assigned_to', 'saleperson'];
+            if (in_array($sys_field, $uniqueFields)) {
+                $checkStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND system_field = ?");
+                $checkStmt->bind_param("is", $conn_id, $sys_field);
+                $checkStmt->execute();
+                if ($checkStmt->get_result()->fetch_assoc()) {
+                    $checkStmt->close();
+                    throw new Exception("Trường hệ thống này đã được liên kết với một cột khác.");
+                }
+                $checkStmt->close();
+            }
+
+            // Validate exact duplicate mapping
+            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND LOWER(sheet_column) = LOWER(?) AND system_field = ?");
+            $dupStmt->bind_param("iss", $conn_id, $sheet_col, $sys_field);
+            $dupStmt->execute();
+            if ($dupStmt->get_result()->fetch_assoc()) {
+                $dupStmt->close();
+                throw new Exception("Cột này đã được liên kết với trường hệ thống này.");
+            }
+            $dupStmt->close();
+
+            $stmt = $conn->prepare("INSERT INTO field_mappings (connection_id, sheet_column, system_field, custom_label) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("isss", $conn_id, $sheet_col, $sys_field, $custom_label);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'ADD_MAPPING', ['connection_id' => $conn_id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+            }
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true]);
         break;
 
     case 'edit_mapping':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($input['id'] ?? 0);
-        $sheet_col = $input['sheet_column'] ?? '';
-        $sys_field = $input['system_field'] ?? '';
-        $custom_label = $input['custom_label'] ?? null;
-        $stmt = $conn->prepare("UPDATE field_mappings SET sheet_column=?, system_field=?, custom_label=? WHERE id=?");
-        $stmt->bind_param("sssi", $sheet_col, $sys_field, $custom_label, $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'EDIT_MAPPING', ['id' => $id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            $sheet_col = trim($input['sheet_column'] ?? '');
+            $sys_field = trim($input['system_field'] ?? '');
+            $custom_label = isset($input['custom_label']) ? trim($input['custom_label']) : null;
+            if (empty($custom_label)) {
+                $custom_label = null;
+            }
+
+            if ($id <= 0 || empty($sheet_col) || empty($sys_field)) {
+                throw new Exception("Dữ liệu đầu vào không hợp lệ.");
+            }
+
+            // Get connection_id and check if mapping exists
+            $mappingCheck = $conn->prepare("SELECT connection_id FROM field_mappings WHERE id = ?");
+            $mappingCheck->bind_param("i", $id);
+            $mappingCheck->execute();
+            $mappingRow = $mappingCheck->get_result()->fetch_assoc();
+            if (!$mappingRow) {
+                $mappingCheck->close();
+                throw new Exception("Mapping không tồn tại.");
+            }
+            $conn_id = (int)$mappingRow['connection_id'];
+            $mappingCheck->close();
+
+            // Validate unique system fields
+            $uniqueFields = ['phone', 'email', 'name', 'assigned_to', 'saleperson'];
+            if (in_array($sys_field, $uniqueFields)) {
+                $checkStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND system_field = ? AND id != ?");
+                $checkStmt->bind_param("isi", $conn_id, $sys_field, $id);
+                $checkStmt->execute();
+                if ($checkStmt->get_result()->fetch_assoc()) {
+                    $checkStmt->close();
+                    throw new Exception("Trường hệ thống này đã được liên kết với một cột khác.");
+                }
+                $checkStmt->close();
+            }
+
+            // Validate exact duplicate mapping
+            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND LOWER(sheet_column) = LOWER(?) AND system_field = ? AND id != ?");
+            $dupStmt->bind_param("issi", $conn_id, $sheet_col, $sys_field, $id);
+            $dupStmt->execute();
+            if ($dupStmt->get_result()->fetch_assoc()) {
+                $dupStmt->close();
+                throw new Exception("Cột này đã được liên kết với trường hệ thống này.");
+            }
+            $dupStmt->close();
+
+            $stmt = $conn->prepare("UPDATE field_mappings SET sheet_column=?, system_field=?, custom_label=? WHERE id=?");
+            $stmt->bind_param("sssi", $sheet_col, $sys_field, $custom_label, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_MAPPING', ['id' => $id, 'sheet_column' => $sheet_col, 'system_field' => $sys_field]);
+            }
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true]);
         break;
 
     case 'delete_mapping':
-        $id = (int) ($_GET['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM field_mappings WHERE id=?");
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'DELETE_MAPPING', ['id' => $id]);
+        try {
+            $id = (int) ($_GET['id'] ?? 0);
+            $stmt = $conn->prepare("DELETE FROM field_mappings WHERE id=?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'DELETE_MAPPING', ['id' => $id]);
+            }
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-        echo json_encode(['success' => true]);
         break;
 
     case 'get_settings':
@@ -2835,65 +2957,20 @@ switch ($action) {
         break;
 
     case 'add_account':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $username = trim($input['username'] ?? '');
-        $password = $input['password'] ?? '';
-        $name = trim($input['name'] ?? '');
-        $role = $input['role'] ?? 'viewer';
-        $email = trim($input['email'] ?? '');
-        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $username = trim($input['username'] ?? '');
+            $password = $input['password'] ?? '';
+            $name = trim($input['name'] ?? '');
+            $role = $input['role'] ?? 'viewer';
+            $email = trim($input['email'] ?? '');
+            $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
 
-        if (empty($username) || empty($password) || empty($name)) {
-            echo json_encode(['success' => false, 'message' => 'Tên hiển thị, username và mật khẩu là bắt buộc']);
-            break;
-        }
-        // FEATURE: Email bắt buộc cho tất cả tài khoản (trừ Super Admin id=1 là tài khoản đặc biệt)
-        if (empty($email)) {
-            echo json_encode(['success' => false, 'message' => 'Email là bắt buộc để đăng nhập']);
-            break;
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'message' => 'Định dạng email không hợp lệ']);
-            break;
-        }
-
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-        $token = bin2hex(random_bytes(32));
-
-        $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?)");
-        $stmt->bind_param("sssssss", $username, $hash, $name, $role, $email, $token, $zalo_chat_id);
-
-        if ($stmt->execute()) {
-            $newId = $conn->insert_id;
-
-            // Build confirm link
-            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $basePath = preg_replace('/\/api\.php.*$/i', '', $_SERVER['REQUEST_URI'] ?? '');
-            $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token . '&p=' . base64_encode($password);
-
-            require_once 'mailer.php';
-            sendAdminConfirmationEmail($email, $name, $confirmLink);
-            logAdminAction($conn, $decodedUser['id'], 'ADD_ACCOUNT', ['id' => $newId, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
-
-            echo json_encode(['success' => true, 'id' => $newId]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Username hoặc Email có thể đã tồn tại']);
-        }
-        break;
-
-    case 'edit_account':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($input['id'] ?? 0);
-        $username = trim($input['username'] ?? '');
-        $password = $input['password'] ?? '';
-        $name = trim($input['name'] ?? '');
-        $role = $input['role'] ?? 'viewer';
-        $email = trim($input['email'] ?? '');
-        $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
-
-        // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
-        if ($id !== 1) {
+            if (empty($username) || empty($password) || empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Tên hiển thị, username và mật khẩu là bắt buộc']);
+                break;
+            }
+            // FEATURE: Email bắt buộc cho tất cả tài khoản (trừ Super Admin id=1 là tài khoản đặc biệt)
             if (empty($email)) {
                 echo json_encode(['success' => false, 'message' => 'Email là bắt buộc để đăng nhập']);
                 break;
@@ -2902,26 +2979,87 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Định dạng email không hợp lệ']);
                 break;
             }
-        }
 
-        // Đảm bảo nếu email trống (chỉ được phép đối với Super Admin id=1) thì lưu là NULL thay vì chuỗi rỗng
-        // để tránh lỗi vi phạm UNIQUE constraint trong MySQL (nhiều dòng có thể là NULL, nhưng chỉ có một dòng có thể là '')
-        $dbEmail = empty($email) ? null : $email;
-
-        if (!empty($password)) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
-            $stmt->bind_param("ssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $id);
-        } else {
-            $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
-            $stmt->bind_param("sssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $id);
-        }
+            $token = bin2hex(random_bytes(32));
 
-        if ($stmt->execute()) {
-            logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);
+            $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?)");
+            $stmt->bind_param("sssssss", $username, $hash, $name, $role, $email, $token, $zalo_chat_id);
+
+            if ($stmt->execute()) {
+                $newId = $conn->insert_id;
+
+                // Build confirm link
+                $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $basePath = preg_replace('/\/api\.php.*$/i', '', $_SERVER['REQUEST_URI'] ?? '');
+                $confirmLink = $proto . '://' . $host . $basePath . '/confirm.php?token=' . $token . '&p=' . base64_encode($password);
+
+                require_once 'mailer.php';
+                sendAdminConfirmationEmail($email, $name, $confirmLink);
+                logAdminAction($conn, $decodedUser['id'], 'ADD_ACCOUNT', ['id' => $newId, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
+
+                echo json_encode(['success' => true, 'id' => $newId]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Username hoặc Email có thể đã tồn tại']);
+            }
+        } catch (Exception $e) {
+            $msg = $e->getMessage();
+            if (strpos($msg, 'Duplicate entry') !== false || $e->getCode() === 1062) {
+                $msg = 'Username hoặc Email có thể đã tồn tại';
+            }
+            echo json_encode(['success' => false, 'message' => $msg]);
+        }
+        break;
+
+    case 'edit_account':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            $username = trim($input['username'] ?? '');
+            $password = $input['password'] ?? '';
+            $name = trim($input['name'] ?? '');
+            $role = $input['role'] ?? 'viewer';
+            $email = trim($input['email'] ?? '');
+            $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+
+            // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
+            if ($id !== 1) {
+                if (empty($email)) {
+                    echo json_encode(['success' => false, 'message' => 'Email là bắt buộc để đăng nhập']);
+                    break;
+                }
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    echo json_encode(['success' => false, 'message' => 'Định dạng email không hợp lệ']);
+                    break;
+                }
+            }
+
+            // Đảm bảo nếu email trống (chỉ được phép đối với Super Admin id=1) thì lưu là NULL thay vì chuỗi rỗng
+            // để tránh lỗi vi phạm UNIQUE constraint trong MySQL (nhiều dòng có thể là NULL, nhưng chỉ có một dòng có thể là '')
+            $dbEmail = empty($email) ? null : $email;
+
+            if (!empty($password)) {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
+                $stmt->bind_param("ssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $id);
+            } else {
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
+                $stmt->bind_param("sssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $id);
+            }
+
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);
+            }
+        } catch (Exception $e) {
+            $msg = $e->getMessage();
+            if (strpos($msg, 'Duplicate entry') !== false || $e->getCode() === 1062) {
+                $msg = 'Cập nhật thất bại, username hoặc email có thể bị trùng';
+            }
+            echo json_encode(['success' => false, 'message' => $msg]);
         }
         break;
 
@@ -4315,9 +4453,15 @@ switch ($action) {
                     $values[] = $label . ': ' . $data[$colName];
                 }
             }
-            if (count($values) === 1 && in_array($systemField, ['phone', 'email', 'name'])) {
-                $colName = $mappingsArray[$systemField][0]['sheet_column'];
-                return $data[$colName] ?? '';
+            // For unique/specific system fields, return the raw value directly of the first matched non-empty column to keep it clean and prevent corruption.
+            if (in_array($systemField, ['phone', 'email', 'name', 'assigned_to', 'saleperson'])) {
+                foreach ($mappingsArray[$systemField] as $mapItem) {
+                    $colName = $mapItem['sheet_column'];
+                    if (isset($data[$colName]) && $data[$colName] !== '') {
+                        return $data[$colName];
+                    }
+                }
+                return '';
             }
             return implode("\n", $values);
         };

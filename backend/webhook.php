@@ -136,11 +136,15 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
             $values[] = $label . ': ' . $data[$colName];
         }
     }
-    // For phone, email, name: return the raw value directly to keep it clean.
-    // For other fields (note, type, source): always keep the Label: Value format so it goes to a new line nicely.
-    if (count($values) === 1 && in_array($systemField, ['phone', 'email', 'name'])) {
-        $colName = $mappingsArray[$systemField][0]['sheet_column'];
-        return $data[$colName] ?? '';
+    // For unique/specific system fields, return the raw value directly of the first matched non-empty column to keep it clean and prevent corruption.
+    if (in_array($systemField, ['phone', 'email', 'name', 'assigned_to', 'saleperson'])) {
+        foreach ($mappingsArray[$systemField] as $mapItem) {
+            $colName = $mapItem['sheet_column'];
+            if (isset($data[$colName]) && $data[$colName] !== '') {
+                return $data[$colName];
+            }
+        }
+        return '';
     }
     return implode("\n", $values);
 }

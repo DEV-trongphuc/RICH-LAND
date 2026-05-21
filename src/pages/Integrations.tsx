@@ -354,12 +354,39 @@ export const Integrations = () => {
   };
   const handleSaveMapping = async () => {
     if (!newMappingCol.trim() || !selected || isSavingMapping) return;
+    const colCleaned = newMappingCol.trim();
+    const mappings = selected.mappings || [];
+
+    // 1. Check duplicate sheet_col and sys_field mapping
+    const isDuplicateExact = mappings.some(
+      m => Number(m.id) !== Number(editingMappingId) &&
+           m.sheet_column.toLowerCase() === colCleaned.toLowerCase() &&
+           m.system_field === newMappingField
+    );
+    if (isDuplicateExact) {
+      toast.error('Liên kết này đã tồn tại.');
+      return;
+    }
+
+    // 2. Check duplicate mapping for unique system fields
+    const uniqueFields = ['phone', 'email', 'name', 'assigned_to', 'saleperson'];
+    if (uniqueFields.includes(newMappingField)) {
+      const isUniqueMapped = mappings.some(
+        m => Number(m.id) !== Number(editingMappingId) && m.system_field === newMappingField
+      );
+      if (isUniqueMapped) {
+        const fieldLabel = SYSTEM_FIELDS.find(f => f.value === newMappingField)?.label || newMappingField;
+        toast.error(`Trường '${fieldLabel}' đã được liên kết với một cột khác.`);
+        return;
+      }
+    }
+
     setIsSavingMapping(true);
     try {
       const action = editingMappingId ? 'edit_mapping' : 'add_mapping';
       const payload = editingMappingId
-        ? { id: editingMappingId, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel }
-        : { connection_id: selected.id, sheet_column: newMappingCol, system_field: newMappingField, custom_label: newMappingCustomLabel };
+        ? { id: editingMappingId, sheet_column: colCleaned, system_field: newMappingField, custom_label: newMappingCustomLabel.trim() }
+        : { connection_id: selected.id, sheet_column: colCleaned, system_field: newMappingField, custom_label: newMappingCustomLabel.trim() };
 
       const json = await fetchAPI(action, {
         method: 'POST',
@@ -371,6 +398,8 @@ export const Integrations = () => {
         setNewMappingCustomLabel('');
         setEditingMappingId(null);
         toast.success(editingMappingId ? 'Đã cập nhật mapping' : 'Đã thêm mapping');
+      } else {
+        toast.error(json.message || 'Thao tác thất bại');
       }
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message);
@@ -1253,7 +1282,38 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     onChange={e => setNewMappingCustomLabel(e.target.value)}
                   />
                 </div>
-                <button onClick={() => { if (newMappingCol) { setTempMappings([...tempMappings, { sheet_col: newMappingCol, sys_field: newMappingField, custom_label: newMappingCustomLabel }]); setNewMappingCustomLabel(''); } }} className="btn" style={{ background: 'var(--color-primary)', color: 'white', height: 38, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                <button
+                  onClick={() => {
+                    if (!newMappingCol) return;
+                    const colCleaned = newMappingCol.trim();
+                    if (!colCleaned) return;
+
+                    // 1. Check duplicate sheet_col and sys_field mapping
+                    const isDuplicateExact = tempMappings.some(
+                      m => m.sheet_col.toLowerCase() === colCleaned.toLowerCase() && m.sys_field === newMappingField
+                    );
+                    if (isDuplicateExact) {
+                      toast.error('Liên kết này đã tồn tại trong danh sách.');
+                      return;
+                    }
+
+                    // 2. Check duplicate mapping for unique system fields
+                    const uniqueFields = ['phone', 'email', 'name', 'assigned_to', 'saleperson'];
+                    if (uniqueFields.includes(newMappingField)) {
+                      const isUniqueMapped = tempMappings.some(m => m.sys_field === newMappingField);
+                      if (isUniqueMapped) {
+                        const fieldLabel = SYSTEM_FIELDS.find(f => f.value === newMappingField)?.label || newMappingField;
+                        toast.error(`Trường '${fieldLabel}' đã được liên kết với một cột khác.`);
+                        return;
+                      }
+                    }
+
+                    setTempMappings([...tempMappings, { sheet_col: colCleaned, sys_field: newMappingField, custom_label: newMappingCustomLabel.trim() }]);
+                    setNewMappingCustomLabel('');
+                  }}
+                  className="btn"
+                  style={{ background: 'var(--color-primary)', color: 'white', height: 38, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}
+                >
                   <Plus size={16} /> Thêm
                 </button>
               </div>
@@ -1311,7 +1371,24 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
               <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
                 <span onClick={() => setAddStep(1)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
-                <button className="btn" onClick={() => { setEmailTemplate(generateDefaultTemplate(tempMappings)); setAddStep(3); }} style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    if (tempMappings.length === 0) {
+                      toast.error('Vui lòng thêm ít nhất một liên kết cột.');
+                      return;
+                    }
+                    const hasPhone = tempMappings.some(m => m.sys_field === 'phone');
+                    const hasEmail = tempMappings.some(m => m.sys_field === 'email');
+                    if (!hasPhone && !hasEmail) {
+                      toast.error('Bắt buộc phải liên kết cột Số Điện Thoại hoặc Email.');
+                      return;
+                    }
+                    setEmailTemplate(generateDefaultTemplate(tempMappings));
+                    setAddStep(3);
+                  }}
+                  style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
                   Tiếp tục thiết lập Email <ChevronRight size={16} />
                 </button>
               </div>
