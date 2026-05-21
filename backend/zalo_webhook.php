@@ -364,6 +364,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         $stmtLog->bind_param("iss", $adminAccountId, $detailsJson, $ip);
                         $stmtLog->execute();
                         $stmtLog->close();
+                        pruneAdminLogs($conn);
                     }
 
                     $conn->commit();

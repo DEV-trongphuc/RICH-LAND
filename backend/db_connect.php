@@ -39,6 +39,16 @@ if (!function_exists('get_system_setting')) {
     }
 }
 
+if (!function_exists('pruneAdminLogs')) {
+    function pruneAdminLogs($conn) {
+        $conn->query("DELETE FROM admin_logs WHERE id < (
+            SELECT MIN(id) FROM (
+                SELECT id FROM admin_logs ORDER BY id DESC LIMIT 1000
+            ) tmp
+        )");
+    }
+}
+
 
 $runMigration = true;
 $checkSettings = $conn->query("SHOW TABLES LIKE 'system_settings'");

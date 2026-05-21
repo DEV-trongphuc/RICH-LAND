@@ -165,6 +165,7 @@ function logAdminAction($conn, $accountId, $action, $details = []) {
         $stmt->bind_param("isss", $accountId, $action, $detailsJson, $ip);
         $stmt->execute();
         $stmt->close();
+        pruneAdminLogs($conn);
     }
 }
 
@@ -3162,7 +3163,7 @@ switch ($action) {
                              FROM admin_logs al 
                              LEFT JOIN accounts a ON al.account_id = a.id 
                              ORDER BY al.created_at DESC 
-                             LIMIT 200");
+                             LIMIT 1000");
         $data = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
