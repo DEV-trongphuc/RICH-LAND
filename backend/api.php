@@ -4022,7 +4022,7 @@ switch ($action) {
                         'consultant_id' => $assignedTo,
                         'name' => $cRow['name'],
                         'email' => $cRow['email'],
-                        'round_name' => 'Check trùng (Khách cũ < ' . $dupCheckMonths . ' tháng)',
+                        'round_name' => 'sẽ nhắc lại ko tính vòng vì trùng dưới ' . $dupCheckMonths . ' tháng',
                         'reason' => 'Khách cũ đăng ký lại trong hạn định ' . $dupCheckMonths . ' tháng. Chuyển thẳng cho Sale cũ: ' . $cRow['name'] . '.'
                     ],
                     'trace' => [
