@@ -299,9 +299,11 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $stmtC->bind_param('i', $consultantId);
     $stmtC->execute();
     $resC = $stmtC->get_result();
+    $chatId = '';
+    if ($resC->num_rows > 0) {
+        $chatId = $resC->fetch_assoc()['zalo_chat_id'];
+    }
     $stmtC->close();
-    if ($resC->num_rows === 0) return false;
-    $chatId = $resC->fetch_assoc()['zalo_chat_id'];
     if (!$chatId) return false;
 
     $msg = "[ THÔNG BÁO BÙ DATA ]\n\n";

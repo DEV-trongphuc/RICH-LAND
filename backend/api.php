@@ -549,16 +549,18 @@ switch ($action) {
         $stmtSale->bind_param("s", $googleEmail);
         $stmtSale->execute();
         $resSale = $stmtSale->get_result();
-        $stmtSale->close();
-
+        $sale = null;
         if ($resSale->num_rows > 0) {
             $sale = $resSale->fetch_assoc();
+        }
+        $stmtSale->close();
+
+        if ($sale) {
             if ($sale['status'] !== 'active' && $sale['status'] !== 'leave') {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Tài khoản Tư vấn viên của bạn đã bị ngừng hoạt động.'
                 ]);
-                $stmtSale->close();
                 break;
             }
 
@@ -1566,12 +1568,13 @@ switch ($action) {
                 require_once __DIR__ . '/zalo_bot.php';
 
                 // Fetch round name
-                $rStmt = $conn->prepare("SELECT name, round_name FROM distribution_rounds WHERE id = ?");
+                $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
                 $rStmt->bind_param("i", $roundId);
                 $rStmt->execute();
                 $rRes = $rStmt->get_result();
                 $roundRow = $rRes->fetch_assoc();
-                $roundName = $roundRow ? ($roundRow['name'] ?: $roundRow['round_name']) : "Vòng ID $roundId";
+                $roundName = $roundRow ? $roundRow['round_name'] : "Vòng ID $roundId";
+                $rStmt->close();
 
                 $stmtFetch = $conn->prepare("
                     SELECT rc.compensation_count, c.name, c.email
@@ -4006,6 +4009,41 @@ switch ($action) {
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
             require_once __DIR__ . '/webhook_logic.php'; // For getLeadHistoryTimeline
+
+            // Notify old consultant of compensation if applicable
+            if ($compensate_old_sale && $old_consultant_id) {
+                $oldConsultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                $oldConsultStmt->bind_param("i", $old_consultant_id);
+                $oldConsultStmt->execute();
+                $oldConsultant = $oldConsultStmt->get_result()->fetch_assoc();
+                $oldConsultStmt->close();
+
+                if ($oldConsultant) {
+                    $oldCName = $oldConsultant['name'];
+                    $oldCEmail = $oldConsultant['email'];
+                    $oldCZalo = $oldConsultant['zalo_chat_id'];
+                    $lName = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
+
+                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+                    if (!empty($botToken) && !empty($oldCZalo)) {
+                        $zaloMsg = "[ ĐỀN BÙ DATA ]\n\n"
+                            . "Chào $oldCName, Lead \"$lName\" của bạn đã được chuyển giao cho Tư vấn viên khác.\n\n"
+                            . "Hệ thống đã tự động ghi nhận 1 lượt đền bù data mới cho bạn ở vòng này.";
+                        sendZaloMessage($botToken, $oldCZalo, $zaloMsg);
+                    }
+
+                    if (!empty($oldCEmail)) {
+                        $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
+                        $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
+                                      <p>Chào $oldCName,</p>
+                                      <p>Lead <strong>$lName</strong> đã được chuyển giao cho Tư vấn viên khác.</p>
+                                      <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ này.</p>";
+                        sendEmailNotification($oldCEmail, $emailSubj, 'Thông báo đền bù', $emailBody, '');
+                    }
+                }
+            }
 
             // Fetch round name
             $roundNameStr = '';

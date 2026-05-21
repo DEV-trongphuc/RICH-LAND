@@ -499,28 +499,162 @@ export const Accounts = () => {
                           return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Không có chi tiết</span>;
                         }
                         if (details.message && Object.keys(details).length === 1) {
-                          return <span>{details.message}</span>;
+                          return <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{details.message}</span>;
                         }
+
+                        const KEY_LABELS: Record<string, string> = {
+                          round_id: 'Vòng (ID)',
+                          round_name: 'Tên vòng',
+                          compensations: 'Bù data',
+                          log_id: 'ID log',
+                          lead_id: 'ID lead',
+                          lead_name: 'Tên lead',
+                          phone: 'Số điện thoại',
+                          new_consultant_id: 'ID TVV mới',
+                          new_consultant_name: 'Tên TVV mới',
+                          is_duplicate: 'Trùng lặp',
+                          keys: 'Cấu hình thay đổi',
+                          id: 'ID',
+                          name: 'Tên hiển thị',
+                          email: 'Email đăng nhập',
+                          status: 'Trạng thái',
+                          target_round_id: 'Vòng chuyển hướng',
+                          logical_operator: 'Điều kiện logic',
+                          sheet_name: 'Tên trang tính',
+                          sheet_column: 'Cột trang tính',
+                          system_field: 'Trường hệ thống',
+                          connection_id: 'ID kết nối',
+                          message: 'Thông báo',
+                          admin_ids: 'Admin nhận thông báo',
+                          compensate_skipped: 'Bù cho người cũ',
+                          skipped_consultant_id: 'ID người cũ'
+                        };
+
+                        const renderValue = (key: string, val: any) => {
+                          if (key === 'compensations' && typeof val === 'object' && val !== null) {
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                {Object.entries(val as any).map(([cid, count]: [string, any]) => (
+                                  <span key={cid} style={{ 
+                                    display: 'inline-flex', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    background: Number(count) > 0 ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                                    color: Number(count) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                    border: Number(count) > 0 ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid var(--color-border)',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600
+                                  }}>
+                                    ID {cid}: {String(count)} lượt
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+
+                          if (key === 'keys' && Array.isArray(val)) {
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                {val.map((k: string) => (
+                                  <span key={k} style={{ 
+                                    display: 'inline-flex', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '6px', 
+                                    background: 'var(--color-bg)',
+                                    border: '1px solid var(--color-border)',
+                                    color: 'var(--color-text-light)',
+                                    fontSize: '0.7rem',
+                                    fontFamily: 'monospace'
+                                  }}>
+                                    {k}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+
+                          if (key === 'admin_ids' && Array.isArray(val)) {
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                {val.map((id: any) => (
+                                  <span key={id} style={{ 
+                                    display: 'inline-flex', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#3b82f6',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600
+                                  }}>
+                                    Admin ID {id}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+
+                          if (typeof val === 'boolean') {
+                            return val ? (
+                              <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>Có (Trùng)</span>
+                            ) : (
+                              <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>Không</span>
+                            );
+                          }
+
+                          if (typeof val === 'object' && val !== null) {
+                            return <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{JSON.stringify(val)}</span>;
+                          }
+
+                          if (key === 'status') {
+                            if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Hoạt động</span>;
+                            if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Ngừng HĐ</span>;
+                            return <span>{String(val)}</span>;
+                          }
+
+                          return <span style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>{String(val)}</span>;
+                        };
+
                         return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '300px', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '6px', 
+                            padding: '8px 12px', 
+                            background: '#f8fafc', 
+                            borderRadius: '8px', 
+                            border: '1px solid var(--color-border-light)',
+                            maxWidth: '450px',
+                            minWidth: '240px',
+                            fontSize: '0.8rem' 
+                          }}>
                             {Object.entries(details).map(([key, val]) => {
-                              let displayVal = '';
-                              if (typeof val === 'object' && val !== null) {
-                                displayVal = JSON.stringify(val);
-                              } else {
-                                displayVal = String(val);
-                              }
+                              const label = KEY_LABELS[key] || key;
+                              const isBlockElement = (key === 'compensations' || key === 'keys' || key === 'admin_ids');
                               return (
-                                <div key={key} style={{ display: 'flex', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{key}:</span>
-                                  <span style={{ color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={displayVal}>{displayVal}</span>
+                                <div key={key} style={{ 
+                                  display: 'flex', 
+                                  flexDirection: isBlockElement ? 'column' : 'row',
+                                  alignItems: isBlockElement ? 'flex-start' : 'center',
+                                  gap: isBlockElement ? '2px' : '8px',
+                                  lineHeight: '1.4'
+                                }}>
+                                  <span style={{ 
+                                    fontWeight: 600, 
+                                    color: 'var(--color-text-muted)', 
+                                    minWidth: isBlockElement ? 'auto' : '100px',
+                                    flexShrink: 0
+                                  }}>
+                                    {label}:
+                                  </span>
+                                  <div style={{ flexGrow: 1 }}>{renderValue(key, val)}</div>
                                 </div>
                               );
                             })}
                           </div>
                         );
                       } catch {
-                        return <span style={{ fontFamily: 'monospace' }}>{String(detailsRaw || '')}</span>;
+                        return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: '#f8fafc', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
                       }
                     };
 
