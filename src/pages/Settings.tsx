@@ -42,6 +42,24 @@ const maskEmail = (email: string) => {
   return name.slice(0, 2) + '***' + name.slice(-1) + '@' + domain;
 };
 
+const formatExcelDate = (val: string) => {
+  if (!val) return '';
+  const trimmed = val.trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const num = Number(trimmed);
+    if (num > 20000 && num < 60000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const d = date.getDate().toString().padStart(2, '0');
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const y = date.getFullYear();
+        return `${d}/${m}/${y}`;
+      }
+    }
+  }
+  return trimmed;
+};
+
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -255,10 +273,9 @@ export const Settings = () => {
 
   useEffect(() => {
     fetchSettings();
-    fetchImportHistory();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['processing', 'mail', 'zalo', 'report'].includes(tabParam)) {
+    if (tabParam && ['processing', 'mail', 'zalo', 'report', 'duplicate_check'].includes(tabParam)) {
       setActiveTab(tabParam as any);
       if (window.location.hash === '#auto-approve') {
         setTimeout(() => {
@@ -268,6 +285,12 @@ export const Settings = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'duplicate_check') {
+      fetchImportHistory();
+    }
+  }, [activeTab]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -2399,7 +2422,79 @@ function doPost(e) {
         confirmText="Bắt đầu nhập"
         cancelText="Hủy"
         confirmType="primary"
-      />
+        width="750px"
+      >
+        {localRows.length > 0 && (
+          <div style={{ marginTop: '1rem', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
+            <div style={{ background: '#f8fafc', padding: '10px 16px', fontSize: '0.8rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+              Xem trước 5 dòng dữ liệu đầu tiên:
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Khách hàng</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Liên hệ</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Ngày</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Sale phụ trách</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {localRows.slice(0, 5).map((row, idx) => {
+                    const phone = phoneCol ? String(row[phoneCol] || '').trim() : '';
+                    const email = emailCol ? String(row[emailCol] || '').trim() : '';
+                    const name = nameCol ? String(row[nameCol] || '').trim() : '';
+                    const date = dateCol ? String(row[dateCol] || '').trim() : '';
+                    const salepersonVal = salepersonCol ? String(row[salepersonCol] || '').trim() : '';
+
+                    // Match with consultants list on frontend
+                    const matchedSale = consultants.find(c => 
+                      (c.name && c.name.toLowerCase() === salepersonVal.toLowerCase()) || 
+                      (c.email && c.email.toLowerCase() === salepersonVal.toLowerCase()) ||
+                      (c.email && c.email.toLowerCase().split('@')[0] === salepersonVal.toLowerCase()) ||
+                      (c.username && c.username.toLowerCase() === salepersonVal.toLowerCase())
+                    );
+
+                    const saleDisplayName = matchedSale ? matchedSale.name : salepersonVal;
+                    const saleSubText = matchedSale ? matchedSale.email : (salepersonVal.includes('@') ? salepersonVal : '');
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: idx < Math.min(localRows.length, 5) - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                        <td style={{ padding: '10px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar name={name || 'Không có tên'} size={32} />
+                            <span style={{ fontWeight: 600 }}>{name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{phone ? maskPhone(phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{email ? maskEmail(email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
+                          {date ? formatExcelDate(date) : <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>-</span>}
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          {saleDisplayName ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <Avatar name={saleDisplayName} size={24} />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <strong style={{ fontWeight: 600 }}>{saleDisplayName}</strong>
+                                {saleSubText && <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{saleSubText}</span>}
+                              </div>
+                            </div>
+                          ) : <span style={{ color: 'var(--color-text-muted)' }}>-</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 };

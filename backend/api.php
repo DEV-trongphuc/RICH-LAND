@@ -228,7 +228,7 @@ switch ($action) {
             WHERE l.source = 'Excel Import' 
                OR l.note LIKE '%Nhap du lieu cu%'
             ORDER BY dl.id DESC
-            LIMIT 100
+            LIMIT 10000
         ");
         $data = [];
         while ($row = $res->fetch_assoc()) {

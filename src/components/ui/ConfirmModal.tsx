@@ -11,6 +11,8 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   confirmType?: 'danger' | 'primary' | 'success';
+  children?: React.ReactNode;
+  width?: string | number;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,7 +23,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   message = 'Bạn có chắc chắn muốn xóa mục này không? Hành động này không thể hoàn tác.',
   confirmText = 'Xóa',
   cancelText = 'Hủy',
-  confirmType = 'danger'
+  confirmType = 'danger',
+  width,
+  children
 }) => {
   let btnClass = 'btn danger';
   let iconBg = 'var(--color-danger-light)';
@@ -38,9 +42,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   }
 
   return (
-    <CustomModal isOpen={isOpen} onClose={onClose} title={title}>
+    <CustomModal isOpen={isOpen} onClose={onClose} title={title} width={width}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ 
             width: 40, height: 40, borderRadius: '50%', background: iconBg, 
             color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
@@ -48,9 +52,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <AlertTriangle size={20} />
           </div>
           <div>
-            <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', whiteSpace: 'pre-line' }}>{message}</p>
+            {message && <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', whiteSpace: 'pre-line', margin: 0 }}>{message}</p>}
           </div>
         </div>
+
+        {children}
         
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
           <button className="btn outline" onClick={onClose}>{cancelText}</button>

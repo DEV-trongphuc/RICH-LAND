@@ -63,7 +63,7 @@ export const DataList = () => {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'this_month')}`);
+      const json = await fetchAPI(`get_logs&date=${encodeURIComponent(searchParams.get('date') || 'this_month')}&limit=all`);
       if (json.success) {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
