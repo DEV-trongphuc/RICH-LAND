@@ -802,3 +802,32 @@ function simulateNextConsultantInRound($conn, $roundId) {
     return $chosenConsultant;
 }
 
+/**
+ * Check if a given time (HH:MM) is within the consultant's working hours.
+ * Supports intervals spanning midnight (e.g. 22:00 to 06:00).
+ */
+function isConsultantInWorkHours($timeStr, $start, $end) {
+    $start = trim($start ?? '00:00');
+    $end = trim($end ?? '23:59');
+    $timeStr = trim($timeStr ?? '');
+    
+    if (empty($start) || !preg_match('/^\d{2}:\d{2}$/', $start)) $start = '00:00';
+    if (empty($end) || !preg_match('/^\d{2}:\d{2}$/', $end)) $end = '23:59';
+    if (empty($timeStr) || !preg_match('/^\d{2}:\d{2}$/', $timeStr)) $timeStr = date('H:i');
+    
+    if ($start === '00:00' && $end === '23:59') {
+        return true;
+    }
+    if ($start === $end) {
+        return true;
+    }
+    
+    if ($start < $end) {
+        return ($timeStr >= $start && $timeStr <= $end);
+    } else {
+        // Crosses midnight
+        return ($timeStr >= $start || $timeStr <= $end);
+    }
+}
+
+

@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'get_zalo_send_logs'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -204,6 +204,19 @@ function getTicketNotifyAdmins($conn) {
 }
 
 switch ($action) {
+    case 'get_zalo_send_logs':
+        $logFile = __DIR__ . '/zalo_send_log.txt';
+        if (file_exists($logFile)) {
+            $content = file_get_contents($logFile);
+            if (strlen($content) > 10000) {
+                $content = substr($content, -10000);
+            }
+            echo json_encode(['success' => true, 'logs' => $content]);
+        } else {
+            echo json_encode(['success' => true, 'logs' => 'No logs found.']);
+        }
+        break;
+
     case 'get_import_history':
         if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'assistant')) {
             http_response_code(403);
@@ -882,8 +895,18 @@ switch ($action) {
             $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
         }
 
+        $extraCondition = "1=1";
+        if (isset($_GET['status'])) {
+            $status = $conn->real_escape_string($_GET['status']);
+            $extraCondition .= " AND dl.status = '$status'";
+        }
+        if (isset($_GET['exclude_status'])) {
+            $excludeStatus = $conn->real_escape_string($_GET['exclude_status']);
+            $extraCondition .= " AND dl.status != '$excludeStatus'";
+        }
+
         // BUG-04 fix: get total count first so UI can warn if truncated
-        $countRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs dl WHERE $dateCondition");
+        $countRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs dl WHERE $dateCondition AND $extraCondition");
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
 
         $LIMIT = 500;
@@ -909,7 +932,7 @@ switch ($action) {
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             LEFT JOIN data_reports r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
-            WHERE $dateCondition
+            WHERE $dateCondition AND $extraCondition
             ORDER BY dl.received_at DESC 
             LIMIT $LIMIT
         ");
@@ -1050,8 +1073,13 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
             break;
         }
-        $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $name, $email, $status, $zalo_chat_id);
+        $work_start_time = trim($input['work_start_time'] ?? '00:00');
+        $work_end_time = trim($input['work_end_time'] ?? '23:59');
+        if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
+        if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+
+        $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time);
         $stmt->execute();
         $newId = $conn->insert_id;
         $stmt->close();
@@ -1103,8 +1131,13 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Email này đã tồn tại trong hệ thống']);
             break;
         }
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=? WHERE id=?");
-        $stmt->bind_param("ssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $id);
+        $work_start_time = trim($input['work_start_time'] ?? '00:00');
+        $work_end_time = trim($input['work_end_time'] ?? '23:59');
+        if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
+        if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=? WHERE id=?");
+        $stmt->bind_param("ssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $id);
         if ($stmt->execute()) {
             logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
         }
@@ -3592,20 +3625,46 @@ switch ($action) {
     case 'send_quick_zalo_message':
         $input = json_decode(file_get_contents('php://input'), true);
         $consultant_id = (int) ($input['consultant_id'] ?? 0);
+        $account_id = (int) ($input['account_id'] ?? 0);
         $message = trim($input['message'] ?? '');
 
-        if (!$consultant_id || empty($message)) {
-            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin người nhận hoặc nội dung tin nhắn']);
+        if (empty($message)) {
+            echo json_encode(['success' => false, 'message' => 'Nội dung tin nhắn không được để trống']);
             break;
         }
 
-        $stmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-        $stmt->bind_param("i", $consultant_id);
-        $stmt->execute();
-        $consultant = $stmt->get_result()->fetch_assoc();
+        $targetName = '';
+        $targetEmail = '';
+        $targetZaloChatId = '';
+        $isAccount = false;
 
-        if (!$consultant) {
-            echo json_encode(['success' => false, 'message' => 'Không tìm thấy Tư vấn viên']);
+        if ($account_id > 0) {
+            $stmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM accounts WHERE id = ? LIMIT 1");
+            $stmt->bind_param("i", $account_id);
+            $stmt->execute();
+            $user = $stmt->get_result()->fetch_assoc();
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản quản trị']);
+                break;
+            }
+            $targetName = $user['name'];
+            $targetEmail = $user['email'];
+            $targetZaloChatId = $user['zalo_chat_id'];
+            $isAccount = true;
+        } else if ($consultant_id > 0) {
+            $stmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $stmt->bind_param("i", $consultant_id);
+            $stmt->execute();
+            $user = $stmt->get_result()->fetch_assoc();
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy Tư vấn viên']);
+                break;
+            }
+            $targetName = $user['name'];
+            $targetEmail = $user['email'];
+            $targetZaloChatId = $user['zalo_chat_id'];
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin người nhận']);
             break;
         }
 
@@ -3617,24 +3676,32 @@ switch ($action) {
         $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
         $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
-        if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
-            $zaloMsg = "[ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]\n\n"
-                . "Chào {$consultant['name']},\n\n"
+        if (!empty($botToken) && !empty($targetZaloChatId)) {
+            $zaloMsg = "[ TIN NHẮN TỪ BAN QUẢN TRỊ ]\n\n"
+                . "Chào {$targetName},\n\n"
                 . $message;
-            $sentZalo = sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+            $sentZalo = sendZaloMessage($botToken, $targetZaloChatId, $zaloMsg);
         }
 
         // 2. Send Email
-        if (!empty($consultant['email'])) {
+        if (!empty($targetEmail)) {
             require_once __DIR__ . '/mailer.php';
-            sendQuickMessageEmailToSale($consultant['email'], $consultant['name'], $message);
+            sendQuickMessageEmailToSale($targetEmail, $targetName, $message);
             $sentEmail = true;
         }
 
-        if ($sentZalo || $sentEmail) {
-            echo json_encode(['success' => true]);
+        if ($sentZalo && $sentEmail) {
+            echo json_encode(['success' => true, 'message' => 'Đã gửi tin nhắn thành công qua cả Zalo Bot và Email!']);
+        } else if ($sentZalo) {
+            echo json_encode(['success' => true, 'message' => 'Đã gửi tin nhắn thành công qua Zalo Bot!']);
+        } else if ($sentEmail) {
+            if (!empty($targetZaloChatId)) {
+                echo json_encode(['success' => true, 'message' => 'Đã gửi qua Email thành công, nhưng gửi qua Zalo Bot thất bại (kiểm tra lại Token Zalo Bot hoặc kết nối).']);
+            } else {
+                echo json_encode(['success' => true, 'message' => 'Đã gửi qua Email thành công (Tài khoản chưa liên kết Zalo Bot nên không thể gửi qua Zalo).']);
+            }
         } else {
-            echo json_encode(['success' => false, 'message' => 'Gửi thất bại. TVV chưa có Email và chưa liên kết Zalo.']);
+            echo json_encode(['success' => false, 'message' => 'Gửi thất bại. Người nhận chưa cấu hình Email và chưa liên kết Zalo Bot.']);
         }
         break;
 

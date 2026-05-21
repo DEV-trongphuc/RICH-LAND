@@ -57,7 +57,7 @@ export const Dashboard = () => {
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
       const [statsJson, logsJson] = await Promise.all([
         fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`),
-        fetchAPI('get_logs')
+        fetchAPI('get_logs&exclude_status=silent')
       ]);
       
       // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
@@ -313,9 +313,34 @@ export const Dashboard = () => {
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span className="badge" style={{ background: log.status === 'assigned' ? 'var(--color-success-light)' : 'var(--color-border)', color: log.status === 'assigned' ? 'var(--color-success)' : 'var(--color-text)', border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
-                          {log.status === 'assigned' ? (log.round_name || 'Đã chia') : (log.status === 'duplicate' ? 'Trùng lặp' : log.status)}
-                        </span>
+                        {(() => {
+                          const getBadgeConfig = (status: string, roundName?: string) => {
+                            switch (status) {
+                              case 'assigned':
+                                return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: roundName || 'Đã chia' };
+                              case 'compensation':
+                                return { bg: '#e0e7ff', color: '#4f46e5', text: 'Data Bù' };
+                              case 'pending_work_hours':
+                                return { bg: '#ffedd5', color: '#ea580c', text: 'Chờ giờ làm' };
+                              case 'duplicate':
+                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Trùng lặp' };
+                              case 'pending':
+                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Chờ chia' };
+                              case 'error':
+                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Bị lỗi' };
+                              case 'silent':
+                                return { bg: '#e2e8f0', color: '#475569', text: 'Chỉ đồng bộ' };
+                              default:
+                                return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
+                            }
+                          };
+                          const badge = getBadgeConfig(log.status, log.round_name);
+                          return (
+                            <span className="badge" style={{ background: badge.bg, color: badge.color, border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
+                              {badge.text}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}

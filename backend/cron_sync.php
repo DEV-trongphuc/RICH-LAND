@@ -42,7 +42,99 @@ if (!function_exists('logSync')) {
     }
 }
 
+if (!function_exists('releasePendingWorkHoursLeads')) {
+    function releasePendingWorkHoursLeads($conn) {
+        logSync("Checking for pending work hours leads to release...");
+        
+        // Select all logs pending work hours
+        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message,
+                       l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
+                       l.source as lead_source, l.type as lead_type, l.note as lead_note,
+                       c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time,
+                       r.round_name, r.cc_emails
+                FROM distribution_logs dl
+                JOIN leads l ON dl.lead_id = l.id
+                JOIN consultants c ON dl.assigned_to = c.id
+                LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+                WHERE dl.status = 'pending_work_hours'";
+                
+        $res = $conn->query($sql);
+        if (!$res) {
+            logSync("Error querying pending work hours leads.");
+            return;
+        }
+        
+        $currentTime = date('H:i');
+        $releasedCount = 0;
+        
+        while ($row = $res->fetch_assoc()) {
+            $whStart = $row['work_start_time'] ?? '00:00';
+            $whEnd = $row['work_end_time'] ?? '23:59';
+            
+            if (isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                // Determine original status
+                $newStatus = (strpos($row['message'], 'compensation') !== false) ? 'compensation' : 'assigned';
+                
+                // Update status first to prevent duplicate notifications
+                $conn->begin_transaction();
+                try {
+                    $stmtUp = $conn->prepare("UPDATE distribution_logs SET status = ?, message = CONCAT(message, '\n[Released at ', NOW(), ']') WHERE id = ? AND status = 'pending_work_hours'");
+                    $stmtUp->bind_param("si", $newStatus, $row['log_id']);
+                    $stmtUp->execute();
+                    $affected = $stmtUp->affected_rows;
+                    $stmtUp->close();
+                    $conn->commit();
+                    
+                    if ($affected > 0) {
+                        logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
+                        
+                        // Send Email
+                        sendLeadAssignedEmailToSale(
+                            $row['consultant_email'],
+                            $row['consultant_name'],
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $row['cc_emails'] ?? '',
+                            $row['round_name'] ?? '',
+                            $row['lead_id'],
+                            $row['assigned_to'],
+                            $row['round_id'] ?? 0
+                        );
+                        
+                        // Send Zalo Message
+                        sendLeadAssignedZaloMessageToSale(
+                            $row['assigned_to'],
+                            $row['consultant_name'],
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $row['round_name'] ?? '',
+                            $row['lead_id'],
+                            $row['round_id'] ?? 0
+                        );
+                        
+                        $releasedCount++;
+                    }
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    logSync("Error releasing log ID {$row['log_id']}: " . $e->getMessage());
+                }
+            }
+        }
+        
+        if ($releasedCount > 0) {
+            logSync("Successfully released $releasedCount pending leads.");
+        } else {
+            logSync("No pending leads released.");
+        }
+    }
+}
+
 logSync("Starting Google Sheets Sync Cronjob...");
+releasePendingWorkHoursLeads($conn);
 
 // Get active connections
 $sql = "SELECT * FROM sheet_connections WHERE is_active = 1";
@@ -449,6 +541,22 @@ foreach ($connections as $connItem) {
                         $assignedConsultantId = $assignResult['id'];
                         $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
                         $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
+
+                        // Check working hours
+                        $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+                        $whStmt->bind_param("i", $assignedConsultantId);
+                        $whStmt->execute();
+                        $whRes = $whStmt->get_result();
+                        if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                            $whStart = $whRow['work_start_time'] ?? '00:00';
+                            $whEnd = $whRow['work_end_time'] ?? '23:59';
+                            $currentTime = date('H:i');
+                            if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                                $cronStatus = 'pending_work_hours';
+                                $cronMessage .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                            }
+                        }
+                        $whStmt->close();
                     } else {
                         $assignedConsultantId = null;
                         $cronStatus = 'pending';

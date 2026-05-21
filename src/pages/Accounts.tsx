@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, Bell } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -35,6 +35,12 @@ export const Accounts = () => {
 
   const [unlinkId, setUnlinkId] = useState<number | null>(null);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+
+  // Quick Message State
+  const [quickMessageOpen, setQuickMessageOpen] = useState(false);
+  const [quickMessageTarget, setQuickMessageTarget] = useState<any>(null);
+  const [quickMessageText, setQuickMessageText] = useState('');
+  const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
   const [logs, setLogs] = useState<any[]>([]);
@@ -239,6 +245,28 @@ export const Accounts = () => {
     setUnlinkId(null);
   };
 
+  const handleSendQuickMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickMessageText.trim() || !quickMessageTarget) return;
+    setIsSendingMsg(true);
+    try {
+      const res = await fetchAPI('send_quick_zalo_message', {
+        method: 'POST',
+        body: JSON.stringify({ account_id: quickMessageTarget.id, message: quickMessageText })
+      });
+      if (res.success) {
+        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
+        setQuickMessageOpen(false);
+        setQuickMessageText('');
+      } else {
+        toast.error(res.message || 'Lỗi khi gửi tin');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    }
+    setIsSendingMsg(false);
+  };
+
   const getRoleBadge = (role: string) => {
     if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
@@ -398,11 +426,16 @@ export const Accounts = () => {
                         )}
                       </td>
                       <td data-label="Thao tác" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
                           {acc.zalo_chat_id && (
-                            <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
-                              <Link2Off size={16} />
-                            </button>
+                            <>
+                              <button onClick={() => { setQuickMessageTarget({ id: acc.id, name: acc.name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Admin">
+                                <Bell size={14} />
+                              </button>
+                              <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
+                                <Link2Off size={16} />
+                              </button>
+                            </>
                           )}
                           <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
                             <Edit3 size={16} />
@@ -727,6 +760,32 @@ export const Accounts = () => {
         </div>,
         document.body
       )}
+      {/* Quick Message Modal */}
+      <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`Nhắn tin cho ${quickMessageTarget?.name || 'Tài khoản'}`}>
+        <form onSubmit={handleSendQuickMessage}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ BAN QUẢN TRỊ ]</p>
+            <div className="form-group">
+              <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <textarea
+                className="form-input"
+                placeholder="Nhập nội dung cần thông báo..."
+                value={quickMessageText}
+                onChange={e => setQuickMessageText(e.target.value)}
+                required
+                autoFocus
+                style={{ minHeight: 100, resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>Hủy</button>
+              <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
+                {isSendingMsg ? 'Đang gửi...' : 'Gửi tin nhắn'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </CustomModal>
     </div>
   );
 };

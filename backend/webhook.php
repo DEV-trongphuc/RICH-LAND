@@ -389,6 +389,22 @@ try {
             $assignedConsultantId = $assignResult['id'];
             $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
             $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
+
+            // Check working hours
+            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+            $whStmt->bind_param("i", $assignedConsultantId);
+            $whStmt->execute();
+            $whRes = $whStmt->get_result();
+            if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                $whStart = $whRow['work_start_time'] ?? '00:00';
+                $whEnd = $whRow['work_end_time'] ?? '23:59';
+                $currentTime = date('H:i');
+                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                    $status = 'pending_work_hours';
+                    $message .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                }
+            }
+            $whStmt->close();
         } else {
             $status = 'pending';
             $message = 'No active consultants in this round.';
@@ -485,7 +501,7 @@ if ($isFallbackAdmin && $fallbackAdminData) {
     $stmt->bind_param("i", $assignedConsultantId);
     $stmt->execute();
     $cRes = $stmt->get_result();
-    if ($cRes->num_rows > 0) {
+    if ($cRes->num_rows > 0 && $status !== 'pending_work_hours') {
         $c = $cRes->fetch_assoc();
         sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
         sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);

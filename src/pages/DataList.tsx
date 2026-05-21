@@ -162,20 +162,51 @@ export const DataList = () => {
   const handleExportCSV = () => {
     toast.loading('Đang chuẩn bị dữ liệu xuất CSV...', { id: 'export' });
     try {
-      const date = encodeURIComponent(searchParams.get('date') || 'all');
-      const search = encodeURIComponent(searchTerm);
-      const status = encodeURIComponent(statusFilter);
-      const consultant = encodeURIComponent(consultantFilter);
+      if (filteredLeads.length === 0) {
+        toast.error('Không có dữ liệu để xuất!', { id: 'export' });
+        return;
+      }
+
+      // Định nghĩa các cột xuất
+      const headers = ['ID', 'Họ Tên', 'SĐT', 'Email', 'Vòng', 'Phân bổ cho', 'Trạng thái', 'Nguồn', 'Ghi chú', 'Thời gian'];
       
-      const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
-      const token = localStorage.getItem('domation_token');
+      const rows = filteredLeads.map(lead => [
+        lead.id,
+        lead.name,
+        lead.phone,
+        lead.email,
+        lead.round_name || '',
+        lead.assigned_to_name || 'Chưa phân bổ',
+        lead.status === 'assigned' ? 'Đã chia' :
+        lead.status === 'compensation' ? 'Data Bù' :
+        lead.status === 'pending' ? 'Chờ chia' :
+        lead.status === 'silent' ? 'Chỉ đồng bộ' :
+        lead.status === 'reminder' ? 'Nhắc lại' : lead.status,
+        lead.source || '',
+        lead.note || '',
+        lead.created_at
+      ]);
+
+      // Tạo nội dung CSV kèm UTF-8 BOM
+      const csvContent = "\uFEFF" + [
+        headers.join(','),
+        ...rows.map(row => row.map(val => {
+          const str = String(val === null || val === undefined ? '' : val).replace(/"/g, '""');
+          return `"${str}"`;
+        }).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `export_${new Date().toISOString().slice(0,19).replace(/[-T:]/g, '')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      const url = `${BASE_URL}?action=export_csv&date=${date}&search=${search}&status=${status}&consultant=${consultant}&token=${token}`;
-      window.location.href = url;
-      
-      setTimeout(() => {
-        toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
-      }, 1500);
+      toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
     } catch (err) {
       toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
     }
@@ -211,6 +242,7 @@ export const DataList = () => {
     switch(status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
       case 'compensation': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>;
+      case 'pending_work_hours': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#ffedd5', color: '#ea580c' }}>Chờ giờ làm</span>;
       case 'error': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Bị Lỗi</span>;
       case 'pending': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>;
       case 'reminder': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>;
@@ -284,6 +316,7 @@ export const DataList = () => {
               { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
               { value: 'assigned', label: 'Đã chia' },
               { value: 'compensation', label: 'Data Bù' },
+              { value: 'pending_work_hours', label: 'Chờ giờ làm' },
               { value: 'pending', label: 'Chờ chia' },
               { value: 'reminder', label: 'Nhắc lại' },
               { value: 'duplicate', label: 'Trùng lặp' },

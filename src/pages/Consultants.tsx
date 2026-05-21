@@ -43,7 +43,9 @@ export const Consultants = () => {
     status: 'active',
     leave_start: '',
     leave_end: '',
-    zalo_chat_id: ''
+    zalo_chat_id: '',
+    work_start_time: '00:00',
+    work_end_time: '23:59'
   });
 
   const fetchUsers = async () => {
@@ -61,16 +63,30 @@ export const Consultants = () => {
 
   const openAddModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', status: 'active', leave_start: '', leave_end: '', zalo_chat_id: '' });
+    setFormData({ 
+      name: '', 
+      email: '', 
+      status: 'active', 
+      leave_start: '', 
+      leave_end: '', 
+      zalo_chat_id: '',
+      work_start_time: '00:00',
+      work_end_time: '23:59'
+    });
     setModalOpen(true);
   };
 
   const openEditModal = (user: any) => {
     setEditingUser(user);
     setFormData({ 
-      name: user.name, email: user.email, status: user.status,
-      leave_start: user.leave_start || '', leave_end: user.leave_end || '',
-      zalo_chat_id: user.zalo_chat_id || ''
+      name: user.name, 
+      email: user.email, 
+      status: user.status,
+      leave_start: user.leave_start || '', 
+      leave_end: user.leave_end || '',
+      zalo_chat_id: user.zalo_chat_id || '',
+      work_start_time: user.work_start_time || '00:00',
+      work_end_time: user.work_end_time || '23:59'
     });
     setModalOpen(true);
   };
@@ -173,7 +189,7 @@ export const Consultants = () => {
         body: JSON.stringify({ consultant_id: quickMessageTarget.id, message: quickMessageText })
       });
       if (res.success) {
-        toast.success('Đã gửi tin nhắn thành công!');
+        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
         setQuickMessageOpen(false);
         setQuickMessageText('');
       } else {
@@ -263,7 +279,19 @@ export const Consultants = () => {
                           <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                             {u.name}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {u.id}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
+                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
+                            {(u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title="Nhận data 24/24">
+                                <Clock size={12} /> 24/24
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`Nhận data từ ${u.work_start_time} đến ${u.work_end_time}`}>
+                                <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -456,6 +484,61 @@ export const Consultants = () => {
                     </div>
                   </div>
                 )}
+
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Clock size={14} /> Khung giờ nhận Data
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input 
+                        type="checkbox" 
+                        id="work_24h"
+                        checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59' });
+                          } else {
+                            setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00' });
+                          }
+                        }}
+                        style={{ width: 16, height: 16, cursor: 'pointer' }}
+                      />
+                      <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
+                        Hoạt động 24/24 (Mặc định)
+                      </label>
+                    </div>
+                    
+                    {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
+                          <input 
+                            type="time" 
+                            className="form-input" 
+                            style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                            value={formData.work_start_time}
+                            onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
+                          />
+                        </div>
+                        <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
+                          <input 
+                            type="time" 
+                            className="form-input" 
+                            style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                            value={formData.work_end_time}
+                            onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                    Ngoài khung giờ này, Data được giao sẽ tạm giữ lại và tự động gửi thông báo đồng loạt cho Sale vào lúc bắt đầu ca làm việc tiếp theo.
+                  </p>
+                </div>
 
                 <div className="form-group" style={{ padding: '1rem', background: 'rgba(0, 104, 255, 0.05)', borderRadius: 12, border: '1px solid rgba(0, 104, 255, 0.1)' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0068ff' }}>

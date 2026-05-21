@@ -46,7 +46,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 103) {
+        if ($dbVer >= 104) {
             $runMigration = false;
         }
     }
@@ -319,9 +319,19 @@ if ($runMigration) {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_weekly_report_date', '')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_weekly_report_timestamp', '')");
 
+    // Auto-migrate: ensure work_start_time and work_end_time exist in consultants
+    $chkWorkStart = $conn->query("SHOW COLUMNS FROM consultants LIKE 'work_start_time'");
+    if ($chkWorkStart && $chkWorkStart->num_rows === 0) {
+        $conn->query("ALTER TABLE consultants ADD COLUMN work_start_time VARCHAR(5) DEFAULT '00:00' COMMENT 'Giờ làm việc bắt đầu (HH:MM)'");
+    }
+    $chkWorkEnd = $conn->query("SHOW COLUMNS FROM consultants LIKE 'work_end_time'");
+    if ($chkWorkEnd && $chkWorkEnd->num_rows === 0) {
+        $conn->query("ALTER TABLE consultants ADD COLUMN work_end_time VARCHAR(5) DEFAULT '23:59' COMMENT 'Giờ làm việc kết thúc (HH:MM)'");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '103') ON DUPLICATE KEY UPDATE setting_value = '103'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '104') ON DUPLICATE KEY UPDATE setting_value = '104'");
 }
 
 ?>

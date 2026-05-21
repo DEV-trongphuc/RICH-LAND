@@ -122,7 +122,7 @@ export const Tickets = () => {
         body: JSON.stringify({ consultant_id: quickMessageTarget.consultant_id, message: quickMessageText })
       });
       if (res.success) {
-        toast.success('Đã gửi tin nhắn thành công!');
+        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
         setQuickMessageOpen(false);
         setQuickMessageText('');
       } else {
