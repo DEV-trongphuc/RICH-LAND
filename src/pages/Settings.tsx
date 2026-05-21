@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, Search } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import * as XLSX from 'xlsx';
 
 export const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -13,7 +14,7 @@ export const Settings = () => {
   const [testing, setTesting] = useState(false);
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check'>('processing');
   
   // States
   const [provider, setProvider] = useState('appscript');
@@ -75,6 +76,23 @@ export const Settings = () => {
   const [ruleSales, setRuleSales] = useState<any[]>(['all']);
   const [ruleConnections, setRuleConnections] = useState<any[]>(['all']);
   const [ruleKeywords, setRuleKeywords] = useState('');
+
+  // Batch Duplicate Checker States
+  const [selectedSheetId, setSelectedSheetId] = useState<string>('local');
+  const [localFile, setLocalFile] = useState<File | null>(null);
+  const [localRows, setLocalRows] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [phoneCol, setPhoneCol] = useState<string>('');
+  const [emailCol, setEmailCol] = useState<string>('');
+  const [nameCol, setNameCol] = useState<string>('');
+  const [checking, setChecking] = useState(false);
+  const [importIsSilent, setImportIsSilent] = useState<boolean>(true);
+  const [importNotifySale, setImportNotifySale] = useState<boolean>(true);
+  const [importing, setImporting] = useState<boolean>(false);
+  const [checkedResults, setCheckedResults] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<'all' | 'duplicate' | 'new'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [resultsPage, setResultsPage] = useState(1);
 
   const fetchSettings = async () => {
     try {
@@ -255,6 +273,216 @@ export const Settings = () => {
     }))
   ];
 
+  const processUploadedFile = (file: File) => {
+    if (!file) return;
+    setLocalFile(file);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        if (data.length > 0) {
+          const fileHeaders = data[0].map(h => String(h || '').trim());
+          setHeaders(fileHeaders);
+          
+          // Find default columns by heuristic names
+          const phoneIdx = fileHeaders.findIndex(h => /sđt|phone|điện thoại|sdt/i.test(h));
+          const emailIdx = fileHeaders.findIndex(h => /email|mail/i.test(h));
+          const nameIdx = fileHeaders.findIndex(h => /tên|name|họ tên/i.test(h));
+          
+          if (phoneIdx !== -1) setPhoneCol(fileHeaders[phoneIdx]);
+          if (emailIdx !== -1) setEmailCol(fileHeaders[emailIdx]);
+          if (nameIdx !== -1) setNameCol(fileHeaders[nameIdx]);
+          
+          // Parse rows
+          const rows: any[] = [];
+          for (let i = 1; i < data.length; i++) {
+            const rowArr = data[i];
+            if (!rowArr || rowArr.length === 0 || rowArr.every(cell => cell === null || cell === undefined || cell === '')) continue;
+            const rowObj: Record<string, any> = {};
+            fileHeaders.forEach((h, idx) => {
+              rowObj[h] = rowArr[idx] !== undefined ? String(rowArr[idx]).trim() : '';
+            });
+            rows.push(rowObj);
+          }
+          setLocalRows(rows);
+          toast.success(`Đã đọc thành công ${rows.length} dòng từ file.`);
+        } else {
+          toast.error("File rỗng.");
+        }
+      } catch (err: any) {
+        toast.error("Không thể đọc file: " + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file);
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+        processUploadedFile(file);
+      } else {
+        toast.error("Vui lòng tải lên file Excel hoặc CSV (.xlsx, .xls, .csv)");
+      }
+    }
+  };
+
+  const handleRunBatchCheck = async () => {
+    setCheckedResults([]);
+    setResultsPage(1);
+    
+    if (selectedSheetId === 'local') {
+      if (localRows.length === 0) {
+        toast.error("Vui lòng tải lên file Excel hoặc CSV!");
+        return;
+      }
+      if (!phoneCol && !emailCol) {
+        toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng!");
+        return;
+      }
+      
+      setChecking(true);
+      try {
+        const mappedLeads = localRows.map(row => ({
+          phone: phoneCol ? String(row[phoneCol] || '').trim() : '',
+          email: emailCol ? String(row[emailCol] || '').trim() : '',
+          name: nameCol ? String(row[nameCol] || '').trim() : ''
+        }));
+        
+        // Chunk requests of 200 items to prevent gate timeout
+        const chunkSize = 200;
+        let allResults: any[] = [];
+        for (let i = 0; i < mappedLeads.length; i += chunkSize) {
+          const chunk = mappedLeads.slice(i, i + chunkSize);
+          const res = await fetchAPI('batch_check_duplicates', {
+            method: 'POST',
+            body: JSON.stringify({ leads: chunk })
+          });
+          if (res.success) {
+            allResults = [...allResults, ...res.results];
+          } else {
+            throw new Error(res.message || "Lỗi kiểm tra dữ liệu");
+          }
+        }
+        setCheckedResults(allResults);
+        toast.success(`Đã hoàn tất lọc trùng ${allResults.length} dòng.`);
+      } catch (err: any) {
+        toast.error("Lỗi lọc trùng: " + err.message);
+      }
+      setChecking(false);
+    } else {
+      setChecking(true);
+      try {
+        const res = await fetchAPI('check_sheet_duplicates', {
+          method: 'POST',
+          body: JSON.stringify({ connection_id: Number(selectedSheetId) })
+        });
+        if (res.success) {
+          setCheckedResults(res.results);
+          toast.success(`Đã hoàn tất lọc trùng ${res.results.length} dòng từ Google Sheet.`);
+        } else {
+          toast.error(res.message || "Lỗi khi tải và kiểm tra dữ liệu Google Sheet.");
+        }
+      } catch (err: any) {
+        toast.error("Lỗi: " + err.message);
+      }
+      setChecking(false);
+    }
+  };
+
+  const handleImportLeads = async () => {
+    if (selectedSheetId !== 'local') {
+      toast.error("Tính năng nhập dữ liệu trực tiếp hiện tại chỉ áp dụng khi tải file Excel hoặc CSV từ máy tính.");
+      return;
+    }
+    if (localRows.length === 0) {
+      toast.error("Vui lòng tải lên file Excel hoặc CSV!");
+      return;
+    }
+    if (!phoneCol && !emailCol) {
+      toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng và nhập liệu!");
+      return;
+    }
+
+    const confirmImport = window.confirm(`Bạn có chắc chắn muốn nhập ${localRows.length} dòng dữ liệu từ file vào hệ thống không?`);
+    if (!confirmImport) return;
+
+    setImporting(true);
+    try {
+      const mappedLeads = localRows.map(row => ({
+        phone: phoneCol ? String(row[phoneCol] || '').trim() : '',
+        email: emailCol ? String(row[emailCol] || '').trim() : '',
+        name: nameCol ? String(row[nameCol] || '').trim() : ''
+      }));
+
+      const chunkSize = 200;
+      let totalNew = 0;
+      let totalDup = 0;
+      let totalImported = 0;
+
+      for (let i = 0; i < mappedLeads.length; i += chunkSize) {
+        const chunk = mappedLeads.slice(i, i + chunkSize);
+        const res = await fetchAPI('batch_import_leads', {
+          method: 'POST',
+          body: JSON.stringify({
+            leads: chunk,
+            is_silent: importIsSilent ? 1 : 0,
+            sync_saleperson: importNotifySale ? 1 : 0
+          })
+        });
+        if (res.success) {
+          totalNew += res.new_count || 0;
+          totalDup += res.duplicate_count || 0;
+          totalImported += res.imported_count || 0;
+        } else {
+          throw new Error(res.message || "Lỗi nhập dữ liệu");
+        }
+      }
+
+      toast.success(`Nhập dữ liệu thành công! Đã xử lý ${totalImported} dòng (${totalNew} lead mới, ${totalDup} lead trùng).`);
+      
+      // Auto-trigger duplicate check refresh
+      await handleRunBatchCheck();
+    } catch (err: any) {
+      toast.error("Lỗi nhập dữ liệu: " + err.message);
+    }
+    setImporting(false);
+  };
+
+  const handleExportResults = () => {
+    if (!checkedResults || checkedResults.length === 0) return;
+    
+    // Combine original rows with checking results
+    const exportData = checkedResults.map((res, idx) => {
+      const original = selectedSheetId === 'local' ? (localRows[idx] || {}) : { 'Họ và tên': res.name, 'Số điện thoại': res.phone, 'Email': res.email };
+      return {
+        ...original,
+        'Trạng thái CRM': res.has_record ? 'TRÙNG LẶP' : 'MỚI HOÀN TOÀN',
+        'Sale cũ sở hữu': res.consultant_name || '',
+        'Trạng thái Sale cũ': res.consultant_status === 'active' ? 'Đang hoạt động' : (res.consultant_status === 'leave' ? 'Nghỉ phép' : 'Ngưng hoạt động'),
+        'Thời gian tương tác cuối': res.last_interaction_date || '',
+        'Số tháng kể từ tương tác cuối': res.months_since_last_interaction !== null ? Number(res.months_since_last_interaction).toFixed(1) : ''
+      };
+    });
+    
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Kết quả lọc trùng");
+    XLSX.writeFile(workbook, `Ket_qua_loc_trung_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Đã xuất file kết quả lọc trùng thành công!");
+  };
+
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <div className="page-header" style={{ 
@@ -307,6 +535,12 @@ export const Settings = () => {
         >
           <BarChart2 size={18} /> Báo cáo Ngày
         </button>
+        <button 
+          onClick={() => setActiveTab('duplicate_check')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'duplicate_check' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <FileSpreadsheet size={18} /> Ánh xạ dữ liệu cũ
+        </button>
       </div>
 
       {loading ? (
@@ -319,8 +553,657 @@ export const Settings = () => {
       ) : (
       <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
         {/* Left Column */}
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+        <div style={{ flex: activeTab === 'duplicate_check' ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
           
+          <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <RefreshCw size={16} />
+                  </span>
+                  Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                  Tải lên file Excel/CSV hoặc chọn Google Sheet có sẵn để phân loại trùng lặp và biết chính xác trạng thái Sale đang sở hữu trước khi nhập liệu.
+                </p>
+              </div>
+
+              {/* Source Selector */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px dashed var(--color-border)', paddingBottom: '1.25rem' }}>
+                <div style={{ maxWidth: '400px', width: '100%' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Nguồn dữ liệu lọc trùng</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'local', label: 'Tải lên file Excel hoặc CSV từ máy tính' },
+                      ...connections.map(c => ({
+                        value: String(c.id),
+                        label: `Google Sheet: ${c.name} (${c.sheet_name || 'Sheet1'})`
+                      }))
+                    ]}
+                    value={selectedSheetId}
+                    onChange={val => {
+                      setSelectedSheetId(String(val));
+                      setCheckedResults([]);
+                      setLocalFile(null);
+                      setLocalRows([]);
+                      setHeaders([]);
+                    }}
+                    width="100%"
+                  />
+                </div>
+
+                {selectedSheetId === 'local' ? (
+                  <div style={{ width: '100%' }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Chọn file hoặc kéo thả (.xlsx, .xls, .csv)</label>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleFileUpload}
+                        style={{ display: 'none' }}
+                        id="bulk-file-upload"
+                      />
+                      {localFile ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 16px',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 10,
+                          background: '#f0fdf4',
+                          borderLeft: '4px solid #10b981',
+                          width: '100%'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ background: '#d1fae5', padding: 8, borderRadius: 8, color: '#047857', display: 'flex', alignItems: 'center' }}>
+                              <FileSpreadsheet size={18} />
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
+                                {localFile.name}
+                              </div>
+                              <div style={{ fontSize: '0.725rem', color: '#047857', fontWeight: 500 }}>
+                                {(localFile.size / 1024).toFixed(1)} KB • {localRows.length} dòng dữ liệu
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLocalFile(null);
+                              setLocalRows([]);
+                              setHeaders([]);
+                              setCheckedResults([]);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: 6,
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="bulk-file-upload"
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={handleFileDrop}
+                          style={{
+                            width: '100%',
+                            minHeight: '110px',
+                            border: '2px dashed var(--color-border)',
+                            background: '#f8fafc',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            borderRadius: '10px',
+                            padding: '16px',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                            e.currentTarget.style.background = '#f1f5f9';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--color-border)';
+                            e.currentTarget.style.background = '#f8fafc';
+                          }}
+                        >
+                          <div style={{
+                            display: 'inline-flex',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            color: 'var(--color-primary)',
+                            padding: '8px',
+                            borderRadius: '50%'
+                          }}>
+                            <Upload size={20} />
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              Nhấp để duyệt tệp hoặc kéo thả vào đây
+                            </span>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                              Hỗ trợ định dạng .xlsx, .xls, .csv
+                            </p>
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'var(--color-background)', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--color-border)', width: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ display: 'inline-flex', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', padding: 6, borderRadius: '50%' }}>
+                        <Clock size={14} />
+                      </span>
+                      <div>
+                        <strong>Lưu ý:</strong> Hệ thống sẽ tự động sử dụng cấu hình trường (Field Mapping) đã thiết lập của Google Sheet này.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Column Mapping (only for local files) */}
+              {selectedSheetId === 'local' && headers.length > 0 && (
+                <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <SettingsIcon size={14} /> Ánh xạ cột lọc trùng
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Số Điện Thoại (Bắt buộc)</label>
+                      <CustomSelect
+                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                        value={phoneCol}
+                        onChange={val => setPhoneCol(String(val))}
+                        width="100%"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Email (Tùy chọn)</label>
+                      <CustomSelect
+                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                        value={emailCol}
+                        onChange={val => setEmailCol(String(val))}
+                        width="100%"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Họ Tên (Tùy chọn)</label>
+                      <CustomSelect
+                        options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                        value={nameCol}
+                        onChange={val => setNameCol(String(val))}
+                        width="100%"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cấu hình lưu dữ liệu vào CRM (chỉ cho local files) */}
+              {selectedSheetId === 'local' && headers.length > 0 && (
+                <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Shield size={14} /> Cấu hình lưu dữ liệu vào CRM
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--color-border)',
+                      background: 'white',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={importIsSilent}
+                        onChange={e => setImportIsSilent(e.target.checked)}
+                        style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', marginTop: 3, flexShrink: 0 }}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                        <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                          Lead mới hoặc trùng sẽ chỉ lưu vào hệ thống làm dữ liệu đối chiếu, không phân phối chia số cho Sale mới.
+                        </div>
+                      </div>
+                    </label>
+
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--color-border)',
+                      background: 'white',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={importNotifySale}
+                        onChange={e => setImportNotifySale(e.target.checked)}
+                        style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', marginTop: 3, flexShrink: 0 }}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Nhắc nhở sale cũ nếu trùng số</div>
+                        <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                          Gửi thông báo Zalo hoặc Email cho Sale cũ đang sở hữu lead này để chăm sóc lại.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Actions */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'flex-start' }}>
+                <button
+                  type="button"
+                  onClick={handleRunBatchCheck}
+                  disabled={checking || importing || (selectedSheetId === 'local' && localRows.length === 0)}
+                  style={{
+                    minWidth: 180,
+                    height: 42,
+                    fontWeight: 700,
+                    gap: 8,
+                    borderRadius: 8,
+                    background: checking || importing || (selectedSheetId === 'local' && localRows.length === 0) ? '#e2e8f0' : 'white',
+                    color: checking || importing || (selectedSheetId === 'local' && localRows.length === 0) ? '#94a3b8' : 'var(--color-text)',
+                    border: checking || importing || (selectedSheetId === 'local' && localRows.length === 0) ? 'none' : '1px solid var(--color-border)',
+                    cursor: checking || importing || (selectedSheetId === 'local' && localRows.length === 0) ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: checking || importing || (selectedSheetId === 'local' && localRows.length === 0) ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!checking && !importing && !(selectedSheetId === 'local' && localRows.length === 0)) {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!checking && !importing && !(selectedSheetId === 'local' && localRows.length === 0)) {
+                      e.currentTarget.style.background = 'white';
+                      e.currentTarget.style.transform = 'none';
+                    }
+                  }}
+                >
+                  {checking ? (
+                    <>
+                      <Activity size={16} className="spin" /> Đang chạy lọc trùng...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={16} /> Bắt đầu Lọc Trùng
+                    </>
+                  )}
+                </button>
+
+                {selectedSheetId === 'local' && (
+                  <button
+                    type="button"
+                    onClick={handleImportLeads}
+                    disabled={checking || importing || localRows.length === 0}
+                    style={{
+                      minWidth: 180,
+                      height: 42,
+                      fontWeight: 700,
+                      gap: 8,
+                      borderRadius: 8,
+                      background: checking || importing || localRows.length === 0 ? '#e2e8f0' : 'linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%)',
+                      color: checking || importing || localRows.length === 0 ? '#94a3b8' : 'white',
+                      border: 'none',
+                      cursor: checking || importing || localRows.length === 0 ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: checking || importing || localRows.length === 0 ? 'none' : '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)',
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!checking && !importing && localRows.length > 0) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 6px 8px -1px rgba(59, 130, 246, 0.3), 0 3px 6px -1px rgba(59, 130, 246, 0.15)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!checking && !importing && localRows.length > 0) {
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.2), 0 2px 4px -1px rgba(59, 130, 246, 0.1)';
+                      }
+                    }}
+                  >
+                    {importing ? (
+                      <>
+                        <Activity size={16} className="spin" /> Đang nhập dữ liệu...
+                      </>
+                    ) : (
+                      <>
+                        <Database size={16} /> Bắt đầu Nhập dữ liệu
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Empty state guide */}
+              {checkedResults.length === 0 && (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px dashed #e2e8f0',
+                  borderRadius: 12,
+                  padding: '2rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1.5rem',
+                  marginTop: '0.5rem',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ color: 'var(--color-primary)', opacity: 0.8 }}>
+                    <Search size={32} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                      Hướng dẫn 3 bước kiểm tra trùng lặp nhanh
+                    </h4>
+                    <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: '4px 0 0', maxWidth: '500px', lineHeight: 1.5 }}>
+                      Sử dụng công cụ để phát hiện các số điện thoại hoặc email đã tồn tại trong hệ thống, xem trạng thái hoạt động của Sale sở hữu trước khi nhập dữ liệu mới.
+                    </p>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                    gap: '1.25rem',
+                    width: '100%',
+                    maxWidth: '640px',
+                    marginTop: '0.5rem'
+                  }}>
+                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Chọn Nguồn</strong>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Tải file Excel/CSV hoặc chọn Google Sheet có sẵn</span>
+                    </div>
+                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Ánh Xạ Cột</strong>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Chọn cột tương ứng chứa SĐT, Email và Họ Tên</span>
+                    </div>
+                    <div style={{ background: '#fff', padding: '1rem', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', background: 'rgba(59,130,246,0.1)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Chạy Lọc Trùng</strong>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Xem kết quả phân loại chi tiết và xuất file Excel đối chiếu</span>
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    fontSize: '0.75rem',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    maxWidth: '640px',
+                    width: '100%',
+                    textAlign: 'left',
+                    lineHeight: 1.5,
+                    border: '1px solid #bae6fd',
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'flex-start'
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>💡</span>
+                    <div>
+                      <strong>Cơ chế khớp trùng CRM:</strong> Công cụ đối chiếu thời gian thực bằng cách sử dụng chung một hàm nghiệp vụ với luồng xử lý Webhook và Google Sheets. Hệ thống chỉ đánh dấu Trùng lặp đối với Sale đang <strong>Hoạt động</strong>. Nếu Sale sở hữu đang <strong>Nghỉ phép</strong> hoặc <strong>Nghỉ việc</strong>, hệ thống tự động đánh dấu là lead được phép chia mới cho Sale khác.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Checked Results Block */}
+              {checkedResults.length > 0 && (() => {
+                const total = checkedResults.length;
+                const dupCount = checkedResults.filter(r => r.has_record).length;
+                const newCount = total - dupCount;
+                const dupPercent = ((dupCount / total) * 100).toFixed(1);
+                const newPercent = ((newCount / total) * 100).toFixed(1);
+
+                // Apply Filters and Search
+                const filtered = checkedResults.filter(res => {
+                  if (filterType === 'duplicate' && !res.has_record) return false;
+                  if (filterType === 'new' && res.has_record) return false;
+                  if (searchTerm) {
+                    const search = searchTerm.toLowerCase();
+                    const phoneMatch = String(res.phone || '').toLowerCase().includes(search);
+                    const emailMatch = String(res.email || '').toLowerCase().includes(search);
+                    const nameMatch = String(res.name || '').toLowerCase().includes(search);
+                    return phoneMatch || emailMatch || nameMatch;
+                  }
+                  return true;
+                });
+
+                // Pagination
+                const pageSize = 15;
+                const totalPages = Math.ceil(filtered.length / pageSize);
+                const paginatedResults = filtered.slice((resultsPage - 1) * pageSize, resultsPage * pageSize);
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.5rem' }}>
+                    {/* Summary Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tổng Data</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>{total}</div>
+                      </div>
+                      <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: 10, border: '1px solid #fee2e2' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase' }}>Trùng CRM</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b91c1c', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                          {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef4444' }}>({dupPercent}%)</span>
+                        </div>
+                      </div>
+                      <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 10, border: '1px solid #d1fae5' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#047857', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                          {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>({newPercent}%)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter and Download Header */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className={`btn ${filterType === 'all' ? 'primary' : 'outline'}`}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32 }}
+                          onClick={() => { setFilterType('all'); setResultsPage(1); }}
+                        >
+                          Tất cả ({total})
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${filterType === 'duplicate' ? 'danger' : 'outline'}`}
+                          style={{
+                            padding: '6px 12px', fontSize: '0.8rem', height: 32,
+                            background: filterType === 'duplicate' ? 'var(--color-danger)' : '',
+                            color: filterType === 'duplicate' ? 'white' : ''
+                          }}
+                          onClick={() => { setFilterType('duplicate'); setResultsPage(1); }}
+                        >
+                          Trùng lặp ({dupCount})
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${filterType === 'new' ? 'success' : 'outline'}`}
+                          style={{
+                            padding: '6px 12px', fontSize: '0.8rem', height: 32,
+                            background: filterType === 'new' ? 'var(--color-success)' : '',
+                            color: filterType === 'new' ? 'white' : ''
+                          }}
+                          onClick={() => { setFilterType('new'); setResultsPage(1); }}
+                        >
+                          Mới ({newCount})
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%', maxWidth: '400px', flex: '1 1 300px' }}>
+                        <input
+                          className="form-input"
+                          placeholder="Tìm kiếm theo Tên, SĐT, Email..."
+                          value={searchTerm}
+                          onChange={e => { setSearchTerm(e.target.value); setResultsPage(1); }}
+                          style={{ height: 34, fontSize: '0.825rem' }}
+                        />
+                        <button
+                          type="button"
+                          className="btn success"
+                          style={{ gap: 6, padding: '6px 14px', height: 34, flexShrink: 0, fontWeight: 700 }}
+                          onClick={handleExportResults}
+                        >
+                          <Download size={14} /> Xuất File Excel
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Table View */}
+                    <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', background: '#fff' }}>
+                      <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 16px', width: '50px' }}>STT</th>
+                            <th style={{ padding: '10px 16px' }}>Họ và Tên</th>
+                            <th style={{ padding: '10px 16px' }}>Số Điện Thoại</th>
+                            <th style={{ padding: '10px 16px' }}>Email</th>
+                            <th style={{ padding: '10px 16px' }}>Trạng Thái CRM</th>
+                            <th style={{ padding: '10px 16px' }}>Sale Sở Hữu</th>
+                            <th style={{ padding: '10px 16px' }}>Tương Tác Cuối</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedResults.length > 0 ? (
+                            paginatedResults.map((item, idx) => {
+                              const globalIdx = (resultsPage - 1) * pageSize + idx + 1;
+                              const statusColor = item.has_record ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+                              const statusTextCol = item.has_record ? '#b91c1c' : '#047857';
+                              
+                              let ownerStatusBadge = null;
+                              if (item.consultant_status) {
+                                const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
+                                const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
+                                const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
+                                ownerStatusBadge = (
+                                  <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>
+                                    {statusLabel}
+                                  </span>
+                                );
+                              }
+
+                              return (
+                                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                                  <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
+                                  <td style={{ padding: '10px 16px', fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1' }}>Chưa cập nhật</em>}</td>
+                                  <td style={{ padding: '10px 16px', fontFamily: 'monospace' }}>{item.phone || <em style={{ color: '#cbd5e1' }}>Trống</em>}</td>
+                                  <td style={{ padding: '10px 16px' }}>{item.email || <em style={{ color: '#cbd5e1' }}>Trống</em>}</td>
+                                  <td style={{ padding: '10px 16px' }}>
+                                    <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 800, background: statusColor, color: statusTextCol }}>
+                                      {item.has_record ? 'TRÙNG LẶP' : 'MỚI HOÀN TOÀN'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '10px 16px' }}>
+                                    {item.has_record ? (
+                                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                                        <strong>{item.consultant_name}</strong>
+                                        {ownerStatusBadge}
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
+                                    {item.last_interaction_date ? (
+                                      <span>
+                                        {item.last_interaction_date.split(' ')[0]}{' '}
+                                        <span style={{ fontSize: '0.75rem' }}>({item.months_since_last_interaction !== null ? Number(item.months_since_last_interaction).toFixed(1) : ''} tháng)</span>
+                                      </span>
+                                    ) : (
+                                      <span>-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                                Không tìm thấy kết quả phù hợp với bộ lọc.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    {totalPages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                        <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
+                          Hiển thị {(resultsPage - 1) * pageSize + 1} - {Math.min(resultsPage * pageSize, filtered.length)} trên {filtered.length} dòng
+                        </span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            className="btn outline"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                            disabled={resultsPage === 1}
+                            onClick={() => setResultsPage(p => p - 1)}
+                          >
+                            Trước
+                          </button>
+                          <span style={{ padding: '4px 10px', fontSize: '0.775rem', fontWeight: 600 }}>
+                            Trang {resultsPage} / {totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn outline"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28 }}
+                            disabled={resultsPage === totalPages}
+                            onClick={() => setResultsPage(p => p + 1)}
+                          >
+                            Sau
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           <div style={{ display: activeTab === 'mail' ? 'block' : 'none', animation: activeTab === 'mail' ? 'fadeIn 0.2s ease-out' : 'none' }}>
             <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
@@ -1076,65 +1959,68 @@ function doPost(e) {
               </div>
             </div>
           </div>
-          </div>
         </div>
+      </div>
 
         {/* Right Column: Testing */}
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '1.5rem', 
-          position: 'sticky', 
-          top: '6rem', 
-          alignSelf: 'start',
-          minWidth: 0,
-          width: '100%'
-        }}>
-          <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Send size={18} color="var(--color-primary)" /> Gửi Test Email
-            </h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
-              Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <CustomSelect 
-                options={[
-                  { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
-                  { value: 'assignment', label: 'Test Template Giao Data' },
-                  { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
-                  { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
-                  { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
-                  { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
-                  { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
-                  { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
-                  { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
-                ]}
-                value={testType}
-                onChange={val => setTestType(val.toString())}
-                width="100%"
-                direction="down"
-              />
+        {activeTab !== 'duplicate_check' && (
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1.5rem', 
+            position: 'sticky', 
+            top: '6rem', 
+            alignSelf: 'start',
+            minWidth: 0,
+            width: '100%'
+          }}>
+            <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Send size={18} color="var(--color-primary)" /> Gửi Test Email
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
+                Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
+              </p>
 
-              <input 
-                className="form-input" 
-                placeholder="Nhập email nhận test..." 
-                value={testEmail}
-                onChange={e => setTestEmail(e.target.value)}
-              />
-              <button 
-                className="btn outline" 
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={handleTestEmail}
-                disabled={testing}
-              >
-                {testing ? <Activity size={16} className="spin" /> : <Send size={16} />} 
-                {testing ? "Đang gửi..." : "Gửi Email Test"}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <CustomSelect 
+                  options={[
+                    { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
+                    { value: 'assignment', label: 'Test Template Giao Data' },
+                    { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
+                    { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
+                    { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
+                    { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
+                    { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
+                    { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
+                    { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
+                  ]}
+                  value={testType}
+                  onChange={val => setTestType(val.toString())}
+                  width="100%"
+                  direction="down"
+                />
+
+                <input 
+                  className="form-input" 
+                  placeholder="Nhập email nhận test..." 
+                  value={testEmail}
+                  onChange={e => setTestEmail(e.target.value)}
+                />
+                <button 
+                  className="btn outline" 
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={handleTestEmail}
+                  disabled={testing}
+                >
+                  {testing ? <Activity size={16} className="spin" /> : <Send size={16} />} 
+                  {testing ? "Đang gửi..." : "Gửi Email Test"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       )}
       {/* Custom Modal for Auto-Approve Rule */}

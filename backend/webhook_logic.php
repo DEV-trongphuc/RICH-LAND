@@ -137,7 +137,13 @@ function findConsultantByEmailOrName($conn, $value) {
 
 function checkCRMInteraction($conn, $phone, $email) {
     if (empty($phone) && empty($email)) {
-        return ['isDuplicate' => false, 'monthsSinceLastInteraction' => 0, 'assignedTo' => null];
+        return [
+            'isDuplicate' => false,
+            'monthsSinceLastInteraction' => 0,
+            'assignedTo' => null,
+            'originalAssignedTo' => null,
+            'consultantStatus' => null
+        ];
     }
     
     $where = [];
@@ -146,18 +152,22 @@ function checkCRMInteraction($conn, $phone, $email) {
     
     $phone = normalizePhone($phone);
     if (!empty($phone)) {
-        $where[] = "phone = ?";
+        $where[] = "l.phone = ?";
         $params[] = $phone;
         $types .= 's';
     }
     if (!empty($email)) {
-        $where[] = "email = ?";
+        $where[] = "l.email = ?";
         $params[] = $email;
         $types .= 's';
     }
     
     $whereClause = implode(" OR ", $where);
-    $stmt = $conn->prepare("SELECT assigned_to, last_interaction_date FROM leads WHERE $whereClause ORDER BY last_interaction_date DESC LIMIT 1");
+    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.status as consultant_status 
+                            FROM leads l 
+                            LEFT JOIN consultants c ON l.assigned_to = c.id 
+                            WHERE $whereClause 
+                            ORDER BY l.last_interaction_date DESC LIMIT 1");
     
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
@@ -174,17 +184,23 @@ function checkCRMInteraction($conn, $phone, $email) {
         $diff = $now->diff($lastInteraction);
         $months = ($diff->format('%y') * 12) + $diff->format('%m');
         
+        $isDuplicate = ($row['consultant_status'] === 'active');
+        
         return [
-            'isDuplicate' => true,
+            'isDuplicate' => $isDuplicate,
             'monthsSinceLastInteraction' => $months,
-            'assignedTo' => $row['assigned_to']
+            'assignedTo' => $isDuplicate ? $row['assigned_to'] : null,
+            'originalAssignedTo' => $row['assigned_to'],
+            'consultantStatus' => $row['consultant_status']
         ];
     }
     
     return [
         'isDuplicate' => false,
         'monthsSinceLastInteraction' => 0,
-        'assignedTo' => null
+        'assignedTo' => null,
+        'originalAssignedTo' => null,
+        'consultantStatus' => null
     ];
 }
 

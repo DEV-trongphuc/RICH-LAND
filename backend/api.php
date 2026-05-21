@@ -3561,6 +3561,113 @@ switch ($action) {
         $type = trim($data['type'] ?? '');
         $note = trim($data['note'] ?? '');
 
+        // Fetch connection settings if connectionId is provided
+        $isSilent = 0;
+        $syncSaleperson = 0;
+        if ($connectionId > 0) {
+            $cStmt = $conn->prepare("SELECT is_silent, sync_saleperson FROM sheet_connections WHERE id = ? LIMIT 1");
+            if ($cStmt) {
+                $cStmt->bind_param("i", $connectionId);
+                $cStmt->execute();
+                $cRes = $cStmt->get_result();
+                if ($cRes->num_rows > 0) {
+                    $cRow = $cRes->fetch_assoc();
+                    $isSilent = (int)$cRow['is_silent'];
+                    $syncSaleperson = (int)$cRow['sync_saleperson'];
+                }
+                $cStmt->close();
+            }
+        }
+
+        // Check CRM duplicate
+        $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+        $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+        if ($dupCheckMonths <= 0) {
+            $dupCheckMonths = 6;
+        }
+
+        if ($isSilent === 1) {
+            if ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) {
+                $assignedTo = $crmCheckResult['assignedTo'];
+                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                $stmtC->bind_param("i", $assignedTo);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                $consultantName = $cRow ? $cRow['name'] : 'Không rõ';
+                $consultantEmail = $cRow ? $cRow['email'] : '';
+                
+                echo json_encode([
+                    'success' => true,
+                    'is_duplicate' => true,
+                    'is_silent' => true,
+                    'consultant' => [
+                        'consultant_id' => $assignedTo,
+                        'name' => $consultantName,
+                        'email' => $consultantEmail,
+                        'round_name' => 'Đồng bộ ngầm (Silent Sync)',
+                        'reason' => 'Khách trùng khớp thuộc Sale: ' . $consultantName . '. Sẽ chỉ lưu thông tin mới và gửi nhắc nhở.'
+                    ],
+                    'trace' => [
+                        [
+                            'description' => 'Kiểm tra trùng lặp CRM (Đồng bộ ngầm)',
+                            'status' => 'matched',
+                            'reason' => "Khách hàng trùng trong CRM thuộc Sale: $consultantName. Đồng bộ ngầm không định tuyến chia số."
+                        ]
+                    ]
+                ]);
+                exit();
+            } else {
+                echo json_encode([
+                    'success' => true,
+                    'is_duplicate' => false,
+                    'is_silent' => true,
+                    'consultant' => null,
+                    'message' => 'Dòng dữ liệu mới hoàn toàn. Đồng bộ ngầm, không định tuyến chia số.',
+                    'trace' => [
+                        [
+                            'description' => 'Kiểm tra trùng lặp CRM (Đồng bộ ngầm)',
+                            'status' => 'skipped',
+                            'reason' => 'Khách hàng mới hoàn toàn hoặc không có Sale sở hữu hợp lệ. Đồng bộ ngầm không định tuyến.'
+                        ]
+                    ]
+                ]);
+                exit();
+            }
+        }
+
+        // Regular duplicate checking
+        if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+            $assignedTo = $crmCheckResult['assignedTo'];
+            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+            $stmtC->bind_param("i", $assignedTo);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            
+            if ($cRow) {
+                echo json_encode([
+                    'success' => true,
+                    'is_duplicate' => true,
+                    'consultant' => [
+                        'consultant_id' => $assignedTo,
+                        'name' => $cRow['name'],
+                        'email' => $cRow['email'],
+                        'round_name' => 'Check trùng (Khách cũ < ' . $dupCheckMonths . ' tháng)',
+                        'reason' => 'Khách cũ đăng ký lại trong hạn định ' . $dupCheckMonths . ' tháng. Chuyển thẳng cho Sale cũ: ' . $cRow['name'] . '.'
+                    ],
+                    'trace' => [
+                        [
+                            'description' => 'Kiểm tra trùng lặp CRM',
+                            'status' => 'matched',
+                            'reason' => 'Phát hiện số điện thoại/email trùng trong hệ thống. Tương tác cuối cách đây ' . number_format($crmCheckResult['monthsSinceLastInteraction'], 1) . ' tháng (< hạn định ' . $dupCheckMonths . ' tháng). Chuyển thẳng cho Sale cũ: ' . $cRow['name'] . '.'
+                        ]
+                    ]
+                ]);
+                exit();
+            }
+        }
+
         // Fetch all rules from routing_rules
         $rulesRes = $conn->query("SELECT rr.*, r.round_name FROM routing_rules rr LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id ORDER BY rr.priority ASC");
         $rules = [];
@@ -3574,6 +3681,42 @@ switch ($action) {
         $assignedRoundId = null;
         $matchedRule = null;
         $injectedFields = [];
+
+        // Check if there was a duplicate, but the consultant is inactive or on leave, or if duplicate check threshold was exceeded
+        if ($crmCheckResult['originalAssignedTo']) {
+            $stmtC = $conn->prepare("SELECT name, status FROM consultants WHERE id = ?");
+            $stmtC->bind_param("i", $crmCheckResult['originalAssignedTo']);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            
+            $saleName = $cRow ? $cRow['name'] : 'Không rõ';
+            $saleStatus = $cRow ? $cRow['status'] : 'inactive';
+            
+            if ($saleStatus !== 'active') {
+                $statusText = $saleStatus === 'leave' ? 'đang nghỉ phép' : 'không hoạt động';
+                $trace[] = [
+                    'rule_id' => 0,
+                    'description' => 'Kiểm tra trùng lặp CRM',
+                    'status' => 'skipped',
+                    'reason' => "Phát hiện trùng với Sale cũ: $saleName nhưng Sale này $statusText. Tiến hành quét quy tắc để chia mới."
+                ];
+            } else if ($crmCheckResult['monthsSinceLastInteraction'] >= $dupCheckMonths) {
+                $trace[] = [
+                    'rule_id' => 0,
+                    'description' => 'Kiểm tra trùng lặp CRM',
+                    'status' => 'skipped',
+                    'reason' => "Trùng khách cũ của Sale: $saleName nhưng tương tác cuối cách đây " . number_format($crmCheckResult['monthsSinceLastInteraction'], 1) . " tháng (>= hạn định " . $dupCheckMonths . " tháng). Tiến hành quét quy tắc để chia mới."
+                ];
+            }
+        } else {
+            $trace[] = [
+                'rule_id' => 0,
+                'description' => 'Kiểm tra trùng lặp CRM',
+                'status' => 'skipped',
+                'reason' => 'Không phát hiện số điện thoại hoặc email trùng lặp trong hệ thống.'
+            ];
+        }
 
         foreach ($rules as $index => $rule) {
             $ruleNum = $index + 1;
@@ -3774,6 +3917,340 @@ switch ($action) {
             'is_fallback_admin' => $isFallbackAdmin,
             'injected_fields' => $injectedFields,
             'trace' => $trace
+        ]);
+        break;
+
+    case 'batch_check_duplicates':
+        require_once __DIR__ . '/webhook_logic.php';
+        $input = json_decode(file_get_contents('php://input'), true);
+        $leads = $input['leads'] ?? [];
+        
+        $results = [];
+        foreach ($leads as $lead) {
+            $phone = normalizePhone($lead['phone'] ?? '');
+            $email = trim($lead['email'] ?? '');
+            $name = trim($lead['name'] ?? '');
+            
+            $crmCheck = checkCRMInteraction($conn, $phone, $email);
+            
+            $leadId = null;
+            $assignedName = 'Không rõ';
+            $lastInteractionDate = null;
+            
+            if ($crmCheck['originalAssignedTo']) {
+                $where = [];
+                $params = [];
+                $types = '';
+                if (!empty($phone)) {
+                    $where[] = "l.phone = ?";
+                    $params[] = $phone;
+                    $types .= 's';
+                }
+                if (!empty($email)) {
+                    $where[] = "l.email = ?";
+                    $params[] = $email;
+                    $types .= 's';
+                }
+                if (!empty($where)) {
+                    $whereClause = implode(" OR ", $where);
+                    $stmt = $conn->prepare("SELECT l.id, l.last_interaction_date, c.name as consultant_name FROM leads l LEFT JOIN consultants c ON l.assigned_to = c.id WHERE $whereClause ORDER BY l.last_interaction_date DESC LIMIT 1");
+                    if ($stmt) {
+                        $stmt->bind_param($types, ...$params);
+                        $stmt->execute();
+                        $res = $stmt->get_result();
+                        if ($res->num_rows > 0) {
+                            $row = $res->fetch_assoc();
+                            $leadId = $row['id'];
+                            $assignedName = $row['consultant_name'] ?? 'Không rõ';
+                            $lastInteractionDate = $row['last_interaction_date'];
+                        }
+                        $stmt->close();
+                    }
+                }
+            }
+            
+            $results[] = [
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'is_duplicate' => $crmCheck['isDuplicate'],
+                'has_record' => !empty($crmCheck['originalAssignedTo']),
+                'assigned_to' => $crmCheck['originalAssignedTo'],
+                'consultant_name' => $assignedName,
+                'consultant_status' => $crmCheck['consultantStatus'],
+                'last_interaction_date' => $lastInteractionDate,
+                'months_since_last_interaction' => $crmCheck['monthsSinceLastInteraction']
+            ];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'results' => $results
+        ]);
+        break;
+
+    case 'batch_import_leads':
+        require_once __DIR__ . '/webhook_logic.php';
+        $input = json_decode(file_get_contents('php://input'), true);
+        $leads = $input['leads'] ?? [];
+        $isSilent = isset($input['is_silent']) ? (int)$input['is_silent'] : 1;
+        $syncSaleperson = isset($input['sync_saleperson']) ? (int)$input['sync_saleperson'] : 1;
+        
+        $importedCount = 0;
+        $duplicateCount = 0;
+        $newCount = 0;
+        
+        $conn->begin_transaction();
+        try {
+            foreach ($leads as $lead) {
+                $phone = normalizePhone($lead['phone'] ?? '');
+                $email = trim($lead['email'] ?? '');
+                $name = trim($lead['name'] ?? '');
+                
+                if (empty($phone) && empty($email)) {
+                    continue;
+                }
+                
+                $crmCheck = checkCRMInteraction($conn, $phone, $email);
+                
+                if ($isSilent == 1) {
+                    if ($crmCheck['isDuplicate']) {
+                        $ownerId = $crmCheck['assignedTo'];
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null);
+                        $duplicateCount++;
+                    } else {
+                        $leadId = insertLead($conn, [], null, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null);
+                        $newCount++;
+                    }
+                    
+                    $actualOwnerId = ($crmCheck['isDuplicate'] && !empty($crmCheck['assignedTo'])) ? $crmCheck['assignedTo'] : null;
+                    logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen.');
+                } else {
+                    if ($crmCheck['isDuplicate']) {
+                        $assignedTo = $crmCheck['assignedTo'];
+                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null);
+                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
+                        $duplicateCount++;
+                    } else {
+                        $rulesResult = evaluateRules($conn, [], 'Excel Import', 'Excel', null, 'sheets');
+                        $assignedToId = $rulesResult['consultant_id'] ?? null;
+                        
+                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null);
+                        $newCount++;
+                        
+                        if ($assignedToId) {
+                            logDistribution($conn, $leadId, $assignedToId, $rulesResult['round_id'] ?? null, 'success', 'Phan chia tu dong tu file Excel.');
+                            
+                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                            $stmtC->bind_param("i", $assignedToId);
+                            $stmtC->execute();
+                            $cRow = $stmtC->get_result()->fetch_assoc();
+                            $stmtC->close();
+                            if ($cRow) {
+                                require_once __DIR__ . '/mailer.php';
+                                require_once __DIR__ . '/zalo_bot.php';
+                                sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $rulesResult['round_id'] ?? 0);
+                                sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $rulesResult['round_id'] ?? 0);
+                            }
+                        } else {
+                            logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
+                        }
+                    }
+                }
+                $importedCount++;
+            }
+            $conn->commit();
+            echo json_encode([
+                'success' => true,
+                'message' => "Da nhap thanh cong $importedCount leads ($newCount moi, $duplicateCount trung).",
+                'imported_count' => $importedCount,
+                'new_count' => $newCount,
+                'duplicate_count' => $duplicateCount
+            ]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Loi import: ' . $e->getMessage()]);
+        }
+        break;
+
+    case 'check_sheet_duplicates':
+        require_once __DIR__ . '/webhook_logic.php';
+        $input = json_decode(file_get_contents('php://input'), true);
+        $connectionId = isset($input['connection_id']) ? (int)$input['connection_id'] : 0;
+        
+        if ($connectionId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID kết nối không hợp lệ.']);
+            break;
+        }
+        
+        // Fetch connection info
+        $connStmt = $conn->prepare("SELECT sheet_name, spreadsheet_id FROM sheet_connections WHERE id = ? AND is_active = 1");
+        $connStmt->bind_param("i", $connectionId);
+        $connStmt->execute();
+        $connRes = $connStmt->get_result();
+        if ($connRes->num_rows === 0) {
+            $connStmt->close();
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy kết nối hoặc kết nối chưa kích hoạt.']);
+            break;
+        }
+        $connItem = $connRes->fetch_assoc();
+        $connStmt->close();
+        
+        // Fetch mappings
+        $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
+        $mapStmt->bind_param("i", $connectionId);
+        $mapStmt->execute();
+        $mappingsResult = $mapStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mapStmt->close();
+        
+        $mappings = [];
+        foreach ($mappingsResult as $mRow) {
+            $sysField = $mRow['system_field'];
+            if (!isset($mappings[$sysField])) {
+                $mappings[$sysField] = [];
+            }
+            $mappings[$sysField][] = [
+                'sheet_column' => $mRow['sheet_column'],
+                'custom_label' => $mRow['custom_label']
+            ];
+        }
+        
+        $extractMappedValuesLocal = function($mappingsArray, $systemField, $data) {
+            if (!isset($mappingsArray[$systemField])) return '';
+            $values = [];
+            foreach ($mappingsArray[$systemField] as $mapItem) {
+                $colName = $mapItem['sheet_column'];
+                $customLabel = $mapItem['custom_label'];
+                if (isset($data[$colName]) && $data[$colName] !== '') {
+                    $label = !empty($customLabel) ? $customLabel : $colName;
+                    $values[] = $label . ': ' . $data[$colName];
+                }
+            }
+            if (count($values) === 1 && in_array($systemField, ['phone', 'email', 'name'])) {
+                $colName = $mappingsArray[$systemField][0]['sheet_column'];
+                return $data[$colName] ?? '';
+            }
+            return implode("\n", $values);
+        };
+        
+        // Fetch CSV from Google Sheets
+        $csvUrl = "https://docs.google.com/spreadsheets/d/" . trim($connItem['spreadsheet_id']) . "/gviz/tq?tqx=out:csv";
+        if (!empty($connItem['sheet_name'])) {
+            $csvUrl .= "&sheet=" . urlencode($connItem['sheet_name']);
+        }
+        
+        $ch = curl_init($csvUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        $csvData = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || empty($csvData)) {
+            echo json_encode(['success' => false, 'message' => "Không thể tải file từ Google Sheet (HTTP $httpCode). Vui lòng cấu hình chia sẻ link."]);
+            break;
+        }
+        
+        // Parse CSV data
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, $csvData);
+        rewind($stream);
+        
+        $headers = [];
+        $rowCount = 0;
+        $leads = [];
+        
+        while (($row = fgetcsv($stream)) !== FALSE) {
+            $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
+            if ($rowCount === 0) {
+                $headers = $row;
+                $rowCount++;
+                continue;
+            }
+            $rowCount++;
+            if (empty(array_filter($row))) {
+                continue;
+            }
+            $rowData = [];
+            foreach ($headers as $colIdx => $colName) {
+                $rowData[$colName] = $row[$colIdx] ?? '';
+            }
+            
+            $phone = normalizePhone($extractMappedValuesLocal($mappings, 'phone', $rowData));
+            $email = $extractMappedValuesLocal($mappings, 'email', $rowData);
+            $name = $extractMappedValuesLocal($mappings, 'name', $rowData);
+            
+            $leads[] = [
+                'phone' => $phone,
+                'email' => $email,
+                'name' => $name
+            ];
+        }
+        fclose($stream);
+        
+        // Now run duplication checks
+        $results = [];
+        foreach ($leads as $lead) {
+            $phone = normalizePhone($lead['phone'] ?? '');
+            $email = trim($lead['email'] ?? '');
+            $name = trim($lead['name'] ?? '');
+            
+            $crmCheck = checkCRMInteraction($conn, $phone, $email);
+            $leadId = null;
+            $assignedName = 'Không rõ';
+            $lastInteractionDate = null;
+            
+            if ($crmCheck['originalAssignedTo']) {
+                $where = [];
+                $params = [];
+                $types = '';
+                if (!empty($phone)) {
+                    $where[] = "l.phone = ?";
+                    $params[] = $phone;
+                    $types .= 's';
+                }
+                if (!empty($email)) {
+                    $where[] = "l.email = ?";
+                    $params[] = $email;
+                    $types .= 's';
+                }
+                if (!empty($where)) {
+                    $whereClause = implode(" OR ", $where);
+                    $stmt = $conn->prepare("SELECT l.id, l.last_interaction_date, c.name as consultant_name FROM leads l LEFT JOIN consultants c ON l.assigned_to = c.id WHERE $whereClause ORDER BY l.last_interaction_date DESC LIMIT 1");
+                    if ($stmt) {
+                        $stmt->bind_param($types, ...$params);
+                        $stmt->execute();
+                        $res = $stmt->get_result();
+                        if ($res->num_rows > 0) {
+                            $row = $res->fetch_assoc();
+                            $leadId = $row['id'];
+                            $assignedName = $row['consultant_name'] ?? 'Không rõ';
+                            $lastInteractionDate = $row['last_interaction_date'];
+                        }
+                        $stmt->close();
+                    }
+                }
+            }
+            
+            $results[] = [
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'is_duplicate' => $crmCheck['isDuplicate'],
+                'has_record' => !empty($crmCheck['originalAssignedTo']),
+                'assigned_to' => $crmCheck['originalAssignedTo'],
+                'consultant_name' => $assignedName,
+                'consultant_status' => $crmCheck['consultantStatus'],
+                'last_interaction_date' => $lastInteractionDate,
+                'months_since_last_interaction' => $crmCheck['monthsSinceLastInteraction']
+            ];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'results' => $results
         ]);
         break;
 

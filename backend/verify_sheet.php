@@ -240,15 +240,13 @@ if ($connItem) {
                 
                 $leadId = '';
                 $assignedName = '';
-                if ($crmCheck['isDuplicate']) {
-                    $lDetail = $getLeadDetailLocal($conn, $phone, $email);
-                    if ($lDetail) {
-                        $leadId = $lDetail['id'];
-                        $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
-                    }
+                $lDetail = $getLeadDetailLocal($conn, $phone, $email);
+                if ($lDetail) {
+                    $leadId = $lDetail['id'];
+                    $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
                 }
                 
-                $existMsg = $crmCheck['isDuplicate'] ? "Khách hàng đang có trong CRM (ID Lead: " . $leadId . ", Sale: " . $assignedName . ")" : "Đã đồng bộ nhưng Lead không còn trong bảng leads (có thể đã bị xóa)";
+                $existMsg = $lDetail ? "Khách hàng đang có trong CRM (ID Lead: " . $leadId . ", Sale: " . $assignedName . ")" : "Đã đồng bộ nhưng Lead không còn trong bảng leads (có thể đã bị xóa)";
                 
                 $diagnosticRows[] = [
                     'row_num' => $rowCount,
@@ -367,8 +365,19 @@ if ($connItem) {
                         $cls = 'table-primary';
                     }
                 } else {
-                    $msg = "Dòng dữ liệu MỚI HOÀN TOÀN. Sẽ tiến hành đồng bộ và định tuyến chia số.";
-                    $cls = 'table-primary';
+                    // Check if it is a duplicate match but the sale is inactive/on leave
+                    $lDetail = $getLeadDetailLocal($conn, $phone, $email);
+                    if ($lDetail) {
+                        $leadId = $lDetail['id'];
+                        $assignedName = $lDetail['consultant_name'] ?? 'Không rõ';
+                        $consultantStatus = $crmCheck['consultantStatus'] ?? 'inactive';
+                        $statusText = $consultantStatus === 'leave' ? 'đang nghỉ phép' : 'không hoạt động';
+                        $msg = "Khách hàng TRÙNG trong CRM (ID Lead: $leadId) nhưng Sale cũ ($assignedName) $statusText. Sẽ tiến hành chia mới cho Sale khác.";
+                        $cls = 'table-primary';
+                    } else {
+                        $msg = "Dòng dữ liệu MỚI HOÀN TOÀN. Sẽ tiến hành đồng bộ và định tuyến chia số.";
+                        $cls = 'table-primary';
+                    }
                 }
             }
 

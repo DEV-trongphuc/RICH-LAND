@@ -1320,7 +1320,11 @@ export const RuleSettings = () => {
                                 color: '#475569'
                               }}>
                                 <strong>Lý do:</strong>{' '}
-                                {simulateResult.consultant.is_compensation ? (
+                                {simulateResult.consultant.reason ? (
+                                  <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                                    {simulateResult.consultant.reason}
+                                  </span>
+                                ) : simulateResult.consultant.is_compensation ? (
                                   <span style={{ color: '#10b981', fontWeight: 600 }}>
                                     Được nhận đền bù số lỗi (còn nợ: {simulateResult.consultant.compensation_count} số).
                                   </span>
