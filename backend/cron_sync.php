@@ -307,7 +307,7 @@ foreach ($connections as $connItem) {
                     if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
                         static $consultantCache = [];
                         if (!isset($consultantCache[$ownerId])) {
-                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
                             $stmtC->bind_param("i", $ownerId);
                             $stmtC->execute();
                             $consultantCache[$ownerId] = $stmtC->get_result()->fetch_assoc();
@@ -315,7 +315,7 @@ foreach ($connections as $connItem) {
                         }
                         $cRow = $consultantCache[$ownerId];
                         
-                        if ($cRow) {
+                        if ($cRow && $cRow['status'] === 'active') {
                             sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
                             sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source);
                         }
@@ -348,7 +348,7 @@ foreach ($connections as $connItem) {
                 
                 static $consultantCache = [];
                 if (!isset($consultantCache[$assignedTo])) {
-                    $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                    $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
                     $stmtC->bind_param("i", $assignedTo);
                     $stmtC->execute();
                     $consultantCache[$assignedTo] = $stmtC->get_result()->fetch_assoc();
@@ -356,7 +356,7 @@ foreach ($connections as $connItem) {
                 }
                 $cRow = $consultantCache[$assignedTo];
                 
-                if ($cRow) {
+                if ($cRow && $cRow['status'] === 'active') {
                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
                     sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source);
                 }

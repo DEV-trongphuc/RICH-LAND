@@ -255,12 +255,12 @@ if ($isSilent == 1) {
     if ($crmCheckResult['isDuplicate'] && $syncSaleperson == 1) {
         $ownerId = $crmCheckResult['assignedTo'];
         if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
-            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
             $stmtC->bind_param("i", $ownerId);
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
             $stmtC->close();
-            if ($cRow) {
+            if ($cRow && $cRow['status'] === 'active') {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
                 sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);
@@ -282,12 +282,12 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
         $conn->commit();
 
-        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+        $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
         $stmtC->bind_param("i", $assignedTo);
         $stmtC->execute();
         $cRow = $stmtC->get_result()->fetch_assoc();
         $stmtC->close();
-        if ($cRow) {
+        if ($cRow && $cRow['status'] === 'active') {
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
             sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source);

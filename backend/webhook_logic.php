@@ -18,6 +18,20 @@ function normalizePhone($phoneRaw) {
     // Remove common prefixes like "p:", "tel:", "phone:", etc.
     $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
 
+    // Extract the last phone number if multiple are provided (separated by commas, dots, slashes, spaces, or words like "hoặc", "or")
+    $parts = preg_split('/[,;\/]|(?:\.\s*)|(?:\s+hoặc\s+)|(?:\s+or\s+)|(?:\s+và\s+)|(?:\s+and\s+)|\s+/i', $phone);
+    $validParts = [];
+    foreach ($parts as $part) {
+        $partCleaned = preg_replace('/[^\d+]/', '', trim($part));
+        $digitsOnly = preg_replace('/[^\d]/', '', $partCleaned);
+        if (strlen($digitsOnly) >= 8) {
+            $validParts[] = $partCleaned;
+        }
+    }
+    if (count($validParts) > 1) {
+        $phone = end($validParts);
+    }
+
     // Keep only digits and leading +
     $hasPlusPrefix = (strpos($phone, '+') !== false && strpos(ltrim($phone), '+') === 0);
     $clean = preg_replace('/[^\d]/', '', $phone);
@@ -41,6 +55,53 @@ function normalizePhone($phoneRaw) {
     }
 
     return $clean;
+}
+
+/**
+ * Normalize date to standard MySQL Y-m-d H:i:s format.
+ * Supports various common Excel/text formats (e.g. 20-05-2026 16:35:50, 2026-05-20, etc.)
+ */
+function normalizeDate($dateRaw) {
+    if (empty($dateRaw)) return null;
+    $dateStr = trim((string)$dateRaw);
+    if ($dateStr === '') return null;
+
+    // 1. If it's already Y-m-d H:i:s
+    if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $dateStr)) {
+        return $dateStr;
+    }
+
+    // 2. Try parsing DMY format: dd-mm-yyyy hh:ii:ss or dd/mm/yyyy hh:ii:ss
+    if (preg_match('/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $dateStr, $matches)) {
+        $day = (int)$matches[1];
+        $month = (int)$matches[2];
+        $year = (int)$matches[3];
+        $hour = isset($matches[4]) ? (int)$matches[4] : 0;
+        $minute = isset($matches[5]) ? (int)$matches[5] : 0;
+        $second = isset($matches[6]) ? (int)$matches[6] : 0;
+        
+        if (checkdate($month, $day, $year)) {
+            return sprintf('%04d-%02d-%02d %02d:%02d:%02d', $year, $month, $day, $hour, $minute, $second);
+        }
+    }
+
+    // 3. Try standard PHP strtotime
+    $timestamp = strtotime(str_replace('/', '-', $dateStr));
+    if ($timestamp !== false && $timestamp > 0) {
+        return date('Y-m-d H:i:s', $timestamp);
+    }
+
+    // 4. Try parsing Excel numeric timestamp
+    if (is_numeric($dateStr)) {
+        $days = (float)$dateStr;
+        // Excel base date is 1900-01-01
+        $timestamp = ($days - 25569) * 86400;
+        if ($timestamp > 0) {
+            return date('Y-m-d H:i:s', $timestamp);
+        }
+    }
+
+    return null;
 }
 
 function checkGlobalExclusion($conn, $data, $phone, $email) {
@@ -184,12 +245,24 @@ function checkCRMInteraction($conn, $phone, $email) {
         $diff = $now->diff($lastInteraction);
         $months = ($diff->format('%y') * 12) + $diff->format('%m');
         
-        $isDuplicate = ($row['consultant_status'] === 'active');
+        $reassignIfOwnerInactive = get_system_setting($conn, 'reassign_if_owner_inactive');
+        if ($reassignIfOwnerInactive === '') {
+            $reassignIfOwnerInactive = '1'; // Default to ON (mặc định bật)
+        }
+        
+        if ($reassignIfOwnerInactive === '1') {
+            $isDuplicate = ($row['consultant_status'] === 'active');
+            $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
+        } else {
+            // OFF: Always count as duplicate, keep the original owner
+            $isDuplicate = true;
+            $assignedTo = $row['assigned_to'];
+        }
         
         return [
             'isDuplicate' => $isDuplicate,
             'monthsSinceLastInteraction' => $months,
-            'assignedTo' => $isDuplicate ? $row['assigned_to'] : null,
+            'assignedTo' => $assignedTo,
             'originalAssignedTo' => $row['assigned_to'],
             'consultantStatus' => $row['consultant_status']
         ];
@@ -484,23 +557,25 @@ function getNextConsultantInRound($conn, $roundId) {
     return ['id' => $nextId, 'is_compensation' => false];
 }
 
-function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null) {
+function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null) {
     $phone = normalizePhone($phone);
     if ($phone === '') $phone = null;
     $email = trim($email) === '' ? null : trim($email);
     
+    $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
+    
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
-                            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE 
                                 name = IF(VALUES(name) != '' AND name = '', VALUES(name), name),
                                 email = IF(VALUES(email) != '' AND email = '', VALUES(email), email),
                                 source = VALUES(source),
                                 type = VALUES(type),
                                 note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n', VALUES(note)))),
-                                last_interaction_date = NOW(),
+                                last_interaction_date = VALUES(last_interaction_date),
                                 assigned_to = VALUES(assigned_to),
                                 connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id)");
-    $stmt->bind_param("ssssssii", $phone, $email, $name, $source, $type, $note, $assignedConsultantId, $connectionId);
+    $stmt->bind_param("sssssssii", $phone, $email, $name, $source, $type, $note, $dateVal, $assignedConsultantId, $connectionId);
     $stmt->execute();
     $id = $stmt->insert_id;
     $stmt->close();
@@ -525,7 +600,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null) {
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null) {
     $phone = normalizePhone($phone);
     if (empty($phone) && empty($email)) return null;
     
@@ -563,14 +638,14 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     }
     
     if ($id) {
-        // NEW-02 fix: Only update assigned_to if we actually have a consultant
+        $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
         if ($assignedConsultantId) {
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), assigned_to = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
-            $uStmt->bind_param("ssssiiii", $source, $type, $note, $note, $assignedConsultantId, $connectionId, $connectionId, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = ?, assigned_to = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
+            $uStmt->bind_param("sssssiiii", $source, $type, $note, $note, $dateVal, $assignedConsultantId, $connectionId, $connectionId, $id);
         } else {
             // Don't overwrite assigned_to when lead is pending/unassigned
-            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = NOW(), connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
-            $uStmt->bind_param("ssssiii", $source, $type, $note, $note, $connectionId, $connectionId, $id);
+            $uStmt = $conn->prepare("UPDATE leads SET source = ?, type = ?, note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), last_interaction_date = ?, connection_id = IF(? IS NOT NULL, ?, connection_id) WHERE id = ?");
+            $uStmt->bind_param("sssssiii", $source, $type, $note, $note, $dateVal, $connectionId, $connectionId, $id);
         }
         $uStmt->execute();
         $uStmt->close();

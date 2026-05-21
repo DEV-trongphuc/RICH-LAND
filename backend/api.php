@@ -4006,40 +4006,55 @@ switch ($action) {
                 $phone = normalizePhone($lead['phone'] ?? '');
                 $email = trim($lead['email'] ?? '');
                 $name = trim($lead['name'] ?? '');
+                $customDateRaw = trim($lead['date'] ?? '');
+                $customDate = normalizeDate($customDateRaw);
+                $salepersonVal = trim($lead['saleperson'] ?? '');
                 
                 if (empty($phone) && empty($email)) {
                     continue;
+                }
+                
+                $fileConsultantId = null;
+                if (!empty($salepersonVal)) {
+                    $fileConsultantId = findConsultantByEmailOrName($conn, $salepersonVal);
                 }
                 
                 $crmCheck = checkCRMInteraction($conn, $phone, $email);
                 
                 if ($isSilent == 1) {
                     if ($crmCheck['isDuplicate']) {
-                        $ownerId = $crmCheck['assignedTo'];
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null);
+                        $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
+                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
                         $duplicateCount++;
                     } else {
-                        $leadId = insertLead($conn, [], null, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null);
+                        $ownerId = $fileConsultantId;
+                        $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu (Silent)', null, $customDate);
                         $newCount++;
                     }
                     
-                    $actualOwnerId = ($crmCheck['isDuplicate'] && !empty($crmCheck['assignedTo'])) ? $crmCheck['assignedTo'] : null;
-                    logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen.');
+                    logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen.');
                 } else {
                     if ($crmCheck['isDuplicate']) {
-                        $assignedTo = $crmCheck['assignedTo'];
-                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null);
+                        $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
+                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
                         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
                         $duplicateCount++;
                     } else {
-                        $rulesResult = evaluateRules($conn, [], 'Excel Import', 'Excel', null, 'sheets');
-                        $assignedToId = $rulesResult['consultant_id'] ?? null;
+                        $assignedToId = $fileConsultantId;
+                        $isFromRules = false;
+                        if (empty($assignedToId)) {
+                            $rulesResult = evaluateRules($conn, [], 'Excel Import', 'Excel', null, 'sheets');
+                            $assignedToId = $rulesResult['consultant_id'] ?? null;
+                            $isFromRules = true;
+                        }
                         
-                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null);
+                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
                         $newCount++;
                         
                         if ($assignedToId) {
-                            logDistribution($conn, $leadId, $assignedToId, $rulesResult['round_id'] ?? null, 'success', 'Phan chia tu dong tu file Excel.');
+                            $roundId = ($isFromRules && isset($rulesResult['round_id'])) ? $rulesResult['round_id'] : null;
+                            $logMsg = $isFromRules ? 'Phan chia tu dong tu file Excel.' : 'Phan chia cho Sale tu file Excel.';
+                            logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg);
                             
                             $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
                             $stmtC->bind_param("i", $assignedToId);
@@ -4049,8 +4064,8 @@ switch ($action) {
                             if ($cRow) {
                                 require_once __DIR__ . '/mailer.php';
                                 require_once __DIR__ . '/zalo_bot.php';
-                                sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $rulesResult['round_id'] ?? 0);
-                                sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $rulesResult['round_id'] ?? 0);
+                                sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $roundId ?? 0);
+                                sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0);
                             }
                         } else {
                             logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
