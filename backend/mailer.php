@@ -390,6 +390,14 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         $replacements['{note}'] = nl2br(trim($actualNote));
 
         $renderedTemplate = $emailTemplate;
+        // Auto-append {source} if not present in custom template to ensure consistency
+        if (strpos(strtolower($renderedTemplate), '{source}') === false && !empty($leadSource)) {
+            if (preg_match('/- Ghi Chú:/i', $renderedTemplate)) {
+                $renderedTemplate = preg_replace('/(- Ghi Chú:)/i', "- Nguồn Data: {source}\n$1", $renderedTemplate);
+            } else {
+                $renderedTemplate .= "\n- Nguồn Data: {source}";
+            }
+        }
         foreach ($replacements as $placeholder => $value) {
             $renderedTemplate = str_replace($placeholder, $value, $renderedTemplate);
         }

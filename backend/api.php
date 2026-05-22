@@ -4154,7 +4154,9 @@ switch ($action) {
                     $log_data['source'] ?: '',
                     $roundNameStr,
                     $lead_id,
-                    $roundId
+                    $roundId,
+                    $log_data['lead_email'] ?: '',
+                    $log_data['type'] ?: ''
                 );
             }
 
@@ -5000,7 +5002,7 @@ switch ($action) {
                                     require_once __DIR__ . '/mailer.php';
                                     require_once __DIR__ . '/zalo_bot.php';
                                     sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $roundId ?? 0);
-                                    sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0);
+                                    sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0, $email, 'Excel');
                                 }
                             } else {
                                 logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
@@ -5464,7 +5466,10 @@ switch ($action) {
                             $fName,
                             $phone ?: '',
                             $note ?: '',
-                            $source ?: ''
+                            $source ?: '',
+                            $leadId,
+                            $email,
+                            $type
                         );
                     }
 
@@ -5555,7 +5560,9 @@ switch ($action) {
                                 $source ?: '',
                                 $roundName,
                                 $leadId,
-                                $assignedRoundId
+                                $assignedRoundId,
+                                $email,
+                                $type
                             );
                         }
                         $stmtC->close();

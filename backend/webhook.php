@@ -509,7 +509,10 @@ if ($isFallbackAdmin && $fallbackAdminData) {
             $name, 
             $phone, 
             $note, 
-            $source
+            $source,
+            $leadId,
+            $email,
+            $type
         );
     }
 } else {
@@ -520,7 +523,7 @@ if ($isFallbackAdmin && $fallbackAdminData) {
     if ($cRes->num_rows > 0 && $status !== 'pending_work_hours') {
         $c = $cRes->fetch_assoc();
         sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
-        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId);
+        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId, $email, $type);
     }
     $stmt->close();
 }

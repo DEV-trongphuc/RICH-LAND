@@ -112,7 +112,7 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text)
 /**
  * Gửi thông báo chia Lead mới cho Sale qua Zalo
  */
-function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0)
+function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0, $leadEmail = '', $leadType = '')
 {
     global $conn;
 
@@ -147,12 +147,35 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         return false; // Sale chưa liên kết Zalo
     }
 
+    // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
+    $email = $leadEmail;
+    $type = $leadType;
+    if (empty($email) || empty($type)) {
+        if ($leadId > 0) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $leadId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email)) $email = $row['email'] ?? '';
+                    if (empty($type)) $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        }
+    }
+
     // Build nội dung tin nhắn
     $roundStr = !empty($roundName) ? " Vòng: $roundName\n" : "";
     $fName = !empty($leadName) ? $leadName : "Không có";
     $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
     $fSource = !empty($leadSource) ? $leadSource : "Không có";
     $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    $emailLine = !empty($email) ? "  • Email: $email\n" : "";
+    $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
 
     // Build Report URL
     $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
@@ -170,6 +193,8 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
+        . $emailLine
+        . $typeLine
         . "  • Nguồn: $fSource\n"
         . $roundLine
         . "\n❖ GHI CHÚ:\n"
@@ -315,7 +340,7 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 /**
  * Gửi thông báo chia Lead fallback trực tiếp cho Admin qua Zalo
  */
-function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '')
+function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '')
 {
     global $conn;
 
@@ -325,16 +350,40 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
         return false;
     }
 
+    $email = $leadEmail;
+    $type = $leadType;
+    if (empty($email) || empty($type)) {
+        if ($leadId > 0) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $leadId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email)) $email = $row['email'] ?? '';
+                    if (empty($type)) $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        }
+    }
+
     $fName = !empty($leadName) ? $leadName : "Không có";
     $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
     $fSource = !empty($leadSource) ? $leadSource : "Không có";
     $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    $emailLine = !empty($email) ? "  • Email: $email\n" : "";
+    $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
 
     $text = "[ THÔNG BÁO DATA FALLBACK ]\n\n"
         . "Chào Quản trị viên $adminName, hệ thống vừa phân bổ trực tiếp cho bạn 1 data bị fallback:\n\n"
         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
+        . $emailLine
+        . $typeLine
         . "  • Nguồn: $fSource\n"
         . "\n❖ GHI CHÚ:\n"
         . "  $fNote\n\n"

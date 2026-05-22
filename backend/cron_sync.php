@@ -207,7 +207,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             $row['lead_source'] ?: '',
                             $row['round_name'] ?? '',
                             $row['lead_id'],
-                            $row['round_id'] ?? 0
+                            $row['round_id'] ?? 0,
+                            $row['lead_email'] ?: '',
+                            $row['lead_type'] ?: ''
                         );
                     } else if ($isFallbackAdmin && $fallbackAdminData) {
                         sendLeadAssignedEmailToSale(
@@ -230,7 +232,10 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                                 $row['lead_name'] ?: 'Khách hàng ẩn danh',
                                 $row['lead_phone'] ?: '',
                                 $row['lead_note'] ?: '',
-                                $row['lead_source'] ?: ''
+                                $row['lead_source'] ?: '',
+                                $row['lead_id'],
+                                $row['lead_email'] ?: '',
+                                $row['lead_type'] ?: ''
                             );
                         }
                     }
@@ -287,7 +292,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                                 $row['lead_source'] ?: '',
                                 $row['round_name'] ?? '',
                                 $row['lead_id'],
-                                $row['round_id'] ?? 0
+                                $row['round_id'] ?? 0,
+                                $row['lead_email'] ?: '',
+                                $row['lead_type'] ?: ''
                             );
                             
                             $releasedCount++;
@@ -810,7 +817,10 @@ foreach ($connections as $connItem) {
                             $name, 
                             $phone, 
                             $note, 
-                            $source
+                            $source,
+                            $leadId,
+                            $email,
+                            $type
                         );
                     }
                     $syncedCount++;
@@ -831,7 +841,7 @@ foreach ($connections as $connItem) {
                         sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
                         
                         // Gửi Zalo Message (Đồng bộ Đa Kênh)
-                        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0);
+                        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0, $email, $type);
                     }
                     $syncedCount++;
                 }
