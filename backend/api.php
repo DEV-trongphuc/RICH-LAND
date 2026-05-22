@@ -147,7 +147,8 @@ if (!in_array($action, $publicActions)) {
         'get_ticket_settings',
         'save_ticket_settings', // Ticket notification config
         'unlink_zalo',
-        'test_email'
+        'test_email',
+        'block_lead'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -1133,8 +1134,12 @@ switch ($action) {
     case 'get_consultants':
         $res = $conn->query("SELECT * FROM consultants ORDER BY created_at DESC");
         $data = [];
-        while ($row = $res->fetch_assoc())
+        while ($row = $res->fetch_assoc()) {
+            if (isset($row['work_schedule']) && $row['work_schedule'] !== null) {
+                $row['work_schedule'] = json_decode($row['work_schedule'], true);
+            }
             $data[] = $row;
+        }
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 
@@ -1168,9 +1173,10 @@ switch ($action) {
             $work_end_time = trim($input['work_end_time'] ?? '23:59');
             if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
             if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+            $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time);
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule);
             $stmt->execute();
             $newId = $conn->insert_id;
             $stmt->close();
@@ -1230,9 +1236,10 @@ switch ($action) {
             $work_end_time = trim($input['work_end_time'] ?? '23:59');
             if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time)) $work_start_time = '00:00';
             if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
+            $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=? WHERE id=?");
-            $stmt->bind_param("ssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $id);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=? WHERE id=?");
+            $stmt->bind_param("sssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
             }
@@ -4069,7 +4076,8 @@ switch ($action) {
                     $log_data['source'] ?: '',
                     $cc_emails,
                     $roundNameStr,
-                    $timeline
+                    $timeline,
+                    $lead_id
                 );
                 sendLeadReminderZaloMessageToSale(
                     $new_consultant_id,
@@ -4109,6 +4117,192 @@ switch ($action) {
             }
 
             echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        }
+        break;
+
+    case 'block_lead':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $log_id = (int) ($input['log_id'] ?? 0);
+        $compensate_sale = isset($input['compensate_sale']) ? (bool)$input['compensate_sale'] : false;
+        $reason = trim($input['reason'] ?? '');
+
+        if (!$log_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID Log phân bổ']);
+            break;
+        }
+
+        // 1. Fetch details of lead, consultant, and round
+        $stmt = $conn->prepare("
+            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, 
+                   c_old.email as old_consultant_email, c_old.zalo_chat_id as old_consultant_zalo,
+                   l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.note as lead_note, 
+                   r.round_name
+            FROM distribution_logs dl
+            LEFT JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            LEFT JOIN consultants c_old ON dl.assigned_to = c_old.id
+            WHERE dl.id = ?
+        ");
+        $stmt->bind_param("i", $log_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy log phân bổ']);
+            $stmt->close();
+            break;
+        }
+        $log_data = $res->fetch_assoc();
+        $stmt->close();
+
+        $lead_id = $log_data['lead_id'];
+        $round_id = $log_data['round_id'] ? (int)$log_data['round_id'] : null;
+        $old_consultant_id = $log_data['old_consultant_id'] ? (int)$log_data['old_consultant_id'] : null;
+        $old_consultant_name = $log_data['old_consultant_name'] ?? '';
+        $old_consultant_email = $log_data['old_consultant_email'] ?? '';
+        $old_consultant_zalo = $log_data['old_consultant_zalo'] ?? '';
+        $lead_phone = trim($log_data['lead_phone'] ?? '');
+        $lead_email = trim($log_data['lead_email'] ?? '');
+        $lead_name = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
+        $round_name = $log_data['round_name'] ?? 'Không rõ';
+
+        if (empty($lead_phone) && empty($lead_email)) {
+            echo json_encode(['success' => false, 'message' => 'Lead không có Số điện thoại hoặc Email để chặn']);
+            break;
+        }
+
+        $conn->begin_transaction();
+        try {
+            // 2. Add contact to global_exclusion_contacts
+            $settingsStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_exclusion_contacts' LIMIT 1");
+            $currentContactsStr = '';
+            if ($settingsStmt && $sRow = $settingsStmt->fetch_assoc()) {
+                $currentContactsStr = $sRow['setting_value'] ?? '';
+            }
+
+            $currentContacts = array_map('trim', explode(',', strtolower($currentContactsStr)));
+            // Remove empty values
+            $currentContacts = array_filter($currentContacts);
+
+            $newContactsAdded = [];
+            if (!empty($lead_phone)) {
+                $newContactsAdded[] = strtolower($lead_phone);
+            }
+            if (!empty($lead_email)) {
+                $newContactsAdded[] = strtolower($lead_email);
+            }
+
+            foreach ($newContactsAdded as $c) {
+                if (!in_array($c, $currentContacts)) {
+                    $currentContacts[] = $c;
+                }
+            }
+
+            $updatedContactsStr = implode(',', $currentContacts);
+
+            $updSettings = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES ('global_exclusion_contacts', ?)");
+            $updSettings->bind_param("s", $updatedContactsStr);
+            $updSettings->execute();
+            $updSettings->close();
+
+            // Clear db memory cache for system settings if any
+            if (isset($GLOBALS['system_settings_cache'])) {
+                unset($GLOBALS['system_settings_cache']);
+            }
+
+            // 3. Update Lead status to blacklisted and append reason to note
+            $newNote = trim(($log_data['lead_note'] ?? '') . "\n[Bị chặn bởi Admin lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]");
+            $updLead = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ? WHERE id = ?");
+            $updLead->bind_param("si", $newNote, $lead_id);
+            $updLead->execute();
+            $updLead->close();
+
+            // 4. Update distribution_logs status
+            $logMsgAdd = "\n[Chặn bởi Admin lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . ". Bù: " . ($compensate_sale ? "Có" : "Không") . "]";
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted', message = CONCAT(message, ?) WHERE id = ?");
+            $updLog->bind_param("si", $logMsgAdd, $log_id);
+            $updLog->execute();
+            $updLog->close();
+
+            // 5. Compensate Sale if requested
+            if ($compensate_sale && $old_consultant_id && $round_id) {
+                // Check if enrolled in round_consultants
+                $chkEnroll = $conn->prepare("SELECT 1 FROM round_consultants WHERE round_id = ? AND consultant_id = ? LIMIT 1");
+                $chkEnroll->bind_param("ii", $round_id, $old_consultant_id);
+                $chkEnroll->execute();
+                $hasEnroll = $chkEnroll->get_result()->num_rows > 0;
+                $chkEnroll->close();
+
+                if ($hasEnroll) {
+                    $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                    $updComp->bind_param("ii", $round_id, $old_consultant_id);
+                    $updComp->execute();
+                    $updComp->close();
+                } else {
+                    $insComp = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, 1, 1, 1)");
+                    $insComp->bind_param("ii", $round_id, $old_consultant_id);
+                    $insComp->execute();
+                    $insComp->close();
+                }
+            }
+
+            // 6. Log admin action
+            logAdminAction($conn, $decodedUser['id'], 'BLOCK_LEAD_BLACKLIST', [
+                'log_id' => $log_id,
+                'lead_id' => $lead_id,
+                'lead_name' => $lead_name,
+                'phone' => $lead_phone,
+                'email' => $lead_email,
+                'old_consultant_id' => $old_consultant_id,
+                'old_consultant_name' => $old_consultant_name,
+                'round_name' => $round_name,
+                'compensated' => $compensate_sale,
+                'reason' => $reason
+            ]);
+
+            $conn->commit();
+
+            // 7. Send Notifications out of transaction
+            if ($compensate_sale && $old_consultant_id) {
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+
+                $maskedPhone = '';
+                if (!empty($lead_phone)) {
+                    $trimmed = trim($lead_phone);
+                    if (strlen($trimmed) <= 6) {
+                        $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                    } else {
+                        $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                    }
+                }
+
+                // Send Zalo Notification
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+                if (!empty($botToken) && !empty($old_consultant_zalo)) {
+                    $zaloMsg = "[ ĐỀN BÙ DATA - BLACKLIST ]\n\n"
+                        . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin đưa vào Danh sách đen (Blacklist).\n\n"
+                        . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
+                    sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
+                }
+
+                // Send Email Notification
+                if (!empty($old_consultant_email)) {
+                    $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
+                    $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
+                                  <p>Chào $old_consultant_name,</p>
+                                  <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin đưa vào Danh sách đen (Blacklist).</p>
+                                  <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$round_name</strong>.</p>";
+                    sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, '');
+                }
+            }
+
+            echo json_encode(['success' => true]);
+
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
@@ -4653,7 +4847,6 @@ switch ($action) {
         $duplicateCount = 0;
         $newCount = 0;
         
-        $conn->begin_transaction();
         try {
             foreach ($leads as $lead) {
                 $phone = normalizePhone($lead['phone'] ?? '');
@@ -4667,81 +4860,125 @@ switch ($action) {
                     continue;
                 }
                 
-                $fileConsultantId = null;
-                if (!empty($salepersonVal)) {
-                    $fileConsultantId = findConsultantByEmailOrName($conn, $salepersonVal);
+                // Acquire lock for this lead
+                $lockKey = '';
+                if (!empty($phone)) {
+                    $lockKey = 'webhook_lead_phone_' . $phone;
+                } else if (!empty($email)) {
+                    $lockKey = 'webhook_lead_email_' . md5($email);
+                } else {
+                    $lockKey = 'webhook_lead_empty_' . md5(json_encode($lead));
                 }
                 
-                $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
-                
-                if ($isSilent == 1) {
-                    if ($crmCheck['isDuplicate']) {
-                        $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name);
-                        $duplicateCount++;
-                        logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
-                    } else {
-                        $ownerId = $fileConsultantId;
-                        $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
-                        $newCount++;
-                        logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).');
+                $lockAcquired = false;
+                $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 5) as get_lock");
+                if ($lockStmt) {
+                    $lockStmt->bind_param("s", $lockKey);
+                    $lockStmt->execute();
+                    $lockRes = $lockStmt->get_result()->fetch_assoc();
+                    $lockStmt->close();
+                    if ($lockRes && $lockRes['get_lock'] == 1) {
+                        $lockAcquired = true;
                     }
-                } else {
-                    if ($crmCheck['isDuplicate']) {
-                        $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                        $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name);
-                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
-                        $duplicateCount++;
-                        
-                        if ($syncSaleperson == 1 && !empty($assignedTo)) {
-                            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $assignedTo);
-                            $stmtC->execute();
-                            $cRow = $stmtC->get_result()->fetch_assoc();
-                            $stmtC->close();
-                            if ($cRow && $cRow['status'] === 'active') {
-                                require_once __DIR__ . '/mailer.php';
-                                require_once __DIR__ . '/zalo_bot.php';
-                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
-                                sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
-                            }
+                }
+                
+                if (!$lockAcquired) {
+                    error_log("Excel Import: Skip locked lead (Phone: $phone, Email: $email)");
+                    continue;
+                }
+                
+                $conn->begin_transaction();
+                try {
+                    $fileConsultantId = null;
+                    if (!empty($salepersonVal)) {
+                        $fileConsultantId = findConsultantByEmailOrName($conn, $salepersonVal);
+                    }
+                    
+                    $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
+                    
+                    if ($isSilent == 1) {
+                        if ($crmCheck['isDuplicate']) {
+                            $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name);
+                            $duplicateCount++;
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
+                        } else {
+                            $ownerId = $fileConsultantId;
+                            $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
+                            $newCount++;
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).');
                         }
                     } else {
-                        $assignedToId = $fileConsultantId;
-                        $isFromRules = false;
-                        if (empty($assignedToId)) {
-                            $rulesResult = evaluateRules($conn, [], 'Excel Import', 'Excel', null, 'sheets');
-                            $assignedToId = $rulesResult['consultant_id'] ?? null;
-                            $isFromRules = true;
-                        }
-                        
-                        $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
-                        $newCount++;
-                        
-                        if ($assignedToId) {
-                            $roundId = ($isFromRules && isset($rulesResult['round_id'])) ? $rulesResult['round_id'] : null;
-                            $logMsg = $isFromRules ? 'Phan chia tu dong tu file Excel.' : 'Phan chia cho Sale tu file Excel.';
-                            logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg);
+                        if ($crmCheck['isDuplicate']) {
+                            $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
+                            $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name);
+                            logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
+                            $duplicateCount++;
                             
-                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $assignedToId);
-                            $stmtC->execute();
-                            $cRow = $stmtC->get_result()->fetch_assoc();
-                            $stmtC->close();
-                            if ($cRow) {
-                                require_once __DIR__ . '/mailer.php';
-                                require_once __DIR__ . '/zalo_bot.php';
-                                sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $roundId ?? 0);
-                                sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0);
+                            if ($syncSaleperson == 1 && !empty($assignedTo)) {
+                                $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+                                $stmtC->bind_param("i", $assignedTo);
+                                $stmtC->execute();
+                                $cRow = $stmtC->get_result()->fetch_assoc();
+                                $stmtC->close();
+                                if ($cRow && $cRow['status'] === 'active') {
+                                    require_once __DIR__ . '/mailer.php';
+                                    require_once __DIR__ . '/zalo_bot.php';
+                                    sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import', '', '', [], $leadId);
+                                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
+                                }
                             }
                         } else {
-                            logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
+                            $assignedToId = $fileConsultantId;
+                            $isFromRules = false;
+                            if (empty($assignedToId)) {
+                                $rowData = $lead;
+                                $rowData['phone'] = $phone;
+                                $rowData['email'] = $email;
+                                $rowData['name'] = $name;
+                                $rulesResult = evaluateRules($conn, $rowData, 'Excel Import', 'Excel', null, 'sheets');
+                                $assignedToId = $rulesResult['consultant_id'] ?? null;
+                                $isFromRules = true;
+                            }
+                            
+                            $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
+                            $newCount++;
+                            
+                            if ($assignedToId) {
+                                $roundId = ($isFromRules && isset($rulesResult['round_id'])) ? $rulesResult['round_id'] : null;
+                                $logMsg = $isFromRules ? 'Phan chia tu dong tu file Excel.' : 'Phan chia cho Sale tu file Excel.';
+                                logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg);
+                                
+                                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                                $stmtC->bind_param("i", $assignedToId);
+                                $stmtC->execute();
+                                $cRow = $stmtC->get_result()->fetch_assoc();
+                                $stmtC->close();
+                                if ($cRow) {
+                                    require_once __DIR__ . '/mailer.php';
+                                    require_once __DIR__ . '/zalo_bot.php';
+                                    sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $roundId ?? 0);
+                                    sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0);
+                                }
+                            } else {
+                                logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
+                            }
                         }
                     }
+                    $conn->commit();
+                    $importedCount++;
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    error_log("Excel Import error on lead (Phone: $phone): " . $e->getMessage());
+                } finally {
+                    $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+                    if ($relStmt) {
+                        $relStmt->bind_param("s", $lockKey);
+                        $relStmt->execute();
+                        $relStmt->close();
+                    }
                 }
-                $importedCount++;
             }
-            $conn->commit();
             echo json_encode([
                 'success' => true,
                 'message' => "Da nhap thanh cong $importedCount leads ($newCount moi, $duplicateCount trung).",
@@ -4750,7 +4987,6 @@ switch ($action) {
                 'duplicate_count' => $duplicateCount
             ]);
         } catch (Exception $e) {
-            $conn->rollback();
             echo json_encode(['success' => false, 'message' => 'Loi import: ' . $e->getMessage()]);
         }
         break;
@@ -4849,6 +5085,7 @@ switch ($action) {
         $headers = [];
         $rowCount = 0;
         $leads = [];
+        $maxPreviewRows = 200;
         
         while (($row = fgetcsv($stream)) !== FALSE) {
             $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
@@ -4858,6 +5095,9 @@ switch ($action) {
                 continue;
             }
             $rowCount++;
+            if ($rowCount > $maxPreviewRows + 1) {
+                break;
+            }
             if (empty(array_filter($row))) {
                 continue;
             }
@@ -5102,7 +5342,8 @@ switch ($action) {
                         $source,
                         '',
                         '',
-                        $timeline
+                        $timeline,
+                        $leadId
                     );
                     sendLeadReminderZaloMessageToSale(
                         $assignedTo,
@@ -5188,7 +5429,7 @@ switch ($action) {
                     $status = $isComp ? 'compensation' : 'assigned';
                     
                     // Check working hours
-                    $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+                    $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
                     $whStmt->bind_param("i", $consultantId);
                     $whStmt->execute();
                     $whRes = $whStmt->get_result();
@@ -5198,8 +5439,9 @@ switch ($action) {
                     if ($whRes && $whRow = $whRes->fetch_assoc()) {
                         $whStart = $whRow['work_start_time'] ?? '00:00';
                         $whEnd = $whRow['work_end_time'] ?? '23:59';
+                        $workSchedule = $whRow['work_schedule'] ?? null;
                         $currentTime = date('H:i');
-                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                             $status = 'pending_work_hours';
                             $isOutsideWorkHours = true;
                         }

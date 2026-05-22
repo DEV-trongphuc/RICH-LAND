@@ -113,7 +113,7 @@ function normalizeDate($dateRaw) {
     return null;
 }
 
-function checkGlobalExclusion($conn, $data, $phone, $email) {
+function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = false, $name = '', $source = '', $type = '', $note = '') {
     static $exclusions = null;
     if ($exclusions === null) {
         $exclusions = ['keys' => '', 'contacts' => ''];
@@ -126,6 +126,9 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
         }
     }
 
+    $matched = false;
+    $reason = '';
+
     // 1. Check contacts (email / phone)
     if (!empty($exclusions['contacts'])) {
         $blacklistContacts = array_map('trim', explode(',', strtolower($exclusions['contacts'])));
@@ -137,20 +140,24 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
             if (strpos($contact, '@') !== false) {
                 // Email check: exact match OR domain match if contact starts with @ (e.g. @test.com)
                 if (!empty($e) && ($e === $contact || (strpos($contact, '@') === 0 && strpos($e, $contact) !== false))) {
-                    return true;
+                    $matched = true;
+                    $reason = "Trùng Email/Tên miền trong danh sách đen: " . $contact;
+                    break;
                 }
             } else {
                 // Phone check: normalize both to ignore spacing/prefix mismatches
                 $normalizedContact = strtolower(normalizePhone($contact));
-                if (!empty($normalizedContact) && !empty($p) && strpos($p, $normalizedContact) !== false) {
-                    return true;
+                if (!empty($normalizedContact) && !empty($p) && $p === $normalizedContact) {
+                    $matched = true;
+                    $reason = "Trùng Số điện thoại trong danh sách đen: " . $contact;
+                    break;
                 }
             }
         }
     }
 
     // 2. Check keys in payload (Scan ONLY values, not JSON keys/headers)
-    if (!empty($exclusions['keys'])) {
+    if (!$matched && !empty($exclusions['keys'])) {
         $blacklistKeys = array_map('trim', explode(',', mb_strtolower($exclusions['keys'], 'UTF-8')));
         $scanData = $data;
         unset($scanData['_meta']); // Do not scan internal metadata
@@ -168,9 +175,86 @@ function checkGlobalExclusion($conn, $data, $phone, $email) {
         foreach ($blacklistKeys as $key) {
             if (empty($key)) continue;
             if (mb_strpos($payloadStr, $key, 0, 'UTF-8') !== false) {
-                return true; // Match found in payload values
+                $matched = true;
+                $reason = "Trùng từ khóa loại trừ: \"" . $key . "\"";
+                break;
             }
         }
+    }
+
+    if ($matched) {
+        if ($notifyAdmins) {
+            try {
+                // 1. Get bot token
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                
+                // 2. Query all admins
+                $adminRes = $conn->query("SELECT name, email, zalo_chat_id FROM accounts WHERE role = 'admin'");
+                if ($adminRes) {
+                    $admins = [];
+                    while ($row = $adminRes->fetch_assoc()) {
+                        $admins[] = $row;
+                    }
+                    
+                    if (!empty($admins)) {
+                        $maskedPhone = '';
+                        if (!empty($phone)) {
+                            $trimmed = trim($phone);
+                            if (strlen($trimmed) <= 6) {
+                                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                            } else {
+                                $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                            }
+                        }
+                        
+                        $zaloMsg = "⚠️ [ CẢNH BÁO DATA TRÙNG/SPAM CHẶN BLACKLIST ]\n\n"
+                                 . "Hệ thống vừa nhận được data mới khớp với danh sách đen/từ khóa loại trừ và đã tự động bỏ qua.\n\n"
+                                 . "- Tên khách hàng: " . ($name ?: 'Không rõ') . "\n"
+                                 . "- SĐT: " . ($maskedPhone ?: '-') . "\n"
+                                 . "- Email: " . ($email ?: '-') . "\n"
+                                 . "- Nguồn: " . ($source ?: '-') . "\n"
+                                 . "- Loại: " . ($type ?: '-') . "\n"
+                                 . "- Ghi chú: " . ($note ?: '-') . "\n"
+                                 . "- Lý do lọc: " . $reason;
+                                 
+                        // Send Zalo
+                        if (!empty($botToken)) {
+                            require_once __DIR__ . '/zalo_bot.php';
+                            foreach ($admins as $admin) {
+                                if (!empty($admin['zalo_chat_id'])) {
+                                    sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                                }
+                            }
+                        }
+                        
+                        // Send Email
+                        require_once __DIR__ . '/mailer.php';
+                        $emailSubj = "[Cảnh báo] Data mới bị loại trừ (Blacklist) - " . ($name ?: 'Không rõ');
+                        $emailBody = "<h3>Cảnh báo Data mới khớp danh sách đen / từ khóa loại trừ</h3>
+                                      <p>Hệ thống đã tự động bỏ qua (không lưu CRM, không phân bổ) data sau:</p>
+                                      <ul>
+                                          <li><strong>Họ tên:</strong> " . ($name ?: 'Không rõ') . "</li>
+                                          <li><strong>Số điện thoại:</strong> " . ($phone ?: '-') . "</li>
+                                          <li><strong>Email:</strong> " . ($email ?: '-') . "</li>
+                                          <li><strong>Nguồn:</strong> " . ($source ?: '-') . "</li>
+                                          <li><strong>Loại:</strong> " . ($type ?: '-') . "</li>
+                                          <li><strong>Ghi chú:</strong> " . ($note ?: '-') . "</li>
+                                          <li><strong>Lý do lọc:</strong> " . $reason . "</li>
+                                      </ul>";
+                                      
+                        foreach ($admins as $admin) {
+                            if (!empty($admin['email'])) {
+                                sendEmailNotification($admin['email'], $emailSubj, 'Cảnh báo Data Blacklist', $emailBody, '');
+                            }
+                        }
+                    }
+                }
+            } catch (Exception $ex) {
+                error_log("Error notifying admins of blacklist match: " . $ex->getMessage());
+            }
+        }
+        return true;
     }
 
     return false;
@@ -269,7 +353,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     }
     
     $whereClause = implode(" OR ", $where);
-    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.status as consultant_status 
+    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.status as consultant_status, c.leave_start, c.leave_end 
                             FROM leads l 
                             LEFT JOIN consultants c ON l.assigned_to = c.id 
                             WHERE $whereClause 
@@ -295,8 +379,24 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $reassignIfOwnerInactive = '1'; // Default to ON (mặc định bật)
         }
         
+        $consultantStatus = $row['consultant_status'];
+        $leaveStart = $row['leave_start'] ?? null;
+        $leaveEnd = $row['leave_end'] ?? null;
+        $today = date('Y-m-d');
+        
+        $isActuallyOnLeave = false;
+        if ($consultantStatus === 'leave') {
+            $isActuallyOnLeave = true;
+        } else if ($consultantStatus === 'active' && !empty($leaveStart)) {
+            if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
+                $isActuallyOnLeave = true;
+            }
+        }
+        
+        $effectiveStatus = $isActuallyOnLeave ? 'leave' : $consultantStatus;
+        
         if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
-            $isDuplicate = ($row['consultant_status'] === 'active');
+            $isDuplicate = ($effectiveStatus === 'active');
             $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
         } else {
             // OFF or ignored: Always count as duplicate, keep the original owner
@@ -309,7 +409,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             'monthsSinceLastInteraction' => $months,
             'assignedTo' => $assignedTo,
             'originalAssignedTo' => $row['assigned_to'],
-            'consultantStatus' => $row['consultant_status']
+            'consultantStatus' => $effectiveStatus
         ];
     }
     
@@ -475,13 +575,16 @@ function getNextConsultantInRound($conn, $roundId) {
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
     
-    // 2. Get active consultants with ALL rules (include data_per_turn, current_turn_remaining)
+    // 2. Get active consultants with ALL rules (include data_per_turn, current_turn_remaining), excluding those on active leave
     $cStmt = $conn->prepare("
         SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
                rc.data_per_turn, rc.current_turn_remaining
         FROM round_consultants rc 
         JOIN consultants c ON rc.consultant_id = c.id 
-        WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' 
+        WHERE rc.round_id = ? 
+          AND rc.is_active = 1 
+          AND c.status = 'active' 
+          AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
         ORDER BY c.id ASC
     ");
     $cStmt->bind_param("i", $roundId);
@@ -745,13 +848,16 @@ function simulateNextConsultantInRound($conn, $roundId) {
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
     
-    // 2. Get active consultants with ALL rules
+    // 2. Get active consultants with ALL rules, excluding those on active leave
     $cStmt = $conn->prepare("
         SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
                rc.data_per_turn, rc.current_turn_remaining, c.name, c.zalo_chat_id, c.email
         FROM round_consultants rc 
         JOIN consultants c ON rc.consultant_id = c.id 
-        WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' 
+        WHERE rc.round_id = ? 
+          AND rc.is_active = 1 
+          AND c.status = 'active' 
+          AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
         ORDER BY c.id ASC
     ");
     $cStmt->bind_param("i", $roundId);
@@ -835,10 +941,33 @@ function simulateNextConsultantInRound($conn, $roundId) {
  * Supports intervals spanning midnight (e.g. 22:00 to 06:00).
  * Highly resilient: supports HH:MM, HH:MM:SS, and leading/trailing spaces.
  */
-function isConsultantInWorkHours($timeStr, $start, $end) {
+function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = null) {
+    $timeStr = trim($timeStr ?? '');
+    if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
+        $timeStr = $m[1];
+    } else {
+        $timeStr = date('H:i');
+    }
+
+    if (!empty($workScheduleJson)) {
+        $schedule = json_decode($workScheduleJson, true);
+        if (is_array($schedule)) {
+            // Get current day of week: 1 (Monday) to 7 (Sunday)
+            $dayOfWeek = date('N');
+            if (isset($schedule[$dayOfWeek])) {
+                $dayConfig = $schedule[$dayOfWeek];
+                $active = isset($dayConfig['active']) ? (bool)$dayConfig['active'] : false;
+                if (!$active) {
+                    return false; // Closed today
+                }
+                $start = $dayConfig['start'] ?? '00:00';
+                $end = $dayConfig['end'] ?? '23:59';
+            }
+        }
+    }
+
     $start = trim($start ?? '00:00');
     $end = trim($end ?? '23:59');
-    $timeStr = trim($timeStr ?? '');
     
     if (preg_match('/^(\d{2}:\d{2})/', $start, $m)) {
         $start = $m[1];
@@ -850,12 +979,6 @@ function isConsultantInWorkHours($timeStr, $start, $end) {
         $end = $m[1];
     } else {
         $end = '23:59';
-    }
-    
-    if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
-        $timeStr = $m[1];
-    } else {
-        $timeStr = date('H:i');
     }
     
     if ($start === '00:00' && $end === '23:59') {

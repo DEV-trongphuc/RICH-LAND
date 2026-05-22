@@ -209,7 +209,7 @@ register_shutdown_function(function() use ($conn, $lockKey, &$lockReleased) {
 });
 
 // --- 0. Check Global Blacklist / Exclusions ---
-if (checkGlobalExclusion($conn, $data, $phone, $email)) {
+if (checkGlobalExclusion($conn, $data, $phone, $email, true, $name, $source, $type, $note)) {
     // If blacklisted, return ignored immediately without saving to DB
     echo json_encode(["success" => true, "status" => "ignored", "message" => "Data matches exclusion list."]);
     exit();
@@ -370,7 +370,7 @@ if ($isSilent == 1) {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
                 $timeline = getLeadHistoryTimeline($conn, $leadId);
-                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
                 sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
             }
         }
@@ -398,7 +398,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
             $timeline = getLeadHistoryTimeline($conn, $leadId);
-            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
             sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
         }
     } catch (Exception $e) {
@@ -421,17 +421,18 @@ try {
             $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
 
             // Check working hours
-            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
             $whStmt->bind_param("i", $assignedConsultantId);
             $whStmt->execute();
             $whRes = $whStmt->get_result();
             if ($whRes && $whRow = $whRes->fetch_assoc()) {
                 $whStart = $whRow['work_start_time'] ?? '00:00';
                 $whEnd = $whRow['work_end_time'] ?? '23:59';
+                $workSchedule = $whRow['work_schedule'] ?? null;
                 $currentTime = date('H:i');
-                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     $status = 'pending_work_hours';
-                    $message .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                    $message .= ' (Delayed: outside working hours)';
                 }
             }
             $whStmt->close();

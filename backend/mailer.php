@@ -135,22 +135,82 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     return false;
 }
 
-function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $timeline = [])
+function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $timeline = [], $leadId = 0)
 {
+    global $conn;
+
     $subject = "Khách hàng cũ đăng ký lại — " . $leadName;
 
     $fName = !empty($leadName) ? htmlspecialchars($leadName) : 'Không có';
     $fPhone = !empty($leadPhone) ? htmlspecialchars($leadPhone) : 'Không có';
     $fSource = !empty($leadSource) ? htmlspecialchars($leadSource) : 'Không có';
-    $fNote = !empty($leadNote) ? nl2br(htmlspecialchars($leadNote)) : 'Không có';
     $fRound = !empty($roundName) ? htmlspecialchars($roundName) : '';
+
+    // Fetch additional fields (email, type) from DB to display completely
+    $email = '';
+    $type = '';
+    if ($leadId > 0) {
+        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                $email = $row['email'] ?? '';
+                $type = $row['type'] ?? '';
+            }
+            $stmt->close();
+        }
+    } else if (!empty($leadPhone)) {
+        $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $leadPhone);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                $email = $row['email'] ?? '';
+                $type = $row['type'] ?? '';
+            }
+            $stmt->close();
+        }
+    }
+
+    // Parse leadNote for custom key-value fields
+    $actualNote = '';
+    $customFieldsHtml = '';
+    if (!empty($leadNote)) {
+        $normalizedNote = str_replace(["\r\n", "\r"], "\n", $leadNote);
+        $lines = explode("\n", $normalizedNote);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            
+            // Match custom fields key-value
+            if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                && strlen(trim($matches[1])) <= 40 
+                && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
+            ) {
+                $cKey = htmlspecialchars(trim($matches[1]));
+                $cVal = htmlspecialchars(trim($matches[2]));
+                $customFieldsHtml .= '
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">' . $cKey . ':</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
+                </tr>';
+            } else {
+                $actualNote .= htmlspecialchars($line) . '<br/>';
+            }
+        }
+    }
 
     $roundRow = '';
     if (!empty($fRound)) {
         $roundRow = '
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Vòng:</td>
-                <td style="padding: 8px 0; font-weight: 700; color: #0f172a;">' . $fRound . '</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Vòng:</td>
+                <td style="padding: 8px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . $fRound . '</td>
             </tr>';
     }
 
@@ -180,6 +240,15 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
             </div>';
     }
 
+    $noteBlock = '';
+    if (!empty(trim($actualNote))) {
+        $noteBlock = '
+        <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px 24px; border-radius: 0 12px 12px 0; margin-bottom: 32px;">
+            <p style="color: #92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px;">Ghi chú mới</p>
+            <p style="color: #0f172a; font-size: 14px; line-height: 1.6; margin: 0; font-weight: 500;">' . $actualNote . '</p>
+        </div>';
+    }
+
     $content = '
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="width: 64px; height: 64px; background: #e0e7ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
@@ -193,24 +262,34 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
             <p style="color: #0f172a; font-size: 15px; margin: 0 0 16px; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">Thông tin khách hàng</p>
             <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600; width: 140px; color: #64748b;">Tên KH:</td>
-                    <td style="padding: 8px 0; font-weight: 700; color: #0f172a;">' . $fName . '</td>
+                    <td style="padding: 8px 0; font-weight: 600; width: 140px; color: #64748b; vertical-align: top;">Tên KH:</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . $fName . '</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Số điện thoại:</td>
-                    <td style="padding: 8px 0; font-weight: 700; color: #3b82f6;">' . $fPhone . '</td>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Số điện thoại:</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #3b82f6; vertical-align: top;">' . $fPhone . '</td>
                 </tr>
+                ' . (!empty($email) ? '
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600; color: #64748b;">Nguồn:</td>
-                    <td style="padding: 8px 0;">' . $fSource . '</td>
-                </tr>' . $roundRow . '
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Email:</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($email) . '</td>
+                </tr>
+                ' : '') . '
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Nguồn:</td>
+                    <td style="padding: 8px 0; color: #0f172a; vertical-align: top;">' . $fSource . '</td>
+                </tr>
+                ' . (!empty($type) && $type !== '-' ? '
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Loại Data:</td>
+                    <td style="padding: 8px 0; color: #0f172a; vertical-align: top;">' . htmlspecialchars($type) . '</td>
+                </tr>
+                ' : '') . 
+                $roundRow . 
+                $customFieldsHtml . '
             </table>
-        </div>' . $historyBlock . '
-
-        <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px 24px; border-radius: 0 12px 12px 0; margin-bottom: 32px;">
-            <p style="color: #92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px;">Ghi chú mới</p>
-            <p style="color: #0f172a; font-size: 14px; line-height: 1.6; margin: 0; font-weight: 500;">' . $fNote . '</p>
-        </div>
+        </div>' . $historyBlock . 
+        $noteBlock . '
         
         <div style="text-align: center;">
             <p style="color: #64748b; font-size: 14px; margin-bottom: 16px;">Vui lòng liên hệ lại với khách hàng sớm nhất có thể.</p>

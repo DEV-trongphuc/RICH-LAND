@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 
 interface User {
   id: number;
@@ -17,6 +18,36 @@ interface User {
   zalo_chat_id: string | null;
   created_at: string;
 }
+
+const DEFAULT_SCHEDULE = {
+  "1": { active: true, start: "08:00", end: "17:30" },
+  "2": { active: true, start: "08:00", end: "17:30" },
+  "3": { active: true, start: "08:00", end: "17:30" },
+  "4": { active: true, start: "08:00", end: "17:30" },
+  "5": { active: true, start: "08:00", end: "17:30" },
+  "6": { active: true, start: "08:00", end: "17:30" },
+  "7": { active: true, start: "08:00", end: "17:30" }
+};
+
+const dayNames: { [key: string]: string } = {
+  "1": "Thứ 2",
+  "2": "Thứ 3",
+  "3": "Thứ 4",
+  "4": "Thứ 5",
+  "5": "Thứ 6",
+  "6": "Thứ 7",
+  "7": "Chủ Nhật"
+};
+
+const formatScheduleTooltip = (schedule: any): string => {
+  if (!schedule) return '';
+  return Object.entries(dayNames).map(([dayKey, dayLabel]) => {
+    const config = schedule[dayKey];
+    if (!config) return `${dayLabel}: Không hoạt động`;
+    if (!config.active) return `${dayLabel}: Nghỉ`;
+    return `${dayLabel}: ${config.start} - ${config.end}`;
+  }).join('\n');
+};
 
 export const Consultants = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -37,7 +68,18 @@ export const Consultants = () => {
   const [quickMessageText, setQuickMessageText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   
-  const [formData, setFormData] = useState({
+  const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
+  const [formData, setFormData] = useState<{
+    name: string;
+    email: string;
+    status: string;
+    leave_start: string;
+    leave_end: string;
+    zalo_chat_id: string;
+    work_start_time: string;
+    work_end_time: string;
+    work_schedule: any;
+  }>({
     name: '',
     email: '',
     status: 'active',
@@ -45,8 +87,26 @@ export const Consultants = () => {
     leave_end: '',
     zalo_chat_id: '',
     work_start_time: '00:00',
-    work_end_time: '23:59'
+    work_end_time: '23:59',
+    work_schedule: null
   });
+
+  const handleDayChange = (dayKey: string, field: 'active' | 'start' | 'end', value: any) => {
+    setFormData(prev => {
+      const currentSchedule = prev.work_schedule || DEFAULT_SCHEDULE;
+      const updatedDayConfig = {
+        ...currentSchedule[dayKey],
+        [field]: value
+      };
+      return {
+        ...prev,
+        work_schedule: {
+          ...currentSchedule,
+          [dayKey]: updatedDayConfig
+        }
+      };
+    });
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -63,6 +123,7 @@ export const Consultants = () => {
 
   const openAddModal = () => {
     setEditingUser(null);
+    setScheduleMode('daily');
     setFormData({ 
       name: '', 
       email: '', 
@@ -71,13 +132,16 @@ export const Consultants = () => {
       leave_end: '', 
       zalo_chat_id: '',
       work_start_time: '00:00',
-      work_end_time: '23:59'
+      work_end_time: '23:59',
+      work_schedule: null
     });
     setModalOpen(true);
   };
 
   const openEditModal = (user: any) => {
     setEditingUser(user);
+    const hasCustomSchedule = !!user.work_schedule;
+    setScheduleMode(hasCustomSchedule ? 'custom' : 'daily');
     setFormData({ 
       name: user.name, 
       email: user.email, 
@@ -86,7 +150,8 @@ export const Consultants = () => {
       leave_end: user.leave_end || '',
       zalo_chat_id: user.zalo_chat_id || '',
       work_start_time: user.work_start_time || '00:00',
-      work_end_time: user.work_end_time || '23:59'
+      work_end_time: user.work_end_time || '23:59',
+      work_schedule: user.work_schedule || null
     });
     setModalOpen(true);
   };
@@ -99,7 +164,11 @@ export const Consultants = () => {
     setIsSaving(true);
     try {
       const action = editingUser ? 'edit_consultant' : 'add_consultant';
-      const payload = { ...formData, id: editingUser?.id };
+      const payload = { 
+        ...formData, 
+        id: editingUser?.id,
+        work_schedule: scheduleMode === 'custom' ? formData.work_schedule : null
+      };
       const json = await fetchAPI(action, {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -282,14 +351,32 @@ export const Consultants = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
-                            {(u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title="Nhận data 24/24">
-                                <Clock size={12} /> 24/24
+                            {u.work_schedule ? (
+                              <span 
+                                style={{ 
+                                  fontSize: '0.75rem', 
+                                  color: '#0ea5e9', 
+                                  fontWeight: 600, 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: 4,
+                                  cursor: 'help',
+                                  borderBottom: '1px dotted #0ea5e9'
+                                }} 
+                                title={formatScheduleTooltip(u.work_schedule)}
+                              >
+                                <Clock size={12} /> Lịch tuần
                               </span>
                             ) : (
-                              <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`Nhận data từ ${u.work_start_time} đến ${u.work_end_time}`}>
-                                <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
-                              </span>
+                              (u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title="Nhận data 24/24">
+                                  <Clock size={12} /> 24/24
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`Nhận data từ ${u.work_start_time} đến ${u.work_end_time}`}>
+                                  <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
+                                </span>
+                              )
                             )}
                           </div>
                         </div>
@@ -487,54 +574,132 @@ export const Consultants = () => {
 
                 <div className="form-group">
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={14} /> Khung giờ nhận Data
+                    <Clock size={14} /> Giờ làm việc của Sale
                   </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input 
-                        type="checkbox" 
-                        id="work_24h"
-                        checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59' });
-                          } else {
-                            setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00' });
-                          }
-                        }}
-                        style={{ width: 16, height: 16, cursor: 'pointer' }}
-                      />
-                      <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
-                        Hoạt động 24/24 (Mặc định)
-                      </label>
-                    </div>
-                    
-                    {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
-                          <input 
-                            type="time" 
-                            className="form-input" 
-                            style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                            value={formData.work_start_time}
-                            onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
-                          />
-                        </div>
-                        <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
-                          <input 
-                            type="time" 
-                            className="form-input" 
-                            style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                            value={formData.work_end_time}
-                            onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    )}
+                  
+                  {/* Segmented Control for Schedule Mode */}
+                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => setScheduleMode('daily')}
+                      style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                        background: scheduleMode === 'daily' ? 'white' : 'transparent',
+                        color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                      }}
+                    >Cố định hàng ngày</button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setScheduleMode('custom');
+                        if (!formData.work_schedule) {
+                          setFormData(prev => ({ ...prev, work_schedule: DEFAULT_SCHEDULE }));
+                        }
+                      }}
+                      style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                        background: scheduleMode === 'custom' ? 'white' : 'transparent',
+                        color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                      }}
+                    >Tùy chỉnh (Thứ 2 - CN)</button>
                   </div>
+
+                  {scheduleMode === 'daily' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input 
+                          type="checkbox" 
+                          id="work_24h"
+                          checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59', work_schedule: null });
+                            } else {
+                              setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00', work_schedule: null });
+                            }
+                          }}
+                          style={{ width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
+                          Hoạt động 24/24 (Mặc định)
+                        </label>
+                      </div>
+                      
+                      {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
+                            <input 
+                              type="time" 
+                              className="form-input" 
+                              style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                              value={formData.work_start_time}
+                              onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
+                            />
+                          </div>
+                          <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
+                            <input 
+                              type="time" 
+                              className="form-input" 
+                              style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                              value={formData.work_end_time}
+                              onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Weekly Schedule Custom Configuration
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12, maxHeight: '200px', overflowY: 'auto' }}>
+                      {Object.entries(dayNames).map(([dayKey, dayLabel]) => {
+                        const schedule = formData.work_schedule || DEFAULT_SCHEDULE;
+                        const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
+                        
+                        return (
+                          <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div style={{ width: '80px', fontWeight: 600, fontSize: '0.8125rem' }}>
+                              {dayLabel}
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <ToggleSwitch 
+                                checked={dayConfig.active}
+                                onChange={checked => handleDayChange(dayKey, 'active', checked)}
+                                small
+                              />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, minWidth: '28px', color: dayConfig.active ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                                {dayConfig.active ? 'Bật' : 'Nghỉ'}
+                              </span>
+                            </div>
+                            
+                            {dayConfig.active && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', animation: 'slideUp 0.1s ease-out' }}>
+                                <input 
+                                  type="time"
+                                  value={dayConfig.start}
+                                  onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
+                                  style={{ padding: '2px 6px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>-</span>
+                                <input 
+                                  type="time"
+                                  value={dayConfig.end}
+                                  onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
+                                  style={{ padding: '2px 6px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
                     Ngoài khung giờ này, Data được giao sẽ tạm giữ lại và tự động gửi thông báo đồng loạt cho Sale vào lúc bắt đầu ca làm việc tiếp theo.
                   </p>

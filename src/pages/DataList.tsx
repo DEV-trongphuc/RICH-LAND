@@ -124,6 +124,10 @@ export const DataList = () => {
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
   const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
+  const [confirmBlockOpen, setConfirmBlockOpen] = useState<boolean>(false);
+  const [blockReason, setBlockReason] = useState<string>('');
+  const [compensateBlock, setCompensateBlock] = useState<boolean>(false);
+  const [isBlocking, setIsBlocking] = useState<boolean>(false);
 
   const fetchConsultants = async () => {
     try {
@@ -176,6 +180,39 @@ export const DataList = () => {
       toast.error('Đã xảy ra lỗi: ' + err.message); // BUG-03 fix
     }
     setIsReassigning(false);
+  };
+
+  const handleBlockLead = async () => {
+    if (!selectedLead) return;
+    if (!blockReason.trim()) {
+      toast.error('Vui lòng nhập lý do chặn.');
+      return;
+    }
+    setIsBlocking(true);
+    try {
+      const res = await fetchAPI('block_lead', {
+        method: 'POST',
+        body: JSON.stringify({
+          log_id: selectedLead.id,
+          compensate_sale: compensateBlock,
+          reason: blockReason.trim()
+        })
+      });
+      if (res.success) {
+        toast.success('Chặn khách hàng và đưa vào Blacklist thành công!');
+        setSelectedLead(null);
+        setConfirmBlockOpen(false);
+        setBlockReason('');
+        setCompensateBlock(false);
+        fetchLeads();
+        window.dispatchEvent(new CustomEvent('lead-added'));
+      } else {
+        toast.error('Lỗi: ' + (res.message || 'Không thể chặn khách hàng'));
+      }
+    } catch (err: any) {
+      toast.error('Đã xảy ra lỗi: ' + err.message);
+    }
+    setIsBlocking(false);
   };
 
   const ITEMS_PER_PAGE = 50;
@@ -266,6 +303,7 @@ export const DataList = () => {
       case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
       case 'rule_6_month': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>;
       case 'silent': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>;
+      case 'blacklisted': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>Blacklist</span>;
       default: return null;
     }
   };
@@ -576,7 +614,44 @@ export const DataList = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                   <Avatar name={selectedLead.name} size={48} />
                   <div>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
+                      {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && (
+                        <button
+                          onClick={() => {
+                            setCompensateBlock(selectedLead.assigned_to_name !== '-');
+                            setConfirmBlockOpen(true);
+                          }}
+                          title="Chặn & Blacklist khách hàng này"
+                          style={{
+                            background: '#fee2e2',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            color: '#ef4444',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            lineHeight: 1,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={e => {
+                            e.currentTarget.style.background = '#fca5a5';
+                            e.currentTarget.style.color = '#b91c1c';
+                          }}
+                          onMouseOut={e => {
+                            e.currentTarget.style.background = '#fee2e2';
+                            e.currentTarget.style.color = '#ef4444';
+                          }}
+                        >
+                          <AlertTriangle size={12} />
+                          Chặn
+                        </button>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
                   </div>
                 </div>
@@ -754,6 +829,119 @@ export const DataList = () => {
                 Xác nhận chuyển
               </button>
             )}
+          </div>
+        </div>
+      </CustomModal>
+
+      <CustomModal
+        isOpen={confirmBlockOpen}
+        onClose={() => {
+          setConfirmBlockOpen(false);
+          setBlockReason('');
+          setCompensateBlock(false);
+        }}
+        title="Xác nhận Chặn & Blacklist"
+        width="550px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+            <div style={{ 
+              width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', 
+              color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                Bạn có chắc chắn muốn chặn khách hàng "{selectedLead?.name}"?
+              </p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
+                Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Hình thức chặn:</div>
+            
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="blockType" 
+                checked={!compensateBlock} 
+                onChange={() => setCompensateBlock(false)} 
+                style={{ marginTop: '3px' }}
+              />
+              <div>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chỉ đưa vào danh sách đen (Blacklist)</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Không thực hiện đền bù data cho Sale.</p>
+              </div>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: selectedLead?.assigned_to_name === '-' ? 'not-allowed' : 'pointer', opacity: selectedLead?.assigned_to_name === '-' ? 0.5 : 1 }}>
+              <input 
+                type="radio" 
+                name="blockType" 
+                checked={compensateBlock} 
+                onChange={() => setCompensateBlock(true)} 
+                disabled={selectedLead?.assigned_to_name === '-'}
+                style={{ marginTop: '3px' }}
+              />
+              <div>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chặn và Bù vòng cho Sale</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                  Đền bù 1 lượt data vòng <strong>"{selectedLead?.round_name}"</strong> cho Sale <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                </p>
+              </div>
+            </label>
+            
+            {selectedLead?.assigned_to_name === '-' && (
+              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <AlertTriangle size={12} /> Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Lý do chặn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <textarea
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)"
+              style={{
+                width: '100%',
+                height: '80px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border)',
+                fontSize: '0.875rem',
+                outline: 'none',
+                resize: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button 
+              className="btn outline" 
+              onClick={() => {
+                setConfirmBlockOpen(false);
+                setBlockReason('');
+                setCompensateBlock(false);
+              }}
+              disabled={isBlocking}
+            >
+              Hủy
+            </button>
+            <button 
+              className="btn danger" 
+              onClick={handleBlockLead}
+              disabled={isBlocking || !blockReason.trim()}
+              style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
+              Xác nhận chặn
+            </button>
           </div>
         </div>
       </CustomModal>

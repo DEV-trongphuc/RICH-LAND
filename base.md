@@ -267,6 +267,13 @@ Nằm tại hàm `checkCRMInteraction()` của `webhook_logic.php`:
 *   Nếu thời điểm tiếp nhận số nằm **ngoài khung giờ làm việc**, hệ thống vẫn gán tạm thời lead cho Sale đó nhưng lưu log phân bổ dưới trạng thái `pending_work_hours` và **không gửi thông báo** (Email / Zalo) cho Sale nhằm tránh làm phiền ngoài giờ.
 *   **Cronjob khôi phục**: Script `cron_sync.php` chạy định kỳ mỗi phút sẽ quét các lead đang treo trạng thái `pending_work_hours`. Khi giờ hệ thống bước vào khung hoạt động của Sale được gán, cronjob sẽ cập nhật trạng thái phân bổ về `assigned`/`compensation` tương ứng và kích hoạt lệnh gửi Email/Zalo thông báo.
 
+### 4.7. Danh sách đen & Loại trừ Data (Global Exclusion & Blacklist Alerts)
+*   Khi nhận được data mới từ Webhook hoặc Google Sheets, hệ thống sẽ thực hiện kiểm tra loại trừ bằng hàm `checkGlobalExclusion()`.
+*   Nếu thông tin khách hàng hoặc nội dung dữ liệu trùng khớp với Danh sách đen (`global_exclusion_contacts`) hoặc từ khóa loại trừ (`global_exclusion_keys`):
+    *   Hệ thống sẽ **không ghi nhận vào cơ sở dữ liệu** (không tạo lead, không lưu log phân phối).
+    *   Tuy nhiên, hệ thống sẽ **gửi thông báo cảnh báo ngay lập tức** đến tất cả tài khoản có quyền **Admin** thông qua Zalo OA Bot và Email (nếu được cấu hình).
+    *   Nội dung thông báo bao gồm chi tiết thông tin lead (mã hóa SĐT trên Zalo để bảo mật), nguồn lead, loại dự án, ghi chú và lý do chi tiết bị lọc để Admin kịp thời theo dõi và quản lý chất lượng nguồn lead.
+
 ---
 
 ## 5. HỆ THỐNG ZALO OA BOT COMMANDS

@@ -46,11 +46,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
     function releasePendingWorkHoursLeads($conn) {
         logSync("Checking for pending work hours leads to release...");
         
-        // Select all logs pending work hours
+        // Select all logs pending work hours, including status and leave dates to check if they went on leave
         $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message,
                        l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
-                       c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time,
+                       c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
+                       c.status as consultant_status, c.leave_start, c.leave_end,
                        r.round_name, r.cc_emails
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
@@ -68,30 +69,124 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         $releasedCount = 0;
         
         while ($row = $res->fetch_assoc()) {
-            $whStart = $row['work_start_time'] ?? '00:00';
-            $whEnd = $row['work_end_time'] ?? '23:59';
+            $status = $row['consultant_status'];
+            $leaveStart = $row['leave_start'] ?? null;
+            $leaveEnd = $row['leave_end'] ?? null;
+            $today = date('Y-m-d');
             
-            if (isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
-                // Determine original status
-                $newStatus = (strpos($row['message'], 'compensation') !== false) ? 'compensation' : 'assigned';
+            // Check if consultant is actually on leave or inactive
+            $isActuallyOnLeaveOrInactive = false;
+            if ($status !== 'active') {
+                $isActuallyOnLeaveOrInactive = true;
+            } else if (!empty($leaveStart)) {
+                if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
+                    $isActuallyOnLeaveOrInactive = true;
+                }
+            }
+            
+            if ($isActuallyOnLeaveOrInactive) {
+                logSync("Lead ID {$row['lead_id']} assigned to {$row['consultant_name']} who is on leave or inactive. Reallocating...");
                 
-                // Update status first to prevent duplicate notifications
                 $conn->begin_transaction();
                 try {
-                    $stmtUp = $conn->prepare("UPDATE distribution_logs SET status = ?, message = CONCAT(message, '\n[Released at ', NOW(), ']') WHERE id = ? AND status = 'pending_work_hours'");
-                    $stmtUp->bind_param("si", $newStatus, $row['log_id']);
-                    $stmtUp->execute();
-                    $affected = $stmtUp->affected_rows;
-                    $stmtUp->close();
+                    $assignedConsultantId = null;
+                    $newStatus = 'assigned';
+                    $logMsg = "Thu hồi từ Sale nghỉ phép/không hoạt động ({$row['consultant_name']}). ";
+                    $isFallbackAdmin = false;
+                    $fallbackAdminData = null;
+                    $fallbackCcEmails = '';
+                    $newConsultantName = '';
+                    $newConsultantEmail = '';
+                    
+                    if ($row['round_id'] > 0) {
+                        $assignResult = getNextConsultantInRound($conn, $row['round_id']);
+                        if ($assignResult) {
+                            $assignedConsultantId = $assignResult['id'];
+                            $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                        }
+                    }
+                    
+                    if ($assignedConsultantId) {
+                        $whStmt = $conn->prepare("SELECT name, email, work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                        $whStmt->bind_param("i", $assignedConsultantId);
+                        $whStmt->execute();
+                        $whRes = $whStmt->get_result();
+                        if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                            $whStart = $whRow['work_start_time'] ?? '00:00';
+                            $whEnd = $whRow['work_end_time'] ?? '23:59';
+                            $workSchedule = $whRow['work_schedule'] ?? null;
+                            $tempTime = date('H:i');
+                            if (!isConsultantInWorkHours($tempTime, $whStart, $whEnd, $workSchedule)) {
+                                $newStatus = 'pending_work_hours';
+                                $logMsg .= "Gán cho Sale mới: {$whRow['name']} (Chờ ngoài giờ làm việc).";
+                            } else {
+                                $logMsg .= "Tái phân bổ thành công cho Sale mới: {$whRow['name']}.";
+                            }
+                            $newConsultantName = $whRow['name'];
+                            $newConsultantEmail = $whRow['email'];
+                        }
+                        $whStmt->close();
+                    } else {
+                        // Fallback to Admin
+                        $fbSettings = [];
+                        $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+                        if ($fbRes) {
+                            while ($fbRow = $fbRes->fetch_assoc()) {
+                                $fbSettings[$fbRow['setting_key']] = $fbRow['setting_value'];
+                            }
+                        }
+                        $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
+                        $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                        
+                        if ($fbAdminId > 0) {
+                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                            $admStmt->bind_param("i", $fbAdminId);
+                            $admStmt->execute();
+                            $admRes = $admStmt->get_result();
+                            if ($admRes->num_rows > 0) {
+                                $fallbackAdminData = $admRes->fetch_assoc();
+                                $isFallbackAdmin = true;
+                                $newStatus = 'assigned';
+                                $logMsg .= "Không có Sale hoạt động khác trong vòng, chuyển fallback về Admin: " . $fallbackAdminData['name'];
+                                $fallbackCcEmails = $fbCc;
+                            }
+                            $admStmt->close();
+                        } else {
+                            $newStatus = 'pending';
+                            $logMsg .= "Không có Sale hoạt động khác trong vòng hoặc Admin fallback. Lead chuyển về Chờ xử lý.";
+                        }
+                    }
+                    
+                    // Update lead table
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
+                    $upLead->bind_param("ii", $assignedConsultantId, $row['lead_id']);
+                    $upLead->execute();
+                    $upLead->close();
+                    
+                    // Revoke old distribution log
+                    $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'reallocated', message = CONCAT(message, '\n[Thu hồi do Sale nghỉ phép lúc ', NOW(), ']') WHERE id = ?");
+                    $upLog->bind_param("i", $row['log_id']);
+                    $upLog->execute();
+                    $upLog->close();
+
+                    // Bù lead cho Sale bị thu hồi (tăng compensation_count lên 1) để đảm bảo "Bù lead đồ đầy đủ"
+                    if ($row['round_id'] > 0) {
+                        $compUpStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                        $compUpStmt->bind_param("ii", $row['round_id'], $row['assigned_to']);
+                        $compUpStmt->execute();
+                        $compUpStmt->close();
+                    }
+                    
+                    // Log new distribution
+                    logDistribution($conn, $row['lead_id'], $assignedConsultantId, $row['round_id'], $newStatus, $logMsg);
+                    
                     $conn->commit();
                     
-                    if ($affected > 0) {
-                        logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
-                        
-                        // Send Email
+                    // Trigger notifications out-of-transaction to avoid locking DB during API/SMTP delay
+                    if ($assignedConsultantId && $newStatus !== 'pending_work_hours') {
                         sendLeadAssignedEmailToSale(
-                            $row['consultant_email'],
-                            $row['consultant_name'],
+                            $newConsultantEmail,
+                            $newConsultantName,
                             $row['lead_name'] ?: 'Khách hàng ẩn danh',
                             $row['lead_phone'] ?: '',
                             $row['lead_note'] ?: '',
@@ -99,14 +194,13 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             $row['cc_emails'] ?? '',
                             $row['round_name'] ?? '',
                             $row['lead_id'],
-                            $row['assigned_to'],
+                            $assignedConsultantId,
                             $row['round_id'] ?? 0
                         );
                         
-                        // Send Zalo Message
                         sendLeadAssignedZaloMessageToSale(
-                            $row['assigned_to'],
-                            $row['consultant_name'],
+                            $assignedConsultantId,
+                            $newConsultantName,
                             $row['lead_name'] ?: 'Khách hàng ẩn danh',
                             $row['lead_phone'] ?: '',
                             $row['lead_note'] ?: '',
@@ -115,18 +209,99 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             $row['lead_id'],
                             $row['round_id'] ?? 0
                         );
-                        
-                        $releasedCount++;
+                    } else if ($isFallbackAdmin && $fallbackAdminData) {
+                        sendLeadAssignedEmailToSale(
+                            $fallbackAdminData['email'],
+                            $fallbackAdminData['name'],
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $fallbackCcEmails,
+                            'Fallback Admin',
+                            $row['lead_id'],
+                            0,
+                            0
+                        );
+                        if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                            sendLeadAssignedZaloMessageToAdmin(
+                                $fallbackAdminData['zalo_chat_id'],
+                                $fallbackAdminData['name'],
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: ''
+                            );
+                        }
                     }
+                    
+                    $releasedCount++;
                 } catch (Exception $e) {
                     $conn->rollback();
-                    logSync("Error releasing log ID {$row['log_id']}: " . $e->getMessage());
+                    logSync("Error reallocating lead ID {$row['lead_id']} from on-leave consultant: " . $e->getMessage());
+                }
+            } else {
+                // Sale is active and working normal - check standard work hours release
+                $whStart = $row['work_start_time'] ?? '00:00';
+                $whEnd = $row['work_end_time'] ?? '23:59';
+                $workSchedule = $row['work_schedule'] ?? null;
+                
+                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                    // Determine original status (assigned or compensation)
+                    $newStatus = (strpos($row['message'], 'compensation') !== false) ? 'compensation' : 'assigned';
+                    
+                    $conn->begin_transaction();
+                    try {
+                        $stmtUp = $conn->prepare("UPDATE distribution_logs SET status = ?, message = CONCAT(message, '\n[Released at ', NOW(), ']') WHERE id = ? AND status = 'pending_work_hours'");
+                        $stmtUp->bind_param("si", $newStatus, $row['log_id']);
+                        $stmtUp->execute();
+                        $affected = $stmtUp->affected_rows;
+                        $stmtUp->close();
+                        $conn->commit();
+                        
+                        if ($affected > 0) {
+                            logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
+                            
+                            // Send Email
+                            sendLeadAssignedEmailToSale(
+                                $row['consultant_email'],
+                                $row['consultant_name'],
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['cc_emails'] ?? '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $row['assigned_to'],
+                                $row['round_id'] ?? 0
+                            );
+                            
+                            // Send Zalo Message
+                            sendLeadAssignedZaloMessageToSale(
+                                $row['assigned_to'],
+                                $row['consultant_name'],
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $row['round_id'] ?? 0
+                            );
+                            
+                            $releasedCount++;
+                        }
+                    } catch (Exception $e) {
+                        $conn->rollback();
+                        logSync("Error releasing log ID {$row['log_id']}: " . $e->getMessage());
+                    }
                 }
             }
         }
         
         if ($releasedCount > 0) {
-            logSync("Successfully released $releasedCount pending leads.");
+            logSync("Successfully released/reallocated $releasedCount pending leads.");
         } else {
             logSync("No pending leads released.");
         }
@@ -323,7 +498,7 @@ foreach ($connections as $connItem) {
             }
 
             // --- 0. Check Global Blacklist / Exclusions ---
-            if (checkGlobalExclusion($conn, $rowData, $phone, $email)) {
+            if (checkGlobalExclusion($conn, $rowData, $phone, $email, true, $name, $source, $type, $note)) {
                 // Record hash so we don't process this blacklisted row again
                 $recordStmt->bind_param("is", $connItem['id'], $rowHash);
                 $recordStmt->execute();
@@ -511,7 +686,7 @@ foreach ($connections as $connItem) {
                             
                             if ($cRow && $cRow['status'] === 'active') {
                                 $timeline = getLeadHistoryTimeline($conn, $leadId);
-                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
                                 sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
                             }
                         }
@@ -553,7 +728,7 @@ foreach ($connections as $connItem) {
                     
                     if ($cRow && $cRow['status'] === 'active') {
                         $timeline = getLeadHistoryTimeline($conn, $leadId);
-                        sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline);
+                        sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
                         sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
                     }
                     
@@ -571,17 +746,18 @@ foreach ($connections as $connItem) {
                             $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
 
                             // Check working hours
-                            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time FROM consultants WHERE id = ?");
+                            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
                             $whStmt->bind_param("i", $assignedConsultantId);
                             $whStmt->execute();
                             $whRes = $whStmt->get_result();
                             if ($whRes && $whRow = $whRes->fetch_assoc()) {
                                 $whStart = $whRow['work_start_time'] ?? '00:00';
                                 $whEnd = $whRow['work_end_time'] ?? '23:59';
+                                $workSchedule = $whRow['work_schedule'] ?? null;
                                 $currentTime = date('H:i');
-                                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd)) {
+                                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                                     $cronStatus = 'pending_work_hours';
-                                    $cronMessage .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
+                                    $cronMessage .= ' (Delayed: outside working hours)';
                                 }
                             }
                             $whStmt->close();
