@@ -56,7 +56,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 107) {
+        if ($dbVer >= 108) {
             $runMigration = false;
         }
     }
@@ -254,6 +254,12 @@ if ($runMigration) {
         $conn->query("ALTER TABLE data_reports ADD COLUMN reject_reason VARCHAR(255) NULL COMMENT 'Lý do từ chối ticket'");
     }
 
+    // Auto-migrate: thêm cột approval_reason vào data_reports
+    $chkApprovalReason = $conn->query("SHOW COLUMNS FROM data_reports LIKE 'approval_reason'");
+    if ($chkApprovalReason && $chkApprovalReason->num_rows === 0) {
+        $conn->query("ALTER TABLE data_reports ADD COLUMN approval_reason VARCHAR(255) NULL COMMENT 'Lý do duyệt ticket'");
+    }
+
     // Auto-migrate: thêm cột is_confirmed và confirm_token vào accounts
     $chkAccConfirmed = $conn->query("SHOW COLUMNS FROM accounts LIKE 'is_confirmed'");
     if ($chkAccConfirmed && $chkAccConfirmed->num_rows === 0) {
@@ -371,7 +377,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '107') ON DUPLICATE KEY UPDATE setting_value = '107'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '108') ON DUPLICATE KEY UPDATE setting_value = '108'");
 }
 
 ?>

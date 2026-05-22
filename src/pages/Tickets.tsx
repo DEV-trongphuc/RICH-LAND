@@ -6,7 +6,6 @@ import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
-import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 
 export const Tickets = () => {
@@ -21,7 +20,9 @@ export const Tickets = () => {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isActioning, setIsActioning] = useState<number | null>(null);
-  const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveReason, setApproveReason] = useState('');
+  const [approvingId, setApprovingId] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<any>({ pending: 0, approved: 0, rejected: 0, all: 0 });
   const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
@@ -93,13 +94,23 @@ export const Tickets = () => {
   const [quickMessageText, setQuickMessageText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
-  const handleReportApprove = async (reportId: number) => {
-    if (isActioning) return;
-    setIsActioning(reportId);
+  const openApproveModal = (id: number) => {
+    setApprovingId(id);
+    setApproveReason('');
+    setApproveModalOpen(true);
+  };
+
+  const submitApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approvingId) return;
+
+    setIsActioning(approvingId);
+    setApproveModalOpen(false);
+
     try {
       const res = await fetchAPI('approve_report', {
         method: 'POST',
-        body: JSON.stringify({ id: reportId })
+        body: JSON.stringify({ id: approvingId, approval_reason: approveReason })
       });
       if (res.success) {
         toast.success('Đã duyệt đền bù Data!');
@@ -481,6 +492,11 @@ export const Tickets = () => {
                             Lý do: {r.reject_reason}
                           </div>
                         )}
+                        {r.status === 'approved' && r.approval_reason && (
+                          <div style={{ fontSize: '0.75rem', color: '#065f46', background: '#d1fae5', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                            Lý do: {r.approval_reason}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
@@ -494,7 +510,7 @@ export const Tickets = () => {
                           <button onClick={() => openRejectModal(r.id)} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
                             Từ chối
                           </button>
-                          <button onClick={() => setConfirmApproveId(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                          <button onClick={() => openApproveModal(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
                             {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
                           </button>
                         </div>
@@ -630,19 +646,33 @@ export const Tickets = () => {
         </form>
       </CustomModal>
 
-      <ConfirmModal
-        isOpen={confirmApproveId !== null}
-        onClose={() => setConfirmApproveId(null)}
-        onConfirm={() => {
-          if (confirmApproveId !== null) {
-            handleReportApprove(confirmApproveId);
-          }
-        }}
-        title="Duyệt & Đền Bù Data"
-        message="Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức."
-        confirmText="Xác nhận duyệt"
-        cancelText="Hủy"
-      />
+      {/* Approve Modal */}
+      <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title="Duyệt & Đền Bù Data">
+        <form onSubmit={submitApprove}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.
+            </p>
+            <div className="form-group">
+              <label className="form-label">Lý do duyệt (không bắt buộc)</label>
+              <textarea
+                className="form-input"
+                placeholder="Ví dụ: Đã kiểm tra đúng là khách hàng trùng hoặc thuê bao..."
+                value={approveReason}
+                onChange={(e) => setApproveReason(e.target.value)}
+                autoFocus
+                style={{ minHeight: 80, resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>Hủy</button>
+              <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
+                {isActioning ? 'Đang xử lý...' : 'Xác nhận duyệt'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </CustomModal>
 
     </div>
   );

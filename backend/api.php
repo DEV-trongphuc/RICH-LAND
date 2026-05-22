@@ -2699,6 +2699,7 @@ switch ($action) {
     case 'approve_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
+        $approval_reason = trim($input['approval_reason'] ?? '');
         if (!$report_id) {
             echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
             break;
@@ -2707,7 +2708,12 @@ switch ($action) {
         $conn->begin_transaction();
         try {
             // 1. Get report info
-            $stmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
+            $stmt = $conn->prepare("
+                SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, dr.cc_emails
+                FROM data_reports r
+                LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
+                WHERE r.id = ? FOR UPDATE
+            ");
             $stmt->bind_param("i", $report_id);
             $stmt->execute();
             $report = $stmt->get_result()->fetch_assoc();
@@ -2717,12 +2723,15 @@ switch ($action) {
             }
 
             // 2. Mark report as approved
-            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_at=NOW() WHERE id=?");
-            $updRep->bind_param("i", $report_id);
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_at=NOW() WHERE id=?");
+            $updRep->bind_param("si", $approval_reason, $report_id);
             $updRep->execute();
 
             // 3. Mark lead as faulty (Append to note and unassign)
             $faultyMsg = "[LỖI - ĐÃ DUYỆT]: " . $report['reason'];
+            if (!empty($approval_reason)) {
+                $faultyMsg .= " | Lý do duyệt: " . $approval_reason;
+            }
             $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
             $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
             $updLead->execute();
@@ -2737,8 +2746,29 @@ switch ($action) {
             $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
             $updComp->execute();
 
-            logAdminAction($conn, $decodedUser['id'], 'APPROVE_REPORT', ['report_id' => $report_id, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id']]);
+            logAdminAction($conn, $decodedUser['id'], 'APPROVE_REPORT', [
+                'report_id' => $report_id, 
+                'lead_id' => $report['lead_id'], 
+                'consultant_id' => $report['consultant_id'], 
+                'round_id' => $report['round_id'],
+                'approval_reason' => $approval_reason
+            ]);
             $conn->commit();
+
+            // Lấy thông tin admin thực hiện
+            $adminName = 'Quản trị viên';
+            $adminAccountId = 0;
+            if (isset($decodedUser['id'])) {
+                $adminAccountId = (int) $decodedUser['id'];
+                $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+                $admQuery->bind_param("i", $decodedUser['id']);
+                $admQuery->execute();
+                $admRes = $admQuery->get_result()->fetch_assoc();
+                if ($admRes && !empty($admRes['name'])) {
+                    $adminName = $admRes['name'];
+                }
+                $admQuery->close();
+            }
 
             // Lấy thông tin Sale & Lead để gửi thông báo
             $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
@@ -2751,34 +2781,86 @@ switch ($action) {
             $leadStmt->execute();
             $lead = $leadStmt->get_result()->fetch_assoc();
 
-            $cName = $consultant['name'] ?? 'Bạn';
+            $cName = $consultant['name'] ?? 'Tư vấn viên';
             $lName = $lead['name'] ?? 'Khách hàng';
             $lPhone = $lead['phone'] ?? 'Không rõ';
+
+            // Lấy danh sách Ticket Admins nhận thông báo
+            $adminEmails = getTicketNotifyAdmins($conn);
 
             // Thông báo qua Zalo Bot
             require_once __DIR__ . '/zalo_bot.php';
             $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
             $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
+            // Zalo cho Sale
             if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
                 $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
-                    . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT.\n\n"
+                    . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
                     . "❖ THÔNG TIN KHÁCH HÀNG:\n"
                     . "  • Khách hàng: $lName ($lPhone)\n"
                     . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                    . "❖ LÝ DO DUYỆT:\n"
+                    . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
                     . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
                 sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
             }
 
-            // Thông báo qua Email
+            // Zalo cho các Ticket Admins (trừ admin thực hiện nếu có zalo_chat_id)
+            if (!empty($botToken) && !empty($adminEmails)) {
+                $adminChatIds = [];
+                foreach ($adminEmails as $adm) {
+                    if (!empty($adm['zalo_chat_id']) && (int)$adm['id'] !== $adminAccountId) {
+                        $adminChatIds[] = $adm['zalo_chat_id'];
+                    }
+                }
+                if (!empty($adminChatIds)) {
+                    $zaloAdminMsg = "[ THÔNG BÁO TICKET ĐÃ DUYỆT ]\n\n"
+                        . "Admin $adminName đã duyệt ticket của Sale $cName.\n\n"
+                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                        . "  • Khách hàng: $lName ($lPhone)\n"
+                        . "  • Lỗi báo cáo: {$report['reason']}\n\n"
+                        . "❖ LÝ DO DUYỆT:\n"
+                        . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể");
+                    sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                }
+            }
+
+            // Thông báo qua Email cho Sale (kèm CC)
             if (!empty($consultant['email'])) {
                 require_once __DIR__ . '/mailer.php';
+
+                // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
+                $ccEmailsArr = [];
+                if (!empty($report['cc_emails'])) {
+                    $parts = explode(',', $report['cc_emails']);
+                    foreach ($parts as $p) {
+                        $p = trim($p);
+                        if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                            $ccEmailsArr[] = strtolower($p);
+                        }
+                    }
+                }
+                foreach ($adminEmails as $adm) {
+                    if (!empty($adm['email'])) {
+                        $email = trim($adm['email']);
+                        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $ccEmailsArr[] = strtolower($email);
+                        }
+                    }
+                }
+                $ccEmailsArr = array_unique($ccEmailsArr);
+                $saleEmail = strtolower(trim($consultant['email']));
+                $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                $ccString = implode(',', $ccEmailsArr);
+
                 $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
                 $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
                               <p>Chào $cName,</p>
-                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công.</p>
+                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
+                              <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
                               <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
-                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
             }
 
             echo json_encode(['success' => true]);
@@ -2806,7 +2888,12 @@ switch ($action) {
         $conn->begin_transaction();
         try {
             // Check status first — prevent rejecting already-processed reports
-            $chkStmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
+            $chkStmt = $conn->prepare("
+                SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, dr.cc_emails
+                FROM data_reports r
+                LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
+                WHERE r.id = ? FOR UPDATE
+            ");
             $chkStmt->bind_param("i", $report_id);
             $chkStmt->execute();
             $report = $chkStmt->get_result()->fetch_assoc();
@@ -2819,8 +2906,29 @@ switch ($action) {
             $stmt->bind_param("si", $reject_reason, $report_id);
             $stmt->execute();
 
-            logAdminAction($conn, $decodedUser['id'], 'REJECT_REPORT', ['report_id' => $report_id, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id'], 'reject_reason' => $reject_reason]);
+            logAdminAction($conn, $decodedUser['id'], 'REJECT_REPORT', [
+                'report_id' => $report_id, 
+                'lead_id' => $report['lead_id'], 
+                'consultant_id' => $report['consultant_id'], 
+                'round_id' => $report['round_id'], 
+                'reject_reason' => $reject_reason
+            ]);
             $conn->commit();
+
+            // Lấy thông tin admin thực hiện
+            $adminName = 'Quản trị viên';
+            $adminAccountId = 0;
+            if (isset($decodedUser['id'])) {
+                $adminAccountId = (int) $decodedUser['id'];
+                $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+                $admQuery->bind_param("i", $decodedUser['id']);
+                $admQuery->execute();
+                $admRes = $admQuery->get_result()->fetch_assoc();
+                if ($admRes && !empty($admRes['name'])) {
+                    $adminName = $admRes['name'];
+                }
+                $admQuery->close();
+            }
 
             // Lấy thông tin Sale & Lead để gửi thông báo
             $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
@@ -2833,18 +2941,22 @@ switch ($action) {
             $leadStmt->execute();
             $lead = $leadStmt->get_result()->fetch_assoc();
 
-            $cName = $consultant['name'] ?? 'Bạn';
+            $cName = $consultant['name'] ?? 'Tư vấn viên';
             $lName = $lead['name'] ?? 'Khách hàng';
             $lPhone = $lead['phone'] ?? 'Không rõ';
+
+            // Lấy danh sách Ticket Admins nhận thông báo
+            $adminEmails = getTicketNotifyAdmins($conn);
 
             // Thông báo qua Zalo Bot
             require_once __DIR__ . '/zalo_bot.php';
             $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
             $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
+            // Zalo cho Sale
             if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
                 $zaloMsg = "[ TICKET BỊ TỪ CHỐI ]\n\n"
-                    . "Chào $cName, báo cáo lỗi Data của bạn đã BỊ TỪ CHỐI.\n\n"
+                    . "Chào $cName, báo cáo lỗi Data của bạn đã BỊ TỪ CHỐI bởi $adminName.\n\n"
                     . "❖ THÔNG TIN KHÁCH HÀNG:\n"
                     . "  • Khách hàng: $lName ($lPhone)\n"
                     . "  • Lỗi bạn báo: {$report['reason']}\n\n"
@@ -2854,16 +2966,61 @@ switch ($action) {
                 sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
             }
 
-            // Thông báo qua Email
+            // Zalo cho các Ticket Admins (trừ admin thực hiện)
+            if (!empty($botToken) && !empty($adminEmails)) {
+                $adminChatIds = [];
+                foreach ($adminEmails as $adm) {
+                    if (!empty($adm['zalo_chat_id']) && (int)$adm['id'] !== $adminAccountId) {
+                        $adminChatIds[] = $adm['zalo_chat_id'];
+                    }
+                }
+                if (!empty($adminChatIds)) {
+                    $zaloAdminMsg = "[ THÔNG BÁO TICKET BỊ TỪ CHỐI ]\n\n"
+                        . "Admin $adminName đã từ chối ticket của Sale $cName.\n\n"
+                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                        . "  • Khách hàng: $lName ($lPhone)\n"
+                        . "  • Lỗi báo cáo: {$report['reason']}\n\n"
+                        . "❖ LÝ DO TỪ CHỐI:\n"
+                        . "  $reject_reason";
+                    sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                }
+            }
+
+            // Thông báo qua Email (gửi cho Sale kèm CC)
             if (!empty($consultant['email'])) {
                 require_once __DIR__ . '/mailer.php';
+
+                // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
+                $ccEmailsArr = [];
+                if (!empty($report['cc_emails'])) {
+                    $parts = explode(',', $report['cc_emails']);
+                    foreach ($parts as $p) {
+                        $p = trim($p);
+                        if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                            $ccEmailsArr[] = strtolower($p);
+                        }
+                    }
+                }
+                foreach ($adminEmails as $adm) {
+                    if (!empty($adm['email'])) {
+                        $email = trim($adm['email']);
+                        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $ccEmailsArr[] = strtolower($email);
+                        }
+                    }
+                }
+                $ccEmailsArr = array_unique($ccEmailsArr);
+                $saleEmail = strtolower(trim($consultant['email']));
+                $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                $ccString = implode(',', $ccEmailsArr);
+
                 $emailSubj = "[Domation DATA] Ticket Lỗi Data Bị Từ Chối - $lName";
                 $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
                               <p>Chào $cName,</p>
-                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên từ chối.</p>
-                              <p><strong>Lý do từ chối:</strong> $reject_reason</p>
+                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên <strong>$adminName</strong> từ chối.</p>
+                              <p><strong>Lý do từ chối:</strong> " . htmlspecialchars($reject_reason) . "</p>
                               <p>Bạn sẽ không được nhận Data đền bù cho trường hợp này.</p>";
-                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
             }
 
             echo json_encode(['success' => true]);

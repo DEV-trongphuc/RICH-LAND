@@ -302,8 +302,13 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
                 $conn->begin_transaction();
                 try {
-                    // 1. Lấy thông tin report
-                    $stmt = $conn->prepare("SELECT lead_id, consultant_id, round_id, reason, status FROM data_reports WHERE id = ? FOR UPDATE");
+                    // 1. Lấy thông tin report và CC email của vòng
+                    $stmt = $conn->prepare("
+                        SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, dr.cc_emails
+                        FROM data_reports r
+                        LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
+                        WHERE r.id = ? FOR UPDATE
+                    ");
                     if (!$stmt) {
                         throw new Exception("Lỗi truy vấn DB.");
                     }
@@ -319,17 +324,20 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         throw new Exception("Ticket #$ticketId đã được xử lý từ trước (Trạng thái hiện tại: " . $report['status'] . ").");
                     }
 
-                    // 2. Cập nhật status báo cáo thành approved
-                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_at=NOW() WHERE id=?");
+                    // Lý do duyệt nhanh qua Zalo
+                    $approval_reason = "Được duyệt nhanh qua Zalo bởi " . $adminName;
+
+                    // 2. Cập nhật status báo cáo thành approved kèm lý do
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_at=NOW() WHERE id=?");
                     if (!$updRep) {
                         throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
                     }
-                    $updRep->bind_param("i", $ticketId);
+                    $updRep->bind_param("si", $approval_reason, $ticketId);
                     $updRep->execute();
                     $updRep->close();
 
                     // 3. Cập nhật ghi chú của Lead và đánh dấu phân bổ lỗi
-                    $faultyMsg = "[LỖI - ĐÃ DUYỆT QUA ZALO]: " . $report['reason'];
+                    $faultyMsg = "[LỖI - ĐÃ DUYỆT QUA ZALO]: " . $report['reason'] . " | Lý do duyệt: " . $approval_reason;
                     $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
                     if (!$updLead) {
                         throw new Exception("Lỗi cập nhật Lead.");
@@ -358,7 +366,13 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
                     // Ghi log hành động admin
                     $ip = $_SERVER['REMOTE_ADDR'] ?? 'Zalo Bot';
-                    $detailsJson = json_encode(['report_id' => $ticketId, 'lead_id' => $report['lead_id'], 'consultant_id' => $report['consultant_id'], 'round_id' => $report['round_id']], JSON_UNESCAPED_UNICODE);
+                    $detailsJson = json_encode([
+                        'report_id' => $ticketId, 
+                        'lead_id' => $report['lead_id'], 
+                        'consultant_id' => $report['consultant_id'], 
+                        'round_id' => $report['round_id'],
+                        'approval_reason' => $approval_reason
+                    ], JSON_UNESCAPED_UNICODE);
                     $stmtLog = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, ip_address) VALUES (?, 'APPROVE_REPORT_ZALO', ?, ?)");
                     if ($stmtLog) {
                         $stmtLog->bind_param("iss", $adminAccountId, $detailsJson, $ip);
@@ -392,6 +406,27 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $lName = $lead['name'] ?? 'Khách hàng';
                     $lPhone = $lead['phone'] ?? 'Không rõ';
 
+                    // Lấy danh sách Ticket Admins nhận thông báo
+                    $adminEmails = [];
+                    $resTickAdmins = $conn->query("
+                        SELECT a.id, a.name, a.email, a.zalo_chat_id 
+                        FROM ticket_notify_settings tns
+                        JOIN accounts a ON tns.account_id = a.id
+                    ");
+                    if ($resTickAdmins && $resTickAdmins->num_rows > 0) {
+                        while ($row = $resTickAdmins->fetch_assoc()) {
+                            $adminEmails[] = $row;
+                        }
+                    } else {
+                        // Fallback: role = 'admin' or id = 1
+                        $resTickAdminsFallback = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+                        if ($resTickAdminsFallback) {
+                            while ($row = $resTickAdminsFallback->fetch_assoc()) {
+                                $adminEmails[] = $row;
+                            }
+                        }
+                    }
+
                     // Gửi thông báo xác nhận thành công cho Admin duyệt qua Zalo
                     $successAdminMsg = "✅ Đã duyệt thành công ticket #$ticketId của Sale $cName.\n"
                                      . "• Khách hàng: $lName ($lPhone)\n"
@@ -399,26 +434,75 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                      . "• Hệ thống đã ghi nhận 1 lượt bù data cho Sale này.";
                     sendZaloMessage($botToken, $chatId, $successAdminMsg);
 
+                    // Thông báo Zalo cho các Ticket Admins khác (tránh gửi lại cho admin thực hiện lệnh)
+                    if (!empty($botToken) && !empty($adminEmails)) {
+                        $adminChatIds = [];
+                        foreach ($adminEmails as $adm) {
+                            if (!empty($adm['zalo_chat_id']) && $adm['zalo_chat_id'] !== $chatId) {
+                                $adminChatIds[] = $adm['zalo_chat_id'];
+                            }
+                        }
+                        if (!empty($adminChatIds)) {
+                            $zaloAdminMsg = "[ THÔNG BÁO TICKET ĐÃ DUYỆT ]\n\n"
+                                . "Admin $adminName đã duyệt nhanh ticket #$ticketId của Sale $cName qua Zalo.\n\n"
+                                . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                                . "  • Khách hàng: $lName ($lPhone)\n"
+                                . "  • Lỗi báo cáo: {$report['reason']}\n\n"
+                                . "❖ LÝ DO DUYỆT:\n"
+                                . "  $approval_reason\n\n"
+                                . "Lượt đền bù đã được ghi nhận cho Sale.";
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                        }
+                    }
+
                     // Thông báo qua Zalo Bot cho Sale
                     if ($consultant && !empty($consultant['zalo_chat_id'])) {
                         $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
-                            . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT.\n\n"
+                            . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
                             . "❖ THÔNG TIN KHÁCH HÀNG:\n"
                             . "  • Khách hàng: $lName ($lPhone)\n"
                             . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                            . "❖ LÝ DO DUYỆT:\n"
+                            . "  $approval_reason\n\n"
                             . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
                         sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
                     }
 
-                    // Thông báo qua Email cho Sale
+                    // Thông báo qua Email cho Sale (kèm CC)
                     if ($consultant && !empty($consultant['email'])) {
                         require_once __DIR__ . '/mailer.php';
+                        
+                        // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
+                        $ccEmailsArr = [];
+                        if (!empty($report['cc_emails'])) {
+                            $parts = explode(',', $report['cc_emails']);
+                            foreach ($parts as $p) {
+                                $p = trim($p);
+                                if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                                    $ccEmailsArr[] = strtolower($p);
+                                }
+                            }
+                        }
+                        foreach ($adminEmails as $adm) {
+                            if (!empty($adm['email'])) {
+                                $email = trim($adm['email']);
+                                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                    $ccEmailsArr[] = strtolower($email);
+                                }
+                            }
+                        }
+                        $ccEmailsArr = array_unique($ccEmailsArr);
+                        $saleEmail = strtolower(trim($consultant['email']));
+                        $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                        $ccString = implode(',', $ccEmailsArr);
+
                         $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
                         $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
                                       <p>Chào $cName,</p>
-                                      <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên duyệt thành công qua Zalo.</p>
+                                      <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công qua Zalo.</p>
+                                      <p><strong>Lý do duyệt:</strong> $approval_reason</p>
                                       <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
-                        sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                        sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
                     }
 
                 } catch (Exception $ex) {

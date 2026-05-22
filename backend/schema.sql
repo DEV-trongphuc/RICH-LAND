@@ -88,7 +88,8 @@ CREATE TABLE `data_reports` (
   `status` varchar(20) DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
   `resolved_at` datetime DEFAULT NULL,
-  `reject_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do từ chối ticket'
+  `reject_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do từ chối ticket',
+  `approval_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do duyệt ticket'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
