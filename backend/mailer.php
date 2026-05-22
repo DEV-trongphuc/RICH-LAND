@@ -376,13 +376,26 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             foreach ($lines as $line) {
                 $line = trim($line);
                 if (empty($line)) continue;
+                
+                $matchedPlaceholder = false;
                 // Matches [Custom Key]: Value or Custom Key: Value
-                if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches)) {
+                if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                    && strlen(trim($matches[1])) <= 40
+                    && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
+                ) {
                     $cKey = trim($matches[1]);
                     $cVal = trim($matches[2]);
-                    $replacements['{' . strtolower($cKey) . '}'] = htmlspecialchars($cVal);
-                    $replacements['{' . $cKey . '}'] = htmlspecialchars($cVal);
-                } else {
+                    $lowerKey = strtolower($cKey);
+                    
+                    // Only treat as placeholder if it is actually used in the custom template
+                    if (strpos(strtolower($emailTemplate), '{' . $lowerKey . '}') !== false) {
+                        $replacements['{' . $lowerKey . '}'] = htmlspecialchars($cVal);
+                        $replacements['{' . $cKey . '}'] = htmlspecialchars($cVal);
+                        $matchedPlaceholder = true;
+                    }
+                }
+                
+                if (!$matchedPlaceholder) {
                     $actualNote .= htmlspecialchars($line) . "\n";
                 }
             }
@@ -497,10 +510,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             ' . $detailBlock . '
         </div>
 
-
-        <div style="text-align: center; margin-bottom: 32px;">
-            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . urlencode($leadPhone) . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
+        <div style="text-align: center; margin-bottom: 20px;">
         </div>
 
         <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1; padding-bottom: 24px; border-bottom: 1px dashed #cbd5e1;">
@@ -534,7 +544,11 @@ function sendTicketNotificationToAdmins(
     string $reason,
     string $consultantName,
     string $roundName = '',
-    string $ccEmailString = ''
+    string $ccEmailString = '',
+    string $leadEmail = '',
+    string $leadSource = '',
+    string $leadType = '',
+    string $leadNote = ''
 ) {
     $subject = '🎫 Ticket Mới: Sale BÁO CÁO DATA — ' . $leadName;
     $roundStr = !empty($roundName) ? htmlspecialchars($roundName) : 'Không rõ';
@@ -543,8 +557,34 @@ function sendTicketNotificationToAdmins(
     $fLead = htmlspecialchars($leadName ?: 'Khách hàng ẩn danh');
     $fPhone = htmlspecialchars($leadPhone ?: 'Không có');
     $fAdmin = htmlspecialchars($toAdminName);
+    $fEmail = htmlspecialchars($leadEmail ?: 'Không có');
+    $fSource = htmlspecialchars($leadSource ?: 'Không có');
+    $fType = htmlspecialchars($leadType ?: 'Không có');
+    $fNote = nl2br(htmlspecialchars($leadNote ?: 'Không có'));
 
-    $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Một nhân viên tư vấn vừa gửi <strong>BÁO CÁO DATA</strong> (Ticket) và cần bạn xem xét.</p><div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">TICKET CHỜ DUYỆT</span></div><div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-left:4px solid #eab308;padding:24px;margin:0 0 24px;border-radius:0 12px 12px 0;"><p style="color:#0f172a;font-size:15px;margin:0 0 16px;font-weight:700;border-bottom:1px solid #fde68a;padding-bottom:10px;">Chi tiết Ticket</p><table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;"><tr><td style="padding:7px 0;font-weight:600;width:160px;color:#64748b;vertical-align:top;">Nhân viên báo cáo:</td><td style="padding:7px 0;font-weight:700;color:#7c3aed;vertical-align:top;">' . $fConsult . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Vòng phân bổ:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $roundStr . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Tên khách hàng:</td><td style="padding:7px 0;font-weight:700;color:#0f172a;vertical-align:top;">' . $fLead . '</td></tr><tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Số điện thoại:</td><td style="padding:7px 0;font-weight:700;color:#d97706;vertical-align:top;">' . $fPhone . '</td></tr></table></div><div style="background:#fef2f2;border-left:4px solid #ef4444;padding:20px 24px;border-radius:0 12px 12px 0;margin-bottom:28px;"><p style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">Lý do báo cáo</p><p style="color:#0f172a;font-size:15px;line-height:1.7;margin:0;font-weight:500;">' . $fReason . '</p></div><div style="text-align:center;"><p style="color:#64748b;font-size:14px;margin-bottom:12px;">Vui lòng đăng nhập hệ thống để xem xét và xử lý ticket này.</p><div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;display:inline-block;font-size:13px;color:#475569;">Vào mục <strong style="color:#7c3aed;">Quản lý Ticket</strong> để Duyệt hoặc Từ chối báo cáo</div></div>';
+    $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Một nhân viên tư vấn vừa gửi <strong>BÁO CÁO DATA</strong> (Ticket) và cần bạn xem xét.</p>'
+        . '<div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">TICKET CHỜ DUYỆT</span></div>'
+        . '<div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-left:4px solid #eab308;padding:24px;margin:0 0 24px;border-radius:0 12px 12px 0;">'
+        . '<p style="color:#0f172a;font-size:15px;margin:0 0 16px;font-weight:700;border-bottom:1px solid #fde68a;padding-bottom:10px;">Chi tiết Ticket</p>'
+        . '<table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;">'
+        . '<tr><td style="padding:7px 0;font-weight:600;width:160px;color:#64748b;vertical-align:top;">Nhân viên báo cáo:</td><td style="padding:7px 0;font-weight:700;color:#7c3aed;vertical-align:top;">' . $fConsult . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Vòng phân bổ:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $roundStr . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Tên khách hàng:</td><td style="padding:7px 0;font-weight:700;color:#0f172a;vertical-align:top;">' . $fLead . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Số điện thoại:</td><td style="padding:7px 0;font-weight:700;color:#d97706;vertical-align:top;">' . $fPhone . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Email khách hàng:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fEmail . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Nguồn Data:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fSource . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Loại Data:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fType . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Ghi Chú:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;line-height:1.5;">' . $fNote . '</td></tr>'
+        . '</table>'
+        . '</div>'
+        . '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:20px 24px;border-radius:0 12px 12px 0;margin-bottom:28px;">'
+        . '<p style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">Lý do báo cáo</p>'
+        . '<p style="color:#0f172a;font-size:15px;line-height:1.7;margin:0;font-weight:500;">' . $fReason . '</p>'
+        . '</div>'
+        . '<div style="text-align:center;">'
+        . '<p style="color:#64748b;font-size:14px;margin-bottom:12px;">Vui lòng đăng nhập hệ thống để xem xét và xử lý ticket này.</p>'
+        . '<div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;display:inline-block;font-size:13px;color:#475569;">Vào mục <strong style="color:#7c3aed;">Quản lý Ticket</strong> để Duyệt hoặc Từ chối báo cáo</div>'
+        . '</div>';
 
     sendEmailNotification($toEmail, $subject, '🎫 Có Ticket Mới Cần Xử Lý!', $content, $ccEmailString);
 }

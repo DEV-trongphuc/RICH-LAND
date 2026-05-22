@@ -1610,10 +1610,9 @@ switch ($action) {
             $roundId = (int) ($input['round_id'] ?? 0);
             $compensations = $input['compensations'] ?? [];
 
-            if ($roundId > 0 && !empty($compensations)) {
-                require_once __DIR__ . '/mailer.php';
-                require_once __DIR__ . '/zalo_bot.php';
+            $notificationQueue = [];
 
+            if ($roundId > 0 && !empty($compensations)) {
                 // Fetch round name
                 $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
                 $rStmt->bind_param("i", $roundId);
@@ -1647,8 +1646,13 @@ switch ($action) {
                         $stmtComp->execute();
 
                         if ($delta > 0) {
-                            sendCompensationAddedEmailToSale($fRow['email'], $fRow['name'], $roundName, $delta);
-                            sendCompensationAddedZaloMessageToSale($c, $fRow['name'], $roundName, $delta);
+                            $notificationQueue[] = [
+                                'consultant_id' => $c,
+                                'email' => $fRow['email'],
+                                'name' => $fRow['name'],
+                                'round_name' => $roundName,
+                                'delta' => $delta
+                            ];
                         }
                     } else {
                         $stmtComp->bind_param("iii", $count, $roundId, $c);
@@ -1658,11 +1662,39 @@ switch ($action) {
             }
             logAdminAction($conn, $decodedUser['id'], 'UPDATE_COMPENSATIONS', ['round_id' => $roundId, 'compensations' => $compensations]);
             $conn->commit();
-            echo json_encode(['success' => true]);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
         }
+
+        // Đã commit giao dịch thành công. Bắt đầu gửi thông báo ngoài transaction
+        if (!empty($notificationQueue)) {
+            try {
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+
+                foreach ($notificationQueue as $notify) {
+                    try {
+                        if (!empty($notify['email'])) {
+                            sendCompensationAddedEmailToSale($notify['email'], $notify['name'], $notify['round_name'], $notify['delta']);
+                        }
+                    } catch (Exception $mailEx) {
+                        error_log("Error sending compensation email to sale " . $notify['consultant_id'] . ": " . $mailEx->getMessage());
+                    }
+
+                    try {
+                        sendCompensationAddedZaloMessageToSale($notify['consultant_id'], $notify['name'], $notify['round_name'], $notify['delta']);
+                    } catch (Exception $zaloEx) {
+                        error_log("Error sending compensation Zalo to sale " . $notify['consultant_id'] . ": " . $zaloEx->getMessage());
+                    }
+                }
+            } catch (Exception $notifyEx) {
+                error_log("General notification error in update_compensations: " . $notifyEx->getMessage());
+            }
+        }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'delete_round':
@@ -2458,6 +2490,7 @@ switch ($action) {
         $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
         $success = $stmt->execute();
+        $ticketId = $conn->insert_id;
         $stmt->close();
 
         if ($success) {
@@ -2469,7 +2502,7 @@ switch ($action) {
             if (!empty($adminEmails)) {
                 // Lấy thông tin consultant và lead để gửi email
                 $ctxForEmail = $conn->prepare("
-                    SELECT l.name as lead_name, l.phone as lead_phone, c.name as consultant_name, c.zalo_chat_id, dr.round_name
+                    SELECT l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.source as lead_source, l.type as lead_type, l.note as lead_note, c.name as consultant_name, c.zalo_chat_id, dr.round_name
                     FROM distribution_logs dl
                     LEFT JOIN leads l ON dl.lead_id = l.id
                     LEFT JOIN consultants c ON dl.assigned_to = c.id
@@ -2495,7 +2528,11 @@ switch ($action) {
                     $reason,
                     $ctxData['consultant_name'] ?? '',
                     $ctxData['round_name'] ?? '',
-                    $ccString
+                    $ccString,
+                    $ctxData['lead_email'] ?? '',
+                    $ctxData['lead_source'] ?? '',
+                    $ctxData['lead_type'] ?? '',
+                    $ctxData['lead_note'] ?? ''
                 );
 
                 // 2. Gửi Zalo Message cho toàn bộ admin có zalo_chat_id
@@ -2506,16 +2543,28 @@ switch ($action) {
                     $allAdmins = array_merge([$toAdmin], $adminEmails);
                     $leadName = $ctxData['lead_name'] ?? 'Khách hàng';
                     $leadPhone = $ctxData['lead_phone'] ?? 'Không rõ';
+                    $leadEmail = $ctxData['lead_email'] ?? 'Không rõ';
+                    $leadSource = $ctxData['lead_source'] ?? 'Không rõ';
+                    $leadType = $ctxData['lead_type'] ?? 'Không rõ';
+                    $leadNote = $ctxData['lead_note'] ?? 'Không rõ';
                     $consultName = $ctxData['consultant_name'] ?? 'Không rõ';
 
                     $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"
                         . "Một nhân viên vừa gửi báo cáo lỗi Data:\n\n"
                         . "❖ THÔNG TIN BÁO CÁO:\n"
                         . "  • Sale báo cáo: $consultName\n"
-                        . "  • Khách hàng: $leadName ($leadPhone)\n\n"
+                        . "  • Khách hàng: $leadName\n"
+                        . "  • Số điện thoại: $leadPhone\n"
+                        . "  • Email: $leadEmail\n"
+                        . "  • Nguồn Data: $leadSource\n"
+                        . "  • Loại Data: $leadType\n"
+                        . "  • Ghi chú: $leadNote\n\n"
                         . "❖ LÝ DO LỖI:\n"
                         . "  $reason\n\n"
-                        . "Vui lòng đăng nhập hệ thống Domation DATA để duyệt hoặc từ chối Ticket này.";
+                        . "👉 Để DUYỆT nhanh, soạn:\n"
+                        . "   /accept $ticketId [lý do duyệt]\n"
+                        . "👉 Để TỪ CHỐI nhanh, soạn:\n"
+                        . "   /reject $ticketId <lý do từ chối>";
 
                     $adminChatIds = [];
                     foreach ($allAdmins as $adm) {
@@ -2754,7 +2803,14 @@ switch ($action) {
                 'approval_reason' => $approval_reason
             ]);
             $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
+        }
 
+        // Đã commit DB thành công. Bắt đầu xử lý thông báo ngoài giao dịch DB
+        try {
             // Lấy thông tin admin thực hiện
             $adminName = 'Quản trị viên';
             $adminAccountId = 0;
@@ -2795,15 +2851,19 @@ switch ($action) {
 
             // Zalo cho Sale
             if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
-                $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
-                    . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
-                    . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                    . "  • Khách hàng: $lName ($lPhone)\n"
-                    . "  • Lỗi bạn báo: {$report['reason']}\n\n"
-                    . "❖ LÝ DO DUYỆT:\n"
-                    . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
-                    . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
-                sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                try {
+                    $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
+                        . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
+                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                        . "  • Khách hàng: $lName ($lPhone)\n"
+                        . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                        . "❖ LÝ DO DUYỆT:\n"
+                        . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
+                        . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                } catch (Exception $zEx1) {
+                    error_log("Error sending Zalo message to consultant in approve_report: " . $zEx1->getMessage());
+                }
             }
 
             // Zalo cho các Ticket Admins (trừ admin thực hiện nếu có zalo_chat_id)
@@ -2815,59 +2875,66 @@ switch ($action) {
                     }
                 }
                 if (!empty($adminChatIds)) {
-                    $zaloAdminMsg = "[ THÔNG BÁO TICKET ĐÃ DUYỆT ]\n\n"
-                        . "Admin $adminName đã duyệt ticket của Sale $cName.\n\n"
-                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                        . "  • Khách hàng: $lName ($lPhone)\n"
-                        . "  • Lỗi báo cáo: {$report['reason']}\n\n"
-                        . "❖ LÝ DO DUYỆT:\n"
-                        . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể");
-                    sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                    try {
+                        $zaloAdminMsg = "[ THÔNG BÁO TICKET ĐÃ DUYỆT ]\n\n"
+                            . "Admin $adminName đã duyệt ticket của Sale $cName.\n\n"
+                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                            . "  • Khách hàng: $lName ($lPhone)\n"
+                            . "  • Lỗi báo cáo: {$report['reason']}\n\n"
+                            . "❖ LÝ DO DUYỆT:\n"
+                            . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể");
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                    } catch (Exception $zEx2) {
+                        error_log("Error sending Zalo message to multiple admins in approve_report: " . $zEx2->getMessage());
+                    }
                 }
             }
 
             // Thông báo qua Email cho Sale (kèm CC)
             if (!empty($consultant['email'])) {
-                require_once __DIR__ . '/mailer.php';
+                try {
+                    require_once __DIR__ . '/mailer.php';
 
-                // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
-                $ccEmailsArr = [];
-                if (!empty($report['cc_emails'])) {
-                    $parts = explode(',', $report['cc_emails']);
-                    foreach ($parts as $p) {
-                        $p = trim($p);
-                        if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
-                            $ccEmailsArr[] = strtolower($p);
+                    // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
+                    $ccEmailsArr = [];
+                    if (!empty($report['cc_emails'])) {
+                        $parts = explode(',', $report['cc_emails']);
+                        foreach ($parts as $p) {
+                            $p = trim($p);
+                            if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                                $ccEmailsArr[] = strtolower($p);
+                            }
                         }
                     }
-                }
-                foreach ($adminEmails as $adm) {
-                    if (!empty($adm['email'])) {
-                        $email = trim($adm['email']);
-                        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                            $ccEmailsArr[] = strtolower($email);
+                    foreach ($adminEmails as $adm) {
+                        if (!empty($adm['email'])) {
+                            $email = trim($adm['email']);
+                            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                $ccEmailsArr[] = strtolower($email);
+                            }
                         }
                     }
-                }
-                $ccEmailsArr = array_unique($ccEmailsArr);
-                $saleEmail = strtolower(trim($consultant['email']));
-                $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
-                $ccString = implode(',', $ccEmailsArr);
+                    $ccEmailsArr = array_unique($ccEmailsArr);
+                    $saleEmail = strtolower(trim($consultant['email']));
+                    $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                    $ccString = implode(',', $ccEmailsArr);
 
-                $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
-                $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
-                              <p>Chào $cName,</p>
-                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
-                              <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
-                              <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
-                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
+                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                    $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
+                                  <p>Chào $cName,</p>
+                                  <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
+                                  <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
+                                  <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                    sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
+                } catch (Exception $emailEx) {
+                    error_log("Error sending email in approve_report: " . $emailEx->getMessage());
+                }
             }
-
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        } catch (Exception $notifyOuterEx) {
+            error_log("Outer notification error in approve_report: " . $notifyOuterEx->getMessage());
         }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'reject_report':
@@ -2914,7 +2981,14 @@ switch ($action) {
                 'reject_reason' => $reject_reason
             ]);
             $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
+        }
 
+        // Đã commit DB thành công. Bắt đầu xử lý thông báo ngoài giao dịch DB
+        try {
             // Lấy thông tin admin thực hiện
             $adminName = 'Quản trị viên';
             $adminAccountId = 0;
@@ -2955,15 +3029,19 @@ switch ($action) {
 
             // Zalo cho Sale
             if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
-                $zaloMsg = "[ TICKET BỊ TỪ CHỐI ]\n\n"
-                    . "Chào $cName, báo cáo lỗi Data của bạn đã BỊ TỪ CHỐI bởi $adminName.\n\n"
-                    . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                    . "  • Khách hàng: $lName ($lPhone)\n"
-                    . "  • Lỗi bạn báo: {$report['reason']}\n\n"
-                    . "❖ LÝ DO TỪ CHỐI:\n"
-                    . "  $reject_reason\n\n"
-                    . "Bạn sẽ không được đền bù Data cho trường hợp này.";
-                sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                try {
+                    $zaloMsg = "[ TICKET BỊ TỪ CHỐI ]\n\n"
+                        . "Chào $cName, báo cáo lỗi Data của bạn đã BỊ TỪ CHỐI bởi $adminName.\n\n"
+                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                        . "  • Khách hàng: $lName ($lPhone)\n"
+                        . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                        . "❖ LÝ DO TỪ CHỐI:\n"
+                        . "  $reject_reason\n\n"
+                        . "Bạn sẽ không được đền bù Data cho trường hợp này.";
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                } catch (Exception $zEx1) {
+                    error_log("Error sending Zalo to sale in reject_report: " . $zEx1->getMessage());
+                }
             }
 
             // Zalo cho các Ticket Admins (trừ admin thực hiện)
@@ -2975,59 +3053,66 @@ switch ($action) {
                     }
                 }
                 if (!empty($adminChatIds)) {
-                    $zaloAdminMsg = "[ THÔNG BÁO TICKET BỊ TỪ CHỐI ]\n\n"
-                        . "Admin $adminName đã từ chối ticket của Sale $cName.\n\n"
-                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                        . "  • Khách hàng: $lName ($lPhone)\n"
-                        . "  • Lỗi báo cáo: {$report['reason']}\n\n"
-                        . "❖ LÝ DO TỪ CHỐI:\n"
-                        . "  $reject_reason";
-                    sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                    try {
+                        $zaloAdminMsg = "[ THÔNG BÁO TICKET BỊ TỪ CHỐI ]\n\n"
+                            . "Admin $adminName đã từ chối ticket của Sale $cName.\n\n"
+                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                            . "  • Khách hàng: $lName ($lPhone)\n"
+                            . "  • Lỗi báo cáo: {$report['reason']}\n\n"
+                            . "❖ LÝ DO TỪ CHỐI:\n"
+                            . "  $reject_reason";
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                    } catch (Exception $zEx2) {
+                        error_log("Error sending Zalo to multiple admins in reject_report: " . $zEx2->getMessage());
+                    }
                 }
             }
 
             // Thông báo qua Email (gửi cho Sale kèm CC)
             if (!empty($consultant['email'])) {
-                require_once __DIR__ . '/mailer.php';
+                try {
+                    require_once __DIR__ . '/mailer.php';
 
-                // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
-                $ccEmailsArr = [];
-                if (!empty($report['cc_emails'])) {
-                    $parts = explode(',', $report['cc_emails']);
-                    foreach ($parts as $p) {
-                        $p = trim($p);
-                        if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
-                            $ccEmailsArr[] = strtolower($p);
+                    // Gom danh sách CC (Round CC + Ticket Admins, lọc trùng và loại bỏ email của Sale nhận số)
+                    $ccEmailsArr = [];
+                    if (!empty($report['cc_emails'])) {
+                        $parts = explode(',', $report['cc_emails']);
+                        foreach ($parts as $p) {
+                            $p = trim($p);
+                            if (!empty($p) && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                                $ccEmailsArr[] = strtolower($p);
+                            }
                         }
                     }
-                }
-                foreach ($adminEmails as $adm) {
-                    if (!empty($adm['email'])) {
-                        $email = trim($adm['email']);
-                        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                            $ccEmailsArr[] = strtolower($email);
+                    foreach ($adminEmails as $adm) {
+                        if (!empty($adm['email'])) {
+                            $email = trim($adm['email']);
+                            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                $ccEmailsArr[] = strtolower($email);
+                            }
                         }
                     }
-                }
-                $ccEmailsArr = array_unique($ccEmailsArr);
-                $saleEmail = strtolower(trim($consultant['email']));
-                $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
-                $ccString = implode(',', $ccEmailsArr);
+                    $ccEmailsArr = array_unique($ccEmailsArr);
+                    $saleEmail = strtolower(trim($consultant['email']));
+                    $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                    $ccString = implode(',', $ccEmailsArr);
 
-                $emailSubj = "[Domation DATA] Ticket Lỗi Data Bị Từ Chối - $lName";
-                $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
-                              <p>Chào $cName,</p>
-                              <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên <strong>$adminName</strong> từ chối.</p>
-                              <p><strong>Lý do từ chối:</strong> " . htmlspecialchars($reject_reason) . "</p>
-                              <p>Bạn sẽ không được nhận Data đền bù cho trường hợp này.</p>";
-                sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
+                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Bị Từ Chối - $lName";
+                    $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
+                                  <p>Chào $cName,</p>
+                                  <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên <strong>$adminName</strong> từ chối.</p>
+                                  <p><strong>Lý do từ chối:</strong> " . htmlspecialchars($reject_reason) . "</p>
+                                  <p>Bạn sẽ không được nhận Data đền bù cho trường hợp này.</p>";
+                    sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
+                } catch (Exception $emailEx) {
+                    error_log("Error sending email in reject_report: " . $emailEx->getMessage());
+                }
             }
-
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        } catch (Exception $notifyOuterEx) {
+            error_log("Outer notification error in reject_report: " . $notifyOuterEx->getMessage());
         }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'get_mappings':
@@ -3296,9 +3381,7 @@ switch ($action) {
                     </table>
                 </div>
                 
-                <div style="text-align: center; margin-bottom: 32px;">
-                    <p style="color: #64748b; font-size: 14px; margin-bottom: 12px; font-weight: 500;">Quét mã QR bằng điện thoại để gọi nhanh</p>
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:' . $phoneEncoded . '" alt="QR Call" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 6px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" width="130" height="130" />
+                <div style="text-align: center; margin-bottom: 20px;">
                 </div>
 
                 <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1;">
@@ -3805,10 +3888,17 @@ switch ($action) {
                     }
                 }
             }
+            logAdminAction($conn, $decodedUser['id'], 'SAVE_TICKET_SETTINGS', ['admin_ids' => $adminIds]);
             $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi lưu cấu hình: ' . getSafeErrorMsg($e)]);
+            break;
+        }
 
-            // Chỉ gửi thông báo Zalo và email cho admin mới được bật
-            if (!empty($newlyAddedIds)) {
+        // Chỉ gửi thông báo Zalo và email cho admin mới được bật
+        if (!empty($newlyAddedIds)) {
+            try {
                 require_once 'mailer.php';
                 require_once 'zalo_bot.php';
 
@@ -3822,28 +3912,34 @@ switch ($action) {
                 $resAdmins = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($newIdsStr)");
                 if ($resAdmins) {
                     while ($admin = $resAdmins->fetch_assoc()) {
-                        if (!empty($admin['email'])) {
-                            sendAdminAddedToTicketEmail($admin['email'], $admin['name']);
+                        try {
+                            if (!empty($admin['email'])) {
+                                sendAdminAddedToTicketEmail($admin['email'], $admin['name']);
+                            }
+                        } catch (Exception $emailEx) {
+                            error_log("Failed to send email to admin " . $admin['id'] . ": " . $emailEx->getMessage());
                         }
-                        if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
-                            $zName = $admin['name'] ?: 'Quản trị viên';
-                            $zaloMsg = "[ PHÂN QUYỀN TICKET ]\n\n"
-                                . "Chào $zName,\n"
-                                . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Domation DATA.\n\n"
-                                . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
-                            sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+
+                        try {
+                            if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
+                                $zName = $admin['name'] ?: 'Quản trị viên';
+                                $zaloMsg = "[ PHÂN QUYỀN TICKET ]\n\n"
+                                    . "Chào $zName,\n"
+                                    . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Domation DATA.\n\n"
+                                    . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
+                                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                            }
+                        } catch (Exception $zaloEx) {
+                            error_log("Failed to send Zalo message to admin " . $admin['id'] . ": " . $zaloEx->getMessage());
                         }
                     }
                 }
+            } catch (Exception $notifyEx) {
+                error_log("General notification error in save_ticket_settings: " . $notifyEx->getMessage());
             }
-
-            logAdminAction($conn, $decodedUser['id'], 'SAVE_TICKET_SETTINGS', ['admin_ids' => $adminIds]);
-            $conn->commit();
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo json_encode(['success' => false, 'message' => 'Lỗi lưu cấu hình: ' . $e->getMessage()]);
         }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'force_sync':
@@ -4208,44 +4304,62 @@ switch ($action) {
                 'compensated' => $compensate_old_sale
             ]);
             $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
+        }
 
-            // 3. Send notifications to new consultant
+        // Đã commit giao dịch thành công. Bắt đầu gửi thông báo ngoài transaction
+        try {
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
             require_once __DIR__ . '/webhook_logic.php'; // For getLeadHistoryTimeline
 
             // Notify old consultant of compensation if applicable
             if ($compensate_old_sale && $old_consultant_id) {
-                $oldConsultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-                $oldConsultStmt->bind_param("i", $old_consultant_id);
-                $oldConsultStmt->execute();
-                $oldConsultant = $oldConsultStmt->get_result()->fetch_assoc();
-                $oldConsultStmt->close();
+                try {
+                    $oldConsultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                    $oldConsultStmt->bind_param("i", $old_consultant_id);
+                    $oldConsultStmt->execute();
+                    $oldConsultant = $oldConsultStmt->get_result()->fetch_assoc();
+                    $oldConsultStmt->close();
 
-                if ($oldConsultant) {
-                    $oldCName = $oldConsultant['name'];
-                    $oldCEmail = $oldConsultant['email'];
-                    $oldCZalo = $oldConsultant['zalo_chat_id'];
-                    $lName = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
+                    if ($oldConsultant) {
+                        $oldCName = $oldConsultant['name'];
+                        $oldCEmail = $oldConsultant['email'];
+                        $oldCZalo = $oldConsultant['zalo_chat_id'];
+                        $lName = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
 
-                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                        $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                        $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
-                    if (!empty($botToken) && !empty($oldCZalo)) {
-                        $zaloMsg = "[ ĐỀN BÙ DATA ]\n\n"
-                            . "Chào $oldCName, Lead \"$lName\" của bạn đã được chuyển giao cho Tư vấn viên khác.\n\n"
-                            . "Hệ thống đã tự động ghi nhận 1 lượt đền bù data mới cho bạn ở vòng này.";
-                        sendZaloMessage($botToken, $oldCZalo, $zaloMsg);
+                        if (!empty($botToken) && !empty($oldCZalo)) {
+                            try {
+                                $zaloMsg = "[ ĐỀN BÙ DATA ]\n\n"
+                                    . "Chào $oldCName, Lead \"$lName\" của bạn đã được chuyển giao cho Tư vấn viên khác.\n\n"
+                                    . "Hệ thống đã tự động ghi nhận 1 lượt đền bù data mới cho bạn ở vòng này.";
+                                sendZaloMessage($botToken, $oldCZalo, $zaloMsg);
+                            } catch (Exception $zEx) {
+                                error_log("Error sending Zalo compensation to old sale: " . $zEx->getMessage());
+                            }
+                        }
+
+                        if (!empty($oldCEmail)) {
+                            try {
+                                $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
+                                $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
+                                              <p>Chào $oldCName,</p>
+                                              <p>Lead <strong>$lName</strong> đã được chuyển giao cho Tư vấn viên khác.</p>
+                                              <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ này.</p>";
+                                sendEmailNotification($oldCEmail, $emailSubj, 'Thông báo đền bù', $emailBody, '');
+                            } catch (Exception $eEx) {
+                                error_log("Error sending email compensation to old sale: " . $eEx->getMessage());
+                            }
+                        }
                     }
-
-                    if (!empty($oldCEmail)) {
-                        $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
-                        $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
-                                      <p>Chào $oldCName,</p>
-                                      <p>Lead <strong>$lName</strong> đã được chuyển giao cho Tư vấn viên khác.</p>
-                                      <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ này.</p>";
-                        sendEmailNotification($oldCEmail, $emailSubj, 'Thông báo đền bù', $emailBody, '');
-                    }
+                } catch (Exception $oldSaleEx) {
+                    error_log("Error processing compensation notification for old sale: " . $oldSaleEx->getMessage());
                 }
             }
 
@@ -4253,75 +4367,105 @@ switch ($action) {
             $roundNameStr = '';
             $roundId = (int) ($log_data['round_id'] ?? 0);
             if ($roundId) {
-                $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-                $rStmt->bind_param("i", $roundId);
-                $rStmt->execute();
-                $rRes = $rStmt->get_result();
-                if ($rRes->num_rows > 0)
-                    $roundNameStr = $rRes->fetch_assoc()['round_name'] ?? '';
+                try {
+                    $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                    $rStmt->bind_param("i", $roundId);
+                    $rStmt->execute();
+                    $rRes = $rStmt->get_result();
+                    if ($rRes->num_rows > 0)
+                        $roundNameStr = $rRes->fetch_assoc()['round_name'] ?? '';
+                    $rStmt->close();
+                } catch (Exception $rEx) {
+                    error_log("Error fetching round name in reassign_lead: " . $rEx->getMessage());
+                }
             }
 
             if ($isDuplicateLead) {
-                $timeline = getLeadHistoryTimeline($conn, $lead_id);
-                sendLeadReminderEmailToSale(
-                    $new_cons_email,
-                    $new_cons_name,
-                    $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
-                    $log_data['phone'] ?: '',
-                    $log_data['note'] ?: '',
-                    $log_data['source'] ?: '',
-                    $cc_emails,
-                    $roundNameStr,
-                    $timeline,
-                    $lead_id
-                );
-                sendLeadReminderZaloMessageToSale(
-                    $new_consultant_id,
-                    $new_cons_name,
-                    $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
-                    $log_data['phone'] ?: '',
-                    $log_data['note'] ?: '',
-                    $log_data['source'] ?: '',
-                    $roundNameStr,
-                    $timeline,
-                    $lead_id,
-                    $log_data['lead_email'] ?: '',
-                    $log_data['type'] ?: ''
-                );
-            } else {
-                sendLeadAssignedEmailToSale(
-                    $new_cons_email,
-                    $new_cons_name,
-                    $log_data['lead_name'] ?: 'Khach hang an danh',
-                    $log_data['phone'] ?: '',
-                    $log_data['note'] ?: '',
-                    $log_data['source'] ?: '',
-                    $cc_emails,
-                    $roundNameStr,
-                    $lead_id,
-                    $new_consultant_id,
-                    $roundId
-                );
-                sendLeadAssignedZaloMessageToSale(
-                    $new_consultant_id,
-                    $new_cons_name,
-                    $log_data['lead_name'] ?: 'Khach hang an danh',
-                    $log_data['phone'] ?: '',
-                    $log_data['note'] ?: '',
-                    $log_data['source'] ?: '',
-                    $roundNameStr,
-                    $lead_id,
-                    $roundId,
-                    $log_data['lead_email'] ?: '',
-                    $log_data['type'] ?: ''
-                );
-            }
+                try {
+                    $timeline = getLeadHistoryTimeline($conn, $lead_id);
+                    try {
+                        sendLeadReminderEmailToSale(
+                            $new_cons_email,
+                            $new_cons_name,
+                            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $log_data['phone'] ?: '',
+                            $log_data['note'] ?: '',
+                            $log_data['source'] ?: '',
+                            $cc_emails,
+                            $roundNameStr,
+                            $timeline,
+                            $lead_id
+                        );
+                    } catch (Exception $eEx) {
+                        error_log("Error sending duplicate reminder email to new sale: " . $eEx->getMessage());
+                    }
 
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+                    try {
+                        sendLeadReminderZaloMessageToSale(
+                            $new_consultant_id,
+                            $new_cons_name,
+                            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $log_data['phone'] ?: '',
+                            $log_data['note'] ?: '',
+                            $log_data['source'] ?: '',
+                            $roundNameStr,
+                            $timeline,
+                            $lead_id,
+                            $log_data['lead_email'] ?: '',
+                            $log_data['type'] ?: ''
+                        );
+                    } catch (Exception $zEx) {
+                        error_log("Error sending duplicate reminder Zalo to new sale: " . $zEx->getMessage());
+                    }
+                } catch (Exception $dupEx) {
+                    error_log("Error processing duplicate reminders in reassign_lead: " . $dupEx->getMessage());
+                }
+            } else {
+                try {
+                    try {
+                        sendLeadAssignedEmailToSale(
+                            $new_cons_email,
+                            $new_cons_name,
+                            $log_data['lead_name'] ?: 'Khach hang an danh',
+                            $log_data['phone'] ?: '',
+                            $log_data['note'] ?: '',
+                            $log_data['source'] ?: '',
+                            $cc_emails,
+                            $roundNameStr,
+                            $lead_id,
+                            $new_consultant_id,
+                            $roundId
+                        );
+                    } catch (Exception $eEx) {
+                        error_log("Error sending assignment email to new sale: " . $eEx->getMessage());
+                    }
+
+                    try {
+                        sendLeadAssignedZaloMessageToSale(
+                            $new_consultant_id,
+                            $new_cons_name,
+                            $log_data['lead_name'] ?: 'Khach hang an danh',
+                            $log_data['phone'] ?: '',
+                            $log_data['note'] ?: '',
+                            $log_data['source'] ?: '',
+                            $roundNameStr,
+                            $lead_id,
+                            $roundId,
+                            $log_data['lead_email'] ?: '',
+                            $log_data['type'] ?: ''
+                        );
+                    } catch (Exception $zEx) {
+                        error_log("Error sending assignment Zalo to new sale: " . $zEx->getMessage());
+                    }
+                } catch (Exception $assignEx) {
+                    error_log("Error processing assignment notifications in reassign_lead: " . $assignEx->getMessage());
+                }
+            }
+        } catch (Exception $notifyOuterEx) {
+            error_log("Outer notification error in reassign_lead: " . $notifyOuterEx->getMessage());
         }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'block_lead':
@@ -4464,9 +4608,15 @@ switch ($action) {
             ]);
 
             $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
+        }
 
-            // 7. Send Notifications out of transaction
-            if ($compensate_sale && $old_consultant_id) {
+        // 7. Send Notifications out of transaction
+        if ($compensate_sale && $old_consultant_id) {
+            try {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
 
@@ -4485,29 +4635,35 @@ switch ($action) {
                 $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
                 if (!empty($botToken) && !empty($old_consultant_zalo)) {
-                    $zaloMsg = "[ ĐỀN BÙ DATA - BLACKLIST ]\n\n"
-                        . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin đưa vào Danh sách đen (Blacklist).\n\n"
-                        . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
-                    sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
+                    try {
+                        $zaloMsg = "[ ĐỀN BÙ DATA - BLACKLIST ]\n\n"
+                            . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin đưa vào Danh sách đen (Blacklist).\n\n"
+                            . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
+                        sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
+                    } catch (Exception $zEx) {
+                        error_log("Error sending block lead Zalo: " . $zEx->getMessage());
+                    }
                 }
 
                 // Send Email Notification
                 if (!empty($old_consultant_email)) {
-                    $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
-                    $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
-                                  <p>Chào $old_consultant_name,</p>
-                                  <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin đưa vào Danh sách đen (Blacklist).</p>
-                                  <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$round_name</strong>.</p>";
-                    sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, '');
+                    try {
+                        $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
+                        $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
+                                      <p>Chào $old_consultant_name,</p>
+                                      <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin đưa vào Danh sách đen (Blacklist).</p>
+                                      <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$round_name</strong>.</p>";
+                        sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, '');
+                    } catch (Exception $eEx) {
+                        error_log("Error sending block lead email: " . $eEx->getMessage());
+                    }
                 }
+            } catch (Exception $notifyEx) {
+                error_log("General notification error in block_lead: " . $notifyEx->getMessage());
             }
-
-            echo json_encode(['success' => true]);
-
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
+
+        echo json_encode(['success' => true]);
         break;
 
     case 'send_quick_zalo_message':
@@ -5530,35 +5686,48 @@ switch ($action) {
                 $stmtC->close();
                 
                 if ($cRow && $cRow['status'] === 'active') {
-                    require_once __DIR__ . '/mailer.php';
-                    require_once __DIR__ . '/zalo_bot.php';
-                    
-                    $timeline = getLeadHistoryTimeline($conn, $leadId);
-                    sendLeadReminderEmailToSale(
-                        $cRow['email'],
-                        $cRow['name'],
-                        $name,
-                        $phone,
-                        $note,
-                        $source,
-                        '',
-                        '',
-                        $timeline,
-                        $leadId
-                    );
-                    sendLeadReminderZaloMessageToSale(
-                        $assignedTo,
-                        $cRow['name'],
-                        $name,
-                        $phone,
-                        $note,
-                        $source,
-                        '',
-                        $timeline,
-                        $leadId,
-                        $email,
-                        $type
-                    );
+                    try {
+                        require_once __DIR__ . '/mailer.php';
+                        require_once __DIR__ . '/zalo_bot.php';
+                        
+                        $timeline = getLeadHistoryTimeline($conn, $leadId);
+                        try {
+                            sendLeadReminderEmailToSale(
+                                $cRow['email'],
+                                $cRow['name'],
+                                $name,
+                                $phone,
+                                $note,
+                                $source,
+                                '',
+                                '',
+                                $timeline,
+                                $leadId
+                            );
+                        } catch (Exception $eEx) {
+                            error_log("Error sending duplicate lead reminder email: " . $eEx->getMessage());
+                        }
+
+                        try {
+                            sendLeadReminderZaloMessageToSale(
+                                $assignedTo,
+                                $cRow['name'],
+                                $name,
+                                $phone,
+                                $note,
+                                $source,
+                                '',
+                                $timeline,
+                                $leadId,
+                                $email,
+                                $type
+                            );
+                        } catch (Exception $zEx) {
+                            error_log("Error sending duplicate lead reminder Zalo: " . $zEx->getMessage());
+                        }
+                    } catch (Exception $notifyEx) {
+                        error_log("Error preparing reminder notifications: " . $notifyEx->getMessage());
+                    }
                 }
                 
                 echo json_encode(['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')]);
@@ -5599,35 +5768,48 @@ switch ($action) {
 
                     $conn->commit();
 
-                    require_once __DIR__ . '/mailer.php';
-                    require_once __DIR__ . '/zalo_bot.php';
+                    try {
+                        require_once __DIR__ . '/mailer.php';
+                        require_once __DIR__ . '/zalo_bot.php';
 
-                    $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-                    sendLeadAssignedEmailToSale(
-                        $fallbackAdminData['email'],
-                        $fallbackAdminData['name'],
-                        $fName,
-                        $phone ?: '',
-                        $note ?: '',
-                        $source ?: '',
-                        $fallbackCcEmails,
-                        'Fallback Admin',
-                        $leadId,
-                        0,
-                        0
-                    );
-                    if (!empty($fallbackAdminData['zalo_chat_id'])) {
-                        sendLeadAssignedZaloMessageToAdmin(
-                            $fallbackAdminData['zalo_chat_id'],
-                            $fallbackAdminData['name'],
-                            $fName,
-                            $phone ?: '',
-                            $note ?: '',
-                            $source ?: '',
-                            $leadId,
-                            $email,
-                            $type
-                        );
+                        $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $fallbackAdminData['email'],
+                                $fallbackAdminData['name'],
+                                $fName,
+                                $phone ?: '',
+                                $note ?: '',
+                                $source ?: '',
+                                $fallbackCcEmails,
+                                'Fallback Admin',
+                                $leadId,
+                                0,
+                                0
+                            );
+                        } catch (Exception $eEx) {
+                            error_log("Error sending fallback admin email: " . $eEx->getMessage());
+                        }
+
+                        if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                            try {
+                                sendLeadAssignedZaloMessageToAdmin(
+                                    $fallbackAdminData['zalo_chat_id'],
+                                    $fallbackAdminData['name'],
+                                    $fName,
+                                    $phone ?: '',
+                                    $note ?: '',
+                                    $source ?: '',
+                                    $leadId,
+                                    $email,
+                                    $type
+                                );
+                            } catch (Exception $zEx) {
+                                error_log("Error sending fallback admin Zalo: " . $zEx->getMessage());
+                            }
+                        }
+                    } catch (Exception $notifyEx) {
+                        error_log("Error preparing fallback notifications: " . $notifyEx->getMessage());
                     }
 
                     echo json_encode(['success' => true, 'message' => 'Data đã được chuyển thẳng cho Admin Fallback thành công.']);
@@ -5674,55 +5856,68 @@ switch ($action) {
 
                     // Fire notification using Mailer and Zalo ONLY if within working hours
                     if (!$isOutsideWorkHours) {
-                        require_once __DIR__ . '/mailer.php';
-                        require_once __DIR__ . '/zalo_bot.php';
+                        try {
+                            require_once __DIR__ . '/mailer.php';
+                            require_once __DIR__ . '/zalo_bot.php';
 
-                        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                        $stmtC->bind_param("i", $consultantId);
-                        $stmtC->execute();
-                        $cRes = $stmtC->get_result();
-                        if ($cRes->num_rows > 0) {
-                            $c = $cRes->fetch_assoc();
-                            $ccEmails = '';
-                            $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
-                            $stmtQ->bind_param("i", $assignedRoundId);
-                            $stmtQ->execute();
-                            $qRound = $stmtQ->get_result();
-                            if ($qRound && $qRound->num_rows > 0) {
-                                $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                            $stmtC->bind_param("i", $consultantId);
+                            $stmtC->execute();
+                            $cRes = $stmtC->get_result();
+                            if ($cRes->num_rows > 0) {
+                                $c = $cRes->fetch_assoc();
+                                $ccEmails = '';
+                                $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
+                                $stmtQ->bind_param("i", $assignedRoundId);
+                                $stmtQ->execute();
+                                $qRound = $stmtQ->get_result();
+                                if ($qRound && $qRound->num_rows > 0) {
+                                    $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                                }
+                                $stmtQ->close();
+
+                                $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+
+                                try {
+                                    sendLeadAssignedEmailToSale(
+                                        $c['email'],
+                                        $c['name'],
+                                        $fName,
+                                        $phone ?: '',
+                                        $note ?: '',
+                                        $source ?: '',
+                                        $ccEmails,
+                                        $roundName,
+                                        $leadId,
+                                        $consultantId,
+                                        $assignedRoundId
+                                    );
+                                } catch (Exception $eEx) {
+                                    error_log("Error sending manual insert assignment email: " . $eEx->getMessage());
+                                }
+
+                                try {
+                                    sendLeadAssignedZaloMessageToSale(
+                                        $consultantId,
+                                        $c['name'],
+                                        $fName,
+                                        $phone ?: '',
+                                        $note ?: '',
+                                        $source ?: '',
+                                        $roundName,
+                                        $leadId,
+                                        $assignedRoundId,
+                                        $email,
+                                        $type
+                                    );
+                                } catch (Exception $zEx) {
+                                    error_log("Error sending manual insert assignment Zalo: " . $zEx->getMessage());
+                                }
                             }
-                            $stmtQ->close();
-
-                            $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-
-                            sendLeadAssignedEmailToSale(
-                                $c['email'],
-                                $c['name'],
-                                $fName,
-                                $phone ?: '',
-                                $note ?: '',
-                                $source ?: '',
-                                $ccEmails,
-                                $roundName,
-                                $leadId,
-                                $consultantId,
-                                $assignedRoundId
-                            );
-                            sendLeadAssignedZaloMessageToSale(
-                                $consultantId,
-                                $c['name'],
-                                $fName,
-                                $phone ?: '',
-                                $note ?: '',
-                                $source ?: '',
-                                $roundName,
-                                $leadId,
-                                $assignedRoundId,
-                                $email,
-                                $type
-                            );
+                            $stmtC->close();
+                        } catch (Exception $notifyEx) {
+                            error_log("Error preparing manual assignment notifications: " . $notifyEx->getMessage());
                         }
-                        $stmtC->close();
                     }
 
                     echo json_encode(['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.']);

@@ -107,7 +107,7 @@ if ($runMigration) {
         synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (connection_id, row_hash),
         FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
-    )");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     // Auto-migrate: ensure conditions_json column exists in routing_rules for multi-conditions
     $checkColRRJson = $conn->query("SHOW COLUMNS FROM routing_rules LIKE 'conditions_json'");
@@ -135,12 +135,14 @@ if ($runMigration) {
         round_id INT,
         reason VARCHAR(255),
         status VARCHAR(20) DEFAULT 'pending',
+        reject_reason VARCHAR(255) NULL COMMENT 'Lý do từ chối ticket',
+        approval_reason VARCHAR(255) NULL COMMENT 'Lý do duyệt ticket',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         resolved_at DATETIME NULL,
         FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
         FOREIGN KEY (consultant_id) REFERENCES consultants(id) ON DELETE CASCADE,
         FOREIGN KEY (round_id) REFERENCES distribution_rounds(id) ON DELETE CASCADE
-    )");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     // Auto-migrate: Performance Indexes — only add if they don't already exist
     // BUG-15 fix: wrapped in SHOW INDEX checks to avoid ALTER TABLE on every request
 
@@ -240,7 +242,7 @@ if ($runMigration) {
         account_id INT NOT NULL,
         FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
         UNIQUE KEY unique_account (account_id)
-    )");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     // Auto-migrate: thêm cột zalo_chat_id vào accounts
     $chkAccZalo = $conn->query("SHOW COLUMNS FROM accounts LIKE 'zalo_chat_id'");

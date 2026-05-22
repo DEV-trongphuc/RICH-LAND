@@ -184,59 +184,75 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     
                     // Trigger notifications out-of-transaction to avoid locking DB during API/SMTP delay
                     if ($assignedConsultantId && $newStatus !== 'pending_work_hours') {
-                        sendLeadAssignedEmailToSale(
-                            $newConsultantEmail,
-                            $newConsultantName,
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $row['cc_emails'] ?? '',
-                            $row['round_name'] ?? '',
-                            $row['lead_id'],
-                            $assignedConsultantId,
-                            $row['round_id'] ?? 0
-                        );
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $newConsultantEmail,
+                                $newConsultantName,
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['cc_emails'] ?? '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $assignedConsultantId,
+                                $row['round_id'] ?? 0
+                            );
+                        } catch (Exception $mailEx) {
+                            logSync("Error sending email to new consultant: " . $mailEx->getMessage());
+                        }
                         
-                        sendLeadAssignedZaloMessageToSale(
-                            $assignedConsultantId,
-                            $newConsultantName,
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $row['round_name'] ?? '',
-                            $row['lead_id'],
-                            $row['round_id'] ?? 0,
-                            $row['lead_email'] ?: '',
-                            $row['lead_type'] ?: ''
-                        );
+                        try {
+                            sendLeadAssignedZaloMessageToSale(
+                                $assignedConsultantId,
+                                $newConsultantName,
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $row['round_id'] ?? 0,
+                                $row['lead_email'] ?: '',
+                                $row['lead_type'] ?: ''
+                            );
+                        } catch (Exception $zaloEx) {
+                            logSync("Error sending Zalo to new consultant: " . $zaloEx->getMessage());
+                        }
                     } else if ($isFallbackAdmin && $fallbackAdminData) {
-                        sendLeadAssignedEmailToSale(
-                            $fallbackAdminData['email'],
-                            $fallbackAdminData['name'],
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $fallbackCcEmails,
-                            'Fallback Admin',
-                            $row['lead_id'],
-                            0,
-                            0
-                        );
-                        if (!empty($fallbackAdminData['zalo_chat_id'])) {
-                            sendLeadAssignedZaloMessageToAdmin(
-                                $fallbackAdminData['zalo_chat_id'],
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $fallbackAdminData['email'],
                                 $fallbackAdminData['name'],
                                 $row['lead_name'] ?: 'Khách hàng ẩn danh',
                                 $row['lead_phone'] ?: '',
                                 $row['lead_note'] ?: '',
                                 $row['lead_source'] ?: '',
+                                $fallbackCcEmails,
+                                'Fallback Admin',
                                 $row['lead_id'],
-                                $row['lead_email'] ?: '',
-                                $row['lead_type'] ?: ''
+                                0,
+                                0
                             );
+                        } catch (Exception $mailEx) {
+                            logSync("Error sending email to fallback admin: " . $mailEx->getMessage());
+                        }
+                        if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                            try {
+                                sendLeadAssignedZaloMessageToAdmin(
+                                    $fallbackAdminData['zalo_chat_id'],
+                                    $fallbackAdminData['name'],
+                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                    $row['lead_phone'] ?: '',
+                                    $row['lead_note'] ?: '',
+                                    $row['lead_source'] ?: '',
+                                    $row['lead_id'],
+                                    $row['lead_email'] ?: '',
+                                    $row['lead_type'] ?: ''
+                                );
+                            } catch (Exception $zaloEx) {
+                                logSync("Error sending Zalo to fallback admin: " . $zaloEx->getMessage());
+                            }
                         }
                     }
                     
@@ -268,34 +284,42 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
                             
                             // Send Email
-                            sendLeadAssignedEmailToSale(
-                                $row['consultant_email'],
-                                $row['consultant_name'],
-                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                $row['lead_phone'] ?: '',
-                                $row['lead_note'] ?: '',
-                                $row['lead_source'] ?: '',
-                                $row['cc_emails'] ?? '',
-                                $row['round_name'] ?? '',
-                                $row['lead_id'],
-                                $row['assigned_to'],
-                                $row['round_id'] ?? 0
-                            );
+                            try {
+                                sendLeadAssignedEmailToSale(
+                                    $row['consultant_email'],
+                                    $row['consultant_name'],
+                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                    $row['lead_phone'] ?: '',
+                                    $row['lead_note'] ?: '',
+                                    $row['lead_source'] ?: '',
+                                    $row['cc_emails'] ?? '',
+                                    $row['round_name'] ?? '',
+                                    $row['lead_id'],
+                                    $row['assigned_to'],
+                                    $row['round_id'] ?? 0
+                                );
+                            } catch (Exception $mailEx) {
+                                logSync("Error sending release email to consultant: " . $mailEx->getMessage());
+                            }
                             
                             // Send Zalo Message
-                            sendLeadAssignedZaloMessageToSale(
-                                $row['assigned_to'],
-                                $row['consultant_name'],
-                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                $row['lead_phone'] ?: '',
-                                $row['lead_note'] ?: '',
-                                $row['lead_source'] ?: '',
-                                $row['round_name'] ?? '',
-                                $row['lead_id'],
-                                $row['round_id'] ?? 0,
-                                $row['lead_email'] ?: '',
-                                $row['lead_type'] ?: ''
-                            );
+                            try {
+                                sendLeadAssignedZaloMessageToSale(
+                                    $row['assigned_to'],
+                                    $row['consultant_name'],
+                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                    $row['lead_phone'] ?: '',
+                                    $row['lead_note'] ?: '',
+                                    $row['lead_source'] ?: '',
+                                    $row['round_name'] ?? '',
+                                    $row['lead_id'],
+                                    $row['round_id'] ?? 0,
+                                    $row['lead_email'] ?: '',
+                                    $row['lead_type'] ?: ''
+                                );
+                            } catch (Exception $zaloEx) {
+                                logSync("Error sending release Zalo to consultant: " . $zaloEx->getMessage());
+                            }
                             
                             $releasedCount++;
                         }
@@ -693,8 +717,16 @@ foreach ($connections as $connItem) {
                             
                             if ($cRow && $cRow['status'] === 'active') {
                                 $timeline = getLeadHistoryTimeline($conn, $leadId);
-                                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                                try {
+                                    sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
+                                } catch (Exception $mailEx) {
+                                    logSync("Error sending silent sync email: " . $mailEx->getMessage());
+                                }
+                                try {
+                                    sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                                } catch (Exception $zaloEx) {
+                                    logSync("Error sending silent sync Zalo: " . $zaloEx->getMessage());
+                                }
                             }
                         }
                     }
@@ -735,8 +767,16 @@ foreach ($connections as $connItem) {
                     
                     if ($cRow && $cRow['status'] === 'active') {
                         $timeline = getLeadHistoryTimeline($conn, $leadId);
-                        sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                        sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                        try {
+                            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
+                        } catch (Exception $mailEx) {
+                            logSync("Error sending duplicate reminder email: " . $mailEx->getMessage());
+                        }
+                        try {
+                            sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                        } catch (Exception $zaloEx) {
+                            logSync("Error sending duplicate reminder Zalo: " . $zaloEx->getMessage());
+                        }
                     }
                     
                     continue;
@@ -796,32 +836,40 @@ foreach ($connections as $connItem) {
 
                 // Notifications
                 if ($isFallbackAdmin && $fallbackAdminData && !empty($leadId)) {
-                    sendLeadAssignedEmailToSale(
-                        $fallbackAdminData['email'], 
-                        $fallbackAdminData['name'], 
-                        $name, 
-                        $phone, 
-                        $note, 
-                        $source, 
-                        $fallbackCcEmails, 
-                        'Fallback Admin', 
-                        $leadId, 
-                        0, 
-                        0
-                    );
-                    if (!empty($fallbackAdminData['zalo_chat_id'])) {
-                        require_once __DIR__ . '/zalo_bot.php';
-                        sendLeadAssignedZaloMessageToAdmin(
-                            $fallbackAdminData['zalo_chat_id'], 
+                    try {
+                        sendLeadAssignedEmailToSale(
+                            $fallbackAdminData['email'], 
                             $fallbackAdminData['name'], 
                             $name, 
                             $phone, 
                             $note, 
-                            $source,
-                            $leadId,
-                            $email,
-                            $type
+                            $source, 
+                            $fallbackCcEmails, 
+                            'Fallback Admin', 
+                            $leadId, 
+                            0, 
+                            0
                         );
+                    } catch (Exception $mailEx) {
+                        logSync("Error sending fallback admin email: " . $mailEx->getMessage());
+                    }
+                    if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                        require_once __DIR__ . '/zalo_bot.php';
+                        try {
+                            sendLeadAssignedZaloMessageToAdmin(
+                                $fallbackAdminData['zalo_chat_id'], 
+                                $fallbackAdminData['name'], 
+                                $name, 
+                                $phone, 
+                                $note, 
+                                $source,
+                                $leadId,
+                                $email,
+                                $type
+                            );
+                        } catch (Exception $zaloEx) {
+                            logSync("Error sending fallback admin Zalo: " . $zaloEx->getMessage());
+                        }
                     }
                     $syncedCount++;
                 } else if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId) && $assignedConsultantId) {
@@ -838,10 +886,18 @@ foreach ($connections as $connItem) {
                     
                     if ($c) {
                         // Gửi Email
-                        sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+                        try {
+                            sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
+                        } catch (Exception $mailEx) {
+                            logSync("Error sending assigned sale email: " . $mailEx->getMessage());
+                        }
                         
                         // Gửi Zalo Message (Đồng bộ Đa Kênh)
-                        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0, $email, $type);
+                        try {
+                            sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0, $email, $type);
+                        } catch (Exception $zaloEx) {
+                            logSync("Error sending assigned sale Zalo: " . $zaloEx->getMessage());
+                        }
                     }
                     $syncedCount++;
                 }

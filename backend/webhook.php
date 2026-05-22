@@ -362,16 +362,26 @@ if ($isSilent == 1) {
         $ownerId = $crmCheckResult['assignedTo'];
         if (!empty($ownerId) && (empty($assignedToId) || (int)$ownerId === (int)$assignedToId)) {
             $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-            $stmtC->bind_param("i", $ownerId);
-            $stmtC->execute();
-            $cRow = $stmtC->get_result()->fetch_assoc();
-            $stmtC->close();
-            if ($cRow && $cRow['status'] === 'active') {
-                require_once __DIR__ . '/mailer.php';
-                require_once __DIR__ . '/zalo_bot.php';
-                $timeline = getLeadHistoryTimeline($conn, $leadId);
-                sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+            if ($stmtC) {
+                $stmtC->bind_param("i", $ownerId);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                if ($cRow && $cRow['status'] === 'active') {
+                    require_once __DIR__ . '/mailer.php';
+                    require_once __DIR__ . '/zalo_bot.php';
+                    $timeline = getLeadHistoryTimeline($conn, $leadId);
+                    try {
+                        sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
+                    } catch (Exception $mailEx) {
+                        error_log("Error sending silent sync duplicate reminder email: " . $mailEx->getMessage());
+                    }
+                    try {
+                        sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                    } catch (Exception $zaloEx) {
+                        error_log("Error sending silent sync duplicate reminder Zalo: " . $zaloEx->getMessage());
+                    }
+                }
             }
         }
     }
@@ -388,24 +398,39 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId, null, $name);
         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
         $conn->commit();
-
-        $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-        $stmtC->bind_param("i", $assignedTo);
-        $stmtC->execute();
-        $cRow = $stmtC->get_result()->fetch_assoc();
-        $stmtC->close();
-        if ($cRow && $cRow['status'] === 'active') {
-            require_once __DIR__ . '/mailer.php';
-            require_once __DIR__ . '/zalo_bot.php';
-            $timeline = getLeadHistoryTimeline($conn, $leadId);
-            sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-            sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
-        }
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
         exit();
     }
+
+    try {
+        $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+        if ($stmtC) {
+            $stmtC->bind_param("i", $assignedTo);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            if ($cRow && $cRow['status'] === 'active') {
+                require_once __DIR__ . '/mailer.php';
+                require_once __DIR__ . '/zalo_bot.php';
+                $timeline = getLeadHistoryTimeline($conn, $leadId);
+                try {
+                    sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
+                } catch (Exception $mailEx) {
+                    error_log("Error sending webhook duplicate reminder email: " . $mailEx->getMessage());
+                }
+                try {
+                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
+                } catch (Exception $zaloEx) {
+                    error_log("Error sending webhook duplicate reminder Zalo: " . $zaloEx->getMessage());
+                }
+            }
+        }
+    } catch (Exception $notifyEx) {
+        error_log("Error during webhook duplicate reminder notifications: " . $notifyEx->getMessage());
+    }
+
     echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < " . $dupCheckMonths . " months."]);
     exit();
 }
@@ -488,44 +513,66 @@ if (function_exists('fastcgi_finish_request')) {
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/zalo_bot.php';
 
-if ($isFallbackAdmin && $fallbackAdminData) {
-    sendLeadAssignedEmailToSale(
-        $fallbackAdminData['email'], 
-        $fallbackAdminData['name'], 
-        $name, 
-        $phone, 
-        $note, 
-        $source, 
-        $fallbackCcEmails, 
-        'Fallback Admin', 
-        $leadId, 
-        0, 
-        0
-    );
-    if (!empty($fallbackAdminData['zalo_chat_id'])) {
-        sendLeadAssignedZaloMessageToAdmin(
-            $fallbackAdminData['zalo_chat_id'], 
-            $fallbackAdminData['name'], 
-            $name, 
-            $phone, 
-            $note, 
-            $source,
-            $leadId,
-            $email,
-            $type
-        );
+try {
+    if ($isFallbackAdmin && $fallbackAdminData) {
+        try {
+            sendLeadAssignedEmailToSale(
+                $fallbackAdminData['email'], 
+                $fallbackAdminData['name'], 
+                $name, 
+                $phone, 
+                $note, 
+                $source, 
+                $fallbackCcEmails, 
+                'Fallback Admin', 
+                $leadId, 
+                0, 
+                0
+            );
+        } catch (Exception $mailEx) {
+            error_log("Error sending webhook fallback admin email: " . $mailEx->getMessage());
+        }
+        if (!empty($fallbackAdminData['zalo_chat_id'])) {
+            try {
+                sendLeadAssignedZaloMessageToAdmin(
+                    $fallbackAdminData['zalo_chat_id'], 
+                    $fallbackAdminData['name'], 
+                    $name, 
+                    $phone, 
+                    $note, 
+                    $source,
+                    $leadId,
+                    $email,
+                    $type
+                );
+            } catch (Exception $zaloEx) {
+                error_log("Error sending webhook fallback admin Zalo: " . $zaloEx->getMessage());
+            }
+        }
+    } else {
+        $stmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $assignedConsultantId);
+            $stmt->execute();
+            $cRes = $stmt->get_result();
+            if ($cRes->num_rows > 0 && $status !== 'pending_work_hours') {
+                $c = $cRes->fetch_assoc();
+                try {
+                    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
+                } catch (Exception $mailEx) {
+                    error_log("Error sending webhook assigned sale email: " . $mailEx->getMessage());
+                }
+                try {
+                    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId, $email, $type);
+                } catch (Exception $zaloEx) {
+                    error_log("Error sending webhook assigned sale Zalo: " . $zaloEx->getMessage());
+                }
+            }
+            $stmt->close();
+        }
     }
-} else {
-    $stmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-    $stmt->bind_param("i", $assignedConsultantId);
-    $stmt->execute();
-    $cRes = $stmt->get_result();
-    if ($cRes->num_rows > 0 && $status !== 'pending_work_hours') {
-        $c = $cRes->fetch_assoc();
-        sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
-        sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId, $email, $type);
-    }
-    $stmt->close();
+} catch (Exception $notifyEx) {
+    error_log("Error during webhook new assignment notifications: " . $notifyEx->getMessage());
 }
 
 // Release advisory lock before closing connection
