@@ -3091,6 +3091,14 @@ switch ($action) {
             $stmt->bind_param("si", $reject_reason, $report_id);
             $stmt->execute();
 
+            $rejectMsg = "[LỖI - ĐÃ TỪ CHỐI]: " . $report['reason'];
+            if (!empty($reject_reason)) {
+                $rejectMsg .= " | Lý do từ chối: " . $reject_reason;
+            }
+            $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+            $updLead->bind_param("si", $rejectMsg, $report['lead_id']);
+            $updLead->execute();
+
             logAdminAction($conn, $decodedUser['id'], 'REJECT_REPORT', [
                 'report_id' => $report_id, 
                 'lead_id' => $report['lead_id'], 

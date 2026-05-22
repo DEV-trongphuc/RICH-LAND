@@ -316,7 +316,7 @@ export const DataList = () => {
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'error' && reportStatus === 'approved') {
-      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Data Lỗi</span>;
+      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Data Lỗi</span>;
     }
     switch(status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
@@ -726,21 +726,31 @@ export const DataList = () => {
                       </div>
 
                       {errorNotes.length > 0 && (
-                        <div style={{ 
-                          marginTop: '1rem', 
-                          background: '#fef2f2', 
-                          borderLeft: '4px solid #ef4444', 
-                          padding: '1rem', 
-                          borderRadius: '0 12px 12px 0' 
-                        }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Thông tin lỗi:</span>
-                            {errorNotes.map((err, index) => (
-                              <div key={index} style={{ fontSize: '0.875rem', color: '#b91c1c', fontWeight: 600, lineHeight: 1.5 }}>
-                                {err}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                          {errorNotes.map((err, index) => {
+                            const isApproved = err.includes('DUYỆT');
+                            const bg = isApproved ? '#ecfdf5' : '#fef2f2';
+                            const borderLeft = isApproved ? '4px solid #10b981' : '4px solid #ef4444';
+                            const titleColor = isApproved ? '#047857' : '#991b1b';
+                            const textColor = isApproved ? '#065f46' : '#b91c1c';
+                            const titleText = isApproved ? 'Thông tin lỗi - Đã duyệt:' : 'Thông tin lỗi - Từ chối:';
+
+                            return (
+                              <div key={index} style={{ 
+                                background: bg, 
+                                borderLeft: borderLeft, 
+                                padding: '1rem', 
+                                borderRadius: '0 12px 12px 0' 
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: titleColor, textTransform: 'uppercase' }}>{titleText}</span>
+                                  <div style={{ fontSize: '0.875rem', color: textColor, fontWeight: 600, lineHeight: 1.5 }}>
+                                    {err}
+                                  </div>
+                                </div>
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
                         </div>
                       )}
                     </>
