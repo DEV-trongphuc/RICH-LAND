@@ -887,17 +887,19 @@ export const SalePortal = () => {
                       {/* VÒNG / PHÂN BỔ CHO */}
                       {user?.role === 'sale' ? (
                         <td style={{ padding: '1rem 1.25rem' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            background: '#e0e7ff',
-                            color: '#4338ca',
-                            fontSize: '0.75rem',
-                            fontWeight: 700
-                          }}>
-                            {lead.round_name || 'Mặc định'}
-                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              background: '#e0e7ff',
+                              color: '#4338ca',
+                              fontSize: '0.75rem',
+                              fontWeight: 700
+                            }}>
+                              {lead.round_name || 'Mặc định'}
+                            </span>
+                          </div>
                         </td>
                       ) : (
                         <td style={{ padding: '1rem 1.25rem' }}>
@@ -930,8 +932,24 @@ export const SalePortal = () => {
                       </td>
 
                       {/* THỜI GIAN NHẬN */}
-                      <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.8rem' }}>
-                        {lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : 'N/A'}
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: '#64748b' }}>
+                          <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : 'N/A'}</span>
+                          {lead.status === 'compensation' && (
+                            <span style={{
+                              alignSelf: 'flex-start',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: '#d1fae5',
+                              color: '#065f46',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              marginTop: '2px'
+                            }}>
+                              Data bù
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* TICKET (Trạng thái / Báo lỗi) */}
@@ -1087,74 +1105,113 @@ export const SalePortal = () => {
           isOpen={detailModalOpen}
           onClose={() => setDetailModalOpen(false)}
           title="CHI TIẾT THÔNG TIN KHÁCH HÀNG"
+          width="900px"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Họ và tên:</span>
-              <span style={{ fontWeight: 700, color: '#0f172a' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', fontSize: '0.9rem', minHeight: '380px' }}>
+            {/* Cột trái: Thông tin khách hàng & Ghi chú */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Họ và tên:</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
+              </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Số điện thoại:</span>
-              <span style={{ fontWeight: 700, color: '#d97706' }}>{activeDetailLead.phone}</span>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Số điện thoại:</span>
+                <span style={{ fontWeight: 700, color: '#d97706' }}>{activeDetailLead.phone}</span>
+              </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Email:</span>
-              <span style={{ color: '#0f172a' }}>{activeDetailLead.lead_email || '—'}</span>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Email:</span>
+                <span style={{ color: '#0f172a' }}>{activeDetailLead.lead_email || '—'}</span>
+              </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Vòng chia:</span>
-              <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.round_name || 'Mặc định'}</span>
-            </div>
-
-            {user?.role !== 'sale' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Tư vấn viên:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Avatar name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Vòng chia:</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.round_name || 'Mặc định'}</span>
+                  {activeDetailLead.status === 'compensation' && (
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      background: '#d1fae5',
+                      color: '#065f46',
+                      fontSize: '0.725rem',
+                      fontWeight: 700,
+                      marginTop: '2px'
+                    }}>
+                      Data bù
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Nguồn khách:</span>
-              <span style={{ color: '#0f172a' }}>{activeDetailLead.source || 'N/A'}</span>
-            </div>
+              {user?.role !== 'sale' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#64748b' }}>Tư vấn viên:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Avatar name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
+                    <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
+                  </div>
+                </div>
+              )}
 
-            {activeDetailLead.type && (
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Phân loại:</span>
-                <span style={{ color: '#0f172a' }}>{activeDetailLead.type}</span>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Nguồn khách:</span>
+                <span style={{ color: '#0f172a' }}>{activeDetailLead.source || 'N/A'}</span>
               </div>
-            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b' }}>Nhận lúc:</span>
-              <span style={{ color: '#334155' }}>
-                {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
-              </span>
+              {activeDetailLead.type && (
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ fontWeight: 700, color: '#64748b' }}>Phân loại:</span>
+                  <span style={{ color: '#0f172a' }}>{activeDetailLead.type}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b' }}>Nhận lúc:</span>
+                <span style={{ color: '#334155' }}>
+                  {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '4px' }}>
+                <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
+                <span style={{ color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                  {activeDetailLead.note ? activeDetailLead.note.replace(/\\n/g, '\n') : 'Không có ghi chú.'}
+                </span>
+              </div>
+
+              {activeDetailLead.report_status && (
+                <div style={{
+                  background: activeDetailLead.report_status === 'approved' ? '#d1fae5' : activeDetailLead.report_status === 'pending' ? '#fef3c7' : '#fee2e2',
+                  color: activeDetailLead.report_status === 'approved' ? '#065f46' : activeDetailLead.report_status === 'pending' ? '#9a3412' : '#991b1b',
+                  padding: '12px', borderRadius: '10px', border: '1px solid currentColor', marginTop: '4px'
+                }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 4 }}>
+                    <AlertCircle size={16} />
+                    <span>
+                      Báo cáo lỗi: {activeDetailLead.report_status === 'approved' ? 'Đã duyệt bù' : activeDetailLead.report_status === 'pending' ? 'Chờ quản trị viên duyệt' : 'Đã bị từ chối'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem' }}><strong>Lý do gửi:</strong> {activeDetailLead.report_reason || '—'}</div>
+                  {activeDetailLead.report_status === 'rejected' && (
+                    <div style={{ fontSize: '0.8rem', marginTop: 4 }}><strong>Lý do từ chối:</strong> {activeDetailLead.report_reject_reason || 'Không cung cấp lý do.'}</div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
-              <span style={{ color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                {activeDetailLead.note ? activeDetailLead.note.replace(/\\n/g, '\n') : 'Không có ghi chú.'}
-              </span>
-            </div>
-
-            {/* Lịch sử bàn giao & Nhắc lại */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
-              <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
+            {/* Cột phải: Lịch sử bàn giao & Nhắc lại */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+              <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
+              
               {loadingTimeline ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', color: '#64748b' }}>
                   <div style={{ width: 16, height: 16, border: '2px solid #f1f5f9', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                   <span style={{ fontSize: '0.85rem' }}>Đang tải lịch sử...</span>
                 </div>
               ) : timeline && timeline.length > 0 ? (
-                <div className="timeline" style={{ marginTop: '8px' }}>
+                <div className="timeline" style={{ marginTop: '4px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
                   {timeline.map((item: any, idx: number) => {
                     let dotColor = '#94a3b8';
                     if (item.status === 'Đã bàn giao') dotColor = '#3b82f6';
@@ -1192,37 +1249,18 @@ export const SalePortal = () => {
                 </div>
               )}
             </div>
+          </div>
 
-            {activeDetailLead.report_status && (
-              <div style={{
-                background: activeDetailLead.report_status === 'approved' ? '#d1fae5' : activeDetailLead.report_status === 'pending' ? '#fef3c7' : '#fee2e2',
-                color: activeDetailLead.report_status === 'approved' ? '#065f46' : activeDetailLead.report_status === 'pending' ? '#9a3412' : '#991b1b',
-                padding: '12px', borderRadius: '10px', border: '1px solid currentColor', marginTop: '8px'
-              }}>
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 4 }}>
-                  <AlertCircle size={16} />
-                  <span>
-                    Báo cáo lỗi: {activeDetailLead.report_status === 'approved' ? 'Đã duyệt bù' : activeDetailLead.report_status === 'pending' ? 'Chờ quản trị viên duyệt' : 'Đã bị từ chối'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.8rem' }}><strong>Lý do gửi:</strong> {activeDetailLead.report_reason || '—'}</div>
-                {activeDetailLead.report_status === 'rejected' && (
-                  <div style={{ fontSize: '0.8rem', marginTop: 4 }}><strong>Lý do từ chối:</strong> {activeDetailLead.report_reject_reason || 'Không cung cấp lý do.'}</div>
-                )}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <button
-                onClick={() => setDetailModalOpen(false)}
-                style={{
-                  background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px',
-                  padding: '8px 24px', fontWeight: 700, cursor: 'pointer'
-                }}
-              >
-                Đóng lại
-              </button>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+            <button
+              onClick={() => setDetailModalOpen(false)}
+              style={{
+                background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px',
+                padding: '8px 24px', fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              Đóng lại
+            </button>
           </div>
         </CustomModal>
       )}

@@ -248,7 +248,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 
                 if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     // Determine original status (assigned or compensation)
-                    $newStatus = (strpos($row['message'], 'compensation') !== false) ? 'compensation' : 'assigned';
+                    $newStatus = (strpos($row['message'], 'compensation') !== false || strpos($row['message'], 'đền bù') !== false || strpos($row['message'], 'Bù lượt') !== false) ? 'compensation' : 'assigned';
                     
                     $conn->begin_transaction();
                     try {
@@ -687,7 +687,7 @@ foreach ($connections as $connItem) {
                             if ($cRow && $cRow['status'] === 'active') {
                                 $timeline = getLeadHistoryTimeline($conn, $leadId);
                                 sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+                                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
                             }
                         }
                     }
@@ -702,7 +702,7 @@ foreach ($connections as $connItem) {
                     $conn->begin_transaction();
                     try {
                         $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
-                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng via cron_sync.');
+                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (đồng bộ hệ thống).');
                         
                         // Record hash so we don't spam duplicate logs on next run
                         $recordStmt->bind_param("is", $connItem['id'], $rowHash);
@@ -729,7 +729,7 @@ foreach ($connections as $connItem) {
                     if ($cRow && $cRow['status'] === 'active') {
                         $timeline = getLeadHistoryTimeline($conn, $leadId);
                         sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                        sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+                        sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
                     }
                     
                     continue;
@@ -743,7 +743,7 @@ foreach ($connections as $connItem) {
                         if ($assignResult) {
                             $assignedConsultantId = $assignResult['id'];
                             $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                            $cronMessage = $assignResult['is_compensation'] ? 'Assigned via compensation via cron_sync.' : 'Assigned via round-robin via cron_sync.';
+                            $cronMessage = $assignResult['is_compensation'] ? 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).' : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
 
                             // Check working hours
                             $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -757,7 +757,7 @@ foreach ($connections as $connItem) {
                                 $currentTime = date('H:i');
                                 if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                                     $cronStatus = 'pending_work_hours';
-                                    $cronMessage .= ' (Delayed: outside working hours)';
+                                    $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                                 }
                             }
                             $whStmt->close();

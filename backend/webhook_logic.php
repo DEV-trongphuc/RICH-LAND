@@ -1031,10 +1031,48 @@ function getLeadHistoryTimeline($conn, $leadId) {
             $statusRaw = $row['status'] ?? '';
             $statusText = $statusTranslations[$statusRaw] ?? $statusRaw;
             
+            $msg = $row['message'] ?? '';
+            
+            // Translate common messages to Vietnamese
+            $translations = [
+                'Assigned via round-robin.' => 'Được phân bổ tự động qua vòng xoay.',
+                'Assigned via compensation.' => 'Được phân bổ đền bù lượt lỗi.',
+                'Assigned via round-robin via cron_sync.' => 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).',
+                'Assigned via compensation via cron_sync.' => 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).',
+                'Assigned via round-robin. (Delayed: outside working hours)' => 'Được phân bổ tự động qua vòng xoay. (Trì hoãn: ngoài khung giờ làm việc)',
+                'Assigned via compensation. (Delayed: outside working hours)' => 'Được phân bổ đền bù lượt lỗi. (Trì hoãn: ngoài khung giờ làm việc)',
+                'Assigned via round-robin via cron_sync. (Delayed: outside working hours)' => 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống). (Trì hoãn: ngoài khung giờ làm việc)',
+                'Assigned via compensation via cron_sync. (Delayed: outside working hours)' => 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống). (Trì hoãn: ngoài khung giờ làm việc)',
+                'No matching rule found via cron_sync.' => 'Không tìm thấy quy tắc chia số phù hợp (đồng bộ hệ thống).',
+                'No active consultants in this round via cron_sync.' => 'Không có tư vấn viên nào đang hoạt động trong vòng này (đồng bộ hệ thống).',
+                'Chi dong bo check trung, khong dinh tuyen (Trung so).' => 'Chỉ đồng bộ check trùng, không định tuyến (Trùng số).',
+                'Chi dong bo check trung, khong dinh tuyen (Moi).' => 'Chỉ đồng bộ check trùng, không định tuyến (Mới).',
+                'Trung so tu file Excel nhap vao.' => 'Trùng số từ file Excel nhập vào.',
+                'Khong co Sale nhan tu file Excel.' => 'Không có Sale nhận từ file Excel.',
+            ];
+            
+            foreach ($translations as $eng => $vi) {
+                if (trim($msg) === $eng) {
+                    $msg = $vi;
+                    break;
+                }
+            }
+            
+            // Catch dynamic messages
+            if (preg_match('/Khách cũ đăng ký lại < (\d+) tháng via cron_sync\./i', $msg, $matches)) {
+                $msg = 'Khách cũ đăng ký lại < ' . $matches[1] . ' tháng (đồng bộ hệ thống).';
+            } elseif (preg_match('/No matching rule\. Routed directly to fallback Admin:\s*(.*)/i', $msg, $matches)) {
+                $msg = 'Không khớp quy tắc chia số. Chuyển hướng trực tiếp đến Admin dự phòng: ' . $matches[1];
+            } elseif (preg_match('/No matching rule\. Routed directly to fallback Admin via cron_sync:\s*(.*)/i', $msg, $matches)) {
+                $msg = 'Không khớp quy tắc chia số. Chuyển hướng trực tiếp đến Admin dự phòng (đồng bộ hệ thống): ' . $matches[1];
+            } elseif (preg_match('/\(Delayed: outside working hours (.*)\)/i', $msg, $matches)) {
+                $msg = preg_replace('/\(Delayed: outside working hours (.*)\)/i', '(Trì hoãn: ngoài khung giờ làm việc $1)', $msg);
+            }
+            
             $timeline[] = [
                 'received_at' => $row['received_at'],
                 'status' => $statusText,
-                'message' => $row['message'],
+                'message' => $msg,
                 'consultant_name' => $row['consultant_name'],
                 'round_name' => $row['round_name']
             ];

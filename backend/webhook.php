@@ -371,7 +371,7 @@ if ($isSilent == 1) {
                 require_once __DIR__ . '/zalo_bot.php';
                 $timeline = getLeadHistoryTimeline($conn, $leadId);
                 sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+                sendLeadReminderZaloMessageToSale($ownerId, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
             }
         }
     }
@@ -399,7 +399,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
             require_once __DIR__ . '/zalo_bot.php';
             $timeline = getLeadHistoryTimeline($conn, $leadId);
             sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
-            sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline);
+            sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, $note, $source, $roundName, $timeline, $leadId, $email, $type);
         }
     } catch (Exception $e) {
         $conn->rollback();
@@ -418,7 +418,7 @@ try {
         if ($assignResult) {
             $assignedConsultantId = $assignResult['id'];
             $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-            $message = $assignResult['is_compensation'] ? 'Assigned via compensation.' : 'Assigned via round-robin.';
+            $message = $assignResult['is_compensation'] ? 'Được phân bổ đền bù lượt lỗi.' : 'Được phân bổ tự động qua vòng xoay.';
 
             // Check working hours
             $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -432,7 +432,7 @@ try {
                 $currentTime = date('H:i');
                 if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     $status = 'pending_work_hours';
-                    $message .= ' (Delayed: outside working hours)';
+                    $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                 }
             }
             $whStmt->close();

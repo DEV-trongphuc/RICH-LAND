@@ -3932,7 +3932,7 @@ switch ($action) {
 
         // 1. Fetch lead details, old consultant details, and new consultant details
         $stmt = $conn->prepare("
-            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, dl.status as log_status, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, r.cc_emails
+            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, dl.status as log_status, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, l.type, r.cc_emails
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
@@ -4126,7 +4126,10 @@ switch ($action) {
                     $log_data['note'] ?: '',
                     $log_data['source'] ?: '',
                     $roundNameStr,
-                    $timeline
+                    $timeline,
+                    $lead_id,
+                    $log_data['lead_email'] ?: '',
+                    $log_data['type'] ?: ''
                 );
             } else {
                 sendLeadAssignedEmailToSale(
@@ -4964,7 +4967,7 @@ switch ($action) {
                                     require_once __DIR__ . '/mailer.php';
                                     require_once __DIR__ . '/zalo_bot.php';
                                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import', '', '', [], $leadId);
-                                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import');
+                                    sendLeadReminderZaloMessageToSale($assignedTo, $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import', '', [], $leadId, $email, 'Excel');
                                 }
                             }
                         } else {
@@ -5392,7 +5395,10 @@ switch ($action) {
                         $note,
                         $source,
                         '',
-                        $timeline
+                        $timeline,
+                        $leadId,
+                        $email,
+                        $type
                     );
                 }
                 

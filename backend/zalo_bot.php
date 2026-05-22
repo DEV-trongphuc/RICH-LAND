@@ -182,7 +182,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 /**
  * Gửi thông báo nhắc nhở Khách hàng cũ đăng ký lại cho Sale qua Zalo
  */
-function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [])
+function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '')
 {
     global $conn;
 
@@ -212,6 +212,39 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 
     if (empty($chatId)) return false;
 
+    // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
+    $email = $leadEmail;
+    $type = $leadType;
+    if (empty($email) || empty($type)) {
+        if ($leadId > 0) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $leadId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email)) $email = $row['email'] ?? '';
+                    if (empty($type)) $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        } else if (!empty($leadPhone)) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $leadPhone);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email)) $email = $row['email'] ?? '';
+                    if (empty($type)) $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        }
+    }
+
     $fName = !empty($leadName) ? $leadName : "Không có";
     $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
     $fSource = !empty($leadSource) ? $leadSource : "Không có";
@@ -234,11 +267,16 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $historyText = implode("\n", $lines);
     }
 
-    $text = "[ KHÁCH HÀNG ĐĂNG KÝ LẠI - KHÔNG TÍNH VÒNG LEAD]\n\n"
+    $emailLine = !empty($email) ? "  • Email: $email\n" : "";
+    $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
+
+    $text = "[ KHÁCH HÀNG ĐĂNG KÝ LẠI - KHÔNG TÍNH VÒNG LEAD ]\n\n"
         . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
         . "❖ THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
+        . $emailLine
+        . $typeLine
         . "  • Nguồn: $fSource\n";
     
     if (!empty($roundName)) {
@@ -254,6 +292,22 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     }
 
     $text .= "\nVui lòng liên hệ lại với khách hàng sớm nhất có thể!";
+
+    // Build Report URL
+    $reportUrl = '';
+    if ($leadId > 0) {
+        $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
+        if (empty($frontendUrl)) {
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+        }
+        $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id=0";
+    }
+
+    if (!empty($reportUrl)) {
+        $text .= "\n\nNếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+    }
 
     return sendZaloMessage($botToken, $chatId, $text);
 }
