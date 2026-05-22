@@ -512,7 +512,7 @@ export const DataList = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                         {getStatusBadge(lead.status)}
                         {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>⏳ Report Pending</span>}
-                        {lead.report_status === 'approved' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>🚩 Data Lỗi</span>}
+                        {lead.report_status === 'approved' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>Data Lỗi</span>}
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>

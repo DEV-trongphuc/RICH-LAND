@@ -26,6 +26,8 @@ export const Tickets = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<any>({ pending: 0, approved: 0, rejected: 0, all: 0 });
   const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
+  const [allConsultants, setAllConsultants] = useState<any[]>([]);
+  const [reassignConsultantId, setReassignConsultantId] = useState<string>('');
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -79,6 +81,14 @@ export const Tickets = () => {
         }
       })
       .catch(err => console.error('Lỗi tải cấu hình auto duyệt:', err));
+
+    fetchAPI('get_consultants')
+      .then(res => {
+        if (res.success && res.data) {
+          setAllConsultants(res.data);
+        }
+      })
+      .catch(err => console.error('Lỗi tải danh sách TVV:', err));
   }, []);
 
 
@@ -97,6 +107,7 @@ export const Tickets = () => {
   const openApproveModal = (id: number) => {
     setApprovingId(id);
     setApproveReason('');
+    setReassignConsultantId('');
     setApproveModalOpen(true);
   };
 
@@ -110,7 +121,11 @@ export const Tickets = () => {
     try {
       const res = await fetchAPI('approve_report', {
         method: 'POST',
-        body: JSON.stringify({ id: approvingId, approval_reason: approveReason })
+        body: JSON.stringify({ 
+          id: approvingId, 
+          approval_reason: approveReason,
+          new_consultant_id: reassignConsultantId ? Number(reassignConsultantId) : null
+        })
       });
       if (res.success) {
         toast.success('Đã duyệt đền bù Data!');
@@ -663,6 +678,31 @@ export const Tickets = () => {
                 autoFocus
                 style={{ minHeight: 80, resize: 'vertical' }}
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nhắc lại cho TVV khác (Tùy chọn)</label>
+              <select
+                className="form-input"
+                value={reassignConsultantId}
+                onChange={(e) => setReassignConsultantId(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }}
+              >
+                <option value="">-- Không nhắc lại cho TVV khác --</option>
+                {allConsultants
+                  .filter(c => {
+                    const currentReport = reports.find(r => r.id === approvingId);
+                    return c.id !== currentReport?.consultant_id && c.status === 'active';
+                  })
+                  .map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.email})
+                    </option>
+                  ))
+                }
+              </select>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).
+              </p>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>Hủy</button>

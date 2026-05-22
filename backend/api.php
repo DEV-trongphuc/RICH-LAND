@@ -2749,6 +2749,7 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
         $approval_reason = trim($input['approval_reason'] ?? '');
+        $new_consultant_id = isset($input['new_consultant_id']) ? (int) $input['new_consultant_id'] : 0;
         if (!$report_id) {
             echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
             break;
@@ -2756,11 +2757,12 @@ switch ($action) {
 
         $conn->begin_transaction();
         try {
-            // 1. Get report info
+            // 1. Get report info (with consultant_name)
             $stmt = $conn->prepare("
-                SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, dr.cc_emails
+                SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, dr.cc_emails, c.name as consultant_name
                 FROM data_reports r
                 LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
+                LEFT JOIN consultants c ON r.consultant_id = c.id
                 WHERE r.id = ? FOR UPDATE
             ");
             $stmt->bind_param("i", $report_id);
@@ -2771,18 +2773,42 @@ switch ($action) {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý.");
             }
 
+            $newConsultantName = '';
+            if ($new_consultant_id > 0) {
+                // Fetch new consultant details and make sure they exist and are active
+                $newConsultStmt = $conn->prepare("SELECT name, status FROM consultants WHERE id = ? LIMIT 1");
+                $newConsultStmt->bind_param("i", $new_consultant_id);
+                $newConsultStmt->execute();
+                $newCInfo = $newConsultStmt->get_result()->fetch_assoc();
+                $newConsultStmt->close();
+
+                if (!$newCInfo) {
+                    throw new Exception("Tư vấn viên mới nhận nhắc lại không tồn tại.");
+                }
+                if ($newCInfo['status'] !== 'active') {
+                    throw new Exception("Tư vấn viên mới nhận nhắc lại đang không hoạt động.");
+                }
+                $newConsultantName = $newCInfo['name'];
+            }
+
             // 2. Mark report as approved
             $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_at=NOW() WHERE id=?");
             $updRep->bind_param("si", $approval_reason, $report_id);
             $updRep->execute();
 
-            // 3. Mark lead as faulty (Append to note and unassign)
+            // 3. Mark lead as faulty (Append to note and optionally assign to new consultant)
             $faultyMsg = "[LỖI - ĐÃ DUYỆT]: " . $report['reason'];
             if (!empty($approval_reason)) {
                 $faultyMsg .= " | Lý do duyệt: " . $approval_reason;
             }
-            $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
-            $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
+            if ($new_consultant_id > 0) {
+                $faultyMsg .= " | Nhắc lại cho TVV: " . $newConsultantName;
+                $updLead = $conn->prepare("UPDATE leads SET assigned_to = ?, note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+                $updLead->bind_param("isi", $new_consultant_id, $faultyMsg, $report['lead_id']);
+            } else {
+                $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
+                $updLead->bind_param("si", $faultyMsg, $report['lead_id']);
+            }
             $updLead->execute();
 
             // Mark distribution_logs as error
@@ -2795,12 +2821,25 @@ switch ($action) {
             $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
             $updComp->execute();
 
+            // 5. Create reminder distribution log if new consultant selected
+            if ($new_consultant_id > 0) {
+                $reminderMsg = "Nhắc lại do duyệt trùng từ báo cáo của " . ($report['consultant_name'] ?? 'Tư vấn viên cũ') . ".";
+                if (!empty($approval_reason)) {
+                    $reminderMsg .= " Lý do duyệt: " . $approval_reason;
+                }
+                $stmtRemLog = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, 'reminder', ?)");
+                $stmtRemLog->bind_param("iiis", $report['lead_id'], $new_consultant_id, $report['round_id'], $reminderMsg);
+                $stmtRemLog->execute();
+                $stmtRemLog->close();
+            }
+
             logAdminAction($conn, $decodedUser['id'], 'APPROVE_REPORT', [
                 'report_id' => $report_id, 
                 'lead_id' => $report['lead_id'], 
                 'consultant_id' => $report['consultant_id'], 
                 'round_id' => $report['round_id'],
-                'approval_reason' => $approval_reason
+                'approval_reason' => $approval_reason,
+                'new_consultant_id' => $new_consultant_id
             ]);
             $conn->commit();
         } catch (Exception $e) {
@@ -2930,6 +2969,85 @@ switch ($action) {
                     error_log("Error sending email in approve_report: " . $emailEx->getMessage());
                 }
             }
+
+            // --- ADD REASSIGN REMINDER NOTIFICATION ---
+            if ($new_consultant_id > 0) {
+                try {
+                    // Fetch new consultant details again for notification
+                    $newConsultStmt2 = $conn->prepare("SELECT name, email, zalo_chat_id, status FROM consultants WHERE id = ? LIMIT 1");
+                    $newConsultStmt2->bind_param("i", $new_consultant_id);
+                    $newConsultStmt2->execute();
+                    $newC = $newConsultStmt2->get_result()->fetch_assoc();
+                    $newConsultStmt2->close();
+
+                    if ($newC && $newC['status'] === 'active') {
+                        // Fetch complete lead details
+                        $leadDetailsStmt = $conn->prepare("SELECT name, phone, email, source, type, note FROM leads WHERE id = ? LIMIT 1");
+                        $leadDetailsStmt->bind_param("i", $report['lead_id']);
+                        $leadDetailsStmt->execute();
+                        $lDetails = $leadDetailsStmt->get_result()->fetch_assoc();
+                        $leadDetailsStmt->close();
+
+                        // Fetch round name
+                        $roundName = '';
+                        if ($report['round_id'] > 0) {
+                            $roundStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ? LIMIT 1");
+                            $roundStmt->bind_param("i", $report['round_id']);
+                            $roundStmt->execute();
+                            $roundName = $roundStmt->get_result()->fetch_assoc()['round_name'] ?? '';
+                            $roundStmt->close();
+                        }
+
+                        if ($lDetails) {
+                            require_once __DIR__ . '/mailer.php';
+                            require_once __DIR__ . '/zalo_bot.php';
+                            require_once __DIR__ . '/webhook_logic.php';
+
+                            $timeline = getLeadHistoryTimeline($conn, $report['lead_id']);
+
+                            // Send Zalo reminder
+                            try {
+                                sendLeadReminderZaloMessageToSale(
+                                    $new_consultant_id,
+                                    $newC['name'],
+                                    $lDetails['name'],
+                                    $lDetails['phone'],
+                                    $lDetails['note'],
+                                    $lDetails['source'],
+                                    $roundName,
+                                    $timeline,
+                                    $report['lead_id'],
+                                    $lDetails['email'],
+                                    $lDetails['type']
+                                );
+                            } catch (Exception $zaloEx) {
+                                error_log("Error sending reassigned duplicate reminder Zalo: " . $zaloEx->getMessage());
+                            }
+
+                            // Send Email reminder (kèm CC)
+                            try {
+                                sendLeadReminderEmailToSale(
+                                    $newC['email'],
+                                    $newC['name'],
+                                    $lDetails['name'],
+                                    $lDetails['phone'],
+                                    $lDetails['note'],
+                                    $lDetails['source'],
+                                    $report['cc_emails'] ?? '',
+                                    $roundName,
+                                    $timeline,
+                                    $report['lead_id']
+                                );
+                            } catch (Exception $mailEx) {
+                                error_log("Error sending reassigned duplicate reminder email: " . $mailEx->getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception $newCEx) {
+                    error_log("Error sending reassigned notifications: " . $newCEx->getMessage());
+                }
+            }
+
         } catch (Exception $notifyOuterEx) {
             error_log("Outer notification error in approve_report: " . $notifyOuterEx->getMessage());
         }
