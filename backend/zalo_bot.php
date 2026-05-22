@@ -450,9 +450,11 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
             $normalTotal = (int)$row['normal_total'];
             $reminderTotal = (int)$row['reminder_total'];
             
-            $saleStats .= "  👤 " . $row['name'] . ": " . $normalTotal . " data\n";
             if ($reminderTotal > 0) {
-                $saleStats .= "     ↳ 🔄 Nhắc lại: " . $reminderTotal . "\n";
+                $total = $normalTotal + $reminderTotal;
+                $saleStats .= "  👤 " . $row['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
+            } else {
+                $saleStats .= "  👤 " . $row['name'] . ": " . $normalTotal . " data\n";
             }
             $totalData += $normalTotal;
             $totalReminder += $reminderTotal;
@@ -465,18 +467,27 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     }
     
     $stmtTicket = $conn->prepare("
-        SELECT COUNT(*) as total 
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+               SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
+               SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count
         FROM data_reports 
         WHERE created_at >= ?
           AND created_at <= ?
     ");
     $totalTicket = 0;
+    $approvedTicket = 0;
+    $rejectedTicket = 0;
+    $pendingTicket = 0;
     if ($stmtTicket) {
         $stmtTicket->bind_param("ss", $startTimestamp, $endTimestamp);
         $stmtTicket->execute();
         $resTicket = $stmtTicket->get_result();
         if ($resTicket && $row = $resTicket->fetch_assoc()) {
-            $totalTicket = $row['total'];
+            $totalTicket = (int)$row['total'];
+            $approvedTicket = (int)($row['approved_count'] ?? 0);
+            $rejectedTicket = (int)($row['rejected_count'] ?? 0);
+            $pendingTicket = (int)($row['pending_count'] ?? 0);
         }
         $stmtTicket->close();
     }
@@ -492,7 +503,12 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     $msg .= "------------------------------\n";
     $msg .= $saleStats . "\n";
     $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
-    $msg .= "  • Tổng ticket phát sinh: $totalTicket" . ($totalTicket > 0 ? " ⚠️" : "") . "\n\n";
+    if ($totalTicket > 0) {
+        $msg .= "  • Tổng ticket phát sinh: $totalTicket ⚠️\n";
+        $msg .= "    (Đã duyệt: $approvedTicket | Từ chối: $rejectedTicket | Chờ duyệt: $pendingTicket)\n\n";
+    } else {
+        $msg .= "  • Tổng ticket phát sinh: 0\n\n";
+    }
     $msg .= "-------------------\n";
     $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
     $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
