@@ -106,7 +106,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && $action !== 'get_sale_portal_data') {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -876,6 +876,45 @@ switch ($action) {
             ],
             'by_round' => $byRound,
             'by_hour' => $byHour
+        ]);
+        break;
+
+    case 'get_sale_lead_timeline':
+        $saleId = (int)$decodedUser['id'];
+        $isSale = $decodedUser['role'] === 'sale';
+        $leadId = isset($_GET['lead_id']) ? (int)$_GET['lead_id'] : 0;
+        
+        if (empty($leadId)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu lead_id']);
+            break;
+        }
+        
+        // Security check for sale role: did this sale receive this lead?
+        if ($isSale) {
+            $stmtCheck = $conn->prepare("
+                SELECT 1 
+                FROM distribution_logs 
+                WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation', 'reminder') 
+                LIMIT 1
+            ");
+            $stmtCheck->bind_param("ii", $leadId, $saleId);
+            $stmtCheck->execute();
+            $hasAccess = $stmtCheck->get_result()->num_rows > 0;
+            $stmtCheck->close();
+            
+            if (!$hasAccess) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden: Bạn không có quyền truy cập dữ liệu này']);
+                break;
+            }
+        }
+        
+        require_once __DIR__ . '/webhook_logic.php';
+        $timeline = getLeadHistoryTimeline($conn, $leadId);
+        
+        echo json_encode([
+            'success' => true,
+            'timeline' => $timeline
         ]);
         break;
 

@@ -68,6 +68,8 @@ export const SalePortal = () => {
   // Detail Modal
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [activeDetailLead, setActiveDetailLead] = useState<any>(null);
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
 
   // Google Login element references
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -173,6 +175,31 @@ export const SalePortal = () => {
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [token, user, roundId, dateMode, saleIdFilter]);
+
+  // Load timeline for selected lead in modal
+  useEffect(() => {
+    if (activeDetailLead?.lead_id && detailModalOpen && token) {
+      setLoadingTimeline(true);
+      fetchAPI(`get_sale_lead_timeline&lead_id=${activeDetailLead.lead_id}`)
+        .then((json) => {
+          if (json.success) {
+            setTimeline(json.timeline || []);
+          } else {
+            toast.error(json.message || 'Không thể tải lịch sử nhắc lại');
+            setTimeline([]);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setTimeline([]);
+        })
+        .finally(() => {
+          setLoadingTimeline(false);
+        });
+    } else {
+      setTimeline([]);
+    }
+  }, [activeDetailLead, detailModalOpen, token]);
 
   // Handle manual apply for Custom date and search button
   const handleApplyFilters = () => {
@@ -816,10 +843,15 @@ export const SalePortal = () => {
                   {data.leads.map((lead: any, index: number) => (
                     <tr
                       key={lead.log_id}
+                      onClick={() => {
+                        setActiveDetailLead(lead);
+                        setDetailModalOpen(true);
+                      }}
                       style={{
                         borderBottom: '1px solid #f1f5f9',
                         background: index % 2 === 0 ? 'white' : '#fafafa',
-                        transition: 'background 0.2s'
+                        transition: 'background 0.2s',
+                        cursor: 'pointer'
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                       onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'white' : '#fafafa')}
@@ -827,19 +859,14 @@ export const SalePortal = () => {
                       {/* KHÁCH HÀNG */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div
-                          onClick={() => {
-                            setActiveDetailLead(lead);
-                            setDetailModalOpen(true);
-                          }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
                           title="Xem chi tiết"
                         >
                           <Avatar name={lead.lead_name || 'Khách hàng'} size={32} />
                           <span
                             style={{
                               fontWeight: 700,
-                              color: '#0f172a',
-                              cursor: 'pointer'
+                              color: '#0f172a'
                             }}
                             onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                             onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
@@ -912,24 +939,16 @@ export const SalePortal = () => {
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           {lead.report_status === 'pending' && (
                             <div
-                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', cursor: 'pointer' }}
+                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706' }}
                               title="Ticket chờ duyệt (Bấm để xem chi tiết)"
-                              onClick={() => {
-                                setActiveDetailLead(lead);
-                                setDetailModalOpen(true);
-                              }}
                             >
                               <Clock size={16} />
                             </div>
                           )}
                           {lead.report_status === 'approved' && (
                             <div
-                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#d1fae5', color: '#065f46', cursor: 'pointer' }}
+                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#d1fae5', color: '#065f46' }}
                               title="Ticket đã duyệt bù (Bấm để xem chi tiết)"
-                              onClick={() => {
-                                setActiveDetailLead(lead);
-                                setDetailModalOpen(true);
-                              }}
                             >
                               <CheckCircle2 size={16} />
                             </div>
@@ -937,20 +956,19 @@ export const SalePortal = () => {
                           {lead.report_status === 'rejected' && (
                             <div
                               style={{
-                                display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fee2e2', color: '#991b1b', cursor: 'pointer'
+                                display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fee2e2', color: '#991b1b'
                               }}
                               title={`Ticket từ chối bù: ${lead.report_reject_reason || 'Không cung cấp'} (Bấm để xem chi tiết)`}
-                              onClick={() => {
-                                setActiveDetailLead(lead);
-                                setDetailModalOpen(true);
-                              }}
                             >
                               <XCircle size={16} />
                             </div>
                           )}
                           {!lead.report_status && (
                             <button
-                              onClick={() => handleOpenReportModal(lead)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenReportModal(lead);
+                              }}
                               style={{
                                 background: '#fee2e2', color: '#ef4444', border: 'none',
                                 borderRadius: '50%', width: '32px', height: '32px',
@@ -1125,6 +1143,54 @@ export const SalePortal = () => {
               <span style={{ color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
                 {activeDetailLead.note ? activeDetailLead.note.replace(/\\n/g, '\n') : 'Không có ghi chú.'}
               </span>
+            </div>
+
+            {/* Lịch sử bàn giao & Nhắc lại */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+              <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
+              {loadingTimeline ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', color: '#64748b' }}>
+                  <div style={{ width: 16, height: 16, border: '2px solid #f1f5f9', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: '0.85rem' }}>Đang tải lịch sử...</span>
+                </div>
+              ) : timeline && timeline.length > 0 ? (
+                <div className="timeline" style={{ marginTop: '8px' }}>
+                  {timeline.map((item: any, idx: number) => {
+                    let dotColor = '#94a3b8';
+                    if (item.status === 'Đã bàn giao') dotColor = '#3b82f6';
+                    if (item.status === 'Nhắc trùng') dotColor = '#f59e0b';
+                    if (item.status === 'Bù lượt') dotColor = '#10b981';
+
+                    return (
+                      <div key={idx} className="timeline-item" style={{ marginBottom: '1.25rem' }}>
+                        <div className="timeline-icon" style={{ backgroundColor: dotColor, left: '-1.85rem', width: '1rem', height: '1rem', border: '3px solid white', boxShadow: '0 0 0 1px #e2e8f0' }} />
+                        <div className="timeline-content" style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>
+                              {item.status} {item.round_name ? `(${item.round_name})` : ''}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {new Date(item.received_at).toLocaleString('vi-VN')}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                            <strong>Nhận bởi:</strong> {item.consultant_name || 'Chưa rõ'}
+                          </div>
+                          {item.message && (
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                              &ldquo;{item.message}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', padding: '8px' }}>
+                  Không có lịch sử nhắc lại trước đó.
+                </div>
+              )}
             </div>
 
             {activeDetailLead.report_status && (
