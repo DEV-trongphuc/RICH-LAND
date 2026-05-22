@@ -364,7 +364,10 @@ export const Dashboard = () => {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         {(() => {
-                          const getBadgeConfig = (status: string, roundName?: string) => {
+                          const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string) => {
+                            if (status === 'error' && reportStatus === 'approved') {
+                              return { bg: '#fee2e2', color: '#ef4444', text: 'Data Lỗi' };
+                            }
                             switch (status) {
                               case 'assigned':
                                 return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: roundName || 'Đã chia' };
@@ -384,7 +387,7 @@ export const Dashboard = () => {
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
                             }
                           };
-                          const badge = getBadgeConfig(log.status, log.round_name);
+                          const badge = getBadgeConfig(log.status, log.round_name, log.report_status);
                           return (
                             <span className="badge" style={{ background: badge.bg, color: badge.color, border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
                               {badge.text}

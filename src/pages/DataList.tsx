@@ -45,6 +45,28 @@ const maskEmail = (email: string) => {
   return `${name.slice(0, 3)}***${name.slice(-1)}@${domain}`;
 };
 
+const parseNote = (noteText: string) => {
+  if (!noteText) return { cleanNote: '', errorNotes: [] };
+  const normalized = noteText.replace(/\\n/g, '\n');
+  const lines = normalized.split('\n');
+  const cleanLines: string[] = [];
+  const errorNotes: string[] = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[LỖI -') || trimmed.startsWith('[LỖI ')) {
+      errorNotes.push(trimmed);
+    } else {
+      cleanLines.push(line);
+    }
+  });
+  
+  return {
+    cleanNote: cleanLines.join('\n').trim(),
+    errorNotes
+  };
+};
+
 export const DataList = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -292,7 +314,10 @@ export const DataList = () => {
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const paginatedLeads = leads;
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, reportStatus?: string) => {
+    if (status === 'error' && reportStatus === 'approved') {
+      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Data Lỗi</span>;
+    }
     switch(status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
       case 'compensation': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>;
@@ -303,7 +328,7 @@ export const DataList = () => {
       case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
       case 'rule_6_month': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>;
       case 'silent': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>;
-      case 'blacklisted': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>Blacklist</span>;
+      case 'blacklisted': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Blacklist</span>;
       default: return null;
     }
   };
@@ -510,9 +535,8 @@ export const DataList = () => {
                     {/* <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td> */}
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                        {getStatusBadge(lead.status)}
+                        {getStatusBadge(lead.status, lead.report_status)}
                         {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>⏳ Report Pending</span>}
-                        {lead.report_status === 'approved' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5' }}>Data Lỗi</span>}
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -678,24 +702,50 @@ export const DataList = () => {
                   </div>
                   <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
-                    <div>{getStatusBadge(selectedLead.status)}</div>
+                    <div>{getStatusBadge(selectedLead.status, selectedLead.report_status)}</div>
                   </div>
                 </div>
 
-                <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ghi chú / Khác:</span>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>
-                        {selectedLead.note ? selectedLead.note.replace(/\\n/g, '\n') : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}
+                {(() => {
+                  const { cleanNote, errorNotes } = parseNote(selectedLead.note || '');
+                  return (
+                    <>
+                      <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ghi chú / Khác:</span>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>
+                              {cleanNote ? cleanNote : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
+
+                      {errorNotes.length > 0 && (
+                        <div style={{ 
+                          marginTop: '1rem', 
+                          background: '#fef2f2', 
+                          borderLeft: '4px solid #ef4444', 
+                          padding: '1rem', 
+                          borderRadius: '0 12px 12px 0' 
+                        }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Thông tin lỗi:</span>
+                            {errorNotes.map((err, index) => (
+                              <div key={index} style={{ fontSize: '0.875rem', color: '#b91c1c', fontWeight: 600, lineHeight: 1.5 }}>
+                                {err}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Cột Phải: Phân bổ */}
