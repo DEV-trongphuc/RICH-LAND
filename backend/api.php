@@ -5402,7 +5402,7 @@ switch ($action) {
                 }
             }
             // For unique/specific system fields, return the raw value directly of the first matched non-empty column to keep it clean and prevent corruption.
-            if (in_array($systemField, ['phone', 'email', 'name', 'assigned_to', 'saleperson'])) {
+            if (in_array($systemField, ['phone', 'email', 'name', 'source', 'type', 'assigned_to', 'saleperson'])) {
                 foreach ($mappingsArray[$systemField] as $mapItem) {
                     $colName = $mapItem['sheet_column'];
                     if (isset($data[$colName]) && $data[$colName] !== '') {
