@@ -316,7 +316,7 @@ export const DataList = () => {
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'error' && reportStatus === 'approved') {
-      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Data Lỗi</span>;
+      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Data Lỗi</span>;
     }
     switch(status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;

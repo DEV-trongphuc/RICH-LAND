@@ -366,7 +366,7 @@ export const Dashboard = () => {
                         {(() => {
                           const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string) => {
                             if (status === 'error' && reportStatus === 'approved') {
-                              return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: 'Data Lỗi' };
+                              return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Data Lỗi' };
                             }
                             switch (status) {
                               case 'assigned':
