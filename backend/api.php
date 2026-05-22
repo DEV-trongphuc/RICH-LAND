@@ -956,7 +956,7 @@ switch ($action) {
             $dateCondition = "dl.received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND dl.received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
         } else if ($date === 'last_month' || $date === 'Tháng trước') {
             $dateCondition = "dl.received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND dl.received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
-        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đến (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
             $start = $conn->real_escape_string($matches[1]);
             $end = $conn->real_escape_string($matches[2]);
             $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
@@ -1082,7 +1082,7 @@ switch ($action) {
             $dateCondition = "dl.received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND dl.received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
         } else if ($date === 'last_month' || $date === 'Tháng trước') {
             $dateCondition = "dl.received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND dl.received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
-        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đ?ế?n (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
             $start = $conn->real_escape_string($matches[1]);
             $end = $conn->real_escape_string($matches[2]);
             $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
@@ -3731,7 +3731,7 @@ switch ($action) {
         } else if ($date === 'Tháng trước') {
             $dateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
             $prevDateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 2 MONTH) AND received_at < DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
-        } else if (preg_match('/^(\d{4}-\d{2}-\d{2}) đến (\d{4}-\d{2}-\d{2})$/', $date, $matches)) {
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
             $start = $conn->real_escape_string($matches[1]);
             $end = $conn->real_escape_string($matches[2]);
             $dateCondition = "received_at >= '$start 00:00:00' AND received_at <= '$end 23:59:59'";
