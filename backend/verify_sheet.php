@@ -179,8 +179,8 @@ if ($connItem) {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200 || empty($csvData)) {
-            throw new Exception("Không thể tải file CSV từ Google Sheet. Mã phản hồi HTTP: $httpCode. Vui lòng kiểm tra quyền chia sẻ link (Bất kỳ ai có liên kết đều có thể xem).");
+        if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
+            throw new Exception("Không thể tải file CSV từ Google Sheet. Bảng tính có thể đang ở chế độ Riêng tư (Private) hoặc không hợp lệ. Vui lòng kiểm tra quyền chia sẻ link (Bất kỳ ai có liên kết đều có thể xem).");
         }
 
         // Parse CSV data

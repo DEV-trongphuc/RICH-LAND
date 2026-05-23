@@ -50,6 +50,31 @@ function runMailerCron($conn) {
     $updSuccessStmt = $conn->prepare("UPDATE mail_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
     $updFailStmt = $conn->prepare("UPDATE mail_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
 
+    // Khởi tạo PHPMailer một lần duy nhất bên ngoài vòng lặp nếu sử dụng SES
+    $mail = null;
+    if ($provider === 'ses') {
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = $settings['ses_host'] ?? '';
+            $mail->SMTPAuth = true;
+            $mail->Username = $settings['ses_username'] ?? '';
+            $mail->Password = $settings['ses_password'] ?? '';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+            $mail->CharSet = 'UTF-8';
+            $mail->Timeout = 10;
+            $mail->SMTPKeepAlive = true; // Giữ kết nối SMTP sống để tái sử dụng
+
+            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
+            $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
+
+            $mail->setFrom($senderEmail, $senderName);
+        } catch (Exception $e) {
+            error_log("Failed to initialize SMTP connection settings: " . $e->getMessage());
+        }
+    }
+
     while ($row = $res->fetch_assoc()) {
         $mailId = $row['id'];
         $to = $row['to_email'];
@@ -90,44 +115,40 @@ function runMailerCron($conn) {
                 $lastErrorMsg = "AppScript Webhook URL is empty.";
             }
         } else if ($provider === 'ses') {
-            $mail = new PHPMailer(true);
-            try {
-                $mail->isSMTP();
-                $mail->Host = $settings['ses_host'] ?? '';
-                $mail->SMTPAuth = true;
-                $mail->Username = $settings['ses_username'] ?? '';
-                $mail->Password = $settings['ses_password'] ?? '';
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port = 587;
-                $mail->CharSet = 'UTF-8';
-                $mail->Timeout = 10;
+            if ($mail) {
+                try {
+                    // Dọn dẹp thông tin người nhận cũ trước khi gán mới
+                    $mail->clearAddresses();
+                    $mail->clearCCs();
+                    $mail->clearBCCs();
+                    $mail->clearAttachments();
 
-                $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
-                $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
+                    $mail->addAddress($to);
 
-                $mail->setFrom($senderEmail, $senderName);
-                $mail->addAddress($to);
-
-                if (!empty($ccEmailString)) {
-                    $ccList = explode(',', $ccEmailString);
-                    foreach ($ccList as $cc) {
-                        $cc = trim($cc);
-                        if (!empty($cc) && filter_var($cc, FILTER_VALIDATE_EMAIL)) {
-                            $mail->addCC($cc);
+                    if (!empty($ccEmailString)) {
+                        $ccList = explode(',', $ccEmailString);
+                        foreach ($ccList as $cc) {
+                            $cc = trim($cc);
+                            if (!empty($cc) && filter_var($cc, FILTER_VALIDATE_EMAIL)) {
+                                $mail->addCC($cc);
+                            }
                         }
                     }
+
+                    $mail->isHTML(true);
+                    $mail->Subject = $subject;
+                    $mail->Body = $htmlBody;
+
+                    $mail->send();
+                    $isSent = true;
+                } catch (Exception $e) {
+                    $isSent = false;
+                    $lastErrorMsg = "PHPMailer Error: " . $mail->ErrorInfo . " | " . $e->getMessage();
+                    error_log("Cron Mailer Error for ID $mailId: " . $lastErrorMsg);
                 }
-
-                $mail->isHTML(true);
-                $mail->Subject = $subject;
-                $mail->Body = $htmlBody;
-
-                $mail->send();
-                $isSent = true;
-            } catch (Exception $e) {
+            } else {
                 $isSent = false;
-                $lastErrorMsg = "PHPMailer Error: " . $mail->ErrorInfo . " | " . $e->getMessage();
-                error_log("Cron Mailer Error for ID $mailId: " . $lastErrorMsg);
+                $lastErrorMsg = "PHPMailer object was not initialized successfully.";
             }
         } else {
             $lastErrorMsg = "Invalid email provider configuration: " . $provider;
@@ -146,6 +167,15 @@ function runMailerCron($conn) {
         
         // Nghỉ 100ms giữa các email để tránh bị rate limit (spam block) từ Amazon SES hoặc Google
         usleep(100000); 
+    }
+
+    // Đóng kết nối SMTP nếu đã mở
+    if ($provider === 'ses' && $mail) {
+        try {
+            $mail->smtpClose();
+        } catch (Exception $e) {
+            // Bỏ qua lỗi đóng kết nối SMTP
+        }
     }
 
     $updSuccessStmt->close();

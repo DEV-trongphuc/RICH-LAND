@@ -36,7 +36,15 @@ function sendZaloMessage($botToken, $chatId, $text)
 
     // Ghi nhận log gửi tin nhắn Zalo để kiểm tra lỗi
     $logMsg = date('[Y-m-d H:i:s]') . " Target ChatId: $chatId, HTTP: $httpCode, Request: $payload, Response: " . ($result ?: 'NO RESPONSE') . "\n";
-    file_put_contents(__DIR__ . '/zalo_send_log.txt', $logMsg, FILE_APPEND);
+    $logFile = __DIR__ . '/zalo_send_log.txt';
+    if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
+        $bakFile = __DIR__ . '/zalo_send_log.bak.txt';
+        if (file_exists($bakFile)) {
+            @unlink($bakFile);
+        }
+        @rename($logFile, $bakFile);
+    }
+    @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
 
     if ($httpCode >= 200 && $httpCode < 300 && $result) {
         $resObj = json_decode($result, true);

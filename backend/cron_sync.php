@@ -446,8 +446,8 @@ foreach ($connections as $connItem) {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200 || empty($csvData)) {
-            throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode");
+        if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
+            throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode. Spreadsheet might be private or invalid.");
         }
 
         // Parse CSV data using php://temp to prevent RAM exhaustion (writes to disk if > 2MB)

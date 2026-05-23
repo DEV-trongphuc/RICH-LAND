@@ -29,7 +29,15 @@ if (!empty($secretToken)) {
 $rawBody = file_get_contents('php://input');
 
 // BẬT LOG: Lưu toàn bộ payload Zalo gửi về vào file webhook_log.txt để debug
-file_put_contents(__DIR__ . '/webhook_log.txt', date('[Y-m-d H:i:s]') . " PAYLOAD: " . $rawBody . "\n\n", FILE_APPEND);
+$logFile = __DIR__ . '/webhook_log.txt';
+if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
+    $bakFile = __DIR__ . '/webhook_log.bak.txt';
+    if (file_exists($bakFile)) {
+        @unlink($bakFile);
+    }
+    @rename($logFile, $bakFile);
+}
+@file_put_contents($logFile, date('[Y-m-d H:i:s]') . " PAYLOAD: " . $rawBody . "\n\n", FILE_APPEND | LOCK_EX);
 
 $data = json_decode($rawBody, true);
 

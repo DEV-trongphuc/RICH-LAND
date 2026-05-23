@@ -63,6 +63,33 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
 }
 
 if ($runMigration) {
+    // Acquire Advisory Lock to prevent concurrent DDL executions under heavy HTTP/Cron loads
+    $lockStmt = $conn->prepare("SELECT GET_LOCK('db_migration_lock', 30) as get_lock");
+    if ($lockStmt) {
+        $lockStmt->execute();
+        $lockRes = $lockStmt->get_result()->fetch_assoc();
+        $lockStmt->close();
+        
+        if ($lockRes && (int)$lockRes['get_lock'] === 1) {
+            // Double-Check: re-evaluate if migration version has been updated while waiting for lock
+            $checkSettings = $conn->query("SHOW TABLES LIKE 'system_settings'");
+            if ($checkSettings && $checkSettings->num_rows > 0) {
+                $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
+                if ($vStmt && $vStmt->num_rows > 0) {
+                    $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
+                    if ($dbVer >= 109) {
+                        $runMigration = false;
+                    }
+                }
+            }
+        } else {
+            // Failed to acquire lock in 30 seconds, disable migration run to prevent lock starvation
+            $runMigration = false;
+        }
+    }
+}
+
+if ($runMigration) {
     // Auto-migrate: ensure custom_label column exists in field_mappings
     $checkCol = $conn->query("SHOW COLUMNS FROM field_mappings LIKE 'custom_label'");
     if ($checkCol && $checkCol->num_rows === 0) {
@@ -386,6 +413,13 @@ if ($runMigration) {
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '109') ON DUPLICATE KEY UPDATE setting_value = '109'");
+
+    // Release Advisory Lock
+    $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
+    if ($relStmt) {
+        $relStmt->execute();
+        $relStmt->close();
+    }
 }
 
 ?>

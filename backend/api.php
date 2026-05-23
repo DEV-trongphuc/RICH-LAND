@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'get_zalo_send_logs'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -148,7 +148,8 @@ if (!in_array($action, $publicActions)) {
         'save_ticket_settings', // Ticket notification config
         'unlink_zalo',
         'test_email',
-        'block_lead'
+        'block_lead',
+        'get_zalo_send_logs'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -1956,8 +1957,8 @@ switch ($action) {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200 || empty($csvData)) {
-            echo json_encode(['success' => false, 'message' => 'Failed to fetch spreadsheet columns']);
+        if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
+            echo json_encode(['success' => false, 'message' => 'Failed to fetch spreadsheet columns. Spreadsheet might be private or invalid.']);
             break;
         }
 
@@ -5655,8 +5656,8 @@ switch ($action) {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         
-        if ($httpCode !== 200 || empty($csvData)) {
-            echo json_encode(['success' => false, 'message' => "Không thể tải file từ Google Sheet (HTTP $httpCode). Vui lòng cấu hình chia sẻ link."]);
+        if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
+            echo json_encode(['success' => false, 'message' => "Không thể tải file từ Google Sheet. Bảng tính có thể đang ở chế độ Riêng tư (Private) hoặc không hợp lệ. Vui lòng cấu hình chia sẻ link."]);
             break;
         }
         
