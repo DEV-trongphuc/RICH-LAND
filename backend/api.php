@@ -2694,8 +2694,13 @@ switch ($action) {
 
         // Query 3: Get paginated records
         $recordsSql = "
-            SELECT r.*, l.name as lead_name, l.phone as lead_phone, 
-                   c.name as consultant_name, c.zalo_chat_id, dr.round_name
+            SELECT r.*, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
+                   l.source as lead_source, l.type as lead_type, l.note as lead_note,
+                   l.created_at as lead_created_at,
+                   c.name as consultant_name, c.zalo_chat_id, dr.round_name,
+                   (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
+                   (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
+                   (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
             JOIN consultants c ON r.consultant_id = c.id
@@ -2747,7 +2752,7 @@ switch ($action) {
         ]);
         break;
 
-    case 'approve_report':
+        case 'approve_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
         $approval_reason = trim($input['approval_reason'] ?? '');
@@ -2755,6 +2760,21 @@ switch ($action) {
         if (!$report_id) {
             echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
             break;
+        }
+
+        // Lấy thông tin admin thực hiện sớm để ghi vào DB
+        $adminName = 'Quản trị viên';
+        $adminAccountId = 0;
+        if (isset($decodedUser['id'])) {
+            $adminAccountId = (int) $decodedUser['id'];
+            $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+            $admQuery->bind_param("i", $decodedUser['id']);
+            $admQuery->execute();
+            $admRes = $admQuery->get_result()->fetch_assoc();
+            if ($admRes && !empty($admRes['name'])) {
+                $adminName = $admRes['name'];
+            }
+            $admQuery->close();
         }
 
         $conn->begin_transaction();
@@ -2794,8 +2814,8 @@ switch ($action) {
             }
 
             // 2. Mark report as approved
-            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_at=NOW() WHERE id=?");
-            $updRep->bind_param("si", $approval_reason, $report_id);
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+            $updRep->bind_param("ssi", $approval_reason, $adminName, $report_id);
             $updRep->execute();
 
             // 3. Mark lead as faulty (Append to note and optionally assign to new consultant)
@@ -2803,6 +2823,8 @@ switch ($action) {
             if (!empty($approval_reason)) {
                 $faultyMsg .= " | Lý do duyệt: " . $approval_reason;
             }
+            $faultyMsg .= " | Admin duyệt: " . $adminName . " | Thời gian: " . date('d/m/Y H:i:s');
+            
             if ($new_consultant_id > 0) {
                 $faultyMsg .= " | Nhắc lại cho TVV: " . $newConsultantName;
                 $updLead = $conn->prepare("UPDATE leads SET assigned_to = ?, note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
@@ -2852,26 +2874,13 @@ switch ($action) {
 
         // Đã commit DB thành công. Bắt đầu xử lý thông báo ngoài giao dịch DB
         try {
-            // Lấy thông tin admin thực hiện
-            $adminName = 'Quản trị viên';
-            $adminAccountId = 0;
-            if (isset($decodedUser['id'])) {
-                $adminAccountId = (int) $decodedUser['id'];
-                $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
-                $admQuery->bind_param("i", $decodedUser['id']);
-                $admQuery->execute();
-                $admRes = $admQuery->get_result()->fetch_assoc();
-                if ($admRes && !empty($admRes['name'])) {
-                    $adminName = $admRes['name'];
-                }
-                $admQuery->close();
-            }
-
             // Lấy thông tin Sale & Lead để gửi thông báo
             $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
             $consultStmt->bind_param("i", $report['consultant_id']);
             $consultStmt->execute();
             $consultant = $consultStmt->get_result()->fetch_assoc();
+            $consultStmt->close(); // Close open statement properly to avoid out of sync errors
+
 
             $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
             $leadStmt->bind_param("i", $report['lead_id']);
@@ -2911,7 +2920,7 @@ switch ($action) {
             if (!empty($botToken) && !empty($adminEmails)) {
                 $adminChatIds = [];
                 foreach ($adminEmails as $adm) {
-                    if (!empty($adm['zalo_chat_id']) && (int)$adm['id'] !== $adminAccountId) {
+                    if (!empty($adm['zalo_chat_id'])) {
                         $adminChatIds[] = $adm['zalo_chat_id'];
                     }
                 }
@@ -3057,7 +3066,7 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
-    case 'reject_report':
+        case 'reject_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
         $reject_reason = trim($input['reject_reason'] ?? '');
@@ -3070,6 +3079,21 @@ switch ($action) {
         if (empty($reject_reason)) {
             echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do từ chối']);
             break;
+        }
+
+        // Lấy thông tin admin thực hiện sớm để ghi vào DB
+        $adminName = 'Quản trị viên';
+        $adminAccountId = 0;
+        if (isset($decodedUser['id'])) {
+            $adminAccountId = (int) $decodedUser['id'];
+            $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+            $admQuery->bind_param("i", $decodedUser['id']);
+            $admQuery->execute();
+            $admRes = $admQuery->get_result()->fetch_assoc();
+            if ($admRes && !empty($admRes['name'])) {
+                $adminName = $admRes['name'];
+            }
+            $admQuery->close();
         }
 
         $conn->begin_transaction();
@@ -3089,14 +3113,16 @@ switch ($action) {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý rồi.");
             }
 
-            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_at=NOW() WHERE id=?");
-            $stmt->bind_param("si", $reject_reason, $report_id);
+            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+            $stmt->bind_param("ssi", $reject_reason, $adminName, $report_id);
             $stmt->execute();
 
             $rejectMsg = "[LỖI - ĐÃ TỪ CHỐI]: " . $report['reason'];
             if (!empty($reject_reason)) {
                 $rejectMsg .= " | Lý do từ chối: " . $reject_reason;
             }
+            $rejectMsg .= " | Admin từ chối: " . $adminName . " | Thời gian: " . date('d/m/Y H:i:s');
+            
             $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
             $updLead->bind_param("si", $rejectMsg, $report['lead_id']);
             $updLead->execute();
@@ -3117,31 +3143,19 @@ switch ($action) {
 
         // Đã commit DB thành công. Bắt đầu xử lý thông báo ngoài giao dịch DB
         try {
-            // Lấy thông tin admin thực hiện
-            $adminName = 'Quản trị viên';
-            $adminAccountId = 0;
-            if (isset($decodedUser['id'])) {
-                $adminAccountId = (int) $decodedUser['id'];
-                $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
-                $admQuery->bind_param("i", $decodedUser['id']);
-                $admQuery->execute();
-                $admRes = $admQuery->get_result()->fetch_assoc();
-                if ($admRes && !empty($admRes['name'])) {
-                    $adminName = $admRes['name'];
-                }
-                $admQuery->close();
-            }
-
             // Lấy thông tin Sale & Lead để gửi thông báo
             $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
             $consultStmt->bind_param("i", $report['consultant_id']);
             $consultStmt->execute();
             $consultant = $consultStmt->get_result()->fetch_assoc();
+            $consultStmt->close(); // Close open statement properly to avoid out of sync errors
 
             $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
             $leadStmt->bind_param("i", $report['lead_id']);
             $leadStmt->execute();
             $lead = $leadStmt->get_result()->fetch_assoc();
+            $leadStmt->close(); // Close open statement properly to avoid out of sync errors
+
 
             $cName = $consultant['name'] ?? 'Tư vấn viên';
             $lName = $lead['name'] ?? 'Khách hàng';
@@ -3176,7 +3190,7 @@ switch ($action) {
             if (!empty($botToken) && !empty($adminEmails)) {
                 $adminChatIds = [];
                 foreach ($adminEmails as $adm) {
-                    if (!empty($adm['zalo_chat_id']) && (int)$adm['id'] !== $adminAccountId) {
+                    if (!empty($adm['zalo_chat_id'])) {
                         $adminChatIds[] = $adm['zalo_chat_id'];
                     }
                 }

@@ -1,12 +1,73 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, Users, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
+import { useAuth } from '../contexts/AuthContext';
+
+type Lead = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  source: string;
+  status: string;
+  assigned_to_name: string;
+  round_name: string;
+  created_at: string;
+  type?: string;
+  note?: string;
+  report_status?: string;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+};
+
+const maskPhone = (phone: string) => {
+  if (!phone || phone === '-') return phone;
+  const clean = phone.replace(/[^\d+]/g, '');
+  if (clean.length < 8) return phone;
+  const start = clean.slice(0, clean.length - 6);
+  const end = clean.slice(-3);
+  return `${start}***${end}`;
+};
+
+const maskEmail = (email: string) => {
+  if (!email || email === '-') return email;
+  const parts = email.split('@');
+  if (parts.length < 2) return email;
+  const name = parts[0];
+  const domain = parts[1];
+  if (name.length <= 3) {
+    return `${name.slice(0, 1)}***@${domain}`;
+  }
+  return `${name.slice(0, 3)}***${name.slice(-1)}@${domain}`;
+};
+
+const parseNote = (noteText: string) => {
+  if (!noteText) return { cleanNote: '', errorNotes: [] };
+  const normalized = noteText.replace(/\\n/g, '\n');
+  const lines = normalized.split('\n');
+  const cleanLines: string[] = [];
+  const errorNotes: string[] = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[LỖI -') || trimmed.startsWith('[LỖI ')) {
+      errorNotes.push(trimmed);
+    } else {
+      cleanLines.push(line);
+    }
+  });
+  
+  return {
+    cleanNote: cleanLines.join('\n').trim(),
+    errorNotes
+  };
+};
 
 export const Tickets = () => {
   const navigate = useNavigate();
@@ -33,12 +94,22 @@ export const Tickets = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [ticketAutoApprove, setTicketAutoApprove] = useState(false);
 
+  const { user } = useAuth();
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [reassignConsId, setReassignConsId] = useState<string>('');
+  const [isReassigning, setIsReassigning] = useState<boolean>(false);
+  const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
+  const [confirmBlockOpen, setConfirmBlockOpen] = useState<boolean>(false);
+  const [blockReason, setBlockReason] = useState<string>('');
+  const [compensateBlock, setCompensateBlock] = useState<boolean>(false);
+  const [isBlocking, setIsBlocking] = useState<boolean>(false);
+
   const ITEMS_PER_PAGE = 50;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const updateParams = (key: string, value: string) => {
     setSearchParams(prev => {
-      if (value === 'all' || value === '') prev.delete(key);
+      if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
       else prev.set(key, value);
       if (key !== 'page') prev.delete('page');
       return prev;
@@ -191,6 +262,70 @@ export const Tickets = () => {
       toast.error('Lỗi: ' + e.message);
     }
     setIsSendingMsg(false);
+  };
+
+  const handleReassign = async (compensate: boolean = false) => {
+    if (!selectedLead || !reassignConsId) return;
+    setIsReassigning(true);
+    try {
+      const res = await fetchAPI('reassign_lead', {
+        method: 'POST',
+        body: JSON.stringify({
+          log_id: selectedLead.id,
+          new_consultant_id: Number(reassignConsId),
+          compensate_old_sale: compensate
+        })
+      });
+      if (res.success) {
+        toast.success(compensate 
+          ? 'Giao lại Tư vấn viên & Đền bù thành công!' 
+          : 'Giao lại Tư vấn viên thành công!'
+        );
+        setSelectedLead(null);
+        setReassignConsId('');
+        setConfirmReassignOpen(false);
+        fetchReports();
+        window.dispatchEvent(new CustomEvent('lead-added'));
+      } else {
+        toast.error('Lỗi: ' + (res.message || 'Không thể giao lại'));
+      }
+    } catch (err: any) {
+      toast.error('Đã xảy ra lỗi: ' + err.message);
+    }
+    setIsReassigning(false);
+  };
+
+  const handleBlockLead = async () => {
+    if (!selectedLead) return;
+    if (!blockReason.trim()) {
+      toast.error('Vui lòng nhập lý do chặn.');
+      return;
+    }
+    setIsBlocking(true);
+    try {
+      const res = await fetchAPI('block_lead', {
+        method: 'POST',
+        body: JSON.stringify({
+          log_id: selectedLead.id,
+          compensate_sale: compensateBlock,
+          reason: blockReason.trim()
+        })
+      });
+      if (res.success) {
+        toast.success('Chặn khách hàng và đưa vào Blacklist thành công!');
+        setSelectedLead(null);
+        setConfirmBlockOpen(false);
+        setBlockReason('');
+        setCompensateBlock(false);
+        fetchReports();
+        window.dispatchEvent(new CustomEvent('lead-added'));
+      } else {
+        toast.error('Lỗi: ' + (res.message || 'Không thể chặn khách hàng'));
+      }
+    } catch (err: any) {
+      toast.error('Đã xảy ra lỗi: ' + err.message);
+    }
+    setIsBlocking(false);
   };
 
   // Since pagination and filters are handled server-side, reports are already filtered
@@ -464,7 +599,29 @@ export const Tickets = () => {
               </thead>
               <tbody>
                 {filteredReports.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent' }}>
+                  <tr 
+                    key={r.id} 
+                    onClick={() => {
+                      setSelectedLead({
+                        id: r.log_id || 0,
+                        name: r.lead_name,
+                        phone: r.lead_phone,
+                        email: r.lead_email || '-',
+                        source: r.lead_source || '-',
+                        status: r.log_status || 'assigned',
+                        assigned_to_name: r.consultant_name,
+                        round_name: r.round_name || '-',
+                        created_at: r.log_received_at || r.created_at,
+                        type: r.lead_type || '-',
+                        note: r.lead_note || '',
+                        report_status: r.status,
+                        resolved_by: r.resolved_by,
+                        resolved_at: r.resolved_at
+                      });
+                    }}
+                    style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                    className="lead-row"
+                  >
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Avatar name={r.lead_name} size={36} color="#7c3aed" />
@@ -493,7 +650,7 @@ export const Tickets = () => {
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                           fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
@@ -513,26 +670,39 @@ export const Tickets = () => {
                           </div>
                         )}
                       </div>
+                      {r.status !== 'pending' && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                          <span>
+                            {r.status === 'approved' ? 'Duyệt' : 'Từ chối'} bởi: <strong style={{ color: 'var(--color-text-muted)' }}>{r.resolved_by || 'Hệ thống'}</strong>
+                          </span>
+                          {r.resolved_at && (
+                            <>
+                              <span style={{ opacity: 0.5 }}>•</span>
+                              <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                       {r.status === 'pending' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={() => { setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
                               <Bell size={14} />
                             </button>
                           )}
-                          <button onClick={() => openRejectModal(r.id)} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                          <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
                             Từ chối
                           </button>
-                          <button onClick={() => openApproveModal(r.id)} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                          <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
                             {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
                           </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={() => { setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
                               <Bell size={14} />
                             </button>
                           )}
@@ -679,31 +849,38 @@ export const Tickets = () => {
                 style={{ minHeight: 80, resize: 'vertical' }}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Nhắc lại cho TVV khác (Tùy chọn)</label>
-              <select
-                className="form-input"
-                value={reassignConsultantId}
-                onChange={(e) => setReassignConsultantId(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }}
-              >
-                <option value="">-- Không nhắc lại cho TVV khác --</option>
-                {allConsultants
-                  .filter(c => {
-                    const currentReport = reports.find(r => r.id === approvingId);
-                    return c.id !== currentReport?.consultant_id && c.status === 'active';
-                  })
-                  .map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.email})
-                    </option>
-                  ))
-                }
-              </select>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).
-              </p>
-            </div>
+            {reports.find(r => Number(r.id) === Number(approvingId))?.reason?.includes('Trùng của người khác') && (
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                  Nhắc lại cho TVV khác (Tùy chọn)
+                </label>
+                <CustomSelect
+                  options={[
+                    { value: '', label: 'Không nhắc lại cho TVV khác', icon: null },
+                    ...allConsultants
+                      .filter(c => {
+                        const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
+                        return Number(c.id) !== Number(currentReport?.consultant_id) && c.status === 'active';
+                      })
+                      .map(c => ({
+                        value: String(c.id),
+                        label: c.name,
+                        sublabel: c.email,
+                        avatar: ''
+                      }))
+                  ]}
+                  value={reassignConsultantId}
+                  onChange={(val) => setReassignConsultantId(val ? String(val) : '')}
+                  showAvatars={true}
+                  searchable={true}
+                  placeholder="Chọn TVV khác..."
+                  width="100%"
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).
+                </p>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>Hủy</button>
               <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
@@ -713,6 +890,430 @@ export const Tickets = () => {
           </div>
         </form>
       </CustomModal>
+
+      {/* Customer Detail Modal */}
+      <CustomModal
+        isOpen={selectedLead !== null}
+        onClose={() => {
+          setSelectedLead(null);
+          setReassignConsId('');
+        }}
+        title="Chi tiết Khách hàng"
+        width="850px"
+      >
+        {selectedLead && (
+          <div style={{ padding: '1.5rem', background: 'white' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+              {/* Cột Trái: Chi Tiết */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <Avatar name={selectedLead.name} size={48} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
+                      {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && (
+                        <button
+                          onClick={() => {
+                            setCompensateBlock(selectedLead.assigned_to_name !== '-');
+                            setConfirmBlockOpen(true);
+                          }}
+                          title="Chặn & Blacklist khách hàng này"
+                          style={{
+                            background: '#fee2e2',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            color: '#ef4444',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            lineHeight: 1,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={e => {
+                            e.currentTarget.style.background = '#fca5a5';
+                            e.currentTarget.style.color = '#b91c1c';
+                          }}
+                          onMouseOut={e => {
+                            e.currentTarget.style.background = '#fee2e2';
+                            e.currentTarget.style.color = '#ef4444';
+                          }}
+                        >
+                          <AlertTriangle size={12} />
+                          Chặn
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
+                  </div>
+                </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Phone</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                    </div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
+                    <div>
+                      {selectedLead.status === 'assigned' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>}
+                      {selectedLead.status === 'compensation' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>}
+                      {selectedLead.status === 'pending_work_hours' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#ffedd5', color: '#ea580c' }}>Chờ giờ làm</span>}
+                      {selectedLead.status === 'error' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Bị Lỗi</span>}
+                      {selectedLead.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>}
+                      {selectedLead.status === 'reminder' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>}
+                      {selectedLead.status === 'duplicate' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>}
+                      {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>}
+                      {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>}
+                      {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Blacklist</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {(() => {
+                  const { cleanNote, errorNotes } = parseNote(selectedLead.note || '');
+                  return (
+                    <>
+                      <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ghi chú / Khác:</span>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>
+                              {cleanNote ? cleanNote : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {errorNotes.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                          {errorNotes.map((err, index) => {
+                            const isApproved = err.includes('DUYỆT');
+                            const bg = isApproved ? '#ecfdf5' : '#fef2f2';
+                            const borderLeft = isApproved ? '4px solid #10b981' : '4px solid #ef4444';
+                            const titleColor = isApproved ? '#047857' : '#991b1b';
+                            const textColor = isApproved ? '#065f46' : '#b91c1c';
+                            const titleText = isApproved ? 'Thông tin lỗi - Đã duyệt:' : 'Thông tin lỗi - Từ chối:';
+
+                            return (
+                              <div key={index} style={{ 
+                                background: bg, 
+                                borderLeft: borderLeft, 
+                                padding: '1rem', 
+                                borderRadius: '0 12px 12px 0' 
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: titleColor, textTransform: 'uppercase' }}>{titleText}</span>
+                                  <div style={{ fontSize: '0.875rem', color: textColor, fontWeight: 600, lineHeight: 1.5 }}>
+                                    {err}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: isApproved ? '#047857' : '#991b1b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', opacity: 0.85 }}>
+                                    <span>
+                                      {isApproved ? 'Duyệt' : 'Từ chối'} bởi: <strong>{selectedLead.resolved_by || 'Hệ thống'}</strong>
+                                    </span>
+                                    {selectedLead.resolved_at && (
+                                      <>
+                                        <span style={{ opacity: 0.5 }}>•</span>
+                                        <span>{new Date(selectedLead.resolved_at).toLocaleString('vi-VN')}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Cột Phải: Phân bổ */}
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>Thông tin Phân bổ</h3>
+                
+                {selectedLead.assigned_to_name !== '-' ? (
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <Avatar name={selectedLead.assigned_to_name} size={24} />
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> Vòng chia</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Clock size={12} /> Thời gian nhận</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    Chưa có thông tin phân bổ cho Khách hàng này.
+                  </div>
+                )}
+
+                {/* Giao lại Tư vấn viên */}
+                {user?.role === 'admin' && (
+                  <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
+                      Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <CustomSelect 
+                        options={[
+                          { value: '', label: '-- Chọn Tư vấn viên --' },
+                          ...allConsultants
+                            .filter(c => c.status === 'active')
+                            .map(c => ({
+                              value: c.id.toString(),
+                              label: c.name,
+                              avatar: ''
+                            }))
+                        ]}
+                        value={reassignConsId}
+                        onChange={val => setReassignConsId(val.toString())}
+                        showAvatars={true}
+                        searchable={true}
+                        width="100%"
+                        direction="up"
+                      />
+                      <button 
+                        className="btn primary" 
+                        onClick={() => setConfirmReassignOpen(true)}
+                        disabled={isReassigning || !reassignConsId}
+                        style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
+                      >
+                        {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
+                        Xác nhận giao
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        )}
+      </CustomModal>
+
+      {/* Confirm Reassign Modal */}
+      <CustomModal
+        isOpen={confirmReassignOpen}
+        onClose={() => setConfirmReassignOpen(false)}
+        title="Xác nhận Giao lại Lead"
+        width={500}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', 
+              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead <strong>"{selectedLead?.name}"</strong> sang cho Tư vấn viên <strong>"{allConsultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
+              </p>
+              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
+                  Lead này hiện đang thuộc về: <strong>{selectedLead.assigned_to_name}</strong>. Bạn muốn bù data cho <strong>{selectedLead.assigned_to_name}</strong> chứ?
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>Hủy</button>
+            
+            {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
+              <>
+                <button 
+                  className="btn secondary" 
+                  onClick={() => handleReassign(false)}
+                  style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
+                  disabled={isReassigning}
+                >
+                  Chuyển luôn, Không bù
+                </button>
+                <button 
+                  className="btn success" 
+                  onClick={() => handleReassign(true)}
+                  style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                  disabled={isReassigning}
+                >
+                  Chuyển & Bù cho sale cũ
+                </button>
+              </>
+            ) : (
+              <button 
+                className="btn primary" 
+                onClick={() => handleReassign(false)}
+                disabled={isReassigning}
+              >
+                Xác nhận chuyển
+              </button>
+            )}
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Confirm Block Modal */}
+      <CustomModal
+        isOpen={confirmBlockOpen}
+        onClose={() => {
+          setConfirmBlockOpen(false);
+          setBlockReason('');
+          setCompensateBlock(false);
+        }}
+        title="Xác nhận Chặn & Blacklist"
+        width="550px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+            <div style={{ 
+              width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', 
+              color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                Bạn có chắc chắn muốn chặn khách hàng "{selectedLead?.name}"?
+              </p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
+                Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Hình thức chặn:</div>
+            
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="blockType" 
+                checked={!compensateBlock} 
+                onChange={() => setCompensateBlock(false)} 
+                style={{ marginTop: '3px' }}
+              />
+              <div>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chỉ đưa vào danh sách đen (Blacklist)</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Không thực hiện đền bù data cho Sale.</p>
+              </div>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: selectedLead?.assigned_to_name === '-' ? 'not-allowed' : 'pointer', opacity: selectedLead?.assigned_to_name === '-' ? 0.5 : 1 }}>
+              <input 
+                type="radio" 
+                name="blockType" 
+                checked={compensateBlock} 
+                onChange={() => setCompensateBlock(true)} 
+                disabled={selectedLead?.assigned_to_name === '-'}
+                style={{ marginTop: '3px' }}
+              />
+              <div>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chặn và Bù vòng cho Sale</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                  Đền bù 1 lượt data vòng <strong>"{selectedLead?.round_name}"</strong> cho Sale <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                </p>
+              </div>
+            </label>
+            
+            {selectedLead?.assigned_to_name === '-' && (
+              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <AlertTriangle size={12} /> Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Lý do chặn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <textarea
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)"
+              style={{
+                width: '100%',
+                height: '80px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border)',
+                fontSize: '0.875rem',
+                outline: 'none',
+                resize: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button 
+              className="btn outline" 
+              onClick={() => {
+                setConfirmBlockOpen(false);
+                setBlockReason('');
+                setCompensateBlock(false);
+              }}
+              disabled={isBlocking}
+            >
+              Hủy
+            </button>
+            <button 
+              className="btn danger" 
+              onClick={handleBlockLead}
+              disabled={isBlocking || !blockReason.trim()}
+              style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
+              Xác nhận chặn
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      <style>{`
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .lead-row:hover { background: var(--color-bg) !important; }
+      `}</style>
 
     </div>
   );

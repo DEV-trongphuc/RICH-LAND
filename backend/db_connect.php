@@ -377,6 +377,12 @@ if ($runMigration) {
         $conn->query("ALTER TABLE consultants ADD COLUMN work_schedule LONGTEXT DEFAULT NULL COMMENT 'Cấu hình lịch làm việc chi tiết dạng JSON'");
     }
 
+    // Auto-migrate: ensure resolved_by column exists in data_reports
+    $chkResolvedBy = $conn->query("SHOW COLUMNS FROM data_reports LIKE 'resolved_by'");
+    if ($chkResolvedBy && $chkResolvedBy->num_rows === 0) {
+        $conn->query("ALTER TABLE data_reports ADD COLUMN resolved_by VARCHAR(100) NULL COMMENT 'Tên admin duyệt ticket' AFTER resolved_at");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '108') ON DUPLICATE KEY UPDATE setting_value = '108'");

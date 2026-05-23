@@ -340,11 +340,11 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     }
 
                     // 2. Cập nhật status báo cáo thành approved kèm lý do
-                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_at=NOW() WHERE id=?");
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
                     if (!$updRep) {
                         throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
                     }
-                    $updRep->bind_param("si", $approval_reason, $ticketId);
+                    $updRep->bind_param("ssi", $approval_reason, $adminName, $ticketId);
                     $updRep->execute();
                     $updRep->close();
 
@@ -587,11 +587,11 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $fullRejectReason = htmlspecialchars($rejectReason) . " (Từ chối qua Zalo bởi " . $adminName . ")";
 
                     // 2. Cập nhật status báo cáo thành rejected kèm lý do
-                    $updRep = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_at=NOW() WHERE id=?");
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
                     if (!$updRep) {
                         throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
                     }
-                    $updRep->bind_param("si", $fullRejectReason, $ticketId);
+                    $updRep->bind_param("ssi", $fullRejectReason, $adminName, $ticketId);
                     $updRep->execute();
                     $updRep->close();
 
