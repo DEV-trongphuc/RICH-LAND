@@ -342,10 +342,18 @@ export const Consultants = () => {
                 return (
                   <tr key={u.id} className="group table-row-hover">
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div 
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+                        onClick={() => openEditModal(u)}
+                        title="Nhấp để chỉnh sửa thông tin"
+                      >
                         <Avatar name={u.name} size={32} />
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                          <div 
+                            style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
+                          >
                             {u.name}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
@@ -473,7 +481,7 @@ export const Consultants = () => {
         <div className="overlay-backdrop" onClick={() => setModalOpen(false)}>
           <div 
             className="card"
-            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} 
+            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} 
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -485,239 +493,250 @@ export const Consultants = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14}/> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input 
-                    className="form-input" 
-                    placeholder="VD: Nguyễn Văn A" 
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    autoFocus
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14}/> Email <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input 
-                    type="email"
-                    className="form-input" 
-                    placeholder="VD: email@domain.com" 
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14}/> Trạng thái</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
-                    <button 
-                      type="button" 
-                      onClick={() => setFormData({ ...formData, status: 'active' })}
-                      style={{ flex: 1, padding: '0.625rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.8125rem',
-                        background: formData.status === 'active' ? 'white' : 'transparent',
-                        color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                        boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                      }}
-                    >Đang nhận Data</button>
-                    <button 
-                      type="button" 
-                      onClick={() => setFormData({ ...formData, status: 'leave' })}
-                      style={{ flex: 1, padding: '0.625rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.8125rem',
-                        background: formData.status === 'leave' ? 'white' : 'transparent',
-                        color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                        boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                      }}
-                    >Nghỉ phép</button>
-                    <button 
-                      type="button" 
-                      onClick={() => setFormData({ ...formData, status: 'inactive' })}
-                      style={{ flex: 1, padding: '0.625rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.8125rem',
-                        background: formData.status === 'inactive' ? 'white' : 'transparent',
-                        color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                        boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                      }}
-                    >Ngừng HĐ</button>
-                  </div>
-                </div>
-
-                {formData.status === 'leave' && (
-                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: 12, border: '1px solid #fde68a' }}>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Từ ngày</label>
-                      <input 
-                        type="date" 
-                        className="form-input" 
-                        style={{ padding: '8px 12px', fontSize: '0.875rem' }}
-                        value={formData.leave_start}
-                        onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Đến ngày</label>
-                      <input 
-                        type="date" 
-                        className="form-input" 
-                        style={{ padding: '8px 12px', fontSize: '0.875rem' }}
-                        value={formData.leave_end}
-                        onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={14} /> Giờ làm việc của Sale
-                  </label>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
                   
-                  {/* Segmented Control for Schedule Mode */}
-                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem' }}>
-                    <button 
-                      type="button" 
-                      onClick={() => setScheduleMode('daily')}
-                      style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                        background: scheduleMode === 'daily' ? 'white' : 'transparent',
-                        color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                      }}
-                    >Cố định hàng ngày</button>
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        setScheduleMode('custom');
-                        if (!formData.work_schedule) {
-                          setFormData(prev => ({ ...prev, work_schedule: DEFAULT_SCHEDULE }));
-                        }
-                      }}
-                      style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                        background: scheduleMode === 'custom' ? 'white' : 'transparent',
-                        color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                      }}
-                    >Tùy chỉnh (Thứ 2 - CN)</button>
+                  {/* Cột 1: Thông tin cá nhân & Trạng thái */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14}/> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input 
+                        className="form-input" 
+                        placeholder="VD: Nguyễn Văn A" 
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14}/> Email <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input 
+                        type="email"
+                        className="form-input" 
+                        placeholder="VD: email@domain.com" 
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14}/> Trạng thái</label>
+                      <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({ ...formData, status: 'active' })}
+                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'active' ? 'white' : 'transparent',
+                            color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >Đang nhận Data</button>
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({ ...formData, status: 'leave' })}
+                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'leave' ? 'white' : 'transparent',
+                            color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >Nghỉ phép</button>
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({ ...formData, status: 'inactive' })}
+                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'inactive' ? 'white' : 'transparent',
+                            color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >Ngừng HĐ</button>
+                      </div>
+                    </div>
+
+                    {formData.status === 'leave' && (
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: '#fffbeb', padding: '0.75rem', borderRadius: 12, border: '1px solid #fde68a', animation: 'slideUp 0.15s ease-out' }}>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Từ ngày</label>
+                          <input 
+                            type="date" 
+                            className="form-input" 
+                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
+                            value={formData.leave_start}
+                            onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Đến ngày</label>
+                          <input 
+                            type="date" 
+                            className="form-input" 
+                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
+                            value={formData.leave_end}
+                            onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {scheduleMode === 'daily' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input 
-                          type="checkbox" 
-                          id="work_24h"
-                          checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59', work_schedule: null });
-                            } else {
-                              setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00', work_schedule: null });
+                  {/* Cột 2: Cấu hình ca làm việc & Liên kết Zalo */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Clock size={14} /> Giờ làm việc của Sale
+                      </label>
+                      
+                      {/* Segmented Control for Schedule Mode */}
+                      <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => setScheduleMode('daily')}
+                          style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: scheduleMode === 'daily' ? 'white' : 'transparent',
+                            color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >Cố định hàng ngày</button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setScheduleMode('custom');
+                            if (!formData.work_schedule) {
+                              setFormData(prev => ({ ...prev, work_schedule: DEFAULT_SCHEDULE }));
                             }
                           }}
-                          style={{ width: 16, height: 16, cursor: 'pointer' }}
-                        />
-                        <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
-                          Hoạt động 24/24 (Mặc định)
-                        </label>
+                          style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: scheduleMode === 'custom' ? 'white' : 'transparent',
+                            color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >Tùy chỉnh (Thứ 2 - CN)</button>
                       </div>
-                      
-                      {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
-                          <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
+
+                      {scheduleMode === 'daily' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input 
-                              type="time" 
-                              className="form-input" 
-                              style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                              value={formData.work_start_time}
-                              onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
+                              type="checkbox" 
+                              id="work_24h"
+                              checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59', work_schedule: null });
+                                } else {
+                                  setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00', work_schedule: null });
+                                }
+                              }}
+                              style={{ width: 16, height: 16, cursor: 'pointer' }}
                             />
+                            <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
+                              Hoạt động 24/24 (Mặc định)
+                            </label>
                           </div>
-                          <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
-                          <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
-                            <input 
-                              type="time" 
-                              className="form-input" 
-                              style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                              value={formData.work_end_time}
-                              onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Weekly Schedule Custom Configuration
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12, maxHeight: '200px', overflowY: 'auto' }}>
-                      {Object.entries(dayNames).map(([dayKey, dayLabel]) => {
-                        const schedule = formData.work_schedule || DEFAULT_SCHEDULE;
-                        const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
-                        
-                        return (
-                          <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <div style={{ width: '80px', fontWeight: 600, fontSize: '0.8125rem' }}>
-                              {dayLabel}
-                            </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <ToggleSwitch 
-                                checked={dayConfig.active}
-                                onChange={checked => handleDayChange(dayKey, 'active', checked)}
-                                small
-                              />
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, minWidth: '28px', color: dayConfig.active ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                                {dayConfig.active ? 'Bật' : 'Nghỉ'}
-                              </span>
-                            </div>
-                            
-                            {dayConfig.active && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', animation: 'slideUp 0.1s ease-out' }}>
+                          
+                          {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
                                 <input 
-                                  type="time"
-                                  value={dayConfig.start}
-                                  onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
-                                  style={{ padding: '2px 6px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
-                                />
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>-</span>
-                                <input 
-                                  type="time"
-                                  value={dayConfig.end}
-                                  onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
-                                  style={{ padding: '2px 6px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                  type="time" 
+                                  className="form-input" 
+                                  style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                                  value={formData.work_start_time}
+                                  onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
                                 />
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
+                                <input 
+                                  type="time" 
+                                  className="form-input" 
+                                  style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
+                                  value={formData.work_end_time}
+                                  onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Weekly Schedule Custom Configuration
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12, maxHeight: '180px', overflowY: 'auto' }}>
+                          {Object.entries(dayNames).map(([dayKey, dayLabel]) => {
+                            const schedule = formData.work_schedule || DEFAULT_SCHEDULE;
+                            const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
+                            
+                            return (
+                              <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+                                <div style={{ width: '60px', fontWeight: 600, fontSize: '0.75rem' }}>
+                                  {dayLabel}
+                                </div>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <ToggleSwitch 
+                                    checked={dayConfig.active}
+                                    onChange={checked => handleDayChange(dayKey, 'active', checked)}
+                                    small
+                                  />
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 600, minWidth: '24px', color: dayConfig.active ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                                    {dayConfig.active ? 'Bật' : 'Nghỉ'}
+                                  </span>
+                                </div>
+                                
+                                {dayConfig.active && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', animation: 'slideUp 0.1s ease-out' }}>
+                                    <input 
+                                      type="time"
+                                      value={dayConfig.start}
+                                      onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                    />
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>-</span>
+                                    <input 
+                                      type="time"
+                                      value={dayConfig.end}
+                                      onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
+                        Ngoài ca làm việc, data sẽ được hệ thống tạm giữ lại và tự động bàn giao khi Sale bắt đầu ca kế tiếp.
+                      </p>
                     </div>
-                  )}
 
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-                    Ngoài khung giờ này, Data được giao sẽ tạm giữ lại và tự động gửi thông báo đồng loạt cho Sale vào lúc bắt đầu ca làm việc tiếp theo.
-                  </p>
-                </div>
+                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'rgba(0, 104, 255, 0.04)', borderRadius: 12, border: '1px solid rgba(0, 104, 255, 0.08)' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0068ff', fontSize: '0.8125rem' }}>
+                        <MessageCircle size={14} /> Zalo Chat ID (Tự động cấp)
+                      </label>
+                      <input 
+                        className="form-input" 
+                        placeholder="Sale nhắn mã ID cho Zalo Bot để lấy..." 
+                        value={formData.zalo_chat_id}
+                        onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
+                        style={{ fontSize: '0.8125rem', padding: '6px 10px' }}
+                      />
+                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
+                        Hệ thống tự điền khi Sale xác thực Zalo. Admin có thể nhập tay nếu cần.
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="form-group" style={{ padding: '1rem', background: 'rgba(0, 104, 255, 0.05)', borderRadius: 12, border: '1px solid rgba(0, 104, 255, 0.1)' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0068ff' }}>
-                    <MessageCircle size={14} /> Zalo Chat ID (Tự động cấp)
-                  </label>
-                  <input 
-                    className="form-input" 
-                    placeholder="Chưa liên kết. Sale cần nhắn mã ID cho Zalo Bot." 
-                    value={formData.zalo_chat_id}
-                    onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                    Sale nhắn mã ID của mình vào Bot, hệ thống sẽ tự điền ID này. Admin cũng có thể nhập tay nếu biết Zalo Chat ID.
-                  </p>
                 </div>
               </div>
 
