@@ -3548,14 +3548,12 @@ switch ($action) {
                         $status = $row['status'];
                         $cnt = (int) $row['cnt'];
                         $statsRes['total'] += $cnt;
-                        if ($status === 'assigned' || $status === 'compensation') {
+                        if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours') {
                             $statsRes['distributed'] += $cnt;
                         } else if ($status === 'duplicate' || $status === 'reminder') {
                             $statsRes['duplicates'] += $cnt;
-                        } else if ($status === 'error') {
+                        } else if ($status === 'error' || $status === 'no_consultant') {
                             $statsRes['errors'] += $cnt;
-                        } else if ($status === 'rule_6_month') {
-                            $statsRes['distributed'] += $cnt;
                         } else if ($status === 'blacklisted') {
                             $statsRes['errors'] += $cnt;
                             $distributionBlacklisted += $cnt;
@@ -4782,14 +4780,12 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
                 $statsRes['total'] += $cnt;
-                if ($status === 'assigned' || $status === 'compensation')
+                if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours')
                     $statsRes['distributed'] += $cnt;
                 else if ($status === 'duplicate' || $status === 'reminder')
                     $statsRes['duplicates'] += $cnt;
-                else if ($status === 'error')
+                else if ($status === 'error' || $status === 'no_consultant')
                     $statsRes['errors'] += $cnt;
-                else if ($status === 'rule_6_month')
-                    $statsRes['distributed'] += $cnt;
                 else if ($status === 'blacklisted') {
                     $statsRes['errors'] += $cnt;
                     $distributionBlacklisted += $cnt;
@@ -4807,14 +4803,12 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
                 $prevStatsRes['total'] += $cnt;
-                if ($status === 'assigned' || $status === 'compensation')
+                if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours')
                     $prevStatsRes['distributed'] += $cnt;
                 else if ($status === 'duplicate' || $status === 'reminder')
                     $prevStatsRes['duplicates'] += $cnt;
-                else if ($status === 'error')
+                else if ($status === 'error' || $status === 'no_consultant')
                     $prevStatsRes['errors'] += $cnt;
-                else if ($status === 'rule_6_month')
-                    $prevStatsRes['distributed'] += $cnt;
                 else if ($status === 'blacklisted') {
                     $prevStatsRes['errors'] += $cnt;
                     $prevDistributionBlacklisted += $cnt;
