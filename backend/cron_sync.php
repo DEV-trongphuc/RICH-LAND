@@ -47,7 +47,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         logSync("Checking for pending work hours leads to release...");
         
         // Select all logs pending work hours, including status and leave dates to check if they went on leave
-        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message,
+        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message, COALESCE(dl.received_at, NOW()) AS received_at,
                        l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
@@ -67,6 +67,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         
         $currentTime = date('H:i');
         $releasedCount = 0;
+        $readyToRelease = [];
         
         while ($row = $res->fetch_assoc()) {
             $status = $row['consultant_status'];
@@ -268,65 +269,106 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 $workSchedule = $row['work_schedule'] ?? null;
                 
                 if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
-                    // Determine original status (assigned or compensation)
-                    $newStatus = (strpos($row['message'], 'compensation') !== false || strpos($row['message'], 'đền bù') !== false || strpos($row['message'], 'Bù lượt') !== false) ? 'compensation' : 'assigned';
-                    
-                    $conn->begin_transaction();
-                    try {
-                        $stmtUp = $conn->prepare("UPDATE distribution_logs SET status = ?, message = CONCAT(message, '\n[Released at ', NOW(), ']') WHERE id = ? AND status = 'pending_work_hours'");
-                        $stmtUp->bind_param("si", $newStatus, $row['log_id']);
-                        $stmtUp->execute();
-                        $affected = $stmtUp->affected_rows;
-                        $stmtUp->close();
-                        $conn->commit();
-                        
-                        if ($affected > 0) {
-                            logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
-                            
-                            // Send Email
-                            try {
-                                sendLeadAssignedEmailToSale(
-                                    $row['consultant_email'],
-                                    $row['consultant_name'],
-                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                    $row['lead_phone'] ?: '',
-                                    $row['lead_note'] ?: '',
-                                    $row['lead_source'] ?: '',
-                                    $row['cc_emails'] ?? '',
-                                    $row['round_name'] ?? '',
-                                    $row['lead_id'],
-                                    $row['assigned_to'],
-                                    $row['round_id'] ?? 0
-                                );
-                            } catch (Exception $mailEx) {
-                                logSync("Error sending release email to consultant: " . $mailEx->getMessage());
-                            }
-                            
-                            // Send Zalo Message
-                            try {
-                                sendLeadAssignedZaloMessageToSale(
-                                    $row['assigned_to'],
-                                    $row['consultant_name'],
-                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                    $row['lead_phone'] ?: '',
-                                    $row['lead_note'] ?: '',
-                                    $row['lead_source'] ?: '',
-                                    $row['round_name'] ?? '',
-                                    $row['lead_id'],
-                                    $row['round_id'] ?? 0,
-                                    $row['lead_email'] ?: '',
-                                    $row['lead_type'] ?: ''
-                                );
-                            } catch (Exception $zaloEx) {
-                                logSync("Error sending release Zalo to consultant: " . $zaloEx->getMessage());
-                            }
-                            
-                            $releasedCount++;
+                    $readyToRelease[$row['assigned_to']][] = $row;
+                }
+            }
+        }
+        
+        // Process standard releases (grouped by consultant to support summary notification)
+        foreach ($readyToRelease as $consultantId => $group) {
+            $count = count($group);
+            $consultantName = $group[0]['consultant_name'];
+            
+            if ($count > 1) {
+                // Determine received_at range
+                $minTimestamp = null;
+                $maxTimestamp = null;
+                foreach ($group as $item) {
+                    $ts = strtotime($item['received_at']);
+                    if ($ts > 0) {
+                        if ($minTimestamp === null || $ts < $minTimestamp) {
+                            $minTimestamp = $ts;
                         }
-                    } catch (Exception $e) {
-                        $conn->rollback();
-                        logSync("Error releasing log ID {$row['log_id']}: " . $e->getMessage());
+                        if ($maxTimestamp === null || $ts > $maxTimestamp) {
+                            $maxTimestamp = $ts;
+                        }
                     }
+                }
+                
+                if ($minTimestamp !== null && $maxTimestamp !== null) {
+                    $minTimeStr = date('H:i d/m', $minTimestamp);
+                    $maxTimeStr = date('H:i d/m', $maxTimestamp);
+                    
+                    // Send Zalo greeting summary
+                    logSync("Sending Zalo summary message to consultant $consultantName ($count leads)...");
+                    try {
+                        sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count);
+                    } catch (Exception $sumEx) {
+                        logSync("Error sending Zalo summary: " . $sumEx->getMessage());
+                    }
+                }
+            }
+            
+            // Release each lead individually
+            foreach ($group as $row) {
+                // Determine original status (assigned or compensation)
+                $newStatus = (strpos($row['message'], 'compensation') !== false || strpos($row['message'], 'đền bù') !== false || strpos($row['message'], 'Bù lượt') !== false) ? 'compensation' : 'assigned';
+                
+                $conn->begin_transaction();
+                try {
+                    $stmtUp = $conn->prepare("UPDATE distribution_logs SET status = ?, message = CONCAT(message, '\n[Released at ', NOW(), ']') WHERE id = ? AND status = 'pending_work_hours'");
+                    $stmtUp->bind_param("si", $newStatus, $row['log_id']);
+                    $stmtUp->execute();
+                    $affected = $stmtUp->affected_rows;
+                    $stmtUp->close();
+                    $conn->commit();
+                    
+                    if ($affected > 0) {
+                        logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
+                        
+                        // Send Email
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $row['consultant_email'],
+                                $row['consultant_name'],
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['cc_emails'] ?? '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $row['assigned_to'],
+                                $row['round_id'] ?? 0
+                            );
+                        } catch (Exception $mailEx) {
+                            logSync("Error sending release email to consultant: " . $mailEx->getMessage());
+                        }
+                        
+                        // Send Zalo Message
+                        try {
+                            sendLeadAssignedZaloMessageToSale(
+                                $row['assigned_to'],
+                                $row['consultant_name'],
+                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $row['lead_phone'] ?: '',
+                                $row['lead_note'] ?: '',
+                                $row['lead_source'] ?: '',
+                                $row['round_name'] ?? '',
+                                $row['lead_id'],
+                                $row['round_id'] ?? 0,
+                                $row['lead_email'] ?: '',
+                                $row['lead_type'] ?: ''
+                            );
+                        } catch (Exception $zaloEx) {
+                            logSync("Error sending release Zalo to consultant: " . $zaloEx->getMessage());
+                        }
+                        
+                        $releasedCount++;
+                    }
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    logSync("Error releasing log ID {$row['log_id']}: " . $e->getMessage());
                 }
             }
         }

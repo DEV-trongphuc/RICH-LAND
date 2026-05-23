@@ -1,6 +1,6 @@
-import { Menu, Search, Command } from 'lucide-react';
+import { Menu, Search, Command, Activity } from 'lucide-react';
 
-export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
+export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () => void; onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   return (
     <header style={{
@@ -71,6 +71,49 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
             DEMO MODE
           </div>
         )}
+        
+        {/* Live Activity Feed Button */}
+        <button 
+          onClick={onActivityFeedClick}
+          style={{
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-light)',
+            borderRadius: 8,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            position: 'relative',
+            outline: 'none'
+          }}
+          title="Bản tin hoạt động hệ thống"
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--color-bg)';
+            e.currentTarget.style.color = 'var(--color-primary)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = 'var(--color-text-light)';
+          }}
+        >
+          <Activity size={20} />
+          <span style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: '#10b981',
+            boxShadow: '0 0 0 2px var(--color-surface)',
+            animation: 'pulse 2s infinite'
+          }} />
+        </button>
+
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -94,3 +137,4 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
     </header>
   );
 };
+

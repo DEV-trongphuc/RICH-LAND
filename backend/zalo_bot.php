@@ -611,3 +611,51 @@ function parseSingleDate($str) {
     }
     return null;
 }
+
+/**
+ * Gửi tin nhắn chào buổi sáng gom nhóm data cho Sale qua Zalo
+ */
+function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count)
+{
+    global $conn;
+
+    // Lấy config zalo_bot_token từ system_settings
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+
+    if (empty($botToken)) {
+        return false; // Chưa cấu hình Zalo Bot
+    }
+
+    // Lấy zalo_chat_id của Sale có dùng cache
+    static $chatIdCache = [];
+    if (isset($chatIdCache[$consultantId])) {
+        $chatId = $chatIdCache[$consultantId];
+    } else {
+        $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+        if (!$stmtConsultant) return false;
+        
+        $stmtConsultant->bind_param("i", $consultantId);
+        $stmtConsultant->execute();
+        $res = $stmtConsultant->get_result();
+        $chatId = '';
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $chatId = $row['zalo_chat_id'];
+        }
+        $stmtConsultant->close();
+        $chatIdCache[$consultantId] = $chatId;
+    }
+
+    if (empty($chatId)) {
+        return false; // Sale chưa liên kết Zalo
+    }
+
+    // Build nội dung tin nhắn
+    $text = "[ THÔNG BÁO NHẬN DATA GOM NHÓM ]\n\n"
+        . "Chào $consultantName, chúc bạn một ngày mới đầy năng lượng!\n\n"
+        . "Tối qua từ $minTimeStr đến $maxTimeStr bạn có $count data chờ xử lý.\n"
+        . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
+
+    return sendZaloMessage($botToken, $chatId, $text);
+}
+

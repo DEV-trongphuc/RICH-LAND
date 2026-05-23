@@ -7,6 +7,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 export const Accounts = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -338,7 +339,7 @@ export const Accounts = () => {
       {activeTab === 'accounts' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu...</div>
+            <TableSkeleton cols={6} rows={5} />
           ) : (
             <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
               <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -483,7 +484,7 @@ export const Accounts = () => {
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>
           {loadingLogs ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải nhật ký...</div>
+            <TableSkeleton cols={5} rows={8} />
           ) : (
             <>
               <div className="table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>

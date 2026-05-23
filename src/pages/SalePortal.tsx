@@ -15,6 +15,7 @@ import { fetchAPI } from '../utils/api';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
+import { TableSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 
 export const SalePortal = () => {
   const navigate = useNavigate();
@@ -822,10 +823,7 @@ export const SalePortal = () => {
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '1rem' }}>
-                <div style={{ width: 36, height: 36, border: '3px solid #f1f5f9', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                <span style={{ color: '#64748b', fontSize: '0.875rem' }}>Đang tải danh sách khách hàng...</span>
-              </div>
+              <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
@@ -1209,9 +1207,10 @@ export const SalePortal = () => {
               <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
               
               {loadingTimeline ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', color: '#64748b' }}>
-                  <div style={{ width: 16, height: 16, border: '2px solid #f1f5f9', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                  <span style={{ fontSize: '0.85rem' }}>Đang tải lịch sử...</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
                 </div>
               ) : timeline && timeline.length > 0 ? (
                 <div className="timeline" style={{ marginTop: '4px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>

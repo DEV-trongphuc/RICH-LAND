@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -66,7 +66,11 @@ export const Settings = () => {
   const [testing, setTesting] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check' | 'ai'>('processing');
+
+  // States for Gemini API Connection
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash');
 
   // States
   const [provider, setProvider] = useState('appscript');
@@ -110,6 +114,10 @@ export const Settings = () => {
   // Blacklist Config
   const [exclusionKeys, setExclusionKeys] = useState('');
   const [exclusionContacts, setExclusionContacts] = useState('');
+  const [newKeyInput, setNewKeyInput] = useState('');
+  const [newContactInput, setNewContactInput] = useState('');
+  const [blacklistSearchQuery, setBlacklistSearchQuery] = useState('');
+  const [blacklistContactTab, setBlacklistContactTab] = useState<'phone' | 'email'>('phone');
 
   // Ticket Auto-Approve config
   const [ticketAutoApproveEnabled, setTicketAutoApproveEnabled] = useState(false);
@@ -266,6 +274,8 @@ export const Settings = () => {
             if (Array.isArray(parsed)) setTicketAutoApproveRules(parsed);
           } catch { /* ignore */ }
         }
+        if (json.data.gemini_api_key) setGeminiApiKey(json.data.gemini_api_key);
+        if (json.data.gemini_model) setGeminiModel(json.data.gemini_model);
       }
     } catch (e) {
       console.error(e);
@@ -277,7 +287,7 @@ export const Settings = () => {
     fetchSettings();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['processing', 'mail', 'zalo', 'report', 'duplicate_check'].includes(tabParam)) {
+    if (tabParam && ['processing', 'mail', 'zalo', 'report', 'duplicate_check', 'ai'].includes(tabParam)) {
       setActiveTab(tabParam as any);
       if (window.location.hash === '#auto-approve') {
         setTimeout(() => {
@@ -322,7 +332,9 @@ export const Settings = () => {
       reassign_if_owner_inactive: reassignIfOwnerInactive ? '1' : '0',
       ticket_auto_approve_enabled: ticketAutoApproveEnabled ? 1 : 0,
       ticket_auto_approve_keywords: ticketAutoApproveKeywords,
-      ticket_auto_approve_rules: ticketAutoApproveRules
+      ticket_auto_approve_rules: ticketAutoApproveRules,
+      gemini_api_key: geminiApiKey,
+      gemini_model: geminiModel
     };
 
     try {
@@ -455,6 +467,68 @@ export const Settings = () => {
         toast.error("Vui lòng tải lên file Excel hoặc CSV (.xlsx, .xls, .csv)");
       }
     }
+  };
+
+  const handleBlacklistUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        if (data.length > 0) {
+          const foundContacts: string[] = [];
+          
+          data.forEach(row => {
+            if (!row || !Array.isArray(row)) return;
+            row.forEach(cell => {
+              if (cell === null || cell === undefined) return;
+              const val = String(cell).trim();
+              if (!val) return;
+              
+              if (val.includes('@') && /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(val)) {
+                foundContacts.push(val);
+              } else {
+                const cleanedPhone = val.replace(/[\s\.\-\(\)]/g, '');
+                if (/^\+?\d{8,15}$/.test(cleanedPhone)) {
+                  foundContacts.push(cleanedPhone);
+                }
+              }
+            });
+          });
+
+          if (foundContacts.length === 0) {
+            toast.error("Không tìm thấy số điện thoại hoặc email hợp lệ nào trong file.");
+            return;
+          }
+
+          const currentContacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+          const newContactsList = [...currentContacts];
+          let addedCount = 0;
+          
+          foundContacts.forEach(c => {
+            if (!newContactsList.includes(c)) {
+              newContactsList.push(c);
+              addedCount++;
+            }
+          });
+
+          setExclusionContacts(newContactsList.join(', '));
+          toast.success(`Đã thêm thành công ${addedCount} liên hệ rác mới vào danh sách đen!`);
+        } else {
+          toast.error("File rỗng.");
+        }
+      } catch (err: any) {
+        toast.error("Lỗi khi đọc file: " + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
   };
 
   const handleRunBatchCheck = async () => {
@@ -676,6 +750,12 @@ export const Settings = () => {
         >
           <FileSpreadsheet size={18} /> Ánh xạ dữ liệu cũ
         </button>
+        <button
+          onClick={() => setActiveTab('ai')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'ai' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <Zap size={18} /> Cấu hình Trợ lý AI
+        </button>
       </div>
 
       {loading ? (
@@ -687,7 +767,72 @@ export const Settings = () => {
         </div>
       ) : (
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: activeTab === 'duplicate_check' ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+            {/* AI Assistant Tab Content */}
+            <div style={{ display: activeTab === 'ai' ? 'block' : 'none', animation: activeTab === 'ai' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 6, borderRadius: 6 }}>
+                    <Zap size={16} />
+                  </span>
+                  Cấu hình Trợ lý AI (Gemini Key)
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  Cấu hình khóa kết nối Google Gemini API để Trợ lý AI Chatbot có thể đọc dữ liệu thống kê trực tiếp và trả lời một cách thông minh, linh hoạt cho người dùng bằng mô hình <strong>Gemini 2.5 Flash Lite</strong>.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                    Gemini API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={geminiApiKey}
+                    onChange={e => setGeminiApiKey(e.target.value)}
+                    placeholder="Nhập API Key của Google Gemini (AIzaSy...)"
+                    style={{
+                      padding: '10px 12px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      background: 'var(--color-bg)',
+                      color: 'var(--color-text)',
+                      width: '100%'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    Khóa API này được lưu trữ an toàn ở phía máy chủ và được sử dụng làm thông tin xác thực để gửi truy vấn trực tiếp đến Google Gemini.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                    Mô hình AI sử dụng (AI Model)
+                  </label>
+                  <input
+                    type="text"
+                    value={geminiModel}
+                    onChange={e => setGeminiModel(e.target.value)}
+                    placeholder="gemini-2.5-flash"
+                    style={{
+                      padding: '10px 12px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      background: 'var(--color-bg)',
+                      color: 'var(--color-text)',
+                      width: '100%'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    Mặc định sử dụng <strong>gemini-2.5-flash</strong> (hoặc bạn có thể chỉ định mô hình tương thích khác như <code>gemini-2.5-flash-lite</code> nếu cần).
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>
               <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {checkedResults.length > 0 ? (
@@ -2140,37 +2285,356 @@ function doPost(e) {
                   Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và <strong>KHÔNG</strong> được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* Part 1: Exclusion Keys */}
                   <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      Từ khóa loại trừ (Keys)
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Từ khóa loại trừ (Keys)</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                        Ngăn cách bằng dấu phẩy hoặc nhấn Enter khi nhập
+                      </span>
                     </label>
-                    <textarea
-                      className="form-input"
-                      style={{ minHeight: 80, resize: 'vertical' }}
-                      placeholder="Ví dụ: spam, test, rác..."
-                      value={exclusionKeys}
-                      onChange={e => setExclusionKeys(e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Ngăn cách bằng dấu phẩy. Nếu dữ liệu (Tên, Nguồn, Ghi chú...) chứa bất kỳ từ khóa nào trong danh sách này, hệ thống sẽ tự động bỏ qua.
-                    </p>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Nhập từ khóa cần chặn (VD: spam, test, rac...)"
+                        value={newKeyInput}
+                        onChange={e => setNewKeyInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const keys = exclusionKeys ? exclusionKeys.split(',').map(k => k.trim()).filter(Boolean) : [];
+                            const val = newKeyInput.trim();
+                            if (val && !keys.includes(val)) {
+                              setExclusionKeys([...keys, val].join(', '));
+                              setNewKeyInput('');
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn primary"
+                        style={{ padding: '0 16px', background: 'var(--color-primary)' }}
+                        onClick={() => {
+                          const keys = exclusionKeys ? exclusionKeys.split(',').map(k => k.trim()).filter(Boolean) : [];
+                          const val = newKeyInput.trim();
+                          if (val && !keys.includes(val)) {
+                            setExclusionKeys([...keys, val].join(', '));
+                            setNewKeyInput('');
+                          }
+                        }}
+                      >
+                        Thêm
+                      </button>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px',
+                      padding: '8px',
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '8px',
+                      minHeight: '45px',
+                    }}>
+                      {(() => {
+                        const keys = exclusionKeys ? exclusionKeys.split(',').map(k => k.trim()).filter(Boolean) : [];
+                        if (keys.length === 0) {
+                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '4px' }}>Chưa có từ khóa loại trừ nào.</span>;
+                        }
+                        return keys.map((key, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#fee2e2',
+                              color: '#ef4444',
+                              border: '1px solid #fca5a5',
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600
+                            }}
+                          >
+                            {key}
+                            <X
+                              size={12}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setExclusionKeys(keys.filter((_, i) => i !== idx).join(', '));
+                              }}
+                            />
+                          </span>
+                        ));
+                      })()}
+                    </div>
                   </div>
 
+                  {/* Part 2: Exclusion Contacts */}
                   <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      Số điện thoại / Email loại trừ
-                    </label>
-                    <textarea
-                      className="form-input"
-                      style={{ minHeight: 80, resize: 'vertical' }}
-                      placeholder="Ví dụ: 0909123456, admin@test.com..."
-                      value={exclusionContacts}
-                      onChange={e => setExclusionContacts(e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Ngăn cách bằng dấu phẩy. Chặn đứng các Data Spam từ số điện thoại hoặc Email cụ thể.
-                    </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                        Số điện thoại / Email loại trừ
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="file"
+                          id="blacklist-file-upload"
+                          accept=".xlsx, .xls, .csv"
+                          style={{ display: 'none' }}
+                          onChange={handleBlacklistUpload}
+                        />
+                        <label
+                          htmlFor="blacklist-file-upload"
+                          className="btn outline"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                          }}
+                        >
+                          <Upload size={14} /> Nhập từ Excel/CSV
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Nhập SĐT hoặc Email (VD: 0909123456 hoặc spam@gmail.com)"
+                        value={newContactInput}
+                        onChange={e => setNewContactInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+                            const val = newContactInput.trim();
+                            if (val && !contacts.includes(val)) {
+                              setExclusionContacts([...contacts, val].join(', '));
+                              if (val.includes('@')) {
+                                setBlacklistContactTab('email');
+                              } else {
+                                setBlacklistContactTab('phone');
+                              }
+                              setNewContactInput('');
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn primary"
+                        style={{ padding: '0 16px', background: 'var(--color-primary)' }}
+                        onClick={() => {
+                          const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+                          const val = newContactInput.trim();
+                          if (val && !contacts.includes(val)) {
+                            setExclusionContacts([...contacts, val].join(', '));
+                            if (val.includes('@')) {
+                              setBlacklistContactTab('email');
+                            } else {
+                              setBlacklistContactTab('phone');
+                            }
+                            setNewContactInput('');
+                          }
+                        }}
+                      >
+                        Thêm
+                      </button>
+                    </div>
+
+                    {/* Search & Stats bar */}
+                    {(() => {
+                      const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+                      if (contacts.length === 0) return null;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '10px' }}>
+                          <div style={{ position: 'relative', flex: 1 }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Tìm nhanh SĐT/Email trong danh sách đen..."
+                              value={blacklistSearchQuery}
+                              onChange={e => setBlacklistSearchQuery(e.target.value)}
+                              style={{ paddingLeft: '32px', height: '32px', fontSize: '0.8125rem' }}
+                            />
+                            <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'var(--color-text-muted)' }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                            Tổng số: {contacts.length} liên hệ
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Sub-tabs selectors for SĐT / Email */}
+                    {(() => {
+                      const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+                      if (contacts.length === 0) return null;
+                      const phones = contacts.filter(c => !c.includes('@'));
+                      const emails = contacts.filter(c => c.includes('@'));
+                      return (
+                        <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--color-border-light)', marginBottom: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setBlacklistContactTab('phone')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 700,
+                              background: 'none',
+                              border: 'none',
+                              borderBottom: blacklistContactTab === 'phone' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                              color: blacklistContactTab === 'phone' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              outline: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            Số điện thoại
+                            <span style={{
+                              fontSize: '0.7rem',
+                              background: blacklistContactTab === 'phone' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                              color: blacklistContactTab === 'phone' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              transition: 'all 0.2s'
+                            }}>
+                              {phones.length}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBlacklistContactTab('email')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 700,
+                              background: 'none',
+                              border: 'none',
+                              borderBottom: blacklistContactTab === 'email' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                              color: blacklistContactTab === 'email' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              outline: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            Email
+                            <span style={{
+                              fontSize: '0.7rem',
+                              background: blacklistContactTab === 'email' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                              color: blacklistContactTab === 'email' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              transition: 'all 0.2s'
+                            }}>
+                              {emails.length}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px',
+                      padding: '12px',
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '8px',
+                      maxHeight: '180px',
+                      overflowY: 'auto'
+                    }}>
+                      {(() => {
+                        const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
+                        if (contacts.length === 0) {
+                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có liên hệ loại trừ nào.</span>;
+                        }
+                        
+                        const phones = contacts.filter(c => !c.includes('@'));
+                        const emails = contacts.filter(c => c.includes('@'));
+                        const activeList = blacklistContactTab === 'phone' ? phones : emails;
+
+                        const filtered = activeList.filter(c =>
+                          c.toLowerCase().includes(blacklistSearchQuery.toLowerCase())
+                        );
+
+                        if (filtered.length === 0) {
+                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            {blacklistSearchQuery ? 'Không tìm thấy liên hệ khớp với tìm kiếm.' : `Chưa có ${blacklistContactTab === 'phone' ? 'số điện thoại' : 'email'} nào trong danh sách.`}
+                          </span>;
+                        }
+
+                        const maxDisplay = 100;
+                        const displayed = filtered.slice(0, maxDisplay);
+
+                        return (
+                          <>
+                            {displayed.map((c, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f1f5f9',
+                                  color: '#334155',
+                                  border: '1px solid #cbd5e1',
+                                  padding: '2px 8px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {c}
+                                <X
+                                  size={12}
+                                  style={{ cursor: 'pointer', color: '#64748b' }}
+                                  onClick={() => {
+                                    const actualIdx = contacts.indexOf(c);
+                                    if (actualIdx !== -1) {
+                                      setExclusionContacts(contacts.filter((_, i) => i !== actualIdx).join(', '));
+                                    }
+                                  }}
+                                />
+                              </span>
+                            ))}
+                            {filtered.length > maxDisplay && (
+                              <div style={{
+                                width: '100%',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                marginTop: '6px',
+                                fontSize: '0.75rem',
+                                color: 'var(--color-text-muted)',
+                                fontStyle: 'italic',
+                                padding: '4px 0'
+                              }}>
+                                ... và {filtered.length - maxDisplay} liên hệ khác. Sử dụng ô tìm kiếm để lọc thêm.
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2178,7 +2642,7 @@ function doPost(e) {
           </div>
 
           {/* Right Column: Testing */}
-          {activeTab !== 'duplicate_check' && (
+          {activeTab !== 'duplicate_check' && activeTab !== 'ai' && (
             <div style={{
               flex: 1,
               display: 'flex',

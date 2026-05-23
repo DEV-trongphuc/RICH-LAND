@@ -864,6 +864,10 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
     $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
     $stmt->execute();
     $stmt->close();
+    
+    if (function_exists('pruneAdminLogs')) {
+        pruneAdminLogs($conn);
+    }
 }
 
 /**

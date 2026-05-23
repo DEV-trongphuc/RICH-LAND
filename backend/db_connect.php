@@ -41,9 +41,17 @@ if (!function_exists('get_system_setting')) {
 
 if (!function_exists('pruneAdminLogs')) {
     function pruneAdminLogs($conn) {
+        // Cắt giảm admin_logs tối đa 1000 bản ghi
         $conn->query("DELETE FROM admin_logs WHERE id < (
             SELECT MIN(id) FROM (
                 SELECT id FROM admin_logs ORDER BY id DESC LIMIT 1000
+            ) tmp
+        )");
+        
+        // Cắt giảm distribution_logs tối đa 1000 bản ghi
+        $conn->query("DELETE FROM distribution_logs WHERE id < (
+            SELECT MIN(id) FROM (
+                SELECT id FROM distribution_logs ORDER BY id DESC LIMIT 1000
             ) tmp
         )");
     }
@@ -56,7 +64,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 109) {
+        if ($dbVer >= 110) {
             $runMigration = false;
         }
     }
@@ -77,7 +85,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 109) {
+                    if ($dbVer >= 110) {
                         $runMigration = false;
                     }
                 }
@@ -398,6 +406,18 @@ if ($runMigration) {
         $conn->query("ALTER TABLE data_reports ADD INDEX `idx_status` (`status`)");
     }
 
+    // admin_logs created_at index for sorting
+    $chkIdxAdminCreated = $conn->query("SHOW INDEX FROM admin_logs WHERE Key_name='idx_created_at'");
+    if ($chkIdxAdminCreated && $chkIdxAdminCreated->num_rows === 0) {
+        $conn->query("ALTER TABLE admin_logs ADD INDEX `idx_created_at` (`created_at`)");
+    }
+
+    // admin_logs action & created_at composite index for statistics/filtering
+    $chkIdxAdminActionCreated = $conn->query("SHOW INDEX FROM admin_logs WHERE Key_name='idx_action_created'");
+    if ($chkIdxAdminActionCreated && $chkIdxAdminActionCreated->num_rows === 0) {
+        $conn->query("ALTER TABLE admin_logs ADD INDEX `idx_action_created` (`action`, `created_at`)");
+    }
+
     // Auto-migrate: ensure work_schedule column exists in consultants
     $chkWorkSchedule = $conn->query("SHOW COLUMNS FROM consultants LIKE 'work_schedule'");
     if ($chkWorkSchedule && $chkWorkSchedule->num_rows === 0) {
@@ -412,7 +432,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '109') ON DUPLICATE KEY UPDATE setting_value = '109'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '110') ON DUPLICATE KEY UPDATE setting_value = '110'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
