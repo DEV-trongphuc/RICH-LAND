@@ -47,7 +47,7 @@ $queryLeads = "
           AND (l.note NOT LIKE '%Nhap du lieu cu%' OR l.note IS NULL)
           AND (sc.is_silent = 0 OR sc.is_silent IS NULL)
         )
-        OR l.phone IN ('0938297768', '0938187025')
+        OR l.phone IN ('0938297768', '0938187025', '0907635229')
       )
 ";
 
