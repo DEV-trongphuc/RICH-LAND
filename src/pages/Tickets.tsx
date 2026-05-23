@@ -476,11 +476,14 @@ export const Tickets = () => {
           <CustomSelect
             options={[
               { value: '', label: 'Tất cả Sale', icon: <Users size={16} /> },
-              ...consultantOptions.map(name => ({
-                value: name,
-                label: name,
-                avatar: ''
-              }))
+              ...consultantOptions.map(name => {
+                const matched = allConsultants.find(c => c.name === name);
+                return {
+                  value: name,
+                  label: name,
+                  avatar: matched?.avatar || ''
+                };
+              })
             ]}
             value={saleFilter}
             onChange={val => updateParams('consultant', val.toString())}
@@ -927,7 +930,7 @@ export const Tickets = () => {
                         value: String(c.id),
                         label: c.name,
                         sublabel: c.email,
-                        avatar: ''
+                        avatar: c.avatar
                       }))
                   ]}
                   value={reassignConsultantId}
@@ -1419,7 +1422,7 @@ export const Tickets = () => {
                             .map(c => ({
                               value: c.id.toString(),
                               label: c.name,
-                              avatar: ''
+                              avatar: c.avatar
                             }))
                         ]}
                         value={reassignConsId}

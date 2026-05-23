@@ -197,7 +197,7 @@ export const DataList = () => {
   };
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
+  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
   const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
@@ -505,7 +505,7 @@ export const DataList = () => {
               ...consultants.map(c => ({
                 value: c.name,
                 label: c.name,
-                avatar: ''
+                avatar: c.avatar
               }))
             ]}
             value={consultantFilter}
@@ -1124,7 +1124,7 @@ export const DataList = () => {
                         ...consultants.map(c => ({
                           value: c.id.toString(),
                           label: c.name,
-                          avatar: ''
+                          avatar: c.avatar
                         }))
                       ]}
                       value={reassignConsId}

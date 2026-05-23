@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { RoundCardSkeleton } from '../components/ui/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -388,16 +389,21 @@ export const Rounds = () => {
                       {consList.length > 0 ? (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                           {consList.slice(0, 4).map((c: string, i: number) => {
-                            const initials = c.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                            const matchedCons = consultants.find(x => x.name === c);
                             return (
-                              <div key={i} title={c} style={{
-                                width: 32, height: 32, borderRadius: '50%', background: getColorForName(c),
-                                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
-                                marginLeft: i === 0 ? 0 : -8, position: 'relative', zIndex: 10 - i, boxShadow: 'var(--shadow-sm)'
-                              }}>
-                                {initials}
-                              </div>
+                              <Avatar
+                                key={i}
+                                src={matchedCons?.avatar}
+                                name={c}
+                                size={32}
+                                style={{
+                                  border: '2px solid var(--color-surface)',
+                                  marginLeft: i === 0 ? 0 : -8,
+                                  position: 'relative',
+                                  zIndex: 10 - i,
+                                  boxShadow: 'var(--shadow-sm)'
+                                }}
+                              />
                             );
                           })}
                           {consList.length > 4 && (
@@ -487,15 +493,19 @@ export const Rounds = () => {
                       {consList.length} Thành viên
                     </p>
                     {consList.slice(0, 4).map((c: string, i: number) => {
-                      const initials = c.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
+                      const matchedCons = consultants.find(cons => cons.name === c);
                       return (
-                        <div key={i} title={c} style={{
-                          width: 32, height: 32, borderRadius: '50%', background: getColorForName(c), color: 'white',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700,
-                          border: '2px solid white', marginLeft: i > 0 ? -12 : 0, boxShadow: 'var(--shadow-sm)'
-                        }}>
-                          {initials}
-                        </div>
+                        <Avatar
+                          key={i}
+                          src={matchedCons?.avatar}
+                          name={c}
+                          size={32}
+                          style={{
+                            border: '2px solid white',
+                            marginLeft: i > 0 ? -12 : 0,
+                            boxShadow: 'var(--shadow-sm)'
+                          }}
+                        />
                       );
                     })}
                     {consList.length > 4 && (
@@ -632,12 +642,9 @@ export const Rounds = () => {
                                 {(() => {
                                   const c = consultants.find(x => Number(x.id) === formData.starting_consultant_id);
                                   if (!c) return '-- Mặc định (Theo thứ tự thêm vào) --';
-                                  const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                                   return (
                                     <>
-                                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: getColorForName(c.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>
-                                        {initials}
-                                      </div>
+                                      <Avatar src={c.avatar} name={c.name} size={20} />
                                       <span style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.name}</span>
                                     </>
                                   )
@@ -667,7 +674,6 @@ export const Rounds = () => {
                                 const c = consultants.find(x => Number(x.id) === Number(id));
                                 if (!c) return null;
                                 const isSelected = formData.starting_consultant_id === id;
-                                const initials = c.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                                 return (
                                   <div
                                     key={id}
@@ -676,9 +682,7 @@ export const Rounds = () => {
                                     onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
                                     onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                                   >
-                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: getColorForName(c.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>
-                                      {initials}
-                                    </div>
+                                    <Avatar src={c.avatar} name={c.name} size={24} />
                                     <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
                                       {c.name}
                                     </div>
@@ -739,7 +743,6 @@ export const Rounds = () => {
                         }}>
                           {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
                             const isSelected = formData.selected_users.includes(Number(user.id));
-                            const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
 
                             return (
                               <div
@@ -753,9 +756,7 @@ export const Rounds = () => {
                                 onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
                                 onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                               >
-                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: getColorForName(user.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>
-                                  {initials}
-                                </div>
+                                <Avatar src={user.avatar} name={user.name} size={28} />
                                 <div style={{ flex: 1 }}>
                                   <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>{user.name}</p>
                                   <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email} • {user.status === 'active' ? 'Đang nhận data' : 'Không nhận data'}</p>
@@ -780,7 +781,6 @@ export const Rounds = () => {
                         {formData.selected_users.map(userId => {
                           const user = consultants.find(c => Number(c.id) === userId);
                           if (!user) return null;
-                          const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                           return (
                             <div key={user.id} style={{
                               display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
@@ -788,15 +788,7 @@ export const Rounds = () => {
                               transition: 'all 0.2s'
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{
-                                  width: 28, height: 28, borderRadius: '50%',
-                                  background: getColorForName(user.name), color: 'white',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: '0.7rem', fontWeight: 700, flexShrink: 0,
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.12)'
-                                }}>
-                                  {initials}
-                                </div>
+                                <Avatar src={user.avatar} name={user.name} size={28} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' }} />
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
                                     {user.name}
@@ -1000,15 +992,12 @@ export const Rounds = () => {
                   const id = parseInt(idStr, 10);
                   const user = consultants.find(c => Number(c.id) === id);
                   if (!user) return null;
-                  const initials = user.name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase();
                   const currentComp = compData[id] || 0;
                   
                   return (
                     <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: currentComp > 0 ? '#fffbeb' : '#f8fafc', border: `1px solid ${currentComp > 0 ? '#fde68a' : '#e2e8f0'}`, borderRadius: 12, transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: getColorForName(user.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                          {initials}
-                        </div>
+                        <Avatar src={user.avatar} name={user.name} size={36} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         <div>
                           <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{user.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
