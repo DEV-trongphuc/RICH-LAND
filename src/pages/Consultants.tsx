@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Edit3, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -340,13 +340,15 @@ export const Consultants = () => {
                 </tr>
               ) : users.map((u) => {
                 return (
-                  <tr key={u.id} className="group table-row-hover">
+                  <tr 
+                    key={u.id} 
+                    className="group table-row-hover"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => openEditModal(u)}
+                    title="Nhấp để chỉnh sửa thông tin"
+                  >
                     <td>
-                      <div 
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
-                        onClick={() => openEditModal(u)}
-                        title="Nhấp để chỉnh sửa thông tin"
-                      >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Avatar name={u.name} size={32} />
                         <div>
                           <div 
@@ -417,7 +419,7 @@ export const Consultants = () => {
                                 <Check size={12} /> Đã nhắc
                               </span>
                             ) : (
-                              <button onClick={() => handleResendZaloVerify(u.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === u.id}>
+                              <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === u.id}>
                                 {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? 'Đang gửi...' : 'Nhắc'}
                               </button>
                             )
@@ -448,22 +450,9 @@ export const Consultants = () => {
                         </span>
                       )}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
-                        {(u.zalo_chat_id || u.email) && (
-                          <button onClick={() => { setQuickMessageTarget(u); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Gửi tin nhắn nhanh (Email/Zalo)">
-                            <MessageCircle size={16} />
-                          </button>
-                        )}
-                        {u.zalo_chat_id && (
-                          <button onClick={() => confirmUnlinkZalo(u.id)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
-                            <Link2Off size={16} />
-                          </button>
-                        )}
-                        <button onClick={() => openEditModal(u)} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }} title="Sửa thông tin">
-                          <Edit3 size={16} />
-                        </button>
-                        <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }}>
+                        <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title="Xóa nhân sự">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -580,6 +569,40 @@ export const Consultants = () => {
                             value={formData.leave_end}
                             onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
                           />
+                        </div>
+                      </div>
+                    )}
+
+                    {editingUser && (
+                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          <Send size={14} color="var(--color-primary)" /> Tương tác nhanh với Sale
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 8 }}>
+                          {(editingUser.zalo_chat_id || editingUser.email) && (
+                            <button
+                              type="button"
+                              onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
+                              className="btn outline"
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: '#0068ff', color: '#0068ff', background: 'white' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#e5f0ff' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'white' }}
+                            >
+                              <MessageCircle size={14} /> Nhắn tin nhanh
+                            </button>
+                          )}
+                          {editingUser.zalo_chat_id && (
+                            <button
+                              type="button"
+                              onClick={() => confirmUnlinkZalo(editingUser.id)}
+                              className="btn outline"
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'white' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-warning-light)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'white' }}
+                            >
+                              <Link2Off size={14} /> Hủy liên kết Zalo
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -735,6 +758,8 @@ export const Consultants = () => {
                         Hệ thống tự điền khi Sale xác thực Zalo. Admin có thể nhập tay nếu cần.
                       </p>
                     </div>
+
+
                   </div>
 
                 </div>
