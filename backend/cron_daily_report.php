@@ -124,6 +124,25 @@ function runDailyReportCron($conn) {
         }
         $stmtTicket->close();
         
+        // 3.5 Lấy số data bị chặn trong kỳ báo cáo (blacklist)
+        $totalBlocked = 0;
+        $stmtBlocked = $conn->prepare("
+            SELECT COUNT(*) as total
+            FROM admin_logs
+            WHERE action = 'BLOCK_LEAD_BLACKLIST'
+              AND created_at >= ?
+              AND created_at <= ?
+        ");
+        if ($stmtBlocked) {
+            $stmtBlocked->bind_param("ss", $startTimestamp, $endTimestamp);
+            $stmtBlocked->execute();
+            $resBlocked = $stmtBlocked->get_result();
+            if ($resBlocked && $row = $resBlocked->fetch_assoc()) {
+                $totalBlocked = (int)$row['total'];
+            }
+            $stmtBlocked->close();
+        }
+        
         // 4. Lấy danh sách Admin nhận báo cáo
         // Ưu tiên danh sách đã được cấu hình; nếu chưa có thì gửi cho tất cả admin + super admin
         $adminIds = [];
@@ -179,6 +198,8 @@ function runDailyReportCron($conn) {
             } else {
                 $msg .= "  • Tổng ticket phát sinh: 0\n\n";
             }
+            $msg .= "CHẶN DATA (BLACKLIST):\n";
+            $msg .= "  • Tổng số data bị chặn: $totalBlocked\n\n";
             $msg .= "-------------------\n";
             $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
             $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
@@ -206,7 +227,8 @@ function runDailyReportCron($conn) {
                         $totalReminder,
                         $approvedTicket,
                         $rejectedTicket,
-                        $pendingTicket
+                        $pendingTicket,
+                        $totalBlocked
                     );
                 }
             }

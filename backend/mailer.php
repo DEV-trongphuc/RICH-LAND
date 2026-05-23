@@ -788,7 +788,8 @@ function sendDailyReportEmailToAdmins(
     int $totalReminder = 0,
     int $approvedTicket = 0,
     int $rejectedTicket = 0,
-    int $pendingTicket = 0
+    int $pendingTicket = 0,
+    int $totalBlocked = 0
 ) {
     global $conn;
 
@@ -827,7 +828,7 @@ function sendDailyReportEmailToAdmins(
              <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của hệ thống Domation DATA.</p>
          </div>
  
-         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
              <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                  <h3 style="margin: 0; color: #0f172a; font-size: 16px;">Phân bổ Data mới (' . $titleSuffix . ')</h3>
              </div>
@@ -838,12 +839,21 @@ function sendDailyReportEmailToAdmins(
              </div>
          </div>
  
-         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
              <div style="padding: 16px 20px; background: #fff1f2; border-bottom: 1px solid #ffe4e6;">
                  <h3 style="margin: 0; color: #9f1239; font-size: 16px;">Báo cáo lỗi / Ticket mới (' . $totalTicket . ')</h3>
              </div>
              <div style="padding: 20px;">
                  <p style="margin: 0; color: #334155;">Hôm nay hệ thống ghi nhận có <strong>' . $totalTicket . '</strong> Ticket báo lỗi cần được xử lý.' . $ticketBreakdownStr . '</p>
+             </div>
+         </div>
+
+         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+             <div style="padding: 16px 20px; background: #fef2f2; border-bottom: 1px solid #fee2e2;">
+                 <h3 style="margin: 0; color: #991b1b; font-size: 16px;">Chặn Data / Blacklist (' . $totalBlocked . ')</h3>
+             </div>
+             <div style="padding: 20px;">
+                 <p style="margin: 0; color: #334155;">Hôm nay hệ thống ghi nhận có <strong>' . $totalBlocked . '</strong> lượt data bị chặn đưa vào danh sách đen (Blacklist).</p>
              </div>
          </div>
          

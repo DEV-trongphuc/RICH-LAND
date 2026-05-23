@@ -4621,6 +4621,21 @@ switch ($action) {
             break;
         }
 
+        // Lấy thông tin admin thực hiện
+        $adminName = 'Quản trị viên';
+        $adminAccountId = 0;
+        if (isset($decodedUser['id'])) {
+            $adminAccountId = (int) $decodedUser['id'];
+            $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+            $admQuery->bind_param("i", $decodedUser['id']);
+            $admQuery->execute();
+            $admRes = $admQuery->get_result()->fetch_assoc();
+            if ($admRes && !empty($admRes['name'])) {
+                $adminName = $admRes['name'];
+            }
+            $admQuery->close();
+        }
+
         // 1. Fetch details of lead, consultant, and round
         $stmt = $conn->prepare("
             SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, 
@@ -4700,14 +4715,14 @@ switch ($action) {
             }
 
             // 3. Update Lead status to blacklisted and append reason to note
-            $newNote = trim(($log_data['lead_note'] ?? '') . "\n[Bị chặn bởi Admin lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]");
+            $newNote = trim(($log_data['lead_note'] ?? '') . "\n[Bị chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]");
             $updLead = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ? WHERE id = ?");
             $updLead->bind_param("si", $newNote, $lead_id);
             $updLead->execute();
             $updLead->close();
 
             // 4. Update distribution_logs status
-            $logMsgAdd = "\n[Chặn bởi Admin lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . ". Bù: " . ($compensate_sale ? "Có" : "Không") . "]";
+            $logMsgAdd = "\n[Chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . ". Bù: " . ($compensate_sale ? "Có" : "Không") . "]";
             $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted', message = CONCAT(message, ?) WHERE id = ?");
             $updLog->bind_param("si", $logMsgAdd, $log_id);
             $updLog->execute();
@@ -4757,52 +4772,113 @@ switch ($action) {
         }
 
         // 7. Send Notifications out of transaction
-        if ($compensate_sale && $old_consultant_id) {
-            try {
-                require_once __DIR__ . '/mailer.php';
-                require_once __DIR__ . '/zalo_bot.php';
+        try {
+            require_once __DIR__ . '/mailer.php';
+            require_once __DIR__ . '/zalo_bot.php';
 
-                $maskedPhone = '';
-                if (!empty($lead_phone)) {
-                    $trimmed = trim($lead_phone);
-                    if (strlen($trimmed) <= 6) {
-                        $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
-                    } else {
-                        $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+            $maskedPhone = '';
+            if (!empty($lead_phone)) {
+                $trimmed = trim($lead_phone);
+                if (strlen($trimmed) <= 6) {
+                    $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                } else {
+                    $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                }
+            }
+
+            // Send Zalo Notification
+            $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+            $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+            // Lấy danh sách ticket admins
+            $adminEmails = getTicketNotifyAdmins($conn);
+
+            // Gửi Zalo cho các Ticket Admins
+            if (!empty($botToken) && !empty($adminEmails)) {
+                $adminChatIds = [];
+                foreach ($adminEmails as $adm) {
+                    if (!empty($adm['zalo_chat_id'])) {
+                        $adminChatIds[] = $adm['zalo_chat_id'];
                     }
                 }
+                if (!empty($adminChatIds)) {
+                    try {
+                        $zaloAdminMsg = "[ THÔNG BÁO CHẶN DATA - BLACKLIST ]\n\n"
+                            . "Admin $adminName đã chặn khách hàng: $lead_name" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . "\n\n"
+                            . "❖ CHI TIẾT CHẶN:\n"
+                            . "  • Lý do chặn: $reason\n"
+                            . "  • Vòng phân bổ: $round_name\n"
+                            . "  • Sale phụ trách cũ: $old_consultant_name\n"
+                            . "  • Đền bù cho Sale: " . ($compensate_sale ? "Có (Đã cộng 1 lượt bù)" : "Không");
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                    } catch (Exception $zAdminEx) {
+                        error_log("Error sending block lead Zalo to admins: " . $zAdminEx->getMessage());
+                    }
+                }
+            }
 
-                // Send Zalo Notification
-                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-
+            // Gửi thông báo cho Sale (nếu có bù)
+            if ($compensate_sale && $old_consultant_id) {
                 if (!empty($botToken) && !empty($old_consultant_zalo)) {
                     try {
                         $zaloMsg = "[ ĐỀN BÙ DATA - BLACKLIST ]\n\n"
-                            . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin đưa vào Danh sách đen (Blacklist).\n\n"
+                            . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin " . $adminName . " lúc " . date('H:i:s d/m/Y') . " đưa vào Danh sách đen (Blacklist).\n\n"
                             . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
                         sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
                     } catch (Exception $zEx) {
-                        error_log("Error sending block lead Zalo: " . $zEx->getMessage());
+                        error_log("Error sending block lead Zalo to sale: " . $zEx->getMessage());
                     }
                 }
 
-                // Send Email Notification
                 if (!empty($old_consultant_email)) {
                     try {
+                        // Gom CC cho admin email
+                        $ccEmailsArr = [];
+                        foreach ($adminEmails as $adm) {
+                            if (!empty($adm['email']) && filter_var($adm['email'], FILTER_VALIDATE_EMAIL)) {
+                                $ccEmailsArr[] = strtolower(trim($adm['email']));
+                            }
+                        }
+                        $ccEmailsArr = array_unique($ccEmailsArr);
+                        $saleEmail = strtolower(trim($old_consultant_email));
+                        $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
+                        $ccString = implode(',', $ccEmailsArr);
+
                         $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
                         $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
                                       <p>Chào $old_consultant_name,</p>
-                                      <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin đưa vào Danh sách đen (Blacklist).</p>
+                                      <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin <strong>$adminName</strong> đưa vào Danh sách đen (Blacklist).</p>
+                                      <p><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>
                                       <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$round_name</strong>.</p>";
-                        sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, '');
+                        sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, $ccString);
                     } catch (Exception $eEx) {
-                        error_log("Error sending block lead email: " . $eEx->getMessage());
+                        error_log("Error sending block lead email to sale: " . $eEx->getMessage());
                     }
                 }
-            } catch (Exception $notifyEx) {
-                error_log("General notification error in block_lead: " . $notifyEx->getMessage());
+            } else {
+                // Nếu không bù, chỉ gửi email cho Admin để nắm thông tin
+                if (!empty($adminEmails)) {
+                    try {
+                        $adminEmailsCopy = $adminEmails;
+                        $firstAdmin = array_shift($adminEmailsCopy);
+                        $ccList = array_map(fn($a) => $a['email'], $adminEmailsCopy);
+                        $ccString = implode(',', array_filter($ccList));
+
+                        $emailSubj = "[Domation DATA] Thông báo Chặn Lead (Không Bù) - $lead_name";
+                        $emailBody = "<h3>Thông báo Chặn Lead - Blacklist</h3>
+                                      <p>Kính gửi Ban quản trị,</p>
+                                      <p>Admin <strong>$adminName</strong> đã chặn khách hàng <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " và đưa vào danh sách đen (không đền bù cho Sale).</p>
+                                      <p><strong>Lý do chặn:</strong> " . htmlspecialchars($reason) . "</p>
+                                      <p><strong>Vòng phân bổ:</strong> $round_name</p>
+                                      <p><strong>Sale phụ trách cũ:</strong> $old_consultant_name</p>";
+                        sendEmailNotification($firstAdmin['email'], $emailSubj, 'Thông báo Chặn Blacklist', $emailBody, $ccString);
+                    } catch (Exception $eEx) {
+                        error_log("Error sending block lead email to admins: " . $eEx->getMessage());
+                    }
+                }
             }
+        } catch (Exception $notifyEx) {
+            error_log("General notification error in block_lead: " . $notifyEx->getMessage());
         }
 
         echo json_encode(['success' => true]);

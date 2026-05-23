@@ -46,16 +46,24 @@ const maskEmail = (email: string) => {
 };
 
 const parseNote = (noteText: string) => {
-  if (!noteText) return { cleanNote: '', errorNotes: [] };
+  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [] };
   const normalized = noteText.replace(/\\n/g, '\n');
   const lines = normalized.split('\n');
   const cleanLines: string[] = [];
   const errorNotes: string[] = [];
+  const blacklistNotes: string[] = [];
   
   lines.forEach(line => {
     const trimmed = line.trim();
     if (trimmed.startsWith('[LỖI -') || trimmed.startsWith('[LỖI ')) {
       errorNotes.push(trimmed);
+    } else if (
+      trimmed.startsWith('[Bị chặn bởi') ||
+      trimmed.startsWith('[Chặn bởi') ||
+      trimmed.toLowerCase().startsWith('[bị chặn bởi') ||
+      trimmed.toLowerCase().startsWith('[chặn bởi')
+    ) {
+      blacklistNotes.push(trimmed);
     } else {
       cleanLines.push(line);
     }
@@ -63,7 +71,8 @@ const parseNote = (noteText: string) => {
   
   return {
     cleanNote: cleanLines.join('\n').trim(),
-    errorNotes
+    errorNotes,
+    blacklistNotes
   };
 };
 
@@ -707,7 +716,7 @@ export const DataList = () => {
                 </div>
 
                 {(() => {
-                  const { cleanNote, errorNotes } = parseNote(selectedLead.note || '');
+                  const { cleanNote, errorNotes, blacklistNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
                       <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
@@ -751,6 +760,26 @@ export const DataList = () => {
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {blacklistNotes && blacklistNotes.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                          {blacklistNotes.map((note, index) => (
+                            <div key={index} style={{ 
+                              background: '#fef2f2', 
+                              borderLeft: '4px solid #ef4444', 
+                              padding: '1rem', 
+                              borderRadius: '0 12px 12px 0' 
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Thông tin chặn (Blacklist):</span>
+                                <div style={{ fontSize: '0.875rem', color: '#b91c1c', fontWeight: 600, lineHeight: 1.5 }}>
+                                  {note}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </>

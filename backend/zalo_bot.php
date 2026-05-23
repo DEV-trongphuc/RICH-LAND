@@ -491,6 +491,25 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         }
         $stmtTicket->close();
     }
+
+    // Lấy số data bị chặn trong kỳ báo cáo (blacklist)
+    $totalBlocked = 0;
+    $stmtBlocked = $conn->prepare("
+        SELECT COUNT(*) as total
+        FROM admin_logs
+        WHERE action = 'BLOCK_LEAD_BLACKLIST'
+          AND created_at >= ?
+          AND created_at <= ?
+    ");
+    if ($stmtBlocked) {
+        $stmtBlocked->bind_param("ss", $startTimestamp, $endTimestamp);
+        $stmtBlocked->execute();
+        $resBlocked = $stmtBlocked->get_result();
+        if ($resBlocked && $row = $resBlocked->fetch_assoc()) {
+            $totalBlocked = (int)$row['total'];
+        }
+        $stmtBlocked->close();
+    }
     
     $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
@@ -509,6 +528,8 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     } else {
         $msg .= "  • Tổng ticket phát sinh: 0\n\n";
     }
+    $msg .= "CHẶN DATA (BLACKLIST):\n";
+    $msg .= "  • Tổng số data bị chặn: $totalBlocked\n\n";
     $msg .= "-------------------\n";
     $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
     $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
