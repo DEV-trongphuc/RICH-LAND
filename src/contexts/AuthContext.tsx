@@ -6,6 +6,7 @@ type User = {
   role: 'admin' | 'assistant' | 'viewer' | 'sale';
   email?: string;
   consultant_id?: number;
+  avatar?: string;
 };
 
 interface AuthContextType {

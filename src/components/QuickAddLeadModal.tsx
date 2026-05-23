@@ -84,7 +84,7 @@ const getDeduplicatedNotes = (notes: string[]): string => {
 
 export const QuickAddLeadModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string }[]>([]);
+  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
   const [manualData, setManualData] = useState({ name: '', phone: '', email: '', source: '', type: '', note: '' });
   const [quickInput, setQuickInput] = useState('');
   const [previewCons, setPreviewCons] = useState<any>(null);
@@ -1168,7 +1168,7 @@ export const QuickAddLeadModal = () => {
                 {/* Dòng 1: Sale dự kiến nhận */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar name={previewCons.consultant?.name || '?'} size={32} />
+                    <Avatar src={previewCons.consultant?.avatar} name={previewCons.consultant?.name || '?'} size={32} />
                     <div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sale dự kiến nhận</div>
                       <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || 'Không có TVV hoạt động'}</div>
@@ -1219,7 +1219,7 @@ export const QuickAddLeadModal = () => {
                         const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
                         return (
                           <>
-                            <Avatar name={selectedForceCons?.name || '?'} size={32} />
+                            <Avatar src={selectedForceCons?.avatar} name={selectedForceCons?.name || '?'} size={32} />
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chỉ định Sale nhận (Ép lượt)</div>
                               <div style={{ maxWidth: 240 }}>

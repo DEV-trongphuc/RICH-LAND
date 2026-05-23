@@ -625,7 +625,8 @@ switch ($action) {
                     'email' => $sale['email'],
                     'role' => 'sale',
                     'name' => $sale['name'],
-                    'consultant_id' => $sale['id']
+                    'consultant_id' => $sale['id'],
+                    'avatar' => $sale['avatar'] ?? null
                 ]
             ]);
         } else {
@@ -757,7 +758,7 @@ switch ($action) {
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
                    r.round_name,
-                   c.name as sale_name, c.email as sale_email,
+                   c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
@@ -923,7 +924,7 @@ switch ($action) {
         // 6. Query active consultants list if user is admin
         $consultantsList = [];
         if (!$isSale) {
-            $resC = $conn->query("SELECT id, name, email FROM consultants WHERE status = 'active' ORDER BY name ASC");
+            $resC = $conn->query("SELECT id, name, email, avatar FROM consultants WHERE status = 'active' ORDER BY name ASC");
             if ($resC) {
                 while ($row = $resC->fetch_assoc()) {
                     $consultantsList[] = $row;
@@ -1115,6 +1116,7 @@ switch ($action) {
                 l.note,
                 dl.status, 
                 c.name as assigned_to_name, 
+                c.avatar as assigned_to_avatar, 
                 dr.round_name, 
                 dl.received_at as created_at,
                 r.status as report_status,
@@ -2842,7 +2844,7 @@ switch ($action) {
             SELECT r.*, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                    l.source as lead_source, l.type as lead_type, l.note as lead_note,
                    l.created_at as lead_created_at,
-                   c.name as consultant_name, c.zalo_chat_id, dr.round_name,
+                   c.name as consultant_name, c.zalo_chat_id, c.avatar as consultant_avatar, dr.round_name,
                    (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
                    (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
                    (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at
@@ -4027,7 +4029,7 @@ switch ($action) {
         // Query recent distribution logs
         $sqlDist = "SELECT dl.id, dl.lead_id, dl.assigned_to, dl.round_id, dl.status, dl.message, dl.received_at as timestamp,
                            l.name as lead_name, l.phone as lead_phone,
-                           c.name as consultant_name,
+                           c.name as consultant_name, c.avatar as consultant_avatar,
                            r.round_name
                     FROM distribution_logs dl
                     LEFT JOIN leads l ON dl.lead_id = l.id
@@ -4117,7 +4119,8 @@ switch ($action) {
                     'tag' => $tag,
                     'tag_color' => $tagColor,
                     'details' => $row['message'] ?: '',
-                    'consultant_name' => $row['consultant_name']
+                    'consultant_name' => $row['consultant_name'],
+                    'consultant_avatar' => $row['consultant_avatar']
                 ];
             }
         }
@@ -4226,7 +4229,7 @@ switch ($action) {
         // Query recent data reports (Tickets)
         $ticketLogs = [];
         $sqlTicket = "SELECT dr.id, dr.lead_id, dr.consultant_id, dr.reason, dr.status, dr.created_at as timestamp,
-                             c.name as consultant_name,
+                             c.name as consultant_name, c.avatar as consultant_avatar,
                              l.name as lead_name
                       FROM data_reports dr
                       LEFT JOIN consultants c ON dr.consultant_id = c.id
@@ -4272,7 +4275,8 @@ switch ($action) {
                     'tag' => $tag,
                     'tag_color' => $tagColor,
                     'details' => "Lý do báo cáo: " . $reason,
-                    'consultant_name' => $row['consultant_name']
+                    'consultant_name' => $row['consultant_name'],
+                    'consultant_avatar' => $row['consultant_avatar']
                 ];
             }
         }
@@ -5760,13 +5764,14 @@ switch ($action) {
         if ($isSilent === 1) {
             if ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) {
                 $assignedTo = $crmCheckResult['assignedTo'];
-                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                $stmtC = $conn->prepare("SELECT name, email, avatar FROM consultants WHERE id = ?");
                 $stmtC->bind_param("i", $assignedTo);
                 $stmtC->execute();
                 $cRow = $stmtC->get_result()->fetch_assoc();
                 $stmtC->close();
                 $consultantName = $cRow ? $cRow['name'] : 'Không rõ';
                 $consultantEmail = $cRow ? $cRow['email'] : '';
+                $consultantAvatar = $cRow ? $cRow['avatar'] : null;
                 
                 echo json_encode([
                     'success' => true,
@@ -5776,6 +5781,7 @@ switch ($action) {
                         'consultant_id' => $assignedTo,
                         'name' => $consultantName,
                         'email' => $consultantEmail,
+                        'avatar' => $consultantAvatar,
                         'round_name' => 'Đồng bộ ngầm (Silent Sync)',
                         'reason' => 'Khách trùng khớp thuộc Sale: ' . $consultantName . '. Sẽ chỉ lưu thông tin mới và gửi nhắc nhở.'
                     ],
@@ -5810,7 +5816,7 @@ switch ($action) {
         // Regular duplicate checking
         if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
             $assignedTo = $crmCheckResult['assignedTo'];
-            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+            $stmtC = $conn->prepare("SELECT name, email, avatar FROM consultants WHERE id = ?");
             $stmtC->bind_param("i", $assignedTo);
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
@@ -5824,6 +5830,7 @@ switch ($action) {
                         'consultant_id' => $assignedTo,
                         'name' => $cRow['name'],
                         'email' => $cRow['email'],
+                        'avatar' => $cRow['avatar'] ?? null,
                         'round_name' => 'Nhắc lại - trùng dưới ' . $dupCheckMonths . ' tháng',
                         'reason' => 'Khách cũ đăng ký lại trong hạn định ' . $dupCheckMonths . ' tháng. Chuyển thẳng cho Sale cũ: ' . $cRow['name'] . '.'
                     ],
@@ -6052,6 +6059,7 @@ switch ($action) {
                     'consultant_id' => $simulated['id'],
                     'name' => $simulated['name'],
                     'email' => $simulated['email'] ?? '',
+                    'avatar' => $simulated['avatar'] ?? null,
                     'receive_ratio' => $simulated['receive_ratio'],
                     'data_per_turn' => $simulated['data_per_turn'],
                     'current_turn_remaining' => $simulated['current_turn_remaining'],

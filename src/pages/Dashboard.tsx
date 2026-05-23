@@ -367,7 +367,7 @@ export const Dashboard = () => {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
                     >
-                      <Avatar name={log.assigned_to_name || 'Hệ thống'} size={32} />
+                      <Avatar src={log.assigned_to_avatar} name={log.assigned_to_name || 'Hệ thống'} size={32} />
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                           {log.assigned_to_name || 'Hệ thống'}

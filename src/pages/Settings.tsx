@@ -971,7 +971,7 @@ export const Settings = () => {
                                       <td style={{ padding: '10px 16px' }}>
                                         {item.consultant_name ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Avatar name={item.consultant_name} size={24} />
+                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar} name={item.consultant_name} size={24} />
                                             <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
                                             {ownerStatusBadge}
                                           </div>
@@ -1468,7 +1468,7 @@ export const Settings = () => {
                                       <td style={{ padding: '10px 16px' }}>
                                         {item.consultant_name ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Avatar name={item.consultant_name} size={24} />
+                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar} name={item.consultant_name} size={24} />
                                             <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
                                             {ownerStatusBadge}
                                           </div>
@@ -2944,7 +2944,7 @@ function doPost(e) {
                         <td style={{ padding: '10px 16px' }}>
                           {saleDisplayName ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Avatar name={saleDisplayName} size={24} />
+                              <Avatar src={matchedSale?.avatar} name={saleDisplayName} size={24} />
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <strong style={{ fontWeight: 600 }}>{saleDisplayName}</strong>
                                 {saleSubText && <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{saleSubText}</span>}

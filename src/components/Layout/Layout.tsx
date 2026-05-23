@@ -269,6 +269,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                         {/* Avatar overlayed with mini event icon */}
                         <div style={{ flexShrink: 0, position: 'relative' }}>
                           <Avatar 
+                            src={item.consultant_avatar}
                             name={entityName} 
                             size={32} 
                           />

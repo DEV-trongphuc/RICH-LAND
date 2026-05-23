@@ -893,7 +893,7 @@ function simulateNextConsultantInRound($conn, $roundId) {
     // 2. Get active consultants with ALL rules, excluding those on active leave
     $cStmt = $conn->prepare("
         SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
-               rc.data_per_turn, rc.current_turn_remaining, c.name, c.zalo_chat_id, c.email
+               rc.data_per_turn, rc.current_turn_remaining, c.name, c.zalo_chat_id, c.email, c.avatar
         FROM round_consultants rc 
         JOIN consultants c ON rc.consultant_id = c.id 
         WHERE rc.round_id = ? 

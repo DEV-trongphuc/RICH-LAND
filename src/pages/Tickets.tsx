@@ -17,6 +17,7 @@ type Lead = {
   source: string;
   status: string;
   assigned_to_name: string;
+  assigned_to_avatar?: string;
   round_name: string;
   created_at: string;
   type?: string;
@@ -669,6 +670,7 @@ export const Tickets = () => {
                         source: r.lead_source || '-',
                         status: r.log_status || 'assigned',
                         assigned_to_name: r.consultant_name,
+                        assigned_to_avatar: r.consultant_avatar,
                         round_name: r.round_name || '-',
                         created_at: r.log_received_at || r.created_at,
                         type: r.lead_type || '-',
@@ -697,7 +699,7 @@ export const Tickets = () => {
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500 }}>
-                        <Avatar name={r.consultant_name} size={24} /> {r.consultant_name}
+                        <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
                       </div>
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem' }}>
@@ -1375,7 +1377,7 @@ export const Tickets = () => {
                 {selectedLead.assigned_to_name !== '-' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar name={selectedLead.assigned_to_name} size={24} />
+                      <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={24} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>

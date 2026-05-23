@@ -15,6 +15,7 @@ type Lead = {
   source: string;
   status: string;
   assigned_to_name: string;
+  assigned_to_avatar?: string;
   round_name: string;
   created_at: string;
   type?: string;
@@ -592,7 +593,7 @@ export const DataList = () => {
                     <td style={{ padding: '1rem' }}>
                       {lead.assigned_to_name !== '-' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <Avatar name={lead.assigned_to_name} size={28} />
+                          <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={28} />
                           <div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.round_name}</div>
@@ -1084,7 +1085,7 @@ export const DataList = () => {
                 {selectedLead.assigned_to_name !== '-' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar name={selectedLead.assigned_to_name} size={24} />
+                      <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={24} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>

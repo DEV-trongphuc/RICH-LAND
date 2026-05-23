@@ -284,7 +284,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           justifyContent: isCollapsed ? 'center' : 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Avatar name={user?.name} size={32} />
+            <Avatar src={user?.avatar} name={user?.name} size={32} />
 
             {!isCollapsed && (
               <div style={{ overflow: 'hidden' }}>

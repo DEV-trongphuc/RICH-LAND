@@ -515,7 +515,7 @@ export const SalePortal = () => {
                 <CustomSelect
                   options={[
                     { value: '', label: 'Tất cả TVV' },
-                    ...(data.consultants || []).map((c: any) => ({ value: c.id, label: c.name }))
+                    ...(data.consultants || []).map((c: any) => ({ value: c.id, label: c.name, avatar: c.avatar }))
                   ]}
                   value={saleIdFilter}
                   onChange={(val) => setSaleIdFilter(String(val))}
@@ -905,7 +905,7 @@ export const SalePortal = () => {
                       ) : (
                         <td style={{ padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar name={lead.sale_name || 'Chưa nhận'} size="sm" />
+                            <Avatar src={lead.sale_avatar} name={lead.sale_name || 'Chưa nhận'} size="sm" />
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
                                 {lead.sale_name || 'Chưa nhận'}
@@ -1150,7 +1150,7 @@ export const SalePortal = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, color: '#64748b' }}>Tư vấn viên:</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Avatar name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
+                    <Avatar src={activeDetailLead.sale_avatar} name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
                     <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
                   </div>
                 </div>
