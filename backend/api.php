@@ -1042,7 +1042,9 @@ switch ($action) {
                 c.name as assigned_to_name, 
                 dr.round_name, 
                 dl.received_at as created_at,
-                r.status as report_status
+                r.status as report_status,
+                r.resolved_by,
+                r.resolved_at
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
@@ -2356,14 +2358,14 @@ switch ($action) {
             $conn->begin_transaction();
             try {
                 // 1. Insert report as approved
-                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_at) VALUES (?, ?, ?, ?, 'approved', NOW())");
+                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_by, resolved_at) VALUES (?, ?, ?, ?, 'approved', 'Hệ thống', NOW())");
                 $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
                 $stmt->execute();
                 $report_id = $stmt->insert_id;
                 $stmt->close();
 
                 // 2. Mark lead as faulty
-                $faultyMsg = "[LỖI - TỰ ĐỘNG DUYỆT (Luật: $matchedRuleName, Từ khóa: $matchedKeyword)]: " . $reason;
+                $faultyMsg = "[LỖI - TỰ ĐỘNG DUYỆT (Luật: $matchedRuleName, Từ khóa: $matchedKeyword)]: " . $reason . " | Admin duyệt: Hệ thống | Thời gian: " . date('d/m/Y H:i:s');
                 $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
                 $updLead->bind_param("si", $faultyMsg, $lead_id);
                 $updLead->execute();
@@ -4716,53 +4718,24 @@ switch ($action) {
 
             // 3. Update Lead status to blacklisted and append reason to note
             $newNote = trim(($log_data['lead_note'] ?? '') . "\n[Bị chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]");
-            $updLead = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ? WHERE id = ?");
+            $updLead = $conn->prepare("UPDATE leads SET note = ? WHERE id = ?");
             $updLead->bind_param("si", $newNote, $lead_id);
             $updLead->execute();
             $updLead->close();
 
-            // 4. Update distribution_logs status
-            $logMsgAdd = "\n[Chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . ". Bù: " . ($compensate_sale ? "Có" : "Không") . "]";
-            $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted', message = CONCAT(message, ?) WHERE id = ?");
-            $updLog->bind_param("si", $logMsgAdd, $log_id);
+            // Update distribution log status to 'blacklisted'
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted' WHERE id = ?");
+            $updLog->bind_param("i", $log_id);
             $updLog->execute();
             $updLog->close();
 
-            // 5. Compensate Sale if requested
+            // 4. Increment compensation count for the consultant in that round if requested
             if ($compensate_sale && $old_consultant_id && $round_id) {
-                // Check if enrolled in round_consultants
-                $chkEnroll = $conn->prepare("SELECT 1 FROM round_consultants WHERE round_id = ? AND consultant_id = ? LIMIT 1");
-                $chkEnroll->bind_param("ii", $round_id, $old_consultant_id);
-                $chkEnroll->execute();
-                $hasEnroll = $chkEnroll->get_result()->num_rows > 0;
-                $chkEnroll->close();
-
-                if ($hasEnroll) {
-                    $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
-                    $updComp->bind_param("ii", $round_id, $old_consultant_id);
-                    $updComp->execute();
-                    $updComp->close();
-                } else {
-                    $insComp = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, 1, 1, 1)");
-                    $insComp->bind_param("ii", $round_id, $old_consultant_id);
-                    $insComp->execute();
-                    $insComp->close();
-                }
+                $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                $updComp->bind_param("ii", $round_id, $old_consultant_id);
+                $updComp->execute();
+                $updComp->close();
             }
-
-            // 6. Log admin action
-            logAdminAction($conn, $decodedUser['id'], 'BLOCK_LEAD_BLACKLIST', [
-                'log_id' => $log_id,
-                'lead_id' => $lead_id,
-                'lead_name' => $lead_name,
-                'phone' => $lead_phone,
-                'email' => $lead_email,
-                'old_consultant_id' => $old_consultant_id,
-                'old_consultant_name' => $old_consultant_name,
-                'round_name' => $round_name,
-                'compensated' => $compensate_sale,
-                'reason' => $reason
-            ]);
 
             $conn->commit();
         } catch (Exception $e) {
@@ -4771,22 +4744,11 @@ switch ($action) {
             break;
         }
 
-        // 7. Send Notifications out of transaction
+        // 4. Send Notifications out of transaction
         try {
             require_once __DIR__ . '/mailer.php';
             require_once __DIR__ . '/zalo_bot.php';
 
-            $maskedPhone = '';
-            if (!empty($lead_phone)) {
-                $trimmed = trim($lead_phone);
-                if (strlen($trimmed) <= 6) {
-                    $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
-                } else {
-                    $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
-                }
-            }
-
-            // Send Zalo Notification
             $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
             $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
@@ -4804,7 +4766,9 @@ switch ($action) {
                 if (!empty($adminChatIds)) {
                     try {
                         $zaloAdminMsg = "[ THÔNG BÁO CHẶN DATA - BLACKLIST ]\n\n"
-                            . "Admin $adminName đã chặn khách hàng: $lead_name" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . "\n\n"
+                            . "Admin $adminName đã chặn khách hàng: $lead_name\n"
+                            . "  • SĐT: " . (!empty($lead_phone) ? $lead_phone : "Không có") . "\n"
+                            . "  • Email: " . (!empty($lead_email) ? $lead_email : "Không có") . "\n\n"
                             . "❖ CHI TIẾT CHẶN:\n"
                             . "  • Lý do chặn: $reason\n"
                             . "  • Vòng phân bổ: $round_name\n"
@@ -4819,10 +4783,42 @@ switch ($action) {
 
             // Gửi thông báo cho Sale (nếu có bù)
             if ($compensate_sale && $old_consultant_id) {
+                // Tạo số điện thoại masked cho Sale
+                $maskedPhone = '';
+                if (!empty($lead_phone)) {
+                    $trimmed = trim($lead_phone);
+                    if (strlen($trimmed) <= 3) {
+                        $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                    } else {
+                        $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                    }
+                }
+
+                // Tạo email masked cho Sale
+                $maskedEmail = '';
+                if (!empty($lead_email)) {
+                    $parts = explode('@', $lead_email);
+                    if (count($parts) === 2) {
+                        $namePart = $parts[0];
+                        $domainPart = $parts[1];
+                        if (strlen($namePart) <= 3) {
+                            $maskedEmail = substr($namePart, 0, 1) . '***@' . $domainPart;
+                        } else {
+                            $maskedEmail = substr($namePart, 0, 3) . '***' . substr($namePart, -1) . '@' . $domainPart;
+                        }
+                    } else {
+                        $maskedEmail = $lead_email;
+                    }
+                }
+
                 if (!empty($botToken) && !empty($old_consultant_zalo)) {
                     try {
                         $zaloMsg = "[ ĐỀN BÙ DATA - BLACKLIST ]\n\n"
-                            . "Chào $old_consultant_name, Lead \"$lead_name\"" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " của bạn đã bị Admin " . $adminName . " lúc " . date('H:i:s d/m/Y') . " đưa vào Danh sách đen (Blacklist).\n\n"
+                            . "Chào $old_consultant_name, Lead của bạn đã bị Admin " . $adminName . " lúc " . date('H:i:s d/m/Y') . " đưa vào Danh sách đen (Blacklist).\n\n"
+                            . "❖ CHI TIẾT KHÁCH HÀNG:\n"
+                            . "  • Tên KH: $lead_name\n"
+                            . "  • SĐT: " . (!empty($maskedPhone) ? $maskedPhone : "Không có") . "\n"
+                            . "  • Email: " . (!empty($maskedEmail) ? $maskedEmail : "Không có") . "\n\n"
                             . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
                         sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
                     } catch (Exception $zEx) {
@@ -4847,7 +4843,13 @@ switch ($action) {
                         $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
                         $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
                                       <p>Chào $old_consultant_name,</p>
-                                      <p>Lead <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " đã bị Admin <strong>$adminName</strong> đưa vào Danh sách đen (Blacklist).</p>
+                                      <p>Khách hàng của bạn đã bị Admin <strong>$adminName</strong> đưa vào Danh sách đen (Blacklist).</p>
+                                      <p><strong>Chi tiết khách hàng:</strong></p>
+                                      <ul>
+                                        <li>Tên khách hàng: $lead_name</li>
+                                        <li>Số điện thoại: " . (!empty($maskedPhone) ? $maskedPhone : "Không có") . " (Chỉ Admin xem được số đầy đủ)</li>
+                                        <li>Email: " . (!empty($maskedEmail) ? $maskedEmail : "Không có") . "</li>
+                                      </ul>
                                       <p><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>
                                       <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$round_name</strong>.</p>";
                         sendEmailNotification($old_consultant_email, $emailSubj, 'Thông báo đền bù Blacklist', $emailBody, $ccString);
@@ -4867,7 +4869,13 @@ switch ($action) {
                         $emailSubj = "[Domation DATA] Thông báo Chặn Lead (Không Bù) - $lead_name";
                         $emailBody = "<h3>Thông báo Chặn Lead - Blacklist</h3>
                                       <p>Kính gửi Ban quản trị,</p>
-                                      <p>Admin <strong>$adminName</strong> đã chặn khách hàng <strong>$lead_name</strong>" . (!empty($maskedPhone) ? " ($maskedPhone)" : "") . " và đưa vào danh sách đen (không đền bù cho Sale).</p>
+                                      <p>Admin <strong>$adminName</strong> đã chặn khách hàng và đưa vào danh sách đen (không đền bù cho Sale).</p>
+                                      <p><strong>Chi tiết khách hàng:</strong></p>
+                                      <ul>
+                                        <li>Tên khách hàng: $lead_name</li>
+                                        <li>Số điện thoại: " . (!empty($lead_phone) ? $lead_phone : "Không có") . "</li>
+                                        <li>Email: " . (!empty($lead_email) ? $lead_email : "Không có") . "</li>
+                                      </ul>
                                       <p><strong>Lý do chặn:</strong> " . htmlspecialchars($reason) . "</p>
                                       <p><strong>Vòng phân bổ:</strong> $round_name</p>
                                       <p><strong>Sale phụ trách cũ:</strong> $old_consultant_name</p>";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -76,6 +76,51 @@ const parseNote = (noteText: string) => {
     errorNotes,
     blacklistNotes
   };
+};
+
+const parseErrorNote = (err: string) => {
+  const parts = err.split(' | ');
+  let admin = '';
+  let time = '';
+  
+  parts.forEach(part => {
+    const trimmed = part.trim();
+    if (trimmed.startsWith('Admin duyệt:') || trimmed.startsWith('Admin từ chối:')) {
+      admin = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+    } else if (trimmed.startsWith('Thời gian:')) {
+      time = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+    }
+  });
+
+  const cleanText = parts.filter(part => {
+    const trimmed = part.trim();
+    return !trimmed.startsWith('Admin duyệt:') && !trimmed.startsWith('Admin từ chối:') && !trimmed.startsWith('Thời gian:');
+  }).join(' | ');
+
+  return { cleanText, admin, time };
+};
+
+const parseBlacklistNote = (note: string) => {
+  let admin = 'Hệ thống';
+  let time = 'Hệ thống';
+  let reason = '';
+
+  const adminMatch = note.match(/bởi\s+Admin\s+([^\s]+(?:\s+[^\s]+)*?)(?:\s+lúc|$)/i);
+  if (adminMatch && adminMatch[1]) {
+    admin = adminMatch[1].trim();
+  }
+
+  const timeMatch = note.match(/lúc\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}|\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i);
+  if (timeMatch && timeMatch[1]) {
+    time = timeMatch[1].trim();
+  }
+
+  const reasonMatch = note.match(/Lý\s+do:\s*(.*?)\]?$/i);
+  if (reasonMatch && reasonMatch[1]) {
+    reason = reasonMatch[1].trim();
+  }
+
+  return { admin, time, reason };
 };
 
 export const Tickets = () => {
@@ -1001,53 +1046,205 @@ export const Tickets = () => {
                   const { cleanNote, errorNotes, blacklistNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
-                      <div style={{ background: '#fefce8', borderLeft: '4px solid #eab308', padding: '1rem', borderRadius: '0 12px 12px 0' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: 8 }}>Loại Data:</span>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                      {/* Clean Note Card */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)', 
+                        border: '1px solid #fef3c7',
+                        padding: '1.25rem', 
+                        borderRadius: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: '0 4px 15px rgba(245, 158, 11, 0.03)'
+                      }}
+                      className="premium-alert-card"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            background: '#fef3c7',
+                            padding: '8px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#d97706'
+                          }}>
+                            <Tag size={18} strokeWidth={2.5} />
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ghi chú / Khác:</span>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>
-                              {cleanNote ? cleanNote : <em style={{color: 'var(--color-text-light)'}}>Không có ghi chú</em>}
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '0.85rem', color: '#78350f' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: '#b45309', marginRight: '6px' }}>Loại Data:</span>
+                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                          </div>
+                          
+                          <div style={{ borderTop: '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
+                            <div style={{ fontSize: '0.875rem', color: '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
+                              {cleanNote ? cleanNote : <em style={{ color: '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
                             </div>
                           </div>
                         </div>
                       </div>
 
+                      {/* Error Notes (Approved / Rejected) */}
                       {errorNotes.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                           {errorNotes.map((err, index) => {
                             const isApproved = err.includes('DUYỆT');
-                            const bg = isApproved ? '#ecfdf5' : '#fef2f2';
-                            const borderLeft = isApproved ? '4px solid #10b981' : '4px solid #ef4444';
-                            const titleColor = isApproved ? '#047857' : '#991b1b';
-                            const textColor = isApproved ? '#065f46' : '#b91c1c';
-                            const titleText = isApproved ? 'Thông tin lỗi - Đã duyệt:' : 'Thông tin lỗi - Từ chối:';
+                            
+                            // Rich harmonious color palettes
+                            const colors = isApproved ? {
+                              gradient: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                              border: '1px solid #a7f3d0',
+                              glow: '0 4px 15px rgba(16, 185, 129, 0.04)',
+                              accent: '#10b981',
+                              title: '#065f46',
+                              text: '#047857',
+                              badgeBg: '#d1fae5',
+                              badgeText: '#065f46',
+                              badgeBorder: '1px solid #a7f3d0',
+                              iconBg: '#d1fae5',
+                            } : {
+                              gradient: 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
+                              border: '1px solid #fecaca',
+                              glow: '0 4px 15px rgba(244, 63, 94, 0.04)',
+                              accent: '#f43f5e',
+                              title: '#9f1239',
+                              text: '#be123c',
+                              badgeBg: '#ffe4e6',
+                              badgeText: '#9f1239',
+                              badgeBorder: '1px solid #fca5a5',
+                              iconBg: '#ffe4e6',
+                            };
+
+                            const IconComponent = isApproved ? CheckCircle2 : XCircle;
+
+                            const { cleanText, admin: noteAdmin, time: noteTime } = parseErrorNote(err);
+                            const displayAdmin = noteAdmin || selectedLead?.resolved_by || 'Hệ thống';
+                            
+                            let displayTime = noteTime;
+                            if (!displayTime) {
+                              if (selectedLead?.resolved_at) {
+                                try {
+                                  const dt = new Date(selectedLead.resolved_at.replace(/-/g, '/'));
+                                  if (!isNaN(dt.getTime())) {
+                                    displayTime = dt.toLocaleString('vi-VN');
+                                  } else {
+                                    displayTime = selectedLead.resolved_at;
+                                  }
+                                } catch (e) {
+                                  displayTime = selectedLead.resolved_at;
+                                }
+                              } else {
+                                displayTime = 'Hệ thống';
+                              }
+                            }
+
+                            let cleanMsg = cleanText;
+                            if (cleanMsg.startsWith('[LỖI -')) {
+                              const bracketIndex = cleanMsg.indexOf(']');
+                              if (bracketIndex !== -1) {
+                                cleanMsg = cleanMsg.substring(bracketIndex + 1).trim();
+                                if (cleanMsg.startsWith(':')) {
+                                  cleanMsg = cleanMsg.substring(1).trim();
+                                }
+                              }
+                            }
+
+                            const msgParts = cleanMsg.split(' | ');
+                            const coreError = msgParts[0] || '';
+                            const actionReason = msgParts[1] || '';
 
                             return (
                               <div key={index} style={{ 
-                                background: bg, 
-                                borderLeft: borderLeft, 
-                                padding: '1rem', 
-                                borderRadius: '0 12px 12px 0' 
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: titleColor, textTransform: 'uppercase' }}>{titleText}</span>
-                                  <div style={{ fontSize: '0.875rem', color: textColor, fontWeight: 600, lineHeight: 1.5 }}>
-                                    {err}
-                                  </div>
-                                  <div style={{ fontSize: '0.75rem', color: isApproved ? '#047857' : '#991b1b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', opacity: 0.85 }}>
-                                    <span>
-                                      {isApproved ? 'Duyệt' : 'Từ chối'} bởi: <strong>{selectedLead.resolved_by || 'Hệ thống'}</strong>
+                                background: colors.gradient, 
+                                border: colors.border,
+                                boxShadow: colors.glow,
+                                padding: '1.25rem', 
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                                position: 'relative'
+                              }}
+                              className="premium-alert-card"
+                              >
+                                {/* Top header info */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                      background: colors.iconBg,
+                                      padding: '8px',
+                                      borderRadius: '10px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: colors.accent
+                                    }}>
+                                      <IconComponent size={18} strokeWidth={2.5} />
+                                    </div>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: colors.title, letterSpacing: '-0.01em' }}>
+                                      {isApproved ? 'Thông tin lỗi - Đã Duyệt' : 'Thông tin lỗi - Từ Chối'}
                                     </span>
-                                    {selectedLead.resolved_at && (
-                                      <>
-                                        <span style={{ opacity: 0.5 }}>•</span>
-                                        <span>{new Date(selectedLead.resolved_at).toLocaleString('vi-VN')}</span>
-                                      </>
-                                    )}
+                                  </div>
+                                  <span style={{ 
+                                    fontSize: '0.7rem', 
+                                    fontWeight: 700, 
+                                    color: colors.badgeText, 
+                                    background: colors.badgeBg, 
+                                    border: colors.badgeBorder,
+                                    padding: '3px 8px', 
+                                    borderRadius: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                  }}>
+                                    {isApproved ? 'Đã duyệt' : 'Từ chối'}
+                                  </span>
+                                </div>
+
+                                {/* Content block */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, lineHeight: 1.5 }}>
+                                    Lỗi: <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
+                                  </div>
+                                  {actionReason && (
+                                    <div style={{ 
+                                      fontSize: '0.85rem', 
+                                      color: '#475569', 
+                                      fontWeight: 400, 
+                                      lineHeight: 1.5,
+                                      background: 'rgba(255, 255, 255, 0.4)',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px dashed rgba(0, 0, 0, 0.05)',
+                                      marginTop: 2
+                                    }}>
+                                      <strong>Lý do từ chối / Duyệt:</strong> {actionReason.trim()}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Footer metadata */}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '12px', 
+                                  paddingTop: '0.75rem', 
+                                  marginTop: '0.25rem',
+                                  borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
+                                  flexWrap: 'wrap'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <User size={13} style={{ opacity: 0.7 }} />
+                                    <span>Xử lý bởi: <strong style={{ color: '#334155' }}>{displayAdmin}</strong></span>
+                                  </div>
+                                  <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <Clock size={13} style={{ opacity: 0.7 }} />
+                                    <span>Thời gian: <strong style={{ color: '#334155' }}>{displayTime}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1056,23 +1253,109 @@ export const Tickets = () => {
                         </div>
                       )}
 
+                      {/* Blacklist Notes */}
                       {blacklistNotes && blacklistNotes.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-                          {blacklistNotes.map((note, index) => (
-                            <div key={index} style={{ 
-                              background: '#fef2f2', 
-                              borderLeft: '4px solid #ef4444', 
-                              padding: '1rem', 
-                              borderRadius: '0 12px 12px 0' 
-                            }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Thông tin chặn (Blacklist):</span>
-                                <div style={{ fontSize: '0.875rem', color: '#b91c1c', fontWeight: 600, lineHeight: 1.5 }}>
-                                  {note}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          {blacklistNotes.map((note, index) => {
+                            const parsed = parseBlacklistNote(note);
+                            const blacklistColors = {
+                              gradient: 'linear-gradient(135deg, #fff1f2 0%, #fff5f5 100%)',
+                              border: '1px solid #fecaca',
+                              glow: '0 4px 15px rgba(244, 63, 94, 0.04)',
+                              accent: '#f43f5e',
+                              title: '#9f1239',
+                              text: '#be123c',
+                              badgeBg: '#ffe4e6',
+                              badgeText: '#9f1239',
+                              badgeBorder: '1px solid #fca5a5',
+                              iconBg: '#ffe4e6',
+                            };
+
+                            return (
+                              <div key={index} style={{ 
+                                background: blacklistColors.gradient, 
+                                border: blacklistColors.border,
+                                boxShadow: blacklistColors.glow,
+                                padding: '1.25rem', 
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                                position: 'relative'
+                              }}
+                              className="premium-alert-card"
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                      background: blacklistColors.iconBg,
+                                      padding: '8px',
+                                      borderRadius: '10px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: blacklistColors.accent
+                                    }}>
+                                      <ShieldAlert size={18} strokeWidth={2.5} />
+                                    </div>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: blacklistColors.title, letterSpacing: '-0.01em' }}>
+                                      Thông tin chặn (Blacklist)
+                                    </span>
+                                  </div>
+                                  <span style={{ 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 700, 
+                                    color: blacklistColors.badgeText, 
+                                    background: blacklistColors.badgeBg, 
+                                    border: blacklistColors.badgeBorder,
+                                    padding: '3px 8px', 
+                                    borderRadius: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                  }}>
+                                    Bị Chặn
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {parsed.reason && (
+                                    <div style={{ 
+                                      fontSize: '0.875rem', 
+                                      color: '#1e293b', 
+                                      fontWeight: 500, 
+                                      lineHeight: 1.5,
+                                      background: 'rgba(255, 255, 255, 0.4)',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px dashed rgba(0, 0, 0, 0.05)'
+                                    }}>
+                                      <strong>Lý do chặn:</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '12px', 
+                                  paddingTop: '0.75rem', 
+                                  marginTop: '0.25rem',
+                                  borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
+                                  flexWrap: 'wrap'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <User size={13} style={{ opacity: 0.7 }} />
+                                    <span>Chặn bởi: <strong style={{ color: '#334155' }}>{parsed.admin}</strong></span>
+                                  </div>
+                                  <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <Clock size={13} style={{ opacity: 0.7 }} />
+                                    <span>Thời gian: <strong style={{ color: '#334155' }}>{parsed.time}</strong></span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </>

@@ -2002,3 +2002,20 @@ th.col-check {
   }
 }
 
+
+/* ================================================
+   PREMIUM ALERT & BLACKLIST CARDS
+   ================================================ */
+.premium-alert-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01);
+}
+
+.premium-alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .premium-alert-card:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+}

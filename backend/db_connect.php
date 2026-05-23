@@ -56,7 +56,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 108) {
+        if ($dbVer >= 109) {
             $runMigration = false;
         }
     }
@@ -385,7 +385,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '108') ON DUPLICATE KEY UPDATE setting_value = '108'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '109') ON DUPLICATE KEY UPDATE setting_value = '109'");
 }
 
 ?>

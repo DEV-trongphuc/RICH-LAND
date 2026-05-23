@@ -349,7 +349,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $updRep->close();
 
                     // 3. Cập nhật ghi chú của Lead và đánh dấu phân bổ lỗi
-                    $faultyMsg = "[LỖI - ĐÃ DUYỆT QUA ZALO]: " . $report['reason'] . " | Lý do duyệt: " . $approval_reason;
+                    $faultyMsg = "[LỖI - ĐÃ DUYỆT QUA ZALO]: " . $report['reason'] . " | Lý do duyệt: " . $approval_reason . " | Admin duyệt: " . $adminName . " | Thời gian: " . date('d/m/Y H:i:s');
                     $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
                     if (!$updLead) {
                         throw new Exception("Lỗi cập nhật Lead.");
@@ -596,7 +596,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $updRep->close();
 
                     // 3. Cập nhật ghi chú của Lead và ghi log từ chối
-                    $faultyMsg = "[LỖI - ĐÃ TỪ CHỐI QUA ZALO]: " . $report['reason'] . " | Lý do từ chối: " . $fullRejectReason;
+                    $faultyMsg = "[LỖI - ĐÃ TỪ CHỐI QUA ZALO]: " . $report['reason'] . " | Lý do từ chối: " . $fullRejectReason . " | Admin từ chối: " . $adminName . " | Thời gian: " . date('d/m/Y H:i:s');
                     $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '\n', ?) WHERE id=?");
                     if (!$updLead) {
                         throw new Exception("Lỗi cập nhật Lead.");
