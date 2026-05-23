@@ -138,7 +138,6 @@ export const DataList = () => {
   const [rounds, setRounds] = useState<{ id: number; round_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [limitReached, setLimitReached] = useState(false);
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -163,7 +162,6 @@ export const DataList = () => {
         setLeads(mappedLeads);
         // BUG-04 fix: track truncation
         setTotalCount(json.total_count ?? mappedLeads.length);
-        setLimitReached((json.total_count ?? 0) > (json.limit ?? 500));
       }
     } catch (e: any) {
       toast.error('Lỗi tải dữ liệu: ' + e.message);
@@ -515,13 +513,6 @@ export const DataList = () => {
         </div>
         
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          {/* BUG-04 fix: show warning if data is truncated */}
-          {limitReached && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600 }}>
-              <AlertTriangle size={14} />
-              Đang hiển thị 500/{totalCount} bản ghi.
-            </div>
-          )}
           Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> data
         </div>
       </div>
