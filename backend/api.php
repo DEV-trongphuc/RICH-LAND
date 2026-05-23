@@ -177,7 +177,8 @@ if (!in_array($action, $publicActions)) {
         'unlink_zalo',
         'test_email',
         'block_lead',
-        'get_zalo_send_logs'
+        'get_zalo_send_logs',
+        'ai_chat'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -330,6 +331,77 @@ switch ($action) {
             ];
         }
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount]);
+        break;
+
+    case 'fix_missing_logs':
+        if (!isset($decodedUser) || $decodedUser['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden: Only administrators can execute this.']);
+            exit();
+        }
+
+        $queryLeads = "
+            SELECT l.id, l.assigned_to, l.connection_id, l.created_at, sc.is_silent 
+            FROM leads l
+            LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+            WHERE dl.lead_id IS NULL
+        ";
+        $leadsRes = $conn->query($queryLeads);
+        $restoredCount = 0;
+
+        if ($leadsRes) {
+            while ($lead = $leadsRes->fetch_assoc()) {
+                $leadId = (int)$lead['id'];
+                $assignedTo = !empty($lead['assigned_to']) ? (int)$lead['assigned_to'] : null;
+                $connId = !empty($lead['connection_id']) ? (int)$lead['connection_id'] : null;
+                $createdAt = $lead['created_at'];
+                $isSilent = !empty($lead['is_silent']) ? (int)$lead['is_silent'] : 0;
+
+                $roundId = null;
+                if ($connId > 0) {
+                    $rQuery = "
+                        SELECT dl.round_id 
+                        FROM distribution_logs dl 
+                        JOIN leads l ON dl.lead_id = l.id 
+                        WHERE l.connection_id = $connId AND dl.round_id IS NOT NULL 
+                        LIMIT 1
+                    ";
+                    $rRes = $conn->query($rQuery);
+                    if ($rRes && $rRow = $rRes->fetch_assoc()) {
+                        $roundId = (int)$rRow['round_id'];
+                    }
+                }
+
+                if ($isSilent) {
+                    $status = 'silent';
+                    $msg = 'Chỉ đồng bộ check trùng, không định tuyến.';
+                } else if ($assignedTo) {
+                    $status = 'assigned';
+                    $msg = 'Đồng bộ khôi phục nhật ký (không gửi lại thông báo).';
+                } else {
+                    $status = 'no_consultant';
+                    $msg = 'Không có Sale nhận.';
+                }
+
+                $stmt = $conn->prepare("
+                    INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message, received_at) 
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("iiisss", $leadId, $assignedTo, $roundId, $status, $msg, $createdAt);
+                    if ($stmt->execute()) {
+                        $restoredCount++;
+                    }
+                    $stmt->close();
+                }
+            }
+        }
+
+        echo json_encode([
+            'success' => true, 
+            'message' => "Khôi phục thành công $restoredCount bản ghi nhật ký chia số."
+        ]);
         break;
 
     case 'delete_import_history':
@@ -3508,6 +3580,284 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
+    case 'ai_chat':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $message = trim($input['message'] ?? '');
+            $history = $input['history'] ?? [];
+
+            if (empty($message)) {
+                echo json_encode(['success' => false, 'message' => 'Tin nhắn không được để trống']);
+                break;
+            }
+
+            $apiKey = get_system_setting($conn, 'gemini_api_key');
+            $model = get_system_setting($conn, 'gemini_model');
+            if (empty($model)) {
+                $model = 'gemini-2.5-flash';
+            }
+
+            if (empty($apiKey)) {
+                echo json_encode([
+                    'success' => true,
+                    'data' => [
+                        'reply' => "⚠️ **Chưa cấu hình Gemini API Key!**\n\nVui lòng truy cập trang **Cài đặt -> Cấu hình Trợ lý AI** để nhập khóa API Key của Google Gemini trước khi trò chuyện với trợ lý trí tuệ nhân tạo."
+                    ]
+                ]);
+                break;
+            }
+
+            // Closure to fetch today's stats
+            $getTodayStats = function($conn) {
+                $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+                $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
+                $statsResRaw = $conn->query($statsSql);
+                $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
+                $distributionBlacklisted = 0;
+                if ($statsResRaw) {
+                    while ($row = $statsResRaw->fetch_assoc()) {
+                        $status = $row['status'];
+                        $cnt = (int) $row['cnt'];
+                        $statsRes['total'] += $cnt;
+                        if ($status === 'assigned' || $status === 'compensation') {
+                            $statsRes['distributed'] += $cnt;
+                        } else if ($status === 'duplicate' || $status === 'reminder') {
+                            $statsRes['duplicates'] += $cnt;
+                        } else if ($status === 'error') {
+                            $statsRes['errors'] += $cnt;
+                        } else if ($status === 'rule_6_month') {
+                            $statsRes['distributed'] += $cnt;
+                        } else if ($status === 'blacklisted') {
+                            $statsRes['errors'] += $cnt;
+                            $distributionBlacklisted += $cnt;
+                        }
+                    }
+                }
+                
+                $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
+                $autoBlacklistCnt = 0;
+                $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $dateConditionCreated");
+                if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
+                    $autoBlacklistCnt = (int) $row['cnt'];
+                }
+                
+                $ticketErrors = $statsRes['errors'] - $distributionBlacklisted;
+                $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
+                $statsRes['errors'] += $autoBlacklistCnt;
+                
+                return [
+                    'total' => $statsRes['total'],
+                    'distributed' => $statsRes['distributed'],
+                    'duplicates' => $statsRes['duplicates'],
+                    'blacklist' => $blacklistCnt,
+                    'tickets' => $ticketErrors
+                ];
+            };
+
+            $stats = $getTodayStats($conn);
+
+            // Fetch list of consultants and their today's lead counts
+            $consultantsContext = [];
+            $consultantsRes = $conn->query("
+                SELECT c.name, c.status, COUNT(dl.id) as lead_count
+                FROM consultants c
+                LEFT JOIN distribution_logs dl ON c.id = dl.assigned_to 
+                    AND dl.received_at >= CURDATE() 
+                    AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY) 
+                    AND dl.status IN ('assigned', 'compensation', 'rule_6_month')
+                GROUP BY c.id, c.name, c.status
+                ORDER BY lead_count DESC
+            ");
+            if ($consultantsRes) {
+                while ($row = $consultantsRes->fetch_assoc()) {
+                    $statusStr = $row['status'] === 'active' ? 'Đang hoạt động' : ($row['status'] === 'inactive' ? 'Ngưng hoạt động' : 'Nghỉ phép');
+                    $consultantsContext[] = "- " . $row['name'] . " (" . $statusStr . "): " . $row['lead_count'] . " leads nhận hôm nay";
+                }
+            }
+            $consultantsContextStr = !empty($consultantsContext) ? implode("\n", $consultantsContext) : "(Không có dữ liệu tư vấn viên)";
+
+            // Fetch Google Sheets connections
+            $sheetsContext = [];
+            $sheetsRes = $conn->query("SELECT sheet_name, connection_type, is_active, last_sync_at, sync_status FROM sheet_connections");
+            if ($sheetsRes) {
+                while ($row = $sheetsRes->fetch_assoc()) {
+                    $statusStr = $row['is_active'] ? 'Hoạt động' : 'Tạm dừng';
+                    $syncTime = $row['last_sync_at'] ? $row['last_sync_at'] : 'Chưa đồng bộ';
+                    $sheetsContext[] = "- " . $row['sheet_name'] . " (" . $row['connection_type'] . " | " . $statusStr . "): Đồng bộ gần nhất: " . $syncTime . ", Trạng thái: " . $row['sync_status'];
+                }
+            }
+            $sheetsContextStr = !empty($sheetsContext) ? implode("\n", $sheetsContext) : "(Không có kết nối Google Sheets)";
+
+            // Fetch recent tickets (data_reports) - last 5 tickets
+            $ticketsContext = [];
+            $ticketsRes = $conn->query("
+                SELECT dr.id, c.name as consultant_name, dr.reason, dr.status, dr.created_at
+                FROM data_reports dr
+                JOIN consultants c ON dr.consultant_id = c.id
+                ORDER BY dr.created_at DESC
+                LIMIT 5
+            ");
+            if ($ticketsRes) {
+                while ($row = $ticketsRes->fetch_assoc()) {
+                    $statusStr = $row['status'] === 'pending' ? 'Chờ duyệt' : ($row['status'] === 'approved' ? 'Đã duyệt' : 'Từ chối');
+                    $ticketsContext[] = "- Ticket #" . $row['id'] . " - " . $row['consultant_name'] . ": Lý do: " . $row['reason'] . " (" . $statusStr . " | " . $row['created_at'] . ")";
+                }
+            }
+            $ticketsContextStr = !empty($ticketsContext) ? implode("\n", $ticketsContext) : "(Không có ticket gần đây)";
+
+            // Search for phone/email in the message to provide direct lead search results if requested
+            $searchResultStr = "";
+            if (preg_match('/\b(\+?84|0)\d{9,10}\b/', $message, $matches) || preg_match('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $message, $emailMatches)) {
+                $searchQuery = $matches[0] ?? $emailMatches[0];
+                $leadStmt = $conn->prepare("
+                    SELECT l.id, l.phone, l.email, l.name, l.source, l.type, l.note, l.created_at, 
+                           dl.status as dist_status, dl.message as dist_msg, dl.received_at as dist_time,
+                           c.name as assigned_to_name
+                    FROM leads l
+                    LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+                    LEFT JOIN consultants c ON dl.assigned_to = c.id
+                    WHERE l.phone = ? OR l.email = ?
+                    ORDER BY l.created_at DESC
+                    LIMIT 3
+                ");
+                if ($leadStmt) {
+                    $leadStmt->bind_param("ss", $searchQuery, $searchQuery);
+                    $leadStmt->execute();
+                    $leadRes = $leadStmt->get_result();
+                    $searchResults = [];
+                    while ($row = $leadRes->fetch_assoc()) {
+                        $distMsg = $row['dist_msg'] ? " (Chi tiết: " . $row['dist_msg'] . ")" : "";
+                        $assigned = $row['assigned_to_name'] ? "đã giao cho " . $row['assigned_to_name'] : "chưa giao";
+                        $searchResults[] = "- Lead #" . $row['id'] . " (" . $row['name'] . " | SĐT: " . $row['phone'] . " | Email: " . $row['email'] . ") từ nguồn '" . $row['source'] . "': " . $assigned . ", Trạng thái chia: " . $row['dist_status'] . $distMsg . " lúc " . $row['dist_time'];
+                    }
+                    if (!empty($searchResults)) {
+                        $searchResultStr = "KẾT QUẢ TÌM KIẾM LEAD THEO SĐT/EMAIL CỦA NGƯỜI DÙNG:\n" . implode("\n", $searchResults) . "\n\n";
+                    } else {
+                        $searchResultStr = "KẾT QUẢ TÌM KIẾM LEAD THEO SĐT/EMAIL CỦA NGƯỜI DÙNG: Không tìm thấy lead nào khớp với từ khóa tìm kiếm '$searchQuery' trong cơ sở dữ liệu.\n\n";
+                    }
+                    $leadStmt->close();
+                }
+            }
+
+            // Fetch other system details
+            $res = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE status = 'active'");
+            $active_consultants = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
+            
+            $res = $conn->query("SELECT COUNT(*) as cnt FROM routing_rules");
+            $active_rules = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
+            
+            $res = $conn->query("SELECT COUNT(*) as cnt FROM distribution_rounds WHERE is_active = 1");
+            $active_rounds = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
+
+            // System description context
+            $systemInstruction = "Bạn là Trợ lý AI Domation, một chatbot hỗ trợ đắc lực tích hợp sẵn trong hệ thống quản trị phân chia lead dữ liệu Domation.\n" .
+                "Hãy trả lời người dùng một cách thân thiện, chuyên nghiệp, ngắn gọn bằng tiếng Việt. Sử dụng markdown (in đậm, danh sách) để câu trả lời rõ ràng.\n\n" .
+                "DƯỚI ĐÂY LÀ DỮ LIỆU HỆ THỐNG THỜI GIAN THỰC HÔM NAY:\n" .
+                "- Tổng số tiếp nhận (leads): " . $stats['total'] . "\n" .
+                "- Đã bàn giao cho Sale: " . $stats['distributed'] . "\n" .
+                "- Trùng lặp (không chia): " . $stats['duplicates'] . "\n" .
+                "- Chặn tự động & thủ công (Blacklist): " . $stats['blacklist'] . "\n" .
+                "- Lỗi dữ liệu & Ticket chờ duyệt: " . $stats['tickets'] . "\n" .
+                "- Số lượng tư vấn viên hoạt động: " . $active_consultants . "\n" .
+                "- Số lượng quy tắc (rules) hoạt động: " . $active_rules . "\n" .
+                "- Số lượng vòng xoay (rounds) hoạt động: " . $active_rounds . "\n\n" .
+                "THỐNG KÊ CHI TIẾT TỪNG TƯ VẤN VIÊN / SALE NHẬN SỐ HÔM NAY:\n" .
+                $consultantsContextStr . "\n\n" .
+                "DANH SÁCH KẾT NỐI GOOGLE SHEETS / NGUỒN LEAD:\n" .
+                $sheetsContextStr . "\n\n" .
+                "TICKET / BÁO CÁO LỖI GẦN ĐÂY:\n" .
+                $ticketsContextStr . "\n\n" .
+                $searchResultStr .
+                "KIẾN THỨC VÀ HƯỚNG DẪN HỆ THỐNG DOMATION:\n" .
+                "1. Quy tắc chia số: Phân bổ xoay vòng (Round-robin) dựa trên tỷ lệ nhận (receive_ratio), số đền bù (compensation_count). Sale ngoài giờ làm việc sẽ bị tạm giữ data và tự động giải phóng khi đến giờ làm việc hôm sau.\n" .
+                "2. Hệ thống Blacklist: Chặn tự động ở đầu vào (Intake filter) dựa trên số điện thoại/email hoặc từ khóa loại trừ, hoặc chặn thủ công bởi Admin. Liên hệ bị chặn sẽ được cộng vào thẻ KPI lỗi ngoài Dashboard.\n" .
+                "3. Zalo Bot: Tự động gửi chi tiết data cho Sale qua Zalo Chat ID. Nếu Sale nhận >= 2 lead ngoài giờ, sáng hôm sau sẽ nhận 1 tin nhắn chào buổi sáng tổng hợp trước khi nhận lead chi tiết.\n" .
+                "4. Báo cáo lỗi (Tickets): Sale gửi báo cáo lỗi (sai số, thuê bao...) từ Sale Portal. Admin duyệt đền bù sẽ tự động cộng lượt nhận lead cho Sale ở lần phân bổ sau.\n" .
+                "5. Đồng bộ Google Sheets: Sử dụng script hoặc cron_sync.php quét mỗi 2-5 phút, lấy dòng mới dựa trên Row Hash để tránh trùng lặp.\n\n" .
+                "Hãy sử dụng các thông số trên để trả lời các câu hỏi về chỉ số thống kê, kỹ thuật hoặc hướng dẫn cấu hình hệ thống.";
+
+            // Format history for Gemini API
+            $contents = [];
+            foreach ($history as $h) {
+                $contents[] = [
+                    'role' => $h['role'] === 'user' ? 'user' : 'model',
+                    'parts' => [['text' => $h['text']]]
+                ];
+            }
+            $contents[] = [
+                'role' => 'user',
+                'parts' => [['text' => $message]]
+            ];
+
+            $payload = [
+                'contents' => $contents,
+                'systemInstruction' => [
+                    'parts' => [['text' => $systemInstruction]]
+                ]
+            ];
+
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+            
+            $httpOpts = [
+                'http' => [
+                    'header'  => "Content-Type: application/json\r\n",
+                    'method'  => 'POST',
+                    'content' => json_encode($payload),
+                    'timeout' => 15,
+                    'ignore_errors' => true
+                ]
+            ];
+            $contextStream = stream_context_create($httpOpts);
+            $response = @file_get_contents($url, false, $contextStream);
+            
+            $httpCode = 500;
+            if (isset($http_response_header) && is_array($http_response_header) && count($http_response_header) > 0) {
+                if (preg_match('/HTTP\/\d\.\d\s+(\d+)/i', $http_response_header[0], $matches)) {
+                    $httpCode = (int)$matches[1];
+                }
+            }
+
+            if ($response === false || $httpCode !== 200) {
+                $errMessage = "Lỗi kết nối Gemini API (HTTP " . $httpCode . ")";
+                if ($response !== false) {
+                    $errJson = json_decode($response, true);
+                    if (isset($errJson['error']['message'])) {
+                        $errMessage = "Lỗi Gemini: " . $errJson['error']['message'];
+                    }
+                }
+                
+                echo json_encode([
+                    'success' => true,
+                    'data' => [
+                        'reply' => "⚠️ **Hệ thống gặp lỗi khi liên kết với Gemini API!**\n\nChi tiết: `" . $errMessage . "`\n\nVui lòng kiểm tra lại API Key trong phần Cài đặt."
+                    ]
+                ]);
+                break;
+            }
+
+            $resJson = json_decode($response, true);
+            $replyText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            
+            if (empty($replyText)) {
+                $replyText = "Tôi không nhận được câu trả lời từ AI. Vui lòng thử lại câu hỏi khác.";
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'reply' => $replyText
+                ]
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'reply' => "⚠️ **Hệ thống gặp sự cố khi xử lý dữ liệu AI!**\n\nChi tiết lỗi: `" . $e->getMessage() . "`\n\nVui lòng báo lại quản trị viên hệ thống để kiểm tra."
+                ]
+            ]);
+        }
+        break;
+
     case 'test_email':
         $input = json_decode(file_get_contents('php://input'), true);
         $email = trim($input['email'] ?? '');
@@ -3680,6 +4030,275 @@ switch ($action) {
             }
         }
         echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'get_system_activity_feed':
+        $distLogs = [];
+        // Query recent distribution logs
+        $sqlDist = "SELECT dl.id, dl.lead_id, dl.assigned_to, dl.round_id, dl.status, dl.message, dl.received_at as timestamp,
+                           l.name as lead_name, l.phone as lead_phone,
+                           c.name as consultant_name,
+                           r.round_name
+                    FROM distribution_logs dl
+                    LEFT JOIN leads l ON dl.lead_id = l.id
+                    LEFT JOIN consultants c ON dl.assigned_to = c.id
+                    LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+                    ORDER BY dl.id DESC LIMIT 40";
+        $resDist = $conn->query($sqlDist);
+        if ($resDist) {
+            while ($row = $resDist->fetch_assoc()) {
+                $status = $row['status'];
+                $leadName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
+                $leadPhoneRaw = $row['lead_phone'] ?: '';
+                $leadPhone = '';
+                if (!empty($leadPhoneRaw)) {
+                    $len = strlen($leadPhoneRaw);
+                    if ($len > 3) {
+                        $leadPhone = substr($leadPhoneRaw, 0, $len - 3) . '***';
+                    } else {
+                        $leadPhone = '***';
+                    }
+                }
+                $consultantName = $row['consultant_name'] ?: '';
+                $roundName = $row['round_name'] ?: '';
+                
+                $title = "";
+                $description = "";
+                $tag = "";
+                $tagColor = "neutral";
+                
+                switch ($status) {
+                    case 'assigned':
+                        $title = "Bàn giao lead mới";
+                        $description = "Bàn giao lead <strong>$leadName</strong> ($leadPhone) cho Sale <strong>$consultantName</strong>.";
+                        $tag = $roundName ?: "Đã chia";
+                        $tagColor = "success";
+                        break;
+                    case 'compensation':
+                        $title = "Bù lead";
+                        $description = "Bù lượt lead <strong>$leadName</strong> ($leadPhone) cho Sale <strong>$consultantName</strong>.";
+                        $tag = "Bù lượt";
+                        $tagColor = "success";
+                        break;
+                    case 'pending_work_hours':
+                        $title = "Tạm giữ ngoài giờ";
+                        $description = "Tạm giữ lead <strong>$leadName</strong> ($leadPhone) ngoài giờ làm việc của Sale <strong>$consultantName</strong>.";
+                        $tag = "Chờ giờ làm";
+                        $tagColor = "warning";
+                        break;
+                    case 'duplicate':
+                        $title = "Từ chối trùng lặp";
+                        $description = "Từ chối phân bổ lead <strong>$leadName</strong> ($leadPhone) do trùng số điện thoại hệ thống.";
+                        $tag = "Trùng lặp";
+                        $tagColor = "danger";
+                        break;
+                    case 'blacklisted':
+                        $title = "Chặn danh sách đen";
+                        $description = "Chặn lead <strong>$leadName</strong> ($leadPhone) do trùng số điện thoại/email trong Blacklist.";
+                        $tag = "Blacklist";
+                        $tagColor = "danger";
+                        break;
+                    case 'reallocated':
+                        $title = "Thu hồi lead";
+                        $description = "Thu hồi lead <strong>$leadName</strong> ($leadPhone) từ Sale <strong>$consultantName</strong>.";
+                        $tag = "Tái phân bổ";
+                        $tagColor = "info";
+                        break;
+                    case 'silent':
+                        $title = "Đồng bộ im lặng";
+                        $description = "Đồng bộ lead <strong>$leadName</strong> ($leadPhone) nhưng không chia (chế độ Silent).";
+                        $tag = "Chỉ đồng bộ";
+                        $tagColor = "neutral";
+                        break;
+                    default:
+                        $title = "Phân bổ lead";
+                        $description = "Trạng thái phân bổ của lead <strong>$leadName</strong> ($leadPhone) là " . htmlspecialchars($status) . ".";
+                        $tag = $status;
+                        $tagColor = "neutral";
+                        break;
+                }
+
+                $distLogs[] = [
+                    'id' => 'dist_' . $row['id'],
+                    'type' => 'distribution',
+                    'timestamp' => $row['timestamp'],
+                    'title' => $title,
+                    'description' => $description,
+                    'tag' => $tag,
+                    'tag_color' => $tagColor,
+                    'details' => $row['message'] ?: '',
+                    'consultant_name' => $row['consultant_name']
+                ];
+            }
+        }
+
+        // Query recent admin logs
+        $adminLogs = [];
+        $sqlAdmin = "SELECT al.id, al.account_id, al.action, al.details, al.created_at as timestamp, al.ip_address,
+                            a.name as admin_name
+                     FROM admin_logs al
+                     LEFT JOIN accounts a ON al.account_id = a.id
+                     ORDER BY al.id DESC LIMIT 40";
+        $resAdmin = $conn->query($sqlAdmin);
+        if ($resAdmin) {
+            while ($row = $resAdmin->fetch_assoc()) {
+                $action = $row['action'];
+                $adminName = $row['admin_name'] ?: ($row['account_id'] == 0 ? 'Hệ thống' : 'Người dùng ẩn danh');
+                $detailsStr = $row['details'] ?: '';
+                
+                $title = "";
+                $description = "";
+                $tag = "";
+                $tagColor = "info";
+                
+                $detailsObj = json_decode($detailsStr, true);
+                if (is_array($detailsObj)) {
+                    if (isset($detailsObj['phone'])) {
+                        $p = trim($detailsObj['phone']);
+                        $len = strlen($p);
+                        $detailsObj['phone'] = ($len > 3) ? substr($p, 0, $len - 3) . '***' : '***';
+                    }
+                    $detailsStr = json_encode($detailsObj, JSON_UNESCAPED_UNICODE);
+                }
+                
+                switch ($action) {
+                    case 'BLOCK_LEAD_BLACKLIST':
+                        $type = $detailsObj['type'] ?? 'manual';
+                        $leadPhone = $detailsObj['phone'] ?? '';
+                        if ($type === 'auto') {
+                            $title = "Chặn Blacklist tự động";
+                            $description = "Hệ thống tự động chặn liên hệ <strong>$leadPhone</strong> khớp danh sách đen.";
+                            $tag = "Tự động";
+                        } else {
+                            $title = "Chặn Blacklist thủ công";
+                            $description = "Admin <strong>$adminName</strong> chặn thủ công liên hệ <strong>$leadPhone</strong>.";
+                            $tag = "Thủ công";
+                        }
+                        $tagColor = "danger";
+                        break;
+                    case 'IMPORT_BLACKLIST':
+                        $count = $detailsObj['count'] ?? 0;
+                        $title = "Nhập danh sách đen";
+                        $description = "Admin <strong>$adminName</strong> tải lên <strong>$count</strong> liên hệ chặn vào Blacklist.";
+                        $tag = "Excel/CSV";
+                        $tagColor = "warning";
+                        break;
+                    case 'UPDATE_SETTINGS':
+                        $title = "Cập nhật cấu hình";
+                        $description = "Admin <strong>$adminName</strong> thay đổi các thiết lập hệ thống.";
+                        $tag = "Cấu hình";
+                        $tagColor = "info";
+                        break;
+                    case 'LOGIN':
+                        $title = "Đăng nhập";
+                        $description = "Người dùng <strong>$adminName</strong> đăng nhập vào hệ thống quản trị.";
+                        $tag = "Bảo mật";
+                        $tagColor = "success";
+                        break;
+                    case 'APPROVE_REPORT_ZALO':
+                    case 'APPROVE_REPORT':
+                        $leadId = $detailsObj['lead_id'] ?? 0;
+                        $title = "Duyệt báo cáo lỗi";
+                        $description = "Admin duyệt báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
+                        $tag = "Duyệt ticket";
+                        $tagColor = "success";
+                        break;
+                    case 'REJECT_REPORT_ZALO':
+                    case 'REJECT_REPORT':
+                        $leadId = $detailsObj['lead_id'] ?? 0;
+                        $title = "Từ chối báo cáo lỗi";
+                        $description = "Admin từ chối báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
+                        $tag = "Từ chối ticket";
+                        $tagColor = "danger";
+                        break;
+                    default:
+                        $title = "Thao tác quản trị";
+                        $description = "Admin <strong>$adminName</strong> thực hiện hành động: <strong>$action</strong>.";
+                        $tag = $action;
+                        $tagColor = "info";
+                        break;
+                }
+
+                $adminLogs[] = [
+                    'id' => 'admin_' . $row['id'],
+                    'type' => 'admin',
+                    'timestamp' => $row['timestamp'],
+                    'title' => $title,
+                    'description' => $description,
+                    'tag' => $tag,
+                    'tag_color' => $tagColor,
+                    'details' => $detailsStr,
+                    'admin_name' => $adminName
+                ];
+            }
+        }
+
+        // Query recent data reports (Tickets)
+        $ticketLogs = [];
+        $sqlTicket = "SELECT dr.id, dr.lead_id, dr.consultant_id, dr.reason, dr.status, dr.created_at as timestamp,
+                             c.name as consultant_name,
+                             l.name as lead_name
+                      FROM data_reports dr
+                      LEFT JOIN consultants c ON dr.consultant_id = c.id
+                      LEFT JOIN leads l ON dr.lead_id = l.id
+                      ORDER BY dr.id DESC LIMIT 40";
+        $resTicket = $conn->query($sqlTicket);
+        if ($resTicket) {
+            while ($row = $resTicket->fetch_assoc()) {
+                $status = $row['status'];
+                $consultantName = $row['consultant_name'] ?: 'Ẩn danh';
+                $leadName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
+                $reason = $row['reason'] ?: 'Không có lý do';
+                
+                $title = "Báo cáo lỗi Ticket";
+                $description = "";
+                $tag = "";
+                $tagColor = "warning";
+                
+                switch ($status) {
+                    case 'pending':
+                        $description = "Sale <strong>$consultantName</strong> gửi báo cáo lỗi cho lead <strong>$leadName</strong>. Lý do: <em>$reason</em>.";
+                        $tag = "Chờ duyệt";
+                        $tagColor = "warning";
+                        break;
+                    case 'resolved':
+                        $description = "Báo cáo lỗi cho lead <strong>$leadName</strong> từ Sale <strong>$consultantName</strong> đã được phê duyệt.";
+                        $tag = "Đã duyệt";
+                        $tagColor = "success";
+                        break;
+                    case 'rejected':
+                        $description = "Báo cáo lỗi cho lead <strong>$leadName</strong> từ Sale <strong>$consultantName</strong> đã bị từ chối.";
+                        $tag = "Bị từ chối";
+                        $tagColor = "danger";
+                        break;
+                }
+
+                $ticketLogs[] = [
+                    'id' => 'ticket_' . $row['id'],
+                    'type' => 'ticket',
+                    'timestamp' => $row['timestamp'],
+                    'title' => $title,
+                    'description' => $description,
+                    'tag' => $tag,
+                    'tag_color' => $tagColor,
+                    'details' => "Lý do báo cáo: " . $reason,
+                    'consultant_name' => $row['consultant_name']
+                ];
+            }
+        }
+
+        // Merge arrays
+        $merged = array_merge($distLogs, $adminLogs, $ticketLogs);
+
+        // Sort by timestamp DESC
+        usort($merged, function($a, $b) {
+            return strcmp($b['timestamp'], $a['timestamp']);
+        });
+
+        // Limit to 50 items
+        $merged = array_slice($merged, 0, 50);
+
+        echo json_encode(['success' => true, 'data' => $merged]);
         break;
 
     case 'add_account':
