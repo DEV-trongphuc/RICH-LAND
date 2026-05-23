@@ -156,6 +156,7 @@ export const DataList = () => {
           note: item.note || '',
           status: item.status,
           assigned_to_name: item.assigned_to_name || '-',
+          assigned_to_avatar: item.assigned_to_avatar,
           round_name: item.round_name || '-',
           created_at: item.created_at,
           report_status: item.report_status
