@@ -45,20 +45,54 @@ if ($totalOrphans > 0) {
 
         echo "Processing Lead #$leadId ($name - $phone):\n";
 
-        // Guess round ID from other logs of the same connection
+        // Guess round ID from other logs of the same connection or consultants
         $roundId = null;
         if ($connId > 0) {
+            // 1. Try to find round ID from other leads in the same connection and assigned to the same consultant
+            if ($assignedTo) {
+                $rQuery = "
+                    SELECT dl.round_id 
+                    FROM distribution_logs dl 
+                    JOIN leads l ON dl.lead_id = l.id 
+                    WHERE l.connection_id = $connId AND dl.assigned_to = $assignedTo AND dl.round_id IS NOT NULL 
+                    LIMIT 1
+                ";
+                $rRes = $conn->query($rQuery);
+                if ($rRes && $rRow = $rRes->fetch_assoc()) {
+                    $roundId = (int)$rRow['round_id'];
+                    echo "  - Identified round ID: $roundId (from same connection #$connId & same consultant #$assignedTo)\n";
+                }
+            }
+            
+            // 2. If not found, try to find round ID from other leads in the same connection
+            if (!$roundId) {
+                $rQuery = "
+                    SELECT dl.round_id 
+                    FROM distribution_logs dl 
+                    JOIN leads l ON dl.lead_id = l.id 
+                    WHERE l.connection_id = $connId AND dl.round_id IS NOT NULL 
+                    LIMIT 1
+                ";
+                $rRes = $conn->query($rQuery);
+                if ($rRes && $rRow = $rRes->fetch_assoc()) {
+                    $roundId = (int)$rRow['round_id'];
+                    echo "  - Identified round ID: $roundId (from other leads in connection #$connId)\n";
+                }
+            }
+        }
+        
+        // 3. Fallback: Try to find round ID from round_consultants where this consultant belongs
+        if (!$roundId && $assignedTo) {
             $rQuery = "
-                SELECT dl.round_id 
-                FROM distribution_logs dl 
-                JOIN leads l ON dl.lead_id = l.id 
-                WHERE l.connection_id = $connId AND dl.round_id IS NOT NULL 
+                SELECT round_id 
+                FROM round_consultants 
+                WHERE consultant_id = $assignedTo 
                 LIMIT 1
             ";
             $rRes = $conn->query($rQuery);
             if ($rRes && $rRow = $rRes->fetch_assoc()) {
                 $roundId = (int)$rRow['round_id'];
-                echo "  - Identified round ID: $roundId (from other leads in connection #$connId)\n";
+                echo "  - Identified round ID: $roundId (fallback from consultant's rounds)\n";
             }
         }
 
