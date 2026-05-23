@@ -38,12 +38,17 @@ $queryLeads = "
     LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
     LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
     WHERE dl.lead_id IS NULL
-      AND l.created_at BETWEEN '2026-05-19 00:00:00' AND '2026-05-21 12:25:02'
-      AND l.assigned_to IS NOT NULL 
-      AND l.assigned_to > 0
-      AND (l.source != 'Excel Import' OR l.source IS NULL)
-      AND (l.note NOT LIKE '%Nhap du lieu cu%' OR l.note IS NULL)
-      AND (sc.is_silent = 0 OR sc.is_silent IS NULL)
+      AND (
+        (
+          l.created_at BETWEEN '2026-05-19 00:00:00' AND '2026-05-21 12:25:02'
+          AND l.assigned_to IS NOT NULL 
+          AND l.assigned_to > 0
+          AND (l.source != 'Excel Import' OR l.source IS NULL)
+          AND (l.note NOT LIKE '%Nhap du lieu cu%' OR l.note IS NULL)
+          AND (sc.is_silent = 0 OR sc.is_silent IS NULL)
+        )
+        OR l.phone IN ('0938297768', '0938187025')
+      )
 ";
 
 $leadsRes = $conn->query($queryLeads);
