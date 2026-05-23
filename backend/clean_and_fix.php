@@ -145,10 +145,27 @@ if ($totalOrphans > 0) {
     }
 }
 
+// 3. Update status of the 3 whitelisted leads that already have 'silent' logs to 'assigned'
+$updateCount = 0;
+$updateQuery = "
+    UPDATE distribution_logs dl
+    JOIN leads l ON dl.lead_id = l.id
+    SET dl.status = 'assigned',
+        dl.message = 'Đồng bộ khôi phục nhật ký (không gửi lại thông báo).'
+    WHERE l.phone IN ('0938297768', '0938187025', '0907635229')
+";
+if ($conn->query($updateQuery)) {
+    $updateCount = $conn->affected_rows;
+    echo "\nSuccessfully updated $updateCount whitelisted leads to 'assigned' status.\n";
+} else {
+    echo "\nError updating whitelisted leads: " . $conn->error . "\n";
+}
+
 echo "\n============================================\n";
 echo "CLEANUP AND RECOVERY COMPLETE:\n";
 echo "- Total incorrect logs deleted: $deletedCount\n";
 echo "- Total actual leads restored: $restoredCount\n";
+echo "- Total whitelisted leads updated to 'assigned': $updateCount\n";
 
 // Self-delete the file for security
 if (@unlink(__FILE__)) {
