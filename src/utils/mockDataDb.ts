@@ -176,7 +176,9 @@ export const MOCK_DB = {
   report_context: {
     lead_name: 'Trần Thị Mai Anh (Demo)',
     lead_phone: '0912 345 678',
+    lead_email: 'maianh.tran@gmail.com',
     lead_source: 'Facebook Ads — Chiến dịch Demo',
+    lead_type: 'Tư vấn khóa học',
     lead_note: 'Quan tâm: Khóa Marketing\nNgân sách: 5–10 triệu',
     consultant_name: 'Nguyễn Văn A',
     consultant_email: 'nguyenvana@domation.net',

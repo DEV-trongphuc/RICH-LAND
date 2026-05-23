@@ -2182,7 +2182,7 @@ switch ($action) {
 
         // Verify ownership: lead must be assigned to this consultant in this round
         $verifyStmt = $conn->prepare("
-            SELECT dl.id, l.name as lead_name, l.phone as lead_phone, l.source, l.note,
+            SELECT dl.id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.source, l.type as lead_type, l.note,
                    c.name as consultant_name, c.email as consultant_email,
                    dr.round_name, dl.received_at
             FROM distribution_logs dl
@@ -2212,7 +2212,9 @@ switch ($action) {
             'data' => [
                 'lead_name' => $ctx['lead_name'],
                 'lead_phone' => $ctx['lead_phone'],
+                'lead_email' => $ctx['lead_email'],
                 'lead_source' => $ctx['source'],
+                'lead_type' => $ctx['lead_type'],
                 'lead_note' => $ctx['note'],
                 'consultant_name' => $ctx['consultant_name'],
                 'consultant_email' => $ctx['consultant_email'],

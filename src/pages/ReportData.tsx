@@ -14,7 +14,9 @@ const REPORT_REASONS = [
 const TEST_MOCK_CONTEXT = {
   lead_name: 'Trần Thị Mai Anh',
   lead_phone: '0912 345 678',
+  lead_email: 'maianh.tran@gmail.com',
   lead_source: 'Facebook Ads — Chiến dịch Tuyển sinh T5/2026',
+  lead_type: 'Tư vấn khóa học',
   lead_note: 'Quan tâm: Khóa Marketing Online\nNgân sách: 5–10 triệu',
   consultant_name: 'Bạn (Tài khoản Test)',
   consultant_email: 'test@example.com',
@@ -33,7 +35,7 @@ const getColor = (name: string) => {
 const initials = (name: string) => name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
 
 interface ReportContext {
-  lead_name: string; lead_phone: string; lead_source: string; lead_note: string;
+  lead_name: string; lead_phone: string; lead_email?: string; lead_source: string; lead_type?: string; lead_note: string;
   consultant_name: string; consultant_email: string; round_name: string;
   assigned_at: string; existing_report: string | null;
 }
@@ -92,19 +94,14 @@ export const ReportData = () => {
 
   // ── Full-screen wrapper ──────────────────────────────────────────────────────
   return (
-    <div style={{
-      width: '100%', height: '100vh',
-      background: 'linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%)',
-      display: 'flex', flexDirection: 'column', position: 'relative',
-      overflow: 'hidden !important'
-    }}>
+    <div className="report-wrapper">
       {/* Blobs */}
       <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -80, right: -60, width: 260, height: 260, borderRadius: '50%', background: 'rgba(236,72,153,0.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
       <div style={{ flex: 1, minHeight: '20px' }} /> {/* Safe top spacer */}
 
-      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 900, margin: '0 auto', zIndex: 1, position: 'relative' }}>
+      <div className="report-container">
         {/* ── Header strip ── */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 24, flexShrink: 0 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '5px 14px', borderRadius: 20, marginBottom: 10 }}>
@@ -122,12 +119,12 @@ export const ReportData = () => {
         </div>
 
         {/* ── Main content: 2 cols ── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 0, padding: '0 24px', width: '100%' }}>
+        <div className="main-content-layout">
 
           {loadingCtx ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 0' }}>
               <Loader2 size={40} className="spin" style={{ color: '#8b5cf6' }} />
-              <SpinStyle />
+              <ResponsiveStyle />
             </div>
           ) : ctxError ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -150,17 +147,9 @@ export const ReportData = () => {
               </div>
             </div>
           ) : (
-            <div style={{
-              display: 'flex', width: '100%', margin: 'auto',
-              background: 'white', borderRadius: 20,
-              boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
-              overflow: 'hidden'
-            }}>
+            <div className="report-card">
               {/* ── LEFT: Info card (white) ── */}
-              <div style={{
-                flex: '0 0 320px', background: 'white',
-                padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 18
-              }}>
+              <div className="info-card">
                 <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Thông tin Data cần báo cáo
                 </div>
@@ -193,20 +182,52 @@ export const ReportData = () => {
                     {/* Details */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <InfoItem label="Nguồn Data" value={context.lead_source || 'Không rõ'} />
+                      {context.lead_email && (
+                        <>
+                          <div style={{ height: 1, background: '#f1f5f9' }} />
+                          <InfoItem label="Email" value={context.lead_email} />
+                        </>
+                      )}
+                      {context.lead_type && (
+                        <>
+                          <div style={{ height: 1, background: '#f1f5f9' }} />
+                          <InfoItem label="Loại Data" value={context.lead_type} />
+                        </>
+                      )}
                       <div style={{ height: 1, background: '#f1f5f9' }} />
                       <InfoItem label="Vòng phân bổ" value={context.round_name} accent />
+                      <div style={{ height: 1, background: '#f1f5f9' }} />
                       <InfoItem label="Nhận lúc" value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                      {context.lead_note && (
+                        <>
+                          <div style={{ height: 1, background: '#f1f5f9' }} />
+                          <div>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
+                            <div style={{ 
+                              fontSize: '0.8rem', 
+                              fontWeight: 500, 
+                              color: '#475569', 
+                              background: '#f8fafc', 
+                              padding: '8px 12px', 
+                              borderRadius: 8, 
+                              border: '1px solid #e2e8f0',
+                              whiteSpace: 'pre-wrap',
+                              maxHeight: '120px',
+                              overflowY: 'auto',
+                              lineHeight: 1.4
+                            }}>
+                              {context.lead_note}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </>
                 )}
               </div>
 
               {/* ── RIGHT: Form card ── */}
-              <div style={{
-                flex: 1, background: 'rgba(255,255,255,0.97)',
-                padding: '22px 22px', display: 'flex', flexDirection: 'column',
-                borderLeft: '1px solid #f1f5f9'
-              }}>
+              <div className="form-card">
                 {/* Test banner */}
                 {params.isTest && (
                   <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', color: '#b45309', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.08)' }}>
@@ -302,7 +323,7 @@ export const ReportData = () => {
       </div>
 
       <div style={{ flex: 1, minHeight: '20px' }} /> {/* Safe bottom spacer */}
-      <SpinStyle />
+      <ResponsiveStyle />
     </div>
   );
 };
@@ -314,6 +335,94 @@ const InfoItem = ({ label, value, accent }: { label: string; value: string; acce
   </div>
 );
 
-const SpinStyle = () => (
-  <style>{`.spin{animation:spin 1s linear infinite;display:block}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+const ResponsiveStyle = () => (
+  <style>{`
+    .report-wrapper {
+      width: 100%;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 20px 0;
+    }
+    .report-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 900px;
+      margin: auto;
+      z-index: 1;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .main-content-layout {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
+      padding: 0 24px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .report-card {
+      display: flex;
+      width: 100%;
+      margin: auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .info-card {
+      flex: 0 0 320px;
+      background: white;
+      padding: 24px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-sizing: border-box;
+    }
+    .form-card {
+      flex: 1;
+      background: rgba(255,255,255,0.97);
+      padding: 22px 22px;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #f1f5f9;
+      box-sizing: border-box;
+    }
+    @media (max-width: 768px) {
+      .report-wrapper {
+        padding: 10px 0;
+      }
+      .main-content-layout {
+        padding: 0 12px;
+      }
+      .report-card {
+        flex-direction: column;
+        border-radius: 16px;
+      }
+      .info-card {
+        flex: none;
+        width: 100%;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 20px 16px;
+      }
+      .form-card {
+        border-left: none;
+        padding: 20px 16px;
+      }
+    }
+    .spin {
+      animation: spin 1s linear infinite;
+      display: block;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  `}</style>
 );
