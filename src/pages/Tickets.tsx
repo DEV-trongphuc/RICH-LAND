@@ -185,7 +185,12 @@ export const Tickets = () => {
       if (res.success) {
         setReports(res.data);
         setTotalCount(res.total_count ?? 0);
-        if (res.stats) setStats(res.stats);
+        if (res.stats) {
+          setStats(res.stats);
+          if (!searchParams.get('status') && Number(res.stats.pending) === 0) {
+            updateParams('status', 'all');
+          }
+        }
         if (res.consultants) setConsultantOptions(res.consultants);
       }
     } catch (e: any) {
