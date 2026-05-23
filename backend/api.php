@@ -178,7 +178,8 @@ if (!in_array($action, $publicActions)) {
         'test_email',
         'block_lead',
         'get_zalo_send_logs',
-        'ai_chat'
+        'ai_chat',
+        'upload_avatar'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -1264,6 +1265,63 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 
+    case 'upload_avatar':
+        try {
+            if (!isset($_FILES['avatar'])) {
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy file tải lên']);
+                break;
+            }
+
+            $file = $_FILES['avatar'];
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'Lỗi tải file lên: ' . $file['error']]);
+                break;
+            }
+
+            // Validate file type
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($file['type'], $allowedTypes)) {
+                echo json_encode(['success' => false, 'message' => 'Định dạng file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.']);
+                break;
+            }
+
+            // Validate file size (max 5MB)
+            if ($file['size'] > 5 * 1024 * 1024) {
+                echo json_encode(['success' => false, 'message' => 'Kích thước file quá lớn (tối đa 5MB)']);
+                break;
+            }
+
+            // Ensure upload directory exists
+            $uploadDir = __DIR__ . '/uploads/avatars/';
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            if (empty($extension)) {
+                // Fallback extension based on mime type
+                $mimeToExt = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp'
+                ];
+                $extension = $mimeToExt[$file['type']] ?? 'jpg';
+            }
+            $newFilename = 'avatar_' . uniqid() . '.' . $extension;
+            $destination = $uploadDir . $newFilename;
+
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $relativeUrl = 'uploads/avatars/' . $newFilename;
+                echo json_encode(['success' => true, 'url' => $relativeUrl]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Không thể lưu file trên máy chủ']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
     case 'add_consultant':
         try {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -1271,6 +1329,9 @@ switch ($action) {
             $email = trim($input['email'] ?? '');
             $status = $input['status'] ?? 'active';
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+            $avatar = trim($input['avatar'] ?? '');
+            if ($avatar === '') $avatar = null;
+
             // NEW-03 fix: validate required fields
             if (empty($name)) {
                 echo json_encode(['success' => false, 'message' => 'Tên TVV không được để trống']);
@@ -1296,8 +1357,8 @@ switch ($action) {
             if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
             $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule);
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar);
             $stmt->execute();
             $newId = $conn->insert_id;
             $stmt->close();
@@ -1330,6 +1391,8 @@ switch ($action) {
             $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
             $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
             $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
+            $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
+            if ($avatar === '') $avatar = null;
 
             if (!$id) {
                 echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
@@ -1359,8 +1422,8 @@ switch ($action) {
             if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time)) $work_end_time = '23:59';
             $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=? WHERE id=?");
-            $stmt->bind_param("sssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $id);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
+            $stmt->bind_param("ssssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
             }

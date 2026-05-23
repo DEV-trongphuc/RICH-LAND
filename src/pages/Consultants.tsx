@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -58,6 +58,8 @@ export const Consultants = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [unlinkId, setUnlinkId] = useState<number | null>(null);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
@@ -79,6 +81,7 @@ export const Consultants = () => {
     work_start_time: string;
     work_end_time: string;
     work_schedule: any;
+    avatar: string;
   }>({
     name: '',
     email: '',
@@ -88,7 +91,8 @@ export const Consultants = () => {
     zalo_chat_id: '',
     work_start_time: '00:00',
     work_end_time: '23:59',
-    work_schedule: null
+    work_schedule: null,
+    avatar: ''
   });
 
   const handleDayChange = (dayKey: string, field: 'active' | 'start' | 'end', value: any) => {
@@ -133,7 +137,8 @@ export const Consultants = () => {
       zalo_chat_id: '',
       work_start_time: '00:00',
       work_end_time: '23:59',
-      work_schedule: null
+      work_schedule: null,
+      avatar: ''
     });
     setModalOpen(true);
   };
@@ -151,7 +156,8 @@ export const Consultants = () => {
       zalo_chat_id: user.zalo_chat_id || '',
       work_start_time: user.work_start_time || '00:00',
       work_end_time: user.work_end_time || '23:59',
-      work_schedule: user.work_schedule || null
+      work_schedule: user.work_schedule || null,
+      avatar: user.avatar || ''
     });
     setModalOpen(true);
   };
@@ -270,6 +276,43 @@ export const Consultants = () => {
     setIsSendingMsg(false);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file hình ảnh hợp lệ.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Kích thước ảnh không được vượt quá 5MB.');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+
+      const res = await fetchAPI('upload_avatar', {
+        method: 'POST',
+        body: fd
+      });
+
+      if (res.success && res.url) {
+        setFormData(prev => ({ ...prev, avatar: res.url }));
+        toast.success('Tải ảnh đại diện lên thành công!');
+      } else {
+        toast.error(res.message || 'Lỗi khi tải ảnh lên');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi kết nối: ' + err.message);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const activeCount   = users.filter(u => u.status === 'active').length;
   const leaveCount    = users.filter(u => u.status === 'leave').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
@@ -349,7 +392,7 @@ export const Consultants = () => {
                   >
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Avatar name={u.name} size={32} />
+                        <Avatar src={u.avatar} name={u.name} size={32} />
                         <div>
                           <div 
                             style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
@@ -488,6 +531,56 @@ export const Consultants = () => {
                   
                   {/* Cột 1: Thông tin cá nhân & Trạng thái */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    
+                    {/* Avatar Upload */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                      <div style={{ position: 'relative' }}>
+                        <Avatar src={formData.avatar} name={formData.name || 'Sale'} size={64} />
+                        {isUploadingAvatar && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                            <RefreshCw size={16} className="spin" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          Ảnh đại diện TVV
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="btn outline sm"
+                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white' }}
+                            disabled={isUploadingAvatar}
+                          >
+                            Tải ảnh lên
+                          </button>
+                          {formData.avatar && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, avatar: '' })}
+                              className="btn outline sm"
+                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: 'white' }}
+                            >
+                              Xóa ảnh
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleAvatarUpload}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                        />
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                          Định dạng JPG, PNG, WEBP (tối đa 5MB)
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="form-group">
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14}/> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <input 

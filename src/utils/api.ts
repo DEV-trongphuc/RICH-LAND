@@ -16,7 +16,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
   const token = localStorage.getItem('domation_token');
   
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 

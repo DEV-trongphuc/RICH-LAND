@@ -40,6 +40,7 @@ const getColorFromName = (name: string) => {
 };
 
 export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title, color }) => {
+  const [hasError, setHasError] = React.useState(false);
   const sizeMap = {
     sm: 24,
     md: 32,
@@ -49,6 +50,17 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
   const initials = name ? getInitials(name) : '?';
   const bgColor = color ? color : (name ? getColorFromName(name) : 'var(--color-primary)');
 
+  let resolvedSrc = src;
+  if (src && src.startsWith('uploads/')) {
+    const apiBase = import.meta.env.VITE_API_URL || 'https://open.domation.net/sale_data';
+    resolvedSrc = `${apiBase}/${src}`;
+  }
+
+  // Reset error state if src changes
+  React.useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
   return (
     <div 
       className={`${styles.avatar} ${className}`}
@@ -57,12 +69,17 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
         width: finalSize, 
         height: finalSize, 
         fontSize: finalSize * 0.4,
-        backgroundColor: src ? 'transparent' : bgColor,
+        backgroundColor: src && !hasError ? 'transparent' : bgColor,
         ...style 
       }}
     >
-      {src ? (
-        <img src={src} alt={name} className={styles.image} />
+      {src && !hasError ? (
+        <img 
+          src={resolvedSrc} 
+          alt={name} 
+          className={styles.image} 
+          onError={() => setHasError(true)} 
+        />
       ) : (
         <span className={styles.initials}>{initials}</span>
       )}

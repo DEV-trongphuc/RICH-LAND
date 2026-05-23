@@ -64,7 +64,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 110) {
+        if ($dbVer >= 111) {
             $runMigration = false;
         }
     }
@@ -85,7 +85,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 110) {
+                    if ($dbVer >= 111) {
                         $runMigration = false;
                     }
                 }
@@ -430,9 +430,15 @@ if ($runMigration) {
         $conn->query("ALTER TABLE data_reports ADD COLUMN resolved_by VARCHAR(100) NULL COMMENT 'Tên admin duyệt ticket' AFTER resolved_at");
     }
 
+    // Auto-migrate: ensure avatar column exists in consultants
+    $chkAvatar = $conn->query("SHOW COLUMNS FROM consultants LIKE 'avatar'");
+    if ($chkAvatar && $chkAvatar->num_rows === 0) {
+        $conn->query("ALTER TABLE consultants ADD COLUMN avatar VARCHAR(255) NULL COMMENT 'Đường dẫn ảnh đại diện của Sale'");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '110') ON DUPLICATE KEY UPDATE setting_value = '110'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '111') ON DUPLICATE KEY UPDATE setting_value = '111'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
