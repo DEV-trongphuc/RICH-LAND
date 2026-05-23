@@ -148,7 +148,7 @@ Hệ thống quản lý, đồng bộ và phân phối lead tự động từ Go
 *   **`mail_queue`**: Hàng đợi gửi email. Cột: `to_email`, `cc_email`, `subject`, `body_html`, `status` (`pending`, `sent`, `failed`), `attempts` (số lần thử gửi lại khi lỗi), `last_error`.
 *   **`ticket_notify_settings`**: Cấu hình tài khoản admin nhận thông báo báo cáo lỗi qua Email.
 *   **`system_settings`**: Cấu hình chung toàn hệ thống (`global_exclusion_keys`, `global_exclusion_contacts`, `zalo_daily_report_time`, `zalo_bot_token`, `zalo_webhook_secret`, `reassign_if_owner_inactive`,...).
-*   **`admin_logs`**: Nhật ký hành động nghiệp vụ của quản trị viên (Thao tác duyệt, xóa, chỉnh sửa cài đặt...).
+*   **`admin_logs`**: Nhật ký hành động nghiệp vụ của quản trị viên (Thao tác duyệt, xóa, chỉnh sửa cài đặt...) và hệ thống tự động (chặn blacklist 'BLOCK_LEAD_BLACKLIST').
 
 ---
 
@@ -271,8 +271,12 @@ Nằm tại hàm `checkCRMInteraction()` của `webhook_logic.php`:
 *   Khi nhận được data mới từ Webhook hoặc Google Sheets, hệ thống sẽ thực hiện kiểm tra loại trừ bằng hàm `checkGlobalExclusion()`.
 *   Nếu thông tin khách hàng hoặc nội dung dữ liệu trùng khớp với Danh sách đen (`global_exclusion_contacts`) hoặc từ khóa loại trừ (`global_exclusion_keys`):
     *   Hệ thống sẽ **không ghi nhận vào cơ sở dữ liệu** (không tạo lead, không lưu log phân phối).
-    *   Tuy nhiên, hệ thống sẽ **gửi thông báo cảnh báo ngay lập tức** đến tất cả tài khoản có quyền **Admin** thông qua Zalo OA Bot và Email (nếu được cấu hình).
+    *   Hệ thống sẽ **tự động ghi log vào bảng `admin_logs`** với `action = 'BLOCK_LEAD_BLACKLIST'` và `account_id = 0` (hệ thống tự động chặn) để thống kê chính xác trong báo cáo tổng kết ngày.
+    *   Đồng thời, hệ thống sẽ **gửi thông báo cảnh báo ngay lập tức** đến tất cả tài khoản có quyền **Admin** thông qua Zalo OA Bot và Email (nếu được cấu hình).
     *   Nội dung thông báo bao gồm chi tiết thông tin lead (mã hóa SĐT trên Zalo để bảo mật), nguồn lead, loại dự án, ghi chú và lý do chi tiết bị lọc để Admin kịp thời theo dõi và quản lý chất lượng nguồn lead.
+*   Khi Admin thực hiện **chặn thủ công** một lead từ giao diện CRM (`api.php` action `block_lead`):
+    *   Lead sẽ được đưa vào danh sách đen (`global_exclusion_contacts`), note của lead được tích lũy lý do chặn và log phân phối đổi trạng thái thành `'blacklisted'`.
+    *   Hệ thống sẽ **ghi log vào bảng `admin_logs`** với `action = 'BLOCK_LEAD_BLACKLIST'` (và `account_id` của admin thực hiện) để đồng bộ số lượng thống kê bị chặn trong báo cáo tổng kết ngày.
 
 ---
 

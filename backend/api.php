@@ -4738,6 +4738,20 @@ switch ($action) {
                 $updComp->close();
             }
 
+            // Ghi log hành động admin chặn data (blacklist) để báo cáo ngày thống kê được
+            logAdminAction($conn, $adminAccountId, 'BLOCK_LEAD_BLACKLIST', [
+                'log_id' => $log_id,
+                'lead_id' => $lead_id,
+                'lead_name' => $lead_name,
+                'phone' => $lead_phone,
+                'email' => $lead_email,
+                'reason' => $reason,
+                'compensate_sale' => $compensate_sale,
+                'old_consultant_id' => $old_consultant_id,
+                'old_consultant_name' => $old_consultant_name,
+                'round_name' => $round_name
+            ]);
+
             $conn->commit();
         } catch (Exception $e) {
             $conn->rollback();

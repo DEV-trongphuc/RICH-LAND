@@ -253,6 +253,30 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
             } catch (Exception $ex) {
                 error_log("Error notifying admins of blacklist match: " . $ex->getMessage());
             }
+
+            // Ghi log hành động hệ thống tự động chặn data (blacklist) để báo cáo ngày thống kê được
+            try {
+                $detailsJson = json_encode([
+                    'type' => 'auto',
+                    'phone' => $phone,
+                    'email' => $email,
+                    'name' => $name,
+                    'source' => $source,
+                    'reason' => $reason
+                ], JSON_UNESCAPED_UNICODE);
+                $logStmt = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, ip_address) VALUES (0, 'BLOCK_LEAD_BLACKLIST', ?, ?)");
+                if ($logStmt) {
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'System';
+                    $logStmt->bind_param("ss", $detailsJson, $ip);
+                    $logStmt->execute();
+                    $logStmt->close();
+                    if (function_exists('pruneAdminLogs')) {
+                        pruneAdminLogs($conn);
+                    }
+                }
+            } catch (Exception $logEx) {
+                error_log("Error logging automated blacklist action: " . $logEx->getMessage());
+            }
         }
         return true;
     }
