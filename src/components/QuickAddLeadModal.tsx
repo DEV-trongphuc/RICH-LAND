@@ -93,8 +93,11 @@ export const QuickAddLeadModal = () => {
   const [overrideConsId, setOverrideConsId] = useState<string>('');
   const [showOverrideSelector, setShowOverrideSelector] = useState(false);
   const [compensateSkipped, setCompensateSkipped] = useState(true);
+  const [existingSources, setExistingSources] = useState<string[]>([]);
+  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
 
   const previewTimerRef = useRef<any>(null);
+  const sourceRef = useRef<HTMLDivElement>(null);
 
   const handleQuickInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -894,11 +897,40 @@ export const QuickAddLeadModal = () => {
     }
   };
 
+  // Load unique sources list
+  const fetchSources = async () => {
+    try {
+      const json = await fetchAPI('get_unique_sources');
+      if (json.success) {
+        setExistingSources(json.data || []);
+      }
+    } catch (e: any) {
+      console.error(e.message);
+    }
+  };
+
+  const handleSelectSource = (src: string) => {
+    setManualData(prev => ({ ...prev, source: src }));
+    setShowSourceSuggestions(false);
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchConsultants();
+      fetchSources();
     }
   }, [isOpen]);
+
+  // Click outside to close source suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sourceRef.current && !sourceRef.current.contains(event.target as Node)) {
+        setShowSourceSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Listen to open event
   useEffect(() => {
@@ -1038,9 +1070,65 @@ export const QuickAddLeadModal = () => {
             <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
             <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
           </div>
-          <div>
+          <div ref={sourceRef} style={{ position: 'relative' }}>
             <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Nguồn (Source)</label>
-            <input className="form-input" placeholder="VD: FB_Ads" value={manualData.source} onChange={e => setManualData({ ...manualData, source: e.target.value })} />
+            <input
+              className="form-input"
+              placeholder="VD: FB_Ads"
+              value={manualData.source}
+              onChange={e => setManualData({ ...manualData, source: e.target.value })}
+              onFocus={() => setShowSourceSuggestions(true)}
+            />
+            {showSourceSuggestions && (
+              (() => {
+                const filtered = existingSources.filter(src =>
+                  src.toLowerCase().includes((manualData.source || '').toLowerCase())
+                );
+                if (filtered.length === 0) return null;
+                return (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 1000,
+                      background: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}
+                  >
+                    {filtered.map((src, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSource(src)}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '0.8125rem',
+                          cursor: 'pointer',
+                          color: '#1e293b',
+                          transition: 'background-color 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f5f3ff';
+                          e.currentTarget.style.color = '#7c3aed';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#1e293b';
+                        }}
+                      >
+                        {src}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
           </div>
           <div>
             <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Loại (Type)</label>

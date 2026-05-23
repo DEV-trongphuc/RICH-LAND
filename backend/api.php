@@ -1,5 +1,4 @@
 <?php
-header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token");
 header("Content-Type: application/json; charset=utf-8");
@@ -7,14 +6,43 @@ header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("X-XSS-Protection: 1; mode=block");
 
-// Handle CORS Preflight
+// Handle CORS Preflight early to avoid DB connection overhead for OPTIONS requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header("Access-Control-Allow-Origin: *");
     http_response_code(200);
     exit();
 }
 
 require_once 'env.php';
 require_once 'db_connect.php';
+
+// Safe CORS origin matching
+$httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000'
+];
+
+$frontendUrl = get_system_setting($conn, 'frontend_url');
+if (!empty($frontendUrl)) {
+    $parsed = parse_url($frontendUrl);
+    if (isset($parsed['scheme']) && isset($parsed['host'])) {
+        $allowedOrigins[] = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+    }
+}
+
+$originToSet = '*';
+if (!empty($httpOrigin)) {
+    $cleanedOrigin = rtrim($httpOrigin, '/');
+    foreach ($allowedOrigins as $allowed) {
+        if (strcasecmp(rtrim($allowed, '/'), $cleanedOrigin) === 0) {
+            $originToSet = $httpOrigin;
+            break;
+        }
+    }
+}
+header("Access-Control-Allow-Origin: " . $originToSet);
 
 $JWT_SECRET = $_ENV['JWT_SECRET'] ?? "DOMATION_SECRET_KEY_2026";
 
@@ -218,6 +246,17 @@ switch ($action) {
         } else {
             echo json_encode(['success' => true, 'logs' => 'No logs found.']);
         }
+        break;
+
+    case 'get_unique_sources':
+        $res = $conn->query("SELECT DISTINCT source FROM leads WHERE source IS NOT NULL AND source != '' ORDER BY source ASC");
+        $sources = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $sources[] = $row['source'];
+            }
+        }
+        echo json_encode(['success' => true, 'data' => $sources]);
         break;
 
     case 'get_import_history':
@@ -645,6 +684,33 @@ switch ($action) {
             $params[] = $today . ' 00:00:00';
             $params[] = $today . ' 23:59:59';
             $types .= "ss";
+        } elseif ($dateMode === 'this_week') {
+            $weekday = date('N') - 1;
+            $monday = date('Y-m-d', strtotime("-$weekday days"));
+            $sunday = date('Y-m-d', strtotime("+" . (6 - $weekday) . " days"));
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $monday . ' 00:00:00';
+            $params[] = $sunday . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === 'last_week') {
+            $weekday = date('N') - 1;
+            $monday = date('Y-m-d', strtotime("-" . ($weekday + 7) . " days"));
+            $sunday = date('Y-m-d', strtotime("-" . ($weekday + 1) . " days"));
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $monday . ' 00:00:00';
+            $params[] = $sunday . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === 'two_weeks_ago') {
+            $weekday = date('N') - 1;
+            $monday = date('Y-m-d', strtotime("-" . ($weekday + 14) . " days"));
+            $sunday = date('Y-m-d', strtotime("-" . ($weekday + 8) . " days"));
+            $where[] = "dl.received_at >= ?";
+            $where[] = "dl.received_at <= ?";
+            $params[] = $monday . ' 00:00:00';
+            $params[] = $sunday . ' 23:59:59';
+            $types .= "ss";
         } elseif ($dateMode === 'yesterday') {
             $yesterday = date('Y-m-d', strtotime('-1 day'));
             $where[] = "dl.received_at >= ?";
@@ -949,6 +1015,12 @@ switch ($action) {
             $dateCondition = "dl.received_at >= CURDATE() AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
         } else if ($date === 'yesterday' || $date === 'Hôm qua') {
             $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND dl.received_at < CURDATE()";
+        } else if ($date === 'this_week' || $date === 'Tuần này') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND dl.received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === 'last_week' || $date === 'Tuần trước') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND dl.received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } else if ($date === 'two_weeks_ago' || $date === 'Tuần trước nữa') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND dl.received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === '7days' || $date === '7 ngày qua') {
             $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         } else if ($date === '30days' || $date === '30 ngày qua') {
@@ -1077,6 +1149,12 @@ switch ($action) {
             $dateCondition = "dl.received_at >= CURDATE() AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
         } else if ($date === 'yesterday' || $date === 'Hôm qua') {
             $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND dl.received_at < CURDATE()";
+        } else if ($date === 'this_week' || $date === 'Tuần này') {
+            $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND dl.received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === 'last_week' || $date === 'Tuần trước') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND dl.received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } else if ($date === 'two_weeks_ago' || $date === 'Tuần trước nữa') {
+            $dateCondition = "dl.received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND dl.received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === '7days' || $date === '7 ngày qua') {
             $dateCondition = "dl.received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         } else if ($date === '30days' || $date === '30 ngày qua') {
@@ -4117,6 +4195,15 @@ switch ($action) {
         if ($date === 'Hôm qua') {
             $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
             $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 2 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+        } else if ($date === 'Tuần này') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            $prevDateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } else if ($date === 'Tuần trước') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            $prevDateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === 'Tuần trước nữa') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            $prevDateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 21 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY)";
         } else if ($date === '7 ngày qua') {
             $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
             $prevDateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
@@ -4141,6 +4228,7 @@ switch ($action) {
         $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
         $statsResRaw = $conn->query($statsSql);
         $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
+        $distributionBlacklisted = 0;
         if ($statsResRaw) {
             while ($row = $statsResRaw->fetch_assoc()) {
                 $status = $row['status'];
@@ -4154,6 +4242,10 @@ switch ($action) {
                     $statsRes['errors'] += $cnt;
                 else if ($status === 'rule_6_month')
                     $statsRes['distributed'] += $cnt;
+                else if ($status === 'blacklisted') {
+                    $statsRes['errors'] += $cnt;
+                    $distributionBlacklisted += $cnt;
+                }
             }
         }
 
@@ -4161,6 +4253,7 @@ switch ($action) {
         $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition AND status != 'silent' GROUP BY status";
         $prevStatsResRaw = $conn->query($prevStatsSql);
         $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
+        $prevDistributionBlacklisted = 0;
         if ($prevStatsResRaw) {
             while ($row = $prevStatsResRaw->fetch_assoc()) {
                 $status = $row['status'];
@@ -4174,8 +4267,35 @@ switch ($action) {
                     $prevStatsRes['errors'] += $cnt;
                 else if ($status === 'rule_6_month')
                     $prevStatsRes['distributed'] += $cnt;
+                else if ($status === 'blacklisted') {
+                    $prevStatsRes['errors'] += $cnt;
+                    $prevDistributionBlacklisted += $cnt;
+                }
             }
         }
+
+        // Query active blacklist counts from admin_logs (excluding manual ones that are already in distribution_logs as status='blacklisted' to avoid double-counting)
+        $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
+        $prevDateConditionCreated = str_replace('received_at', 'created_at', $prevDateCondition);
+
+        $autoBlacklistCnt = 0;
+        $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $dateConditionCreated");
+        if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
+            $autoBlacklistCnt = (int) $row['cnt'];
+        }
+
+        $prevAutoBlacklistCnt = 0;
+        $prevBlacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $prevDateConditionCreated");
+        if ($prevBlacklistRes && $row = $prevBlacklistRes->fetch_assoc()) {
+            $prevAutoBlacklistCnt = (int) $row['cnt'];
+        }
+
+        $ticketErrors = $statsRes['errors'] - $distributionBlacklisted;
+        $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
+        $statsRes['errors'] += $autoBlacklistCnt;
+
+        $prevTicketErrors = $prevStatsRes['errors'] - $prevDistributionBlacklisted;
+        $prevStatsRes['errors'] += $prevAutoBlacklistCnt;
 
         $calcChange = function ($current, $prev) {
             $current = (int) $current;
@@ -4304,6 +4424,8 @@ switch ($action) {
                 'distributed_today' => (int) $statsRes['distributed'],
                 'duplicates' => (int) $statsRes['duplicates'],
                 'errors' => (int) $statsRes['errors'],
+                'ticket_errors' => (int) $ticketErrors,
+                'blacklists' => (int) $blacklistCnt,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
                 'duplicates_change' => $calcChange($statsRes['duplicates'], $prevStatsRes['duplicates']),

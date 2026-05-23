@@ -6,7 +6,7 @@ import {
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
-  PieChart, Pie, Cell, Legend, BarChart
+  PieChart, Pie, Cell, BarChart
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -38,6 +38,12 @@ export const Dashboard = () => {
         return 'so với hôm qua';
       case 'Hôm qua':
         return 'so với ngày trước đó';
+      case 'Tuần này':
+        return 'so với tuần trước';
+      case 'Tuần trước':
+        return 'so với tuần trước nữa';
+      case 'Tuần trước nữa':
+        return 'so với tuần trước đó';
       case '7 ngày qua':
         return 'so với 7 ngày trước';
       case '30 ngày qua':
@@ -146,13 +152,16 @@ export const Dashboard = () => {
   const dateOptions = [
     { value: 'Hôm nay', label: 'Hôm nay' },
     { value: 'Hôm qua', label: 'Hôm qua' },
+    { value: 'Tuần này', label: 'Tuần này' },
+    { value: 'Tuần trước', label: 'Tuần trước' },
+    { value: 'Tuần trước nữa', label: 'Tuần trước nữa' },
     { value: '7 ngày qua', label: '7 ngày qua' },
     { value: '30 ngày qua', label: '30 ngày qua' },
     { value: 'Tháng này', label: 'Tháng này' },
     { value: 'Tháng trước', label: 'Tháng trước' }
   ];
 
-  const defaultFilters = ['Hôm nay', 'Hôm qua', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
+  const defaultFilters = ['Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
   if (!defaultFilters.includes(dateFilter)) {
     dateOptions.push({ value: dateFilter, label: dateFilter });
   }
@@ -230,6 +239,11 @@ export const Dashboard = () => {
                   {card.change || '+0%'}
                   <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>{getComparisonLabel(dateFilter)}</span>
                 </div>
+                {card.id === 'errors' && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
+                    {stats?.ticket_errors || 0} ticket / {stats?.blacklists || 0} blacklist
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -488,37 +502,66 @@ export const Dashboard = () => {
               <GitBranch size={18} color="#8b5cf6" /> Tỷ lệ Nguồn Data
             </h3>
           </div>
-          <div style={{ flex: 1, minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, minHeight: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             {stats?.sourceStats && stats.sourceStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={stats.sourceStats}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {stats.sourceStats.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ color: '#1e293b', fontWeight: 600 }}
-                  />
-                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.75rem' }} />
-                </PieChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={stats.sourceStats}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {stats.sourceStats.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      itemStyle={{ color: '#1e293b', fontWeight: 600 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Custom Legend - Chấm tròn, xếp hàng ngay ngắn */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
+                  gap: '6px 12px', 
+                  width: '100%', 
+                  marginTop: '12px',
+                  padding: '0 12px',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-light)'
+                }}>
+                  {stats.sourceStats.map((entry: any, index: number) => (
+                    <div 
+                      key={index} 
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }} 
+                      title={`${entry.name}: ${entry.value}`}
+                    >
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {entry.name}
+                      </span>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
+                        {entry.value} data
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
             )}
           </div>
         </div>
 
-        {/* Error Tickets by TVV (Horizontal Bar Chart) */}
+        {/* Error Tickets by TVV (Vertical Column Chart) */}
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
@@ -528,16 +571,36 @@ export const Dashboard = () => {
           <div style={{ flex: 1, minHeight: 260 }}>
             {stats?.errorStats && stats.errorStats.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stats.errorStats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={stats.errorStats} margin={{ top: 15, right: 10, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="errorGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f87171" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.8} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text)' }} width={120} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 500 }}
+                    interval={0}
+                    angle={-12}
+                    textAnchor="end"
+                    height={40}
+                  />
+                  <YAxis 
+                    allowDecimals={false} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} 
+                  />
                   <Tooltip 
-                    cursor={{ fill: 'var(--color-bg)' }}
+                    cursor={{ fill: 'rgba(239, 68, 68, 0.04)' }}
                     contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     itemStyle={{ color: '#ef4444', fontWeight: 600 }}
                   />
-                  <Bar dataKey="errors" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={16} name="Số lỗi" />
+                  <Bar dataKey="errors" fill="url(#errorGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

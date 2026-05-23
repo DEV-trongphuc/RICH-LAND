@@ -288,28 +288,42 @@ function findConsultantByEmailOrName($conn, $value) {
     $value = trim($value);
     if (empty($value)) return null;
     $lowerVal = mb_strtolower($value, 'UTF-8');
+    
+    // Sử dụng bộ nhớ đệm static cache tránh truy vấn DB lặp lại nhiều lần
+    static $consultantNameIdCache = [];
+    if (array_key_exists($lowerVal, $consultantNameIdCache)) {
+        return $consultantNameIdCache[$lowerVal];
+    }
+    
     // 1. Try finding by email
     if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
         $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(email) = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $lowerVal);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res->fetch_assoc();
+            $stmt->close();
+            if ($row) {
+                $consultantNameIdCache[$lowerVal] = (int)$row['id'];
+                return $consultantNameIdCache[$lowerVal];
+            }
+        }
+    }
+    // 2. Try finding by name (case-insensitive or exact name match)
+    $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(name) = ? LIMIT 1");
+    if ($stmt) {
         $stmt->bind_param("s", $lowerVal);
         $stmt->execute();
         $res = $stmt->get_result();
         $row = $res->fetch_assoc();
         $stmt->close();
         if ($row) {
-            return $row['id'];
+            $consultantNameIdCache[$lowerVal] = (int)$row['id'];
+            return $consultantNameIdCache[$lowerVal];
         }
     }
-    // 2. Try finding by name (case-insensitive or exact name match)
-    $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(name) = ? LIMIT 1");
-    $stmt->bind_param("s", $lowerVal);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $row = $res->fetch_assoc();
-    $stmt->close();
-    if ($row) {
-        return $row['id'];
-    }
+    $consultantNameIdCache[$lowerVal] = null;
     return null;
 }
 
