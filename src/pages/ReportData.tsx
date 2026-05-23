@@ -58,6 +58,7 @@ export const ReportData = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [submitError, setSubmitError] = useState('');
+  const [expandedMobile, setExpandedMobile] = useState(false);
 
   useEffect(() => {
     navigate('/report-data', { replace: true });
@@ -80,7 +81,9 @@ export const ReportData = () => {
     if (params.isTest) { setSubmitError('Đây là link thử nghiệm — không thể gửi báo cáo thật.'); setSubmitStatus('error'); return; }
     if (submitting || submitStatus === 'success') return;
     setSubmitting(true); setSubmitError('');
-    const finalReason = reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? `Khác: ${customReason}` : reason;
+    const finalReason = reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' 
+      ? `Khác: ${customReason}` 
+      : (customReason.trim() ? `${reason} (Ghi chú: ${customReason.trim()})` : reason);
     try {
       const res = await fetchPublicAPI('submit_report', {
         method: 'POST',
@@ -182,45 +185,56 @@ export const ReportData = () => {
                     {/* Details */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <InfoItem label="Nguồn Data" value={context.lead_source || 'Không rõ'} />
-                      {context.lead_email && (
-                        <>
-                          <div style={{ height: 1, background: '#f1f5f9' }} />
-                          <InfoItem label="Email" value={context.lead_email} />
-                        </>
-                      )}
-                      {context.lead_type && (
-                        <>
-                          <div style={{ height: 1, background: '#f1f5f9' }} />
-                          <InfoItem label="Loại Data" value={context.lead_type} />
-                        </>
-                      )}
-                      <div style={{ height: 1, background: '#f1f5f9' }} />
-                      <InfoItem label="Vòng phân bổ" value={context.round_name} accent />
-                      <div style={{ height: 1, background: '#f1f5f9' }} />
-                      <InfoItem label="Nhận lúc" value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
-                      {context.lead_note && (
-                        <>
-                          <div style={{ height: 1, background: '#f1f5f9' }} />
-                          <div>
-                            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
-                            <div style={{ 
-                              fontSize: '0.8rem', 
-                              fontWeight: 500, 
-                              color: '#475569', 
-                              background: '#f8fafc', 
-                              padding: '8px 12px', 
-                              borderRadius: 8, 
-                              border: '1px solid #e2e8f0',
-                              whiteSpace: 'pre-wrap',
-                              maxHeight: '120px',
-                              overflowY: 'auto',
-                              lineHeight: 1.4
-                            }}>
-                              {context.lead_note}
+                      
+                      <button 
+                        type="button" 
+                        className="mobile-toggle-btn"
+                        onClick={() => setExpandedMobile(!expandedMobile)}
+                      >
+                        {expandedMobile ? 'Thu gọn chi tiết ▲' : 'Xem chi tiết ▼'}
+                      </button>
+
+                      <div className={`extra-details ${expandedMobile ? 'expanded' : ''}`}>
+                        {context.lead_email && (
+                          <>
+                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <InfoItem label="Email" value={context.lead_email} />
+                          </>
+                        )}
+                        {context.lead_type && (
+                          <>
+                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <InfoItem label="Loại Data" value={context.lead_type} />
+                          </>
+                        )}
+                        <div style={{ height: 1, background: '#f1f5f9' }} />
+                        <InfoItem label="Vòng phân bổ" value={context.round_name} accent />
+                        <div style={{ height: 1, background: '#f1f5f9' }} />
+                        <InfoItem label="Nhận lúc" value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                        {context.lead_note && (
+                          <>
+                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
+                              <div style={{ 
+                                fontSize: '0.8rem', 
+                                fontWeight: 500, 
+                                color: '#475569', 
+                                background: '#f8fafc', 
+                                padding: '8px 12px', 
+                                borderRadius: 8, 
+                                border: '1px solid #e2e8f0',
+                                whiteSpace: 'pre-wrap',
+                                maxHeight: '120px',
+                                overflowY: 'auto',
+                                lineHeight: 1.4
+                              }}>
+                                {context.lead_note}
+                              </div>
                             </div>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
@@ -288,11 +302,13 @@ export const ReportData = () => {
                       ))}
                     </div>
 
-                    {reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' && (
-                      <textarea required value={customReason} onChange={e => setCustomReason(e.target.value)}
-                        placeholder="Nhập chi tiết lý do..."
-                        style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0 }} />
-                    )}
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>Ghi chú thêm</div>
+                    <textarea 
+                      required={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)'} 
+                      value={customReason} 
+                      onChange={e => setCustomReason(e.target.value)}
+                      placeholder={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? 'Nhập chi tiết lý do lỗi (bắt buộc)...' : 'Nhập ghi chú thêm nếu có (tùy chọn)...'}
+                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0 }} />
 
                     <button type="submit" disabled={submitting}
                       style={{
@@ -339,12 +355,12 @@ const ResponsiveStyle = () => (
   <style>{`
     .report-wrapper {
       width: 100%;
-      min-height: 100vh;
+      height: 100vh;
       background: linear-gradient(135deg, #1e1246 0%, #2d1b69 40%, #0f172a 100%);
       display: flex;
       flex-direction: column;
       position: relative;
-      overflow-y: auto;
+      overflow: hidden;
       box-sizing: border-box;
       padding: 20px 0;
     }
@@ -370,6 +386,8 @@ const ResponsiveStyle = () => (
     .report-card {
       display: flex;
       width: 100%;
+      height: 600px;
+      max-height: 80vh;
       margin: auto;
       background: white;
       border-radius: 20px;
@@ -385,6 +403,7 @@ const ResponsiveStyle = () => (
       flex-direction: column;
       gap: 18px;
       box-sizing: border-box;
+      overflow-y: auto;
     }
     .form-card {
       flex: 1;
@@ -394,9 +413,60 @@ const ResponsiveStyle = () => (
       flex-direction: column;
       border-left: 1px solid #f1f5f9;
       box-sizing: border-box;
+      overflow-y: auto;
     }
+    .mobile-toggle-btn {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 12px;
+      color: #7c3aed;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 6px;
+      transition: all 0.2s;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .mobile-toggle-btn:hover {
+      background: #f1f5f9;
+      border-color: #8b5cf6;
+    }
+    .extra-details {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Custom thin scrollbar for info-card and form-card */
+    .info-card::-webkit-scrollbar,
+    .form-card::-webkit-scrollbar {
+      width: 6px;
+    }
+    .info-card::-webkit-scrollbar-track,
+    .form-card::-webkit-scrollbar-track {
+      background: #f8fafc;
+      border-radius: 3px;
+    }
+    .info-card::-webkit-scrollbar-thumb,
+    .form-card::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .info-card::-webkit-scrollbar-thumb:hover,
+    .form-card::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
     @media (max-width: 768px) {
       .report-wrapper {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
         padding: 10px 0;
       }
       .main-content-layout {
@@ -405,16 +475,33 @@ const ResponsiveStyle = () => (
       .report-card {
         flex-direction: column;
         border-radius: 16px;
+        height: auto;
+        max-height: none;
       }
       .info-card {
         flex: none;
         width: 100%;
+        max-height: none; /* remove fixed max-height since button controls fold/unfold */
         border-bottom: 1px solid #f1f5f9;
         padding: 20px 16px;
       }
       .form-card {
         border-left: none;
         padding: 20px 16px;
+        height: auto;
+        max-height: none;
+        overflow-y: visible;
+      }
+      .mobile-toggle-btn {
+        display: block;
+      }
+      .extra-details {
+        display: none;
+      }
+      .extra-details.expanded {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
     }
     .spin {
