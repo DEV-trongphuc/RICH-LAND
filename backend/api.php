@@ -269,11 +269,10 @@ switch ($action) {
             exit();
         }
 
-        // Count total import history records
+        // Count total import history records from leads table directly
         $countRes = $conn->query("
             SELECT COUNT(*) as cnt
-            FROM distribution_logs dl
-            JOIN leads l ON dl.lead_id = l.id
+            FROM leads l
             WHERE l.source = 'Excel Import' 
                OR l.note LIKE '%Nhap du lieu cu%'
         ");
@@ -294,7 +293,7 @@ switch ($action) {
 
         $res = $conn->query("
             SELECT 
-                dl.id as log_id,
+                COALESCE(dl.id, -l.id) as log_id,
                 l.id as lead_id,
                 l.name,
                 l.phone,
@@ -304,21 +303,23 @@ switch ($action) {
                 c.name as consultant_name,
                 c.status as consultant_status,
                 l.last_interaction_date
-            FROM distribution_logs dl
-            JOIN leads l ON dl.lead_id = l.id
-            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            FROM leads l
+            LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+            LEFT JOIN consultants c ON l.assigned_to = c.id
             WHERE l.source = 'Excel Import' 
                OR l.note LIKE '%Nhap du lieu cu%'
-            ORDER BY dl.id DESC
+            ORDER BY l.id DESC
             $limitStr
         ");
         $data = [];
         while ($row = $res->fetch_assoc()) {
+            $distMsg = $row['distribution_message'] ?? '';
+            $distStatus = $row['distribution_status'] ?? '';
             $isDuplicate = (
-                strpos($row['distribution_message'], 'Trung') !== false || 
-                strpos($row['distribution_message'], 'trung') !== false || 
-                $row['distribution_status'] === 'duplicate' || 
-                $row['distribution_status'] === 'reminder'
+                strpos($distMsg, 'Trung') !== false || 
+                strpos($distMsg, 'trung') !== false || 
+                $distStatus === 'duplicate' || 
+                $distStatus === 'reminder'
             );
             $data[] = [
                 'log_id' => (int)$row['log_id'],
@@ -349,6 +350,12 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Không có bản ghi nào được chọn để xóa.']);
             break;
         }
+
+        // Filter out fake negative log IDs (which represent leads with deleted/pruned logs)
+        $logIds = array_filter($logIds, function($id) {
+            return is_numeric($id) && (int)$id > 0;
+        });
+        $logIds = array_values(array_map('intval', $logIds));
 
         $conn->begin_transaction();
         try {
@@ -4580,6 +4587,7 @@ switch ($action) {
             while ($row = $resDist->fetch_assoc()) {
                 $status = $row['status'];
                 $leadName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
+                $leadNameEscaped = htmlspecialchars($leadName, ENT_QUOTES, 'UTF-8');
                 $leadPhoneRaw = $row['lead_phone'] ?: '';
                 $leadPhone = '';
                 if (!empty($leadPhoneRaw)) {
@@ -4590,7 +4598,9 @@ switch ($action) {
                         $leadPhone = '***';
                     }
                 }
+                $leadPhoneEscaped = htmlspecialchars($leadPhone, ENT_QUOTES, 'UTF-8');
                 $consultantName = $row['consultant_name'] ?: '';
+                $consultantNameEscaped = htmlspecialchars($consultantName, ENT_QUOTES, 'UTF-8');
                 $roundName = $row['round_name'] ?: '';
                 
                 $title = "";
@@ -4601,49 +4611,49 @@ switch ($action) {
                 switch ($status) {
                     case 'assigned':
                         $title = "Bàn giao lead mới";
-                        $description = "Bàn giao lead <strong>$leadName</strong> ($leadPhone) cho Sale <strong>$consultantName</strong>.";
+                        $description = "Bàn giao lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) cho Sale <strong>$consultantNameEscaped</strong>.";
                         $tag = $roundName ?: "Đã chia";
                         $tagColor = "success";
                         break;
                     case 'compensation':
                         $title = "Bù lead";
-                        $description = "Bù lượt lead <strong>$leadName</strong> ($leadPhone) cho Sale <strong>$consultantName</strong>.";
+                        $description = "Bù lượt lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) cho Sale <strong>$consultantNameEscaped</strong>.";
                         $tag = "Bù lượt";
                         $tagColor = "success";
                         break;
                     case 'pending_work_hours':
                         $title = "Tạm giữ ngoài giờ";
-                        $description = "Tạm giữ lead <strong>$leadName</strong> ($leadPhone) ngoài giờ làm việc của Sale <strong>$consultantName</strong>.";
+                        $description = "Tạm giữ lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) ngoài giờ làm việc của Sale <strong>$consultantNameEscaped</strong>.";
                         $tag = "Chờ giờ làm";
                         $tagColor = "warning";
                         break;
                     case 'duplicate':
                         $title = "Từ chối trùng lặp";
-                        $description = "Từ chối phân bổ lead <strong>$leadName</strong> ($leadPhone) do trùng số điện thoại hệ thống.";
+                        $description = "Từ chối phân bổ lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) do trùng số điện thoại hệ thống.";
                         $tag = "Trùng lặp";
                         $tagColor = "danger";
                         break;
                     case 'blacklisted':
                         $title = "Chặn danh sách đen";
-                        $description = "Chặn lead <strong>$leadName</strong> ($leadPhone) do trùng số điện thoại/email trong Blacklist.";
+                        $description = "Chặn lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) do trùng số điện thoại/email trong Blacklist.";
                         $tag = "Blacklist";
                         $tagColor = "danger";
                         break;
                     case 'reallocated':
                         $title = "Thu hồi lead";
-                        $description = "Thu hồi lead <strong>$leadName</strong> ($leadPhone) từ Sale <strong>$consultantName</strong>.";
+                        $description = "Thu hồi lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) từ Sale <strong>$consultantNameEscaped</strong>.";
                         $tag = "Tái phân bổ";
                         $tagColor = "info";
                         break;
                     case 'silent':
                         $title = "Đồng bộ im lặng";
-                        $description = "Đồng bộ lead <strong>$leadName</strong> ($leadPhone) nhưng không chia (chế độ Silent).";
+                        $description = "Đồng bộ lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) nhưng không chia (chế độ Silent).";
                         $tag = "Chỉ đồng bộ";
                         $tagColor = "neutral";
                         break;
                     default:
                         $title = "Phân bổ lead";
-                        $description = "Trạng thái phân bổ của lead <strong>$leadName</strong> ($leadPhone) là " . htmlspecialchars($status) . ".";
+                        $description = "Trạng thái phân bổ của lead <strong>$leadNameEscaped</strong> ($leadPhoneEscaped) là " . htmlspecialchars($status) . ".";
                         $tag = $status;
                         $tagColor = "neutral";
                         break;
@@ -4676,6 +4686,7 @@ switch ($action) {
             while ($row = $resAdmin->fetch_assoc()) {
                 $action = $row['action'];
                 $adminName = $row['admin_name'] ?: ($row['account_id'] == 0 ? 'Hệ thống' : 'Người dùng ẩn danh');
+                $adminNameEscaped = htmlspecialchars($adminName, ENT_QUOTES, 'UTF-8');
                 $detailsStr = $row['details'] ?: '';
                 
                 $title = "";
@@ -4697,13 +4708,14 @@ switch ($action) {
                     case 'BLOCK_LEAD_BLACKLIST':
                         $type = $detailsObj['type'] ?? 'manual';
                         $leadPhone = $detailsObj['phone'] ?? '';
+                        $leadPhoneEscaped = htmlspecialchars($leadPhone, ENT_QUOTES, 'UTF-8');
                         if ($type === 'auto') {
                             $title = "Chặn Blacklist tự động";
-                            $description = "Hệ thống tự động chặn liên hệ <strong>$leadPhone</strong> khớp danh sách đen.";
+                            $description = "Hệ thống tự động chặn liên hệ <strong>$leadPhoneEscaped</strong> khớp danh sách đen.";
                             $tag = "Tự động";
                         } else {
                             $title = "Chặn Blacklist thủ công";
-                            $description = "Admin <strong>$adminName</strong> chặn thủ công liên hệ <strong>$leadPhone</strong>.";
+                            $description = "Admin <strong>$adminNameEscaped</strong> chặn thủ công liên hệ <strong>$leadPhoneEscaped</strong>.";
                             $tag = "Thủ công";
                         }
                         $tagColor = "danger";
@@ -4711,19 +4723,19 @@ switch ($action) {
                     case 'IMPORT_BLACKLIST':
                         $count = $detailsObj['count'] ?? 0;
                         $title = "Nhập danh sách đen";
-                        $description = "Admin <strong>$adminName</strong> tải lên <strong>$count</strong> liên hệ chặn vào Blacklist.";
+                        $description = "Admin <strong>$adminNameEscaped</strong> tải lên <strong>$count</strong> liên hệ chặn vào Blacklist.";
                         $tag = "Excel/CSV";
                         $tagColor = "warning";
                         break;
                     case 'UPDATE_SETTINGS':
                         $title = "Cập nhật cấu hình";
-                        $description = "Admin <strong>$adminName</strong> thay đổi các thiết lập hệ thống.";
+                        $description = "Admin <strong>$adminNameEscaped</strong> thay đổi các thiết lập hệ thống.";
                         $tag = "Cấu hình";
                         $tagColor = "info";
                         break;
                     case 'LOGIN':
                         $title = "Đăng nhập";
-                        $description = "Người dùng <strong>$adminName</strong> đăng nhập vào hệ thống quản trị.";
+                        $description = "Người dùng <strong>$adminNameEscaped</strong> đăng nhập vào hệ thống quản trị.";
                         $tag = "Bảo mật";
                         $tagColor = "success";
                         break;
@@ -4745,7 +4757,7 @@ switch ($action) {
                         break;
                     default:
                         $title = "Thao tác quản trị";
-                        $description = "Admin <strong>$adminName</strong> thực hiện hành động: <strong>$action</strong>.";
+                        $description = "Admin <strong>$adminNameEscaped</strong> thực hiện hành động: <strong>$action</strong>.";
                         $tag = $action;
                         $tagColor = "info";
                         break;
@@ -4780,8 +4792,11 @@ switch ($action) {
             while ($row = $resTicket->fetch_assoc()) {
                 $status = $row['status'];
                 $consultantName = $row['consultant_name'] ?: 'Ẩn danh';
+                $consultantNameEscaped = htmlspecialchars($consultantName, ENT_QUOTES, 'UTF-8');
                 $leadName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
+                $leadNameEscaped = htmlspecialchars($leadName, ENT_QUOTES, 'UTF-8');
                 $reason = $row['reason'] ?: 'Không có lý do';
+                $reasonEscaped = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
                 
                 $title = "Báo cáo lỗi Ticket";
                 $description = "";
@@ -4790,17 +4805,17 @@ switch ($action) {
                 
                 switch ($status) {
                     case 'pending':
-                        $description = "Sale <strong>$consultantName</strong> gửi báo cáo lỗi cho lead <strong>$leadName</strong>. Lý do: <em>$reason</em>.";
+                        $description = "Sale <strong>$consultantNameEscaped</strong> gửi báo cáo lỗi cho lead <strong>$leadNameEscaped</strong>. Lý do: <em>$reasonEscaped</em>.";
                         $tag = "Chờ duyệt";
                         $tagColor = "warning";
                         break;
                     case 'resolved':
-                        $description = "Báo cáo lỗi cho lead <strong>$leadName</strong> từ Sale <strong>$consultantName</strong> đã được phê duyệt.";
+                        $description = "Báo cáo lỗi cho lead <strong>$leadNameEscaped</strong> từ Sale <strong>$consultantNameEscaped</strong> đã được phê duyệt.";
                         $tag = "Đã duyệt";
                         $tagColor = "success";
                         break;
                     case 'rejected':
-                        $description = "Báo cáo lỗi cho lead <strong>$leadName</strong> từ Sale <strong>$consultantName</strong> đã bị từ chối.";
+                        $description = "Báo cáo lỗi cho lead <strong>$leadNameEscaped</strong> từ Sale <strong>$consultantNameEscaped</strong> đã bị từ chối.";
                         $tag = "Bị từ chối";
                         $tagColor = "danger";
                         break;
