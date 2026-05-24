@@ -196,18 +196,21 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
     $roundLine = !empty($roundName) ? "  • Vòng phân bổ: $roundName\n" : "";
 
     $roundTitle = !empty($roundName) ? " - " . mb_strtoupper($roundName, 'UTF-8') : "";
-    $text = "[ THÔNG BÁO DATA MỚI$roundTitle ]\n\n"
+    $text = "📥 [ THÔNG BÁO DATA MỚI$roundTitle ] 📥\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
-        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
         . $emailLine
         . $typeLine
         . "  • Nguồn: $fSource\n"
         . $roundLine
-        . "\n❖ GHI CHÚ:\n"
+        . "\n📝 GHI CHÚ:\n"
         . "  $fNote\n\n"
-        . "Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+        . "⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
+        . "👉 Link: $reportUrl\n"
+        . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $text);
 }
@@ -303,9 +306,11 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     $emailLine = !empty($email) ? "  • Email: $email\n" : "";
     $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
 
-    $text = "[ KHÁCH HÀNG ĐĂNG KÝ LẠI - KHÔNG TÍNH VÒNG LEAD ]\n\n"
+    $text = "🔄 [ KHÁCH HÀNG ĐĂNG KÝ LẠI ] 🔄\n"
+        . "⚠️ (KHÔNG TÍNH VÒNG PHÂN BỔ)\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
-        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
         . $emailLine
@@ -316,15 +321,15 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $text .= "  • Vòng: $roundName\n";
     }
 
-    $text .= "\n❖ GHI CHÚ MỚI:\n"
+    $text .= "\n📝 GHI CHÚ MỚI:\n"
         . "  $fNote\n";
 
     if (!empty($historyText)) {
-        $text .= "\n❖ LỊCH SỬ GẦN NHẤT:\n"
+        $text .= "\n📜 LỊCH SỬ PHÂN BỔ GẦN NHẤT:\n"
             . $historyText . "\n";
     }
 
-    $text .= "\nVui lòng liên hệ lại với khách hàng sớm nhất có thể!";
+    $text .= "\n⚡ Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
 
     // Build Report URL
     $reportUrl = '';
@@ -339,8 +344,10 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     }
 
     if (!empty($reportUrl)) {
-        $text .= "\n\nNếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây: $reportUrl";
+        $text .= "\n\n⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
+            . "👉 Link: $reportUrl";
     }
+    $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $text);
 }
@@ -385,17 +392,19 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
     $emailLine = !empty($email) ? "  • Email: $email\n" : "";
     $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
 
-    $text = "[ THÔNG BÁO DATA FALLBACK ]\n\n"
+    $text = "⚠️ [ THÔNG BÁO DATA FALLBACK ] ⚠️\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào Quản trị viên $adminName, hệ thống vừa phân bổ trực tiếp cho bạn 1 data bị fallback:\n\n"
-        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
         . "  • Tên KH: $fName\n"
         . "  • Số ĐT: $fPhone\n"
         . $emailLine
         . $typeLine
         . "  • Nguồn: $fSource\n"
-        . "\n❖ GHI CHÚ:\n"
+        . "\n📝 GHI CHÚ:\n"
         . "  $fNote\n\n"
-        . "Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.";
+        . "💡 Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.\n"
+        . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $adminChatId, $text);
 }
@@ -417,11 +426,13 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $stmtC->close();
     if (!$chatId) return false;
 
-    $msg = "[ THÔNG BÁO BÙ DATA ]\n\n";
-    $msg .= "Xin chào $consultantName,\n\n";
-    $msg .= "Quản trị viên vừa cập nhật bù thêm $amount data cho bạn tại vòng: $roundName.\n\n";
-    $msg .= "Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n";
-    $msg .= "Trân trọng,\nHệ thống Quản lý Domation DATA";
+    $msg = "🎁 [ THÔNG BÁO BÙ DATA ] 🎁\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
+        . "Xin chào $consultantName,\n\n"
+        . "Quản trị viên vừa cập nhật bù thêm $amount data cho bạn tại vòng: $roundName.\n\n"
+        . "💡 Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n"
+        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+        . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $msg);
 }
@@ -519,28 +530,32 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $stmtBlocked->close();
     }
     
-    $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n";
+    $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ] 📊\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
     $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
     if ($totalReminder > 0) {
-        $msg .= "   (Tổng cộng: " . ($totalData + $totalReminder) . " | Chia số: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
+        $msg .= "  • Tổng cộng: " . ($totalData + $totalReminder) . " data\n";
+        $msg .= "    (Chia số mới: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
     } else {
-        $msg .= "   ($totalData data)\n";
+        $msg .= "  • Tổng số data: $totalData data\n";
     }
-    $msg .= "------------------------------\n";
+    $msg .= "─────────────────────\n";
     $msg .= $saleStats . "\n";
-    $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
+    $msg .= "🎫 BÁO CÁO LỖI (TICKETS):\n";
     if ($totalTicket > 0) {
-        $msg .= "  • Tổng ticket phát sinh: $totalTicket ⚠️\n";
-        $msg .= "    (Đã duyệt: $approvedTicket | Từ chối: $rejectedTicket | Chờ duyệt: $pendingTicket)\n\n";
+        $msg .= "  • Tổng số ticket phát sinh: $totalTicket ⚠️\n";
+        $msg .= "  • ✅ Thành công (đã duyệt): $approvedTicket\n";
+        $msg .= "  • ❌ Thất bại (bị từ chối): $rejectedTicket\n";
+        $msg .= "  • ⏳ Chờ duyệt: $pendingTicket\n\n";
     } else {
-        $msg .= "  • Tổng ticket phát sinh: 0\n\n";
+        $msg .= "  • Tổng số ticket phát sinh: 0\n\n";
     }
-    $msg .= "CHẶN DATA (BLACKLIST):\n";
-    $msg .= "  • Tổng số data bị chặn: $totalBlocked\n\n";
-    $msg .= "-------------------\n";
+    $msg .= "🚫 CHẶN DATA (BLACKLIST):\n";
+    $msg .= "  • Tổng số data bị chặn: $totalBlocked\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
     $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
-    $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
+    $msg .= "💡 Gõ /tools để xem các câu lệnh nhanh.";
     
     return $msg;
 }
@@ -657,5 +672,141 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
         . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
 
     return sendZaloMessage($botToken, $chatId, $text);
+}
+
+/**
+ * Tạo nội dung báo cáo tuần cho một Consultant/Sale cụ thể
+ */
+function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestamp) {
+    $saleId = $sale['id'];
+    $saleName = $sale['name'];
+    $saleEmail = $sale['email'];
+
+    $windowStart = date('H:i d/m/Y', strtotime($startTimestamp));
+    $windowEnd = date('H:i d/m/Y', strtotime($endTimestamp));
+
+    // Query total data received by this sale broken down by round in the time window
+    $stmtData = $conn->prepare("
+        SELECT r.round_name, COUNT(dl.id) as total,
+               SUM(CASE WHEN dl.status = 'compensation' THEN 1 ELSE 0 END) as comp_received
+        FROM distribution_logs dl
+        JOIN distribution_rounds r ON dl.round_id = r.id
+        WHERE dl.assigned_to = ?
+          AND dl.received_at >= ?
+          AND dl.received_at <= ?
+          AND dl.status IN ('assigned', 'compensation')
+        GROUP BY dl.round_id
+    ");
+    $stmtData->bind_param("iss", $saleId, $startTimestamp, $endTimestamp);
+    $stmtData->execute();
+    $resData = $stmtData->get_result();
+
+    $totalData = 0;
+    $totalCompReceived = 0;
+    $roundDetails = [];
+    $roundDetailsHtml = '';
+    
+    while ($row = $resData->fetch_assoc()) {
+        $roundDetails[] = [
+            'name' => $row['round_name'],
+            'total' => (int)$row['total'],
+            'comp_received' => (int)$row['comp_received']
+        ];
+        $roundDetailsHtml .= '<li>Vòng <strong>' . htmlspecialchars($row['round_name']) . '</strong>: ' . (int)$row['total'] . ' data (trong đó đã đền bù: ' . (int)$row['comp_received'] . ')</li>';
+        $totalData += (int)$row['total'];
+        $totalCompReceived += (int)$row['comp_received'];
+    }
+    $stmtData->close();
+
+    if (empty($roundDetailsHtml)) {
+        $roundDetailsHtml = '<li>Bạn không nhận được data nào trong tuần này.</li>';
+    }
+
+    // Query tickets (data_reports) raised by this sale in the time window
+    $stmtTicket = $conn->prepare("
+        SELECT 
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_tickets,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_tickets,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tickets
+        FROM data_reports
+        WHERE consultant_id = ?
+          AND created_at >= ?
+          AND created_at <= ?
+    ");
+    $stmtTicket->bind_param("iss", $saleId, $startTimestamp, $endTimestamp);
+    $stmtTicket->execute();
+    $resTicket = $stmtTicket->get_result()->fetch_assoc();
+    $stmtTicket->close();
+
+    $approvedTickets = (int)($resTicket['approved_tickets'] ?? 0);
+    $rejectedTickets = (int)($resTicket['rejected_tickets'] ?? 0);
+    $pendingTickets = (int)($resTicket['pending_tickets'] ?? 0);
+    $totalTickets = $approvedTickets + $rejectedTickets + $pendingTickets;
+
+    // Query current compensation settings (tổng bù còn lại) in all rounds for this consultant
+    $stmtCompOwed = $conn->prepare("
+        SELECT SUM(compensation_count) as total_owed
+        FROM round_consultants
+        WHERE consultant_id = ?
+    ");
+    $stmtCompOwed->bind_param("i", $saleId);
+    $stmtCompOwed->execute();
+    $resCompOwed = $stmtCompOwed->get_result()->fetch_assoc();
+    $stmtCompOwed->close();
+
+    $totalCompOwed = (int)($resCompOwed['total_owed'] ?? 0);
+
+    // Fetch frontend URL for portal link
+    $frontendUrl = '';
+    $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+    if ($urlRes && $urlRes->num_rows > 0) {
+        $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+    }
+    if (empty($frontendUrl)) {
+        $frontendUrl = 'http://localhost:5173'; // Fallback
+    }
+    $portalUrl = $frontendUrl . '/sale-portal';
+
+    // Construct Zalo message content with beautiful emojis/icons and premium styling
+    $msg = "📊 [ BÁO CÁO TUẦN ] 📊\n";
+    $msg .= "👤 Sale: $saleName\n";
+    $msg .= "📅 Kỳ: $windowStart → $windowEnd\n";
+    $msg .= "____\n\n";
+    
+    $msg .= "📥 DATA NHẬN: $totalData data\n";
+    if ($totalData > 0) {
+        foreach ($roundDetails as $rd) {
+            $msg .= "  • Vòng \"{$rd['name']}\": {$rd['total']} (Đã bù: {$rd['comp_received']})\n";
+        }
+    } else {
+        $msg .= "  • Không nhận data nào trong tuần này.\n";
+    }
+    
+    $msg .= "\n🎫 VÉ LỖI (TICKETS): $totalTickets\n";
+    $msg .= "  • ✅ Thành công: $approvedTickets\n";
+    $msg .= "  • ❌ Thất bại: $rejectedTickets\n";
+    $msg .= "  • ⏳ Chờ duyệt: $pendingTickets\n";
+    
+    $msg .= "\n🎁 ĐỀN BÙ:\n";
+    $msg .= "  • 🔄 Đã bù tuần này: $totalCompReceived lượt\n";
+    $msg .= "  • ⏳ Chờ bù tiếp theo: $totalCompOwed lượt\n";
+    
+    $msg .= "\n🔗 Link Portal: $portalUrl\n";
+    $msg .= "____\n";
+    $msg .= "✨ Chúc bạn một tuần mới tràn đầy năng lượng và bùng nổ doanh số! 🚀";
+
+    return [
+        'msg' => $msg,
+        'roundDetailsHtml' => $roundDetailsHtml,
+        'totalData' => $totalData,
+        'totalTickets' => $totalTickets,
+        'approvedTickets' => $approvedTickets,
+        'rejectedTickets' => $rejectedTickets,
+        'pendingTickets' => $pendingTickets,
+        'totalCompReceived' => $totalCompReceived,
+        'totalCompOwed' => $totalCompOwed,
+        'windowStart' => $windowStart,
+        'windowEnd' => $windowEnd
+    ];
 }
 

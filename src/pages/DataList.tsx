@@ -1122,11 +1122,13 @@ export const DataList = () => {
                     <CustomSelect 
                       options={[
                         { value: '', label: '-- Chọn Tư vấn viên --' },
-                        ...consultants.map(c => ({
-                          value: c.id.toString(),
-                          label: c.name,
-                          avatar: c.avatar
-                        }))
+                        ...consultants
+                          .filter(c => c.name !== selectedLead?.assigned_to_name)
+                          .map(c => ({
+                            value: c.id.toString(),
+                            label: c.name,
+                            avatar: c.avatar
+                          }))
                       ]}
                       value={reassignConsId}
                       onChange={val => setReassignConsId(val.toString())}
@@ -1173,7 +1175,7 @@ export const DataList = () => {
               </p>
               {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                  Lead này hiện đang thuộc về: <strong>{selectedLead.assigned_to_name}</strong>. Bạn muốn bù data cho <strong>{selectedLead.assigned_to_name}</strong> chứ?
+                  Tư vấn viên hiện tại: <strong>{selectedLead.assigned_to_name}</strong>. Chọn hình thức giao lại:
                 </p>
               )}
             </div>
@@ -1190,7 +1192,7 @@ export const DataList = () => {
                   style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Chuyển luôn, Không bù
+                  Giao lại luôn
                 </button>
                 <button 
                   className="btn success" 
@@ -1198,7 +1200,7 @@ export const DataList = () => {
                   style={{ background: '#10b981', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Chuyển & Bù cho sale cũ
+                  Giao lại và bù vòng cho TVV
                 </button>
               </>
             ) : (

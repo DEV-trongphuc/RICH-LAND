@@ -135,7 +135,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         // --- KẾT THÚC TEST COMMAND ---
 
         // --- XỬ LÝ COMMANDS BÁO CÁO NHANH (ADMIN ONLY) ---
-        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/reject') === 0 || strpos($textLower, '/round') === 0 || strpos($textLower, '/check') === 0) {
+        if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/reject') === 0 || strpos($textLower, '/round') === 0 || strpos($textLower, '/check') === 0 || strpos($textLower, '/week') === 0) {
             // Kiểm tra phân quyền Admin
             $isAdmin = false;
             $adminName = '';
@@ -162,22 +162,25 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
                 $reportTimeDisplay = date('H:i', strtotime($reportTime));
 
-                $toolsMsg = "🛠️ [ DANH SÁCH LỆNH BÁO CÁO NHANH ]\n\n"
+                $toolsMsg = "🛠️ [ DANH SÁCH LỆNH BÁO CÁO NHANH ] 🛠️\n"
+                          . "━━━━━━━━━━━━━━━━━━━━━\n"
                           . "Chào $adminName, dưới đây là các câu lệnh bạn có thể sử dụng:\n\n"
-                          . "📈 1. Báo cáo phân bổ:\n\n"
-                          . "  • [/report] hoặc [/report homnay]: Báo cáo từ {$reportTimeDisplay} hôm qua đến hiện tại.\n\n"
-                          . "  • [/report homqua]: Báo cáo của ngày hôm qua ({$reportTimeDisplay} hôm kia → {$reportTimeDisplay} hôm qua).\n\n"
-                          . "  • [/report dd/mm]: Báo cáo nguyên ngày dd/mm (00:00 → 23:59).\n\n"
-                          . "  • [/report dd/mm to dd/mm]: Báo cáo khoảng ngày.\n\n"
-                          . "  • [/check sdt_hoặc_email]: Kiểm tra thông tin Lead (vòng, sale, ghi chú...).\n\n\n"
-                          . "🎫 2. Quản lý Ticket (Báo lỗi):\n\n"
-                          . "  • [/ticket pending]: Xem danh sách ticket đang chờ duyệt.\n\n"
-                          . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n\n"
-                          . "  • [/accept mã_ticket lý_do]: Duyệt nhanh ticket lỗi kèm lý do tùy chọn (Ví dụ: [/accept 12 Duyệt trùng]).\n\n"
-                          . "  • [/reject mã_ticket lý_do]: Từ chối nhanh ticket lỗi kèm lý do bắt buộc (Ví dụ: [/reject 12 Khách vẫn nghe máy]).\n\n\n"
-                          . "👥 3. Quản lý nhân sự:\n\n"
-                          . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.\n\n"
-                          . "  • [/round]: Xem các vòng phân bổ đang hoạt động và Sale tiếp theo nhận số.";
+                          . "📈 1. BÁO CÁO PHÂN BỔ & TRA CỨU:\n"
+                          . "  • [/report] hoặc [/report homnay]: Báo cáo từ {$reportTimeDisplay} hôm qua đến hiện tại.\n"
+                          . "  • [/report homqua]: Báo cáo ngày hôm qua ({$reportTimeDisplay} hôm kia → {$reportTimeDisplay} hôm qua).\n"
+                          . "  • [/report dd/mm]: Báo cáo nguyên ngày dd/mm.\n"
+                          . "  • [/report dd/mm to dd/mm]: Báo cáo khoảng ngày.\n"
+                          . "  • [/weekreport <id_hoặc_email_tên>]: Xem báo cáo tuần của Sale cụ thể. 🆕\n"
+                          . "  • [/check <sdt_hoặc_email>]: Kiểm tra thông tin Lead (vòng, sale, ghi chú...).\n\n"
+                          . "🎫 2. QUẢN LÝ TICKET (BÁO LỖI):\n"
+                          . "  • [/ticket pending]: Xem danh sách ticket đang chờ duyệt.\n"
+                          . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n"
+                          . "  • [/accept <mã_ticket> <lý_do>]: Duyệt nhanh ticket lỗi kèm lý do (Ví dụ: [/accept 12 Duyệt trùng]).\n"
+                          . "  • [/reject <mã_ticket> <lý_do>]: Từ chối nhanh ticket kèm lý do (Ví dụ: [/reject 12 Khách vẫn nghe máy]).\n\n"
+                          . "👥 3. QUẢN LÝ NHÂN SỰ & HỆ THỐNG:\n"
+                          . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.\n"
+                          . "  • [/round]: Xem các vòng phân bổ đang hoạt động và Sale tiếp theo nhận số.\n"
+                          . "━━━━━━━━━━━━━━━━━━━━━";
                 sendZaloMessage($botToken, $chatId, $toolsMsg);
                 exit;
             }
@@ -224,6 +227,100 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
                 $reportMsg = getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel);
                 sendZaloMessage($botToken, $chatId, $reportMsg);
+                exit;
+            }
+
+            if (strpos($textLower, '/week') === 0) {
+                // Remove command prefix
+                $cmdArg = '';
+                if (strpos($textLower, '/weeklyreport') === 0) {
+                    $cmdArg = trim(substr($text, 13));
+                } else if (strpos($textLower, '/weekreport') === 0) {
+                    $cmdArg = trim(substr($text, 11));
+                } else {
+                    $cmdArg = trim(substr($text, 5)); // /week
+                }
+
+                if (empty($cmdArg)) {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Vui lòng nhập ID, Email hoặc Tên của Sale để xem báo cáo tuần. Ví dụ:\n• `/weekreport 5`\n• `/weekreport sale@gmail.com`\n• `/weekreport Nguyễn Văn A`\n\n💡 Gõ `/sales` để xem danh sách tư vấn viên và ID.");
+                    exit;
+                }
+
+                $salesMatched = [];
+
+                if (is_numeric($cmdArg)) {
+                    // Search by ID
+                    $stmtFind = $conn->prepare("SELECT id, name, email FROM consultants WHERE id = ? LIMIT 1");
+                    if ($stmtFind) {
+                        $stmtFind->bind_param("i", $cmdArg);
+                        $stmtFind->execute();
+                        $resFind = $stmtFind->get_result();
+                        if ($resFind && $rowFind = $resFind->fetch_assoc()) {
+                            $salesMatched[] = $rowFind;
+                        }
+                        $stmtFind->close();
+                    }
+                } else if (filter_var($cmdArg, FILTER_VALIDATE_EMAIL)) {
+                    // Search by email
+                    $stmtFind = $conn->prepare("SELECT id, name, email FROM consultants WHERE email = ? LIMIT 1");
+                    if ($stmtFind) {
+                        $stmtFind->bind_param("s", $cmdArg);
+                        $stmtFind->execute();
+                        $resFind = $stmtFind->get_result();
+                        if ($resFind && $rowFind = $resFind->fetch_assoc()) {
+                            $salesMatched[] = $rowFind;
+                        }
+                        $stmtFind->close();
+                    }
+                } else {
+                    // Search by name (wildcard)
+                    $searchTerm = "%" . $cmdArg . "%";
+                    $stmtFind = $conn->prepare("SELECT id, name, email FROM consultants WHERE name LIKE ?");
+                    if ($stmtFind) {
+                        $stmtFind->bind_param("s", $searchTerm);
+                        $stmtFind->execute();
+                        $resFind = $stmtFind->get_result();
+                        if ($resFind) {
+                            while ($rowFind = $resFind->fetch_assoc()) {
+                                $salesMatched[] = $rowFind;
+                            }
+                        }
+                        $stmtFind->close();
+                    }
+                }
+
+                if (empty($salesMatched)) {
+                    sendZaloMessage($botToken, $chatId, "❌ Không tìm thấy tư vấn viên nào khớp với thông tin: \"$cmdArg\"");
+                    exit;
+                }
+
+                if (count($salesMatched) > 1) {
+                    $disambigMsg = "⚠️ Tìm thấy nhiều tư vấn viên khớp với từ khóa của bạn:\n\n";
+                    foreach ($salesMatched as $s) {
+                        $disambigMsg .= "  • ID {$s['id']}: {$s['name']} ({$s['email']})\n";
+                    }
+                    $disambigMsg .= "\n💡 Vui lòng nhập chính xác ID hoặc Email để xem báo cáo. Ví dụ: `/weekreport {$salesMatched[0]['id']}`";
+                    sendZaloMessage($botToken, $chatId, $disambigMsg);
+                    exit;
+                }
+
+                // Exactly one consultant found
+                $sale = $salesMatched[0];
+                
+                // Calculate time window for the report (last 7 days to now)
+                $startTimestamp = date('Y-m-d H:i:s', strtotime('-7 days'));
+                $endTimestamp = date('Y-m-d H:i:s');
+
+                $report = generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestamp);
+                
+                // Prepend admin context header to the report message
+                $adminHeader = "📋 [ BÁO CÁO TUẦN CỦA SALE ] 📋\n"
+                             . "👤 Truy vấn: Admin $adminName\n"
+                             . "____\n";
+                
+                $finalMsg = $adminHeader . $report['msg'];
+                
+                sendZaloMessage($botToken, $chatId, $finalMsg);
                 exit;
             }
 

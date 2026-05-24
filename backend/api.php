@@ -5348,7 +5348,7 @@ switch ($action) {
 
         // 1. Fetch lead details, old consultant details, and new consultant details
         $stmt = $conn->prepare("
-            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, dl.status as log_status, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, l.type, r.cc_emails
+            SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, dl.status as log_status, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, l.type, r.cc_emails, r.round_name
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
@@ -5370,6 +5370,7 @@ switch ($action) {
         $lead_phone = $log_data['phone'] ?? '';
         $lead_email = $log_data['lead_email'] ?? '';
         $log_status = $log_data['log_status'] ?? '';
+        $roundNameStr = $log_data['round_name'] ?? '';
 
         // Check if this lead is duplicate (has duplicate history)
         $isDuplicateLead = false;
@@ -5479,8 +5480,8 @@ switch ($action) {
             require_once __DIR__ . '/zalo_bot.php';
             require_once __DIR__ . '/webhook_logic.php'; // For getLeadHistoryTimeline
 
-            // Notify old consultant of compensation if applicable
-            if ($compensate_old_sale && $old_consultant_id) {
+            // Notify old consultant of reassignment/compensation
+            if ($old_consultant_id) {
                 try {
                     $oldConsultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
                     $oldConsultStmt->bind_param("i", $old_consultant_id);
@@ -5499,37 +5500,56 @@ switch ($action) {
 
                         if (!empty($botToken) && !empty($oldCZalo)) {
                             try {
-                                $zaloMsg = "[ ĐỀN BÙ DATA ]\n\n"
-                                    . "Chào $oldCName, Lead \"$lName\" của bạn đã được chuyển giao cho Tư vấn viên khác.\n\n"
-                                    . "Hệ thống đã tự động ghi nhận 1 lượt đền bù data mới cho bạn ở vòng này.";
+                                if ($compensate_old_sale) {
+                                    $zaloMsg = "🎁 [ THÔNG BÁO BÙ DATA ] 🎁\n"
+                                        . "━━━━━━━━━━━━━━━━━━━━━\n"
+                                        . "Chào $oldCName,\n\n"
+                                        . "Data \"$lName\" của bạn đã được giao lại cho TVV $new_cons_name.\n"
+                                        . "Hệ thống đã bù lại 1 lượt nhận data cho bạn tại vòng: $roundNameStr.\n\n"
+                                        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                        . "━━━━━━━━━━━━━━━━━━━━━";
+                                } else {
+                                    $zaloMsg = "🔄 [ THÔNG BÁO CHUYỂN GIAO DATA ] 🔄\n"
+                                        . "━━━━━━━━━━━━━━━━━━━━━\n"
+                                        . "Chào $oldCName,\n\n"
+                                        . "Data \"$lName\" của bạn đã được chuyển giao cho TVV $new_cons_name.\n\n"
+                                        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                        . "━━━━━━━━━━━━━━━━━━━━━";
+                                }
                                 sendZaloMessage($botToken, $oldCZalo, $zaloMsg);
                             } catch (Exception $zEx) {
-                                error_log("Error sending Zalo compensation to old sale: " . $zEx->getMessage());
+                                error_log("Error sending Zalo reassign message to old sale: " . $zEx->getMessage());
                             }
                         }
 
                         if (!empty($oldCEmail)) {
                             try {
-                                $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
-                                $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
-                                              <p>Chào $oldCName,</p>
-                                              <p>Lead <strong>$lName</strong> đã được chuyển giao cho Tư vấn viên khác.</p>
-                                              <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ này.</p>";
-                                sendEmailNotification($oldCEmail, $emailSubj, 'Thông báo đền bù', $emailBody, '');
+                                if ($compensate_old_sale) {
+                                    $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
+                                    $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
+                                                  <p>Chào $oldCName,</p>
+                                                  <p>Lead <strong>$lName</strong> của bạn đã được giao lại cho TVV <strong>$new_cons_name</strong>.</p>
+                                                  <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$roundNameStr</strong>.</p>";
+                                } else {
+                                    $emailSubj = "[Domation DATA] Thông báo chuyển giao Data - $lName";
+                                    $emailBody = "<h3>Chuyển giao Data</h3>
+                                                  <p>Chào $oldCName,</p>
+                                                  <p>Lead <strong>$lName</strong> của bạn đã được chuyển giao cho TVV <strong>$new_cons_name</strong>.</p>";
+                                }
+                                sendEmailNotification($oldCEmail, $emailSubj, 'Thông báo chuyển giao', $emailBody, '');
                             } catch (Exception $eEx) {
-                                error_log("Error sending email compensation to old sale: " . $eEx->getMessage());
+                                error_log("Error sending email reassign message to old sale: " . $eEx->getMessage());
                             }
                         }
                     }
                 } catch (Exception $oldSaleEx) {
-                    error_log("Error processing compensation notification for old sale: " . $oldSaleEx->getMessage());
+                    error_log("Error processing reassign notification for old sale: " . $oldSaleEx->getMessage());
                 }
             }
 
-            // Fetch round name
-            $roundNameStr = '';
+            // Fetch round name (fallback if roundNameStr is empty for some reason)
             $roundId = (int) ($log_data['round_id'] ?? 0);
-            if ($roundId) {
+            if (empty($roundNameStr) && $roundId) {
                 try {
                     $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
                     $rStmt->bind_param("i", $roundId);
