@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
@@ -207,6 +207,58 @@ export const DataList = () => {
   const [compensateBlock, setCompensateBlock] = useState<boolean>(false);
   const [isBlocking, setIsBlocking] = useState<boolean>(false);
 
+  // Calendar View Mode States
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>(searchParams.get('view') === 'calendar' ? 'calendar' : 'list');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarData, setCalendarData] = useState<any>({});
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dayDetails, setDayDetails] = useState<any>(null);
+  const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'sales' | 'tickets' | 'blacklist'>('sales');
+
+  const fetchCalendarStats = async () => {
+    setCalendarLoading(true);
+    try {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const json = await fetchAPI(`get_calendar_stats&year=${year}&month=${month}&consultant=${encodeURIComponent(consultantFilter)}`);
+      if (json.success) {
+        setCalendarData(json.data || {});
+      }
+    } catch (e: any) {
+      toast.error('Lỗi tải dữ liệu lịch: ' + e.message);
+    }
+    setCalendarLoading(false);
+  };
+
+  const handleDateClick = async (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setDayDetailsLoading(true);
+    setDayDetails(null);
+    try {
+      const json = await fetchAPI(`get_calendar_day_details&date=${dateStr}&consultant=${encodeURIComponent(consultantFilter)}`);
+      if (json.success) {
+        setDayDetails(json.data);
+      }
+    } catch (e: any) {
+      toast.error('Lỗi tải chi tiết ngày: ' + e.message);
+    }
+    setDayDetailsLoading(false);
+  };
+
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      fetchCalendarStats();
+    }
+  }, [viewMode, currentDate, consultantFilter]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      handleDateClick(selectedDate);
+    }
+  }, [consultantFilter]);
+
   const fetchConsultants = async () => {
     try {
       const json = await fetchAPI('get_consultants');
@@ -389,6 +441,153 @@ export const DataList = () => {
     }
   };
 
+  const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const monthName = new Intl.DateTimeFormat('vi-VN', { month: 'long' }).format(currentDate);
+
+  const days = [];
+  const totalDays = daysInMonth(year, month);
+  const startOffset = firstDayOfMonth(year, month);
+
+  // Padding for start of month
+  for (let i = 0; i < startOffset; i++) {
+    days.push(<div key={`empty-${i}`} style={{ background: 'var(--color-bg)', borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', opacity: 0.4 }}></div>);
+  }
+
+  // Days of month
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayData = calendarData[dateStr] || { distributed: 0, blacklist: 0, reminder: 0, error: 0, ticket_total: 0 };
+    const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
+
+    days.push(
+      <div 
+        key={d} 
+        onClick={() => handleDateClick(dateStr)}
+        style={{ 
+          borderRight: '1px solid var(--color-border)', 
+          borderBottom: '1px solid var(--color-border)', 
+          padding: '0.625rem', 
+          minHeight: '110px', 
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'all 0.2s', 
+          backgroundColor: isToday ? 'rgba(99, 102, 241, 0.05)' : 'var(--color-surface)', 
+          cursor: 'pointer',
+          position: 'relative'
+        }}
+        className="calendar-day-cell"
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+           <span style={{ 
+             fontSize: '0.8125rem', 
+             fontWeight: 700, 
+             width: '24px', 
+             height: '24px', 
+             display: 'flex', 
+             alignItems: 'center', 
+             justifyContent: 'center', 
+             borderRadius: '50%', 
+             backgroundColor: isToday ? 'var(--color-primary)' : 'transparent', 
+             color: isToday ? 'white' : 'var(--color-text-light)' 
+           }}>{d}</span>
+           {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>Hôm nay</span>}
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px', alignContent: 'end' }}>
+          {dayData.distributed > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '2px 4px', 
+              borderRadius: '4px', 
+              background: 'var(--color-success-light)', 
+              color: 'var(--color-success)', 
+              fontSize: '0.6875rem', 
+              fontWeight: 600 
+            }} title="Đã chia">
+              <span>Chia:</span>
+              <strong>{dayData.distributed}</strong>
+            </div>
+          )}
+          {dayData.blacklist > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '2px 4px', 
+              borderRadius: '4px', 
+              background: 'var(--color-danger-light)', 
+              color: 'var(--color-danger)', 
+              fontSize: '0.6875rem', 
+              fontWeight: 600 
+            }} title="Blacklist">
+              <span>Chặn:</span>
+              <strong>{dayData.blacklist}</strong>
+            </div>
+          )}
+          {dayData.ticket_total > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '2px 4px', 
+              borderRadius: '4px', 
+              background: '#f5f3ff', 
+              color: '#7c3aed', 
+              fontSize: '0.6875rem', 
+              fontWeight: 600,
+              border: '1px solid #ddd6fe'
+            }} title="Ticket lỗi">
+              <span>Ticket:</span>
+              <strong>{dayData.ticket_total}</strong>
+            </div>
+          )}
+          {dayData.reminder > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '2px 4px', 
+              borderRadius: '4px', 
+              background: '#fce7f3', 
+              color: '#db2777', 
+              fontSize: '0.6875rem', 
+              fontWeight: 600 
+            }} title="Nhắc lại">
+              <span>Nhắc:</span>
+              <strong>{dayData.reminder}</strong>
+            </div>
+          )}
+          {dayData.error > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '2px 4px', 
+              borderRadius: '4px', 
+              background: 'var(--color-warning-light)', 
+              color: 'var(--color-warning)', 
+              fontSize: '0.6875rem', 
+              fontWeight: 600 
+            }} title="Bị lỗi">
+              <span>Lỗi:</span>
+              <strong>{dayData.error}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', minHeight: 0 }}>
       {/* Header */}
@@ -399,11 +598,68 @@ export const DataList = () => {
           </h1>
           <p className="page-subtitle">Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn outline" onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))} style={{ padding: '0 1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* View Mode Toggle Buttons */}
+          <div style={{ 
+            display: 'flex', 
+            background: 'var(--color-bg)', 
+            border: '1px solid var(--color-border)', 
+            borderRadius: '10px', 
+            padding: '3px', 
+            marginRight: '0.5rem',
+            height: '38px',
+            alignItems: 'center'
+          }}>
+            <button 
+              type="button"
+              className={`btn-toggle-view ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
+                color: viewMode === 'list' ? 'white' : 'var(--color-text-muted)',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                height: '32px'
+              }}
+            >
+              <LayoutList size={14} /> Danh sách
+            </button>
+            <button 
+              type="button"
+              className={`btn-toggle-view ${viewMode === 'calendar' ? 'active' : ''}`}
+              onClick={() => setViewMode('calendar')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: viewMode === 'calendar' ? 'var(--color-primary)' : 'transparent',
+                color: viewMode === 'calendar' ? 'white' : 'var(--color-text-muted)',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                height: '32px'
+              }}
+            >
+              <Calendar size={14} /> Lịch biểu
+            </button>
+          </div>
+
+          <button className="btn outline" onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))} style={{ padding: '0 1.25rem', height: 38 }}>
             <Plus size={16} /> <span className="hidden sm:inline">Thêm Data</span>
           </button>
-          <button className="btn primary" onClick={handleExportCSV} style={{ padding: '0 1.25rem' }}>
+          <button className="btn primary" onClick={handleExportCSV} style={{ padding: '0 1.25rem', height: 38 }}>
             <Download size={16} /> Xuất CSV
           </button>
         </div>
@@ -420,7 +676,7 @@ export const DataList = () => {
       <div 
         className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} 
         style={{ 
-          display: 'flex', 
+          display: viewMode === 'calendar' ? 'none' : 'flex', 
           gap: '0.75rem', 
           marginBottom: '1.25rem', 
           flexShrink: 0, 
@@ -523,155 +779,278 @@ export const DataList = () => {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, overflow: 'auto' }} className="table-wrap custom-scrollbar">
-          <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
-              <tr>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ cho</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Thời gian nhận</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? [...Array(8)].map((_, i) => (
-                <tr key={`skel-${i}`}>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                      <div>
-                        <div style={{ width: 120, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                        <div style={{ width: 80, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                     <div style={{ width: 100, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                     <div style={{ width: 140, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                  </td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                     <div style={{ width: 80, height: 24, background: 'var(--color-border)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                  </td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                       <div style={{ width: 90, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                     </div>
-                  </td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                     <div style={{ width: 110, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                  </td>
-                </tr>
-              )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
-                return (
-                  <tr 
-                    key={lead.id} 
-                    className="lead-row"
-                    onClick={() => setSelectedLead(lead)}
-                    style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
-                  >
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Avatar name={lead.name} size={32} />
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {maskPhone(lead.phone)}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
-                    </td>
-                    {/* <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.source}</td> */}
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                        {getStatusBadge(lead.status, lead.report_status)}
-                        {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>⏳ Report Pending</span>}
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      {lead.assigned_to_name !== '-' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={28} />
-                          <div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.round_name}</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                      )}
-                    </td>
-                  <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
-                </tr>
-              );
-            }) : (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-                    Không tìm thấy dữ liệu phù hợp.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 0 && (
-          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button 
-                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
-                disabled={currentPage === 1}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let startPage = 1;
-                  if (totalPages > 5) {
-                    if (currentPage > 3) {
-                      startPage = currentPage - 2;
-                      if (startPage + 4 > totalPages) {
-                        startPage = totalPages - 4;
-                      }
-                    }
-                  }
-                  const pageNum = startPage + i;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => updateParams('page', pageNum.toString())}
-                      style={{ 
-                        width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
-                        border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                        background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                        color: currentPage === pageNum ? 'white' : 'var(--color-text)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
+      {viewMode === 'calendar' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          {/* Calendar Header / Control */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            padding: '0.75rem 1rem', 
+            background: 'var(--color-surface)', 
+            border: '1px solid var(--color-border)', 
+            borderRadius: '12px',
+            marginBottom: '1rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '2px', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={prevMonth} 
+                  style={{ width: 34, height: 34, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', textTransform: 'capitalize', minWidth: 140, justifyContent: 'center' }}>
+                  {monthName} {year}
+                </span>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={nextMonth} 
+                  style={{ width: 34, height: 34, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
               <button 
-                onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+                type="button"
+                className="btn outline" 
+                onClick={() => setCurrentDate(new Date())}
+                style={{ height: 36, padding: '0 0.85rem', fontSize: '0.8rem', fontWeight: 600 }}
               >
-                <ChevronRight size={16} />
+                Hôm nay
               </button>
+
+              <CustomSelect 
+                options={[
+                  { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
+                  ...consultants.map(c => ({
+                    value: c.name,
+                    label: c.name,
+                    avatar: c.avatar
+                  }))
+                ]}
+                value={consultantFilter}
+                onChange={val => updateParams('consultant', val.toString())}
+                showAvatars={true}
+                searchable={true}
+                width={180}
+              />
+            </div>
+            
+            {/* Calendar Legend */}
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-success)' }}></span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Đã chia</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-danger)' }}></span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Blacklist</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Ticket lỗi</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#db2777' }}></span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Nhắc lại</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-warning)' }}></span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Bị lỗi</span>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Calendar Body */}
+          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+            {/* Calendar Grid Header */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', 
+              background: 'var(--color-bg)', 
+              borderBottom: '1px solid var(--color-border)',
+              padding: '8px 0',
+              flexShrink: 0
+            }}>
+              {['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'].map(wd => (
+                <div key={wd} style={{ padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
+                  {wd}
+                </div>
+              ))}
+            </div>
+            
+            {/* Calendar Days */}
+            <div style={{ 
+              flex: 1, 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', 
+              gridAutoRows: 'minmax(110px, 1fr)', 
+              overflowY: 'auto' 
+            }} className="custom-scrollbar">
+              {calendarLoading ? (
+                <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
+                  <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu lịch biểu...</span>
+                </div>
+              ) : days}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto' }} className="table-wrap custom-scrollbar">
+            <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                <tr>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ cho</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Thời gian nhận</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? [...Array(8)].map((_, i) => (
+                  <tr key={`skel-${i}`}>
+                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                        <div>
+                          <div style={{ width: 120, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                          <div style={{ width: 80, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                       <div style={{ width: 100, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                       <div style={{ width: 140, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                    </td>
+                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                       <div style={{ width: 80, height: 24, background: 'var(--color-border)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                    </td>
+                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                         <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                         <div style={{ width: 90, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                       </div>
+                    </td>
+                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                       <div style={{ width: 110, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                    </td>
+                  </tr>
+                )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
+                  return (
+                    <tr 
+                      key={lead.id} 
+                      className="lead-row"
+                      onClick={() => setSelectedLead(lead)}
+                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
+                    >
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <Avatar name={lead.name} size={32} />
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {maskPhone(lead.phone)}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                          {getStatusBadge(lead.status, lead.report_status)}
+                          {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>Report Pending</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        {lead.assigned_to_name !== '-' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={28} />
+                            <div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.round_name}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                      Không tìm thấy dữ liệu phù hợp.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          {totalPages > 0 && (
+            <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                  disabled={currentPage === 1}
+                  style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let startPage = 1;
+                    if (totalPages > 5) {
+                      if (currentPage > 3) {
+                        startPage = currentPage - 2;
+                        if (startPage + 4 > totalPages) {
+                          startPage = totalPages - 4;
+                        }
+                      }
+                    }
+                    const pageNum = startPage + i;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => updateParams('page', pageNum.toString())}
+                        style={{ 
+                          width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                          border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                          background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                          color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button 
+                  onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <CustomModal
         isOpen={selectedLead !== null}
@@ -1329,6 +1708,267 @@ export const DataList = () => {
         </div>
       </CustomModal>
 
+      {/* Day Details Modal */}
+      <CustomModal
+        isOpen={selectedDate !== null}
+        onClose={() => {
+          setSelectedDate(null);
+          setDayDetails(null);
+          setActiveModalTab('sales');
+        }}
+        title={`Chi tiết hoạt động ngày ${selectedDate ? new Date(selectedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
+        width="900px"
+      >
+        {dayDetailsLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
+            <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu chi tiết...</span>
+          </div>
+        ) : dayDetails ? (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '550px' }}>
+            {/* Modal Tabs */}
+            <div style={{ 
+              display: 'flex', 
+              borderBottom: '1px solid var(--color-border-light)',
+              background: 'var(--color-bg)',
+              padding: '0 1.5rem',
+              gap: '1.5rem',
+              flexShrink: 0
+            }}>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('sales')}
+                style={{
+                  padding: '1rem 0.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: activeModalTab === 'sales' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  borderBottom: `2px solid ${activeModalTab === 'sales' ? 'var(--color-primary)' : 'transparent'}`,
+                  background: 'none',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                Phân bổ cho Sale ({dayDetails.sales?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('tickets')}
+                style={{
+                  padding: '1rem 0.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: activeModalTab === 'tickets' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  borderBottom: `2px solid ${activeModalTab === 'tickets' ? 'var(--color-primary)' : 'transparent'}`,
+                  background: 'none',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                Ticket Lỗi ({dayDetails.tickets?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('blacklist')}
+                style={{
+                  padding: '1rem 0.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: activeModalTab === 'blacklist' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  borderBottom: `2px solid ${activeModalTab === 'blacklist' ? 'var(--color-primary)' : 'transparent'}`,
+                  background: 'none',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                Blacklist & Lỗi Hệ Thống ({dayDetails.blacklist_logs?.length || 0})
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }} className="custom-scrollbar">
+              {activeModalTab === 'sales' && (
+                <div>
+                  {dayDetails.sales && dayDetails.sales.length > 0 ? (
+                    <div className="table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-bg)' }}>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Tư vấn viên</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Vòng</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Số lượng data</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayDetails.sales.map((item: any, idx: number) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td style={{ padding: '0.75rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Avatar src={item.sale_avatar} name={item.sale_name} size={28} />
+                                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.sale_name}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--color-text-light)' }}>{item.round_name}</td>
+                              <td style={{ padding: '0.75rem 1rem' }}>{getStatusBadge(item.status)}</td>
+                              <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{item.count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--color-text-muted)' }}>
+                      <User size={36} style={{ marginBottom: 12, opacity: 0.5 }} />
+                      <p style={{ fontSize: '0.875rem' }}>Không có lịch sử chia data cho tư vấn viên nào vào ngày này.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeModalTab === 'tickets' && (
+                <div>
+                  {dayDetails.tickets && dayDetails.tickets.length > 0 ? (
+                    <div className="table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-bg)' }}>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Tư vấn viên báo cáo</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Lý do lỗi</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Trạng thái duyệt</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Thời gian báo</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayDetails.tickets.map((item: any, idx: number) => {
+                            const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
+                            return (
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '0.75rem 1rem' }}>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.lead_name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{showPhone}</div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--color-text)' }}>{item.sale_name}</td>
+                                <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--color-text-light)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.reason}>
+                                  {item.reason}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem' }}>
+                                  {item.status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>Chờ duyệt</span>}
+                                  {item.status === 'approved' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid var(--color-success)' }}>Đã duyệt</span>}
+                                  {item.status === 'rejected' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}>Từ chối</span>}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                  {item.created_at ? item.created_at.split(' ')[1] || item.created_at : ''}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--color-text-muted)' }}>
+                      <AlertTriangle size={36} style={{ marginBottom: 12, opacity: 0.5 }} />
+                      <p style={{ fontSize: '0.875rem' }}>Không có báo cáo ticket lỗi dữ liệu nào trong ngày này.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeModalTab === 'blacklist' && (
+                <div>
+                  {dayDetails.blacklist_logs && dayDetails.blacklist_logs.length > 0 ? (
+                    <div className="table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-bg)' }}>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Loại</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Thông điệp hệ thống</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Thời gian</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayDetails.blacklist_logs.map((item: any, idx: number) => {
+                            const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
+                            const showEmail = user?.role === 'admin' ? item.email : maskEmail(item.email);
+                            return (
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '0.75rem 1rem' }}>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.lead_name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{showPhone} | {showEmail}</div>
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem' }}>{getStatusBadge(item.status)}</td>
+                                <td style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.message}>
+                                  {item.message}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                  {item.received_at ? item.received_at.split(' ')[1] || item.received_at : ''}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--color-text-muted)' }}>
+                      <ShieldAlert size={36} style={{ marginBottom: 12, opacity: 0.5 }} />
+                      <p style={{ fontSize: '0.875rem' }}>Không phát hiện trường hợp Blacklist hay Lỗi hệ thống nào vào ngày này.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              padding: '1rem 1.5rem', 
+              borderTop: '1px solid var(--color-border-light)',
+              background: 'var(--color-bg)',
+              flexShrink: 0
+            }}>
+              <button 
+                type="button"
+                className="btn secondary" 
+                onClick={() => {
+                  setSelectedDate(null);
+                  setDayDetails(null);
+                  setActiveModalTab('sales');
+                }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            Có lỗi xảy ra khi hiển thị chi tiết.
+          </div>
+        )}
+      </CustomModal>
+
       <style>{`
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -1337,6 +1977,16 @@ export const DataList = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .lead-row:hover { background: var(--color-bg) !important; }
+        .calendar-day-cell {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+        }
+        .calendar-day-cell:hover {
+          background-color: var(--color-surface-hover) !important;
+          box-shadow: inset 0 0 0 2px var(--color-primary-light), 0 8px 24px rgba(99, 102, 241, 0.08);
+          z-index: 10;
+          transform: translateY(-2px);
+        }
       `}</style>
     </div>
   );

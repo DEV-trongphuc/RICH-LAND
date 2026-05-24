@@ -1139,6 +1139,241 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
         break;
 
+    case 'get_calendar_stats':
+        if (!isset($decodedUser) || !$decodedUser) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+
+        if ($month < 1 || $month > 12) {
+            $month = (int)date('m');
+        }
+        if ($year < 2000 || $year > 2100) {
+            $year = (int)date('Y');
+        }
+
+        // Format dates
+        $daysInMonth = (int)date('t', strtotime(sprintf("%04d-%02d-01", $year, $month)));
+        $startDate = sprintf("%04d-%02d-01 00:00:00", $year, $month);
+        $endDate = sprintf("%04d-%02d-%02d 23:59:59", $year, $month, $daysInMonth);
+
+        $consultantFilter = '';
+        if (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
+            $consultant = $conn->real_escape_string($_GET['consultant']);
+            $consultantFilter = " AND c.name = '$consultant'";
+        }
+
+        $joinQuery = "";
+        $whereClause = "dl.received_at >= '$startDate' AND dl.received_at <= '$endDate' AND dl.status != 'silent'";
+        if (!empty($consultantFilter)) {
+            $joinQuery = " LEFT JOIN consultants c ON dl.assigned_to = c.id ";
+            $whereClause .= $consultantFilter;
+        }
+
+        // 1. Get distribution logs count per day
+        $distRes = $conn->query("
+            SELECT 
+                DATE(dl.received_at) as date_str,
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as distributed,
+                SUM(CASE WHEN dl.status = 'blacklisted' THEN 1 ELSE 0 END) as blacklist,
+                SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder,
+                SUM(CASE WHEN dl.status IN ('error', 'no_consultant') THEN 1 ELSE 0 END) as error,
+                COUNT(*) as total
+            FROM distribution_logs dl
+            $joinQuery
+            WHERE $whereClause
+            GROUP BY DATE(dl.received_at)
+        ");
+
+        $stats = [];
+        if ($distRes) {
+            while ($row = $distRes->fetch_assoc()) {
+                $d = $row['date_str'];
+                $stats[$d] = [
+                    'distributed' => (int)$row['distributed'],
+                    'blacklist' => (int)$row['blacklist'],
+                    'reminder' => (int)$row['reminder'],
+                    'error' => (int)$row['error'],
+                    'total' => (int)$row['total'],
+                    'ticket_total' => 0,
+                    'ticket_approved' => 0
+                ];
+            }
+        }
+
+        $ticketJoinQuery = "";
+        $ticketWhereClause = "t.created_at >= '$startDate' AND t.created_at <= '$endDate'";
+        if (!empty($consultantFilter)) {
+            $ticketJoinQuery = " LEFT JOIN consultants c ON t.consultant_id = c.id ";
+            $ticketWhereClause .= " AND c.name = '$consultant'";
+        }
+
+        // 2. Get tickets count per day
+        $ticketRes = $conn->query("
+            SELECT 
+                DATE(t.created_at) as date_str,
+                COUNT(*) as ticket_total,
+                SUM(CASE WHEN t.status = 'approved' THEN 1 ELSE 0 END) as ticket_approved
+            FROM data_reports t
+            $ticketJoinQuery
+            WHERE $ticketWhereClause
+            GROUP BY DATE(t.created_at)
+        ");
+
+        if ($ticketRes) {
+            while ($row = $ticketRes->fetch_assoc()) {
+                $d = $row['date_str'];
+                if (!isset($stats[$d])) {
+                    $stats[$d] = [
+                        'distributed' => 0,
+                        'blacklist' => 0,
+                        'reminder' => 0,
+                        'error' => 0,
+                        'total' => 0,
+                        'ticket_total' => 0,
+                        'ticket_approved' => 0
+                    ];
+                }
+                $stats[$d]['ticket_total'] = (int)$row['ticket_total'];
+                $stats[$d]['ticket_approved'] = (int)$row['ticket_approved'];
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $stats]);
+        break;
+
+    case 'get_calendar_day_details':
+        if (!isset($decodedUser) || !$decodedUser) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+
+        $date = $_GET['date'] ?? '';
+        if (empty($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            echo json_encode(['success' => false, 'message' => 'Ngày không hợp lệ']);
+            break;
+        }
+
+        $escapedDate = $conn->real_escape_string($date);
+
+        $consultantFilter = '';
+        if (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
+            $consultant = $conn->real_escape_string($_GET['consultant']);
+            $consultantFilter = " AND c.name = '$consultant'";
+        }
+
+        // a) Sale distribution statistics
+        $salesRes = $conn->query("
+            SELECT 
+                c.name as sale_name, 
+                c.avatar as sale_avatar, 
+                dr.round_name,
+                dl.status,
+                COUNT(*) as cnt
+            FROM distribution_logs dl
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status != 'silent' $consultantFilter
+            GROUP BY dl.assigned_to, dl.round_id, dl.status
+        ");
+
+        $sales = [];
+        if ($salesRes) {
+            while ($row = $salesRes->fetch_assoc()) {
+                $sales[] = [
+                    'sale_name' => $row['sale_name'] ?: 'Chưa phân bổ',
+                    'sale_avatar' => $row['sale_avatar'],
+                    'round_name' => $row['round_name'] ?: '-',
+                    'status' => $row['status'],
+                    'count' => (int)$row['cnt']
+                ];
+            }
+        }
+
+        // b) Ticket details
+        $ticketsRes = $conn->query("
+            SELECT 
+                r.id, 
+                l.name as lead_name, 
+                l.phone, 
+                c.name as sale_name, 
+                r.reason, 
+                r.status, 
+                r.created_at
+            FROM data_reports r
+            LEFT JOIN leads l ON r.lead_id = l.id
+            LEFT JOIN consultants c ON r.consultant_id = c.id
+            WHERE DATE(r.created_at) = '$escapedDate' $consultantFilter
+        ");
+
+        $tickets = [];
+        if ($ticketsRes) {
+            while ($row = $ticketsRes->fetch_assoc()) {
+                $tickets[] = [
+                    'id' => (int)$row['id'],
+                    'lead_name' => $row['lead_name'] ?: 'Ẩn danh',
+                    'phone' => $row['phone'] ?: '-',
+                    'sale_name' => $row['sale_name'] ?: '-',
+                    'reason' => $row['reason'],
+                    'status' => $row['status'],
+                    'created_at' => $row['created_at']
+                ];
+            }
+        }
+
+        // c) Blacklist & error logs
+        $blacklistJoin = "";
+        $blacklistFilter = "";
+        if (!empty($consultantFilter)) {
+            $blacklistJoin = " LEFT JOIN consultants c ON dl.assigned_to = c.id ";
+            $blacklistFilter = $consultantFilter;
+        }
+
+        $blacklistRes = $conn->query("
+            SELECT 
+                dl.id,
+                l.name as lead_name,
+                l.phone,
+                l.email,
+                dl.status,
+                dl.message,
+                dl.received_at
+            FROM distribution_logs dl
+            LEFT JOIN leads l ON dl.lead_id = l.id
+            $blacklistJoin
+            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status IN ('blacklisted', 'error', 'no_consultant', 'reminder', 'duplicate') $blacklistFilter
+        ");
+
+        $blacklistLogs = [];
+        if ($blacklistRes) {
+            while ($row = $blacklistRes->fetch_assoc()) {
+                $blacklistLogs[] = [
+                    'id' => (int)$row['id'],
+                    'lead_name' => $row['lead_name'] ?: 'Ẩn danh',
+                    'phone' => $row['phone'] ?: '-',
+                    'email' => $row['email'] ?: '-',
+                    'status' => $row['status'],
+                    'message' => $row['message'],
+                    'received_at' => $row['received_at']
+                ];
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'sales' => $sales,
+                'tickets' => $tickets,
+                'blacklist_logs' => $blacklistLogs
+            ]
+        ]);
+        break;
+
     case 'export_csv':
         // BUG-CRIT-02 fix: Xác thực token TRƯỚC khi đổi Content-Type sang CSV
         // Nếu kiểm tra ở đây sau khi đã set header CSV, lỗi 401 sẽ không hiện được
@@ -3866,172 +4101,109 @@ switch ($action) {
                 break;
             }
 
-            // Closure to fetch today's stats
-            $getTodayStats = function($conn) {
-                $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
-                $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
-                $statsResRaw = $conn->query($statsSql);
-                $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
-                $distributionBlacklisted = 0;
-                if ($statsResRaw) {
-                    while ($row = $statsResRaw->fetch_assoc()) {
-                        $status = $row['status'];
-                        $cnt = (int) $row['cnt'];
-                        $statsRes['total'] += $cnt;
-                        if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours') {
-                            $statsRes['distributed'] += $cnt;
-                        } else if ($status === 'duplicate' || $status === 'reminder') {
-                            $statsRes['duplicates'] += $cnt;
-                        } else if ($status === 'error' || $status === 'no_consultant') {
-                            $statsRes['errors'] += $cnt;
-                        } else if ($status === 'blacklisted') {
-                            $statsRes['errors'] += $cnt;
-                            $distributionBlacklisted += $cnt;
-                        }
+            // Safe SQL parser and execution wrapper
+            $executeSafeSql = function($conn, $sql) {
+                $sql = trim($sql);
+                if (empty($sql)) {
+                    return ['error' => 'Query is empty'];
+                }
+
+                // Clean SQL comments to prevent comment-based filter bypasses
+                $cleanSql = preg_replace('/(\/\*([\s\S]*?)\*\/)|(--.*)/', '', $sql);
+                $cleanSql = trim($cleanSql);
+
+                // Enforce SELECT check
+                if (!preg_match('/^select\b/i', $cleanSql)) {
+                    return ['error' => 'Chỉ cho phép thực hiện truy vấn đọc dữ liệu (SELECT)'];
+                }
+
+                // Block alteration keywords
+                $blockedKeywords = [
+                    'insert', 'update', 'delete', 'drop', 'alter', 'truncate', 'replace',
+                    'create', 'grant', 'revoke', 'rename', 'call', 'exec', 'execute',
+                    'union select', 'into outfile', 'into dumpfile', 'load_file'
+                ];
+                foreach ($blockedKeywords as $kw) {
+                    if (preg_match('/\b' . preg_quote($kw, '/') . '\b/i', $cleanSql)) {
+                        return ['error' => "Không cho phép sử dụng từ khóa '$kw' để bảo mật hệ thống"];
                     }
                 }
-                
-                $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
-                $autoBlacklistCnt = 0;
-                $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $dateConditionCreated");
-                if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
-                    $autoBlacklistCnt = (int) $row['cnt'];
+
+                // Block query targeting sensitive columns
+                if (preg_match('/\bpassword_hash\b/i', $cleanSql) || preg_match('/\bconfirm_token\b/i', $cleanSql)) {
+                    return ['error' => 'Không được phép truy vấn thông tin mật khẩu hoặc mã xác nhận bảo mật'];
                 }
-                
-                $ticketErrors = $statsRes['errors'] - $distributionBlacklisted;
-                $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
-                $statsRes['errors'] += $autoBlacklistCnt;
-                
+
+                // Block settings query targeting sensitive keys
+                if (preg_match('/\bsystem_settings\b/i', $cleanSql) && preg_match('/(api_key|password|secret|token|key)/i', $cleanSql)) {
+                    return ['error' => 'Không được phép truy vấn các khóa bảo mật (API keys, passwords, secrets) trong cài đặt hệ thống'];
+                }
+
+                // Restrict limit to max 100 rows
+                if (preg_match('/limit\s+(\d+)(?:\s*,\s*(\d+))?/i', $cleanSql, $matches)) {
+                    $limitVal = isset($matches[2]) ? (int)$matches[2] : (int)$matches[1];
+                    if ($limitVal > 100) {
+                        $sql = preg_replace('/limit\s+(\d+)(?:\s*,\s*(\d+))?/i', 'LIMIT 100', $sql);
+                    }
+                } else {
+                    $sql .= " LIMIT 100";
+                }
+
+                $result = $conn->query($sql);
+                if (!$result) {
+                    return ['error' => 'Lỗi thực thi SQL: ' . $conn->error];
+                }
+
+                $rows = [];
+                while ($row = $result->fetch_assoc()) {
+                    // Redact sensitive keys in any returned row
+                    foreach ($row as $key => $val) {
+                        $lowerKey = strtolower($key);
+                        if (
+                            strpos($lowerKey, 'password') !== false ||
+                            strpos($lowerKey, 'token') !== false ||
+                            strpos($lowerKey, 'api_key') !== false ||
+                            strpos($lowerKey, 'secret') !== false ||
+                            strpos($lowerKey, 'key') !== false ||
+                            strpos($lowerKey, 'hash') !== false
+                        ) {
+                            $row[$key] = '[REDACTED]';
+                        }
+                    }
+                    $rows[] = $row;
+                }
+
                 return [
-                    'total' => $statsRes['total'],
-                    'distributed' => $statsRes['distributed'],
-                    'duplicates' => $statsRes['duplicates'],
-                    'blacklist' => $blacklistCnt,
-                    'tickets' => $ticketErrors
+                    'success' => true,
+                    'rows' => $rows,
+                    'count' => count($rows)
                 ];
             };
 
-            $stats = $getTodayStats($conn);
-
-            // Fetch list of consultants and their today's lead counts
-            $consultantsContext = [];
-            $consultantsRes = $conn->query("
-                SELECT c.name, c.status, COUNT(dl.id) as lead_count
-                FROM consultants c
-                LEFT JOIN distribution_logs dl ON c.id = dl.assigned_to 
-                    AND dl.received_at >= CURDATE() 
-                    AND dl.received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY) 
-                    AND dl.status IN ('assigned', 'compensation', 'rule_6_month')
-                GROUP BY c.id, c.name, c.status
-                ORDER BY lead_count DESC
-            ");
-            if ($consultantsRes) {
-                while ($row = $consultantsRes->fetch_assoc()) {
-                    $statusStr = $row['status'] === 'active' ? 'Đang hoạt động' : ($row['status'] === 'inactive' ? 'Ngưng hoạt động' : 'Nghỉ phép');
-                    $consultantsContext[] = "- " . $row['name'] . " (" . $statusStr . "): " . $row['lead_count'] . " leads nhận hôm nay";
-                }
-            }
-            $consultantsContextStr = !empty($consultantsContext) ? implode("\n", $consultantsContext) : "(Không có dữ liệu tư vấn viên)";
-
-            // Fetch Google Sheets connections
-            $sheetsContext = [];
-            $sheetsRes = $conn->query("SELECT sheet_name, connection_type, is_active, last_sync_at, sync_status FROM sheet_connections");
-            if ($sheetsRes) {
-                while ($row = $sheetsRes->fetch_assoc()) {
-                    $statusStr = $row['is_active'] ? 'Hoạt động' : 'Tạm dừng';
-                    $syncTime = $row['last_sync_at'] ? $row['last_sync_at'] : 'Chưa đồng bộ';
-                    $sheetsContext[] = "- " . $row['sheet_name'] . " (" . $row['connection_type'] . " | " . $statusStr . "): Đồng bộ gần nhất: " . $syncTime . ", Trạng thái: " . $row['sync_status'];
-                }
-            }
-            $sheetsContextStr = !empty($sheetsContext) ? implode("\n", $sheetsContext) : "(Không có kết nối Google Sheets)";
-
-            // Fetch recent tickets (data_reports) - last 5 tickets
-            $ticketsContext = [];
-            $ticketsRes = $conn->query("
-                SELECT dr.id, c.name as consultant_name, dr.reason, dr.status, dr.created_at
-                FROM data_reports dr
-                JOIN consultants c ON dr.consultant_id = c.id
-                ORDER BY dr.created_at DESC
-                LIMIT 5
-            ");
-            if ($ticketsRes) {
-                while ($row = $ticketsRes->fetch_assoc()) {
-                    $statusStr = $row['status'] === 'pending' ? 'Chờ duyệt' : ($row['status'] === 'approved' ? 'Đã duyệt' : 'Từ chối');
-                    $ticketsContext[] = "- Ticket #" . $row['id'] . " - " . $row['consultant_name'] . ": Lý do: " . $row['reason'] . " (" . $statusStr . " | " . $row['created_at'] . ")";
-                }
-            }
-            $ticketsContextStr = !empty($ticketsContext) ? implode("\n", $ticketsContext) : "(Không có ticket gần đây)";
-
-            // Search for phone/email in the message to provide direct lead search results if requested
-            $searchResultStr = "";
-            if (preg_match('/\b(\+?84|0)\d{9,10}\b/', $message, $matches) || preg_match('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $message, $emailMatches)) {
-                $searchQuery = $matches[0] ?? $emailMatches[0];
-                $leadStmt = $conn->prepare("
-                    SELECT l.id, l.phone, l.email, l.name, l.source, l.type, l.note, l.created_at, 
-                           dl.status as dist_status, dl.message as dist_msg, dl.received_at as dist_time,
-                           c.name as assigned_to_name
-                    FROM leads l
-                    LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
-                    LEFT JOIN consultants c ON dl.assigned_to = c.id
-                    WHERE l.phone = ? OR l.email = ?
-                    ORDER BY l.created_at DESC
-                    LIMIT 3
-                ");
-                if ($leadStmt) {
-                    $leadStmt->bind_param("ss", $searchQuery, $searchQuery);
-                    $leadStmt->execute();
-                    $leadRes = $leadStmt->get_result();
-                    $searchResults = [];
-                    while ($row = $leadRes->fetch_assoc()) {
-                        $distMsg = $row['dist_msg'] ? " (Chi tiết: " . $row['dist_msg'] . ")" : "";
-                        $assigned = $row['assigned_to_name'] ? "đã giao cho " . $row['assigned_to_name'] : "chưa giao";
-                        $searchResults[] = "- Lead #" . $row['id'] . " (" . $row['name'] . " | SĐT: " . $row['phone'] . " | Email: " . $row['email'] . ") từ nguồn '" . $row['source'] . "': " . $assigned . ", Trạng thái chia: " . $row['dist_status'] . $distMsg . " lúc " . $row['dist_time'];
-                    }
-                    if (!empty($searchResults)) {
-                        $searchResultStr = "KẾT QUẢ TÌM KIẾM LEAD THEO SĐT/EMAIL CỦA NGƯỜI DÙNG:\n" . implode("\n", $searchResults) . "\n\n";
-                    } else {
-                        $searchResultStr = "KẾT QUẢ TÌM KIẾM LEAD THEO SĐT/EMAIL CỦA NGƯỜI DÙNG: Không tìm thấy lead nào khớp với từ khóa tìm kiếm '$searchQuery' trong cơ sở dữ liệu.\n\n";
-                    }
-                    $leadStmt->close();
-                }
-            }
-
-            // Fetch other system details
-            $res = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE status = 'active'");
-            $active_consultants = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
-            
-            $res = $conn->query("SELECT COUNT(*) as cnt FROM routing_rules");
-            $active_rules = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
-            
-            $res = $conn->query("SELECT COUNT(*) as cnt FROM distribution_rounds WHERE is_active = 1");
-            $active_rounds = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
-
-            // System description context
+            // Enhanced system instruction detailing database schemas
             $systemInstruction = "Bạn là Trợ lý AI Domation, một chatbot hỗ trợ đắc lực tích hợp sẵn trong hệ thống quản trị phân chia lead dữ liệu Domation.\n" .
-                "Hãy trả lời người dùng một cách thân thiện, chuyên nghiệp, ngắn gọn bằng tiếng Việt. Sử dụng markdown (in đậm, danh sách) để câu trả lời rõ ràng.\n\n" .
-                "DƯỚI ĐÂY LÀ DỮ LIỆU HỆ THỐNG THỜI GIAN THỰC HÔM NAY:\n" .
-                "- Tổng số tiếp nhận (leads): " . $stats['total'] . "\n" .
-                "- Đã bàn giao cho Sale: " . $stats['distributed'] . "\n" .
-                "- Trùng lặp (không chia): " . $stats['duplicates'] . "\n" .
-                "- Chặn tự động & thủ công (Blacklist): " . $stats['blacklist'] . "\n" .
-                "- Lỗi dữ liệu & Ticket chờ duyệt: " . $stats['tickets'] . "\n" .
-                "- Số lượng tư vấn viên hoạt động: " . $active_consultants . "\n" .
-                "- Số lượng quy tắc (rules) hoạt động: " . $active_rules . "\n" .
-                "- Số lượng vòng xoay (rounds) hoạt động: " . $active_rounds . "\n\n" .
-                "THỐNG KÊ CHI TIẾT TỪNG TƯ VẤN VIÊN / SALE NHẬN SỐ HÔM NAY:\n" .
-                $consultantsContextStr . "\n\n" .
-                "DANH SÁCH KẾT NỐI GOOGLE SHEETS / NGUỒN LEAD:\n" .
-                $sheetsContextStr . "\n\n" .
-                "TICKET / BÁO CÁO LỖI GẦN ĐÂY:\n" .
-                $ticketsContextStr . "\n\n" .
-                $searchResultStr .
-                "KIẾN THỨC VÀ HƯỚNG DẪN HỆ THỐNG DOMATION:\n" .
-                "1. Quy tắc chia số: Phân bổ xoay vòng (Round-robin) dựa trên tỷ lệ nhận (receive_ratio), số đền bù (compensation_count). Sale ngoài giờ làm việc sẽ bị tạm giữ data và tự động giải phóng khi đến giờ làm việc hôm sau.\n" .
-                "2. Hệ thống Blacklist: Chặn tự động ở đầu vào (Intake filter) dựa trên số điện thoại/email hoặc từ khóa loại trừ, hoặc chặn thủ công bởi Admin. Liên hệ bị chặn sẽ được cộng vào thẻ KPI lỗi ngoài Dashboard.\n" .
-                "3. Zalo Bot: Tự động gửi chi tiết data cho Sale qua Zalo Chat ID. Nếu Sale nhận >= 2 lead ngoài giờ, sáng hôm sau sẽ nhận 1 tin nhắn chào buổi sáng tổng hợp trước khi nhận lead chi tiết.\n" .
-                "4. Báo cáo lỗi (Tickets): Sale gửi báo cáo lỗi (sai số, thuê bao...) từ Sale Portal. Admin duyệt đền bù sẽ tự động cộng lượt nhận lead cho Sale ở lần phân bổ sau.\n" .
-                "5. Đồng bộ Google Sheets: Sử dụng script hoặc cron_sync.php quét mỗi 2-5 phút, lấy dòng mới dựa trên Row Hash để tránh trùng lặp.\n\n" .
-                "Hãy sử dụng các thông số trên để trả lời các câu hỏi về chỉ số thống kê, kỹ thuật hoặc hướng dẫn cấu hình hệ thống.";
+                "Hãy trả lời người dùng một cách thân thiện, chuyên nghiệp, bằng tiếng Việt. Sử dụng markdown (in đậm, danh sách, bảng biểu) để câu trả lời rõ ràng.\n\n" .
+                "BẠN CÓ QUYỀN TRUY VẤN DỮ LIỆU THỜI GIAN THỰC qua công cụ `execute_readonly_query`. Hãy sử dụng công cụ này khi người dùng hỏi các câu hỏi cần thông tin từ cơ sở dữ liệu (ví dụ: thống kê hôm nay, số liệu của sale, trạng thái ticket đền bù, lịch sử đồng bộ Google Sheets, hoặc lịch sử hoạt động hệ thống).\n\n" .
+                "SƠ ĐỒ CƠ SỞ DỮ LIỆU HỆ THỐNG:\n" .
+                "1. accounts: Thông tin tài khoản quản trị (id, username, role ['admin', 'assistant', 'viewer'], name, email, zalo_chat_id, is_confirmed, last_login, avatar) - Password hash và token are omitted/redacted.\n" .
+                "2. consultants: Thông tin tư vấn viên / sales nhận số (id, name, email, status ['active', 'inactive', 'leave'], leave_start, leave_end, zalo_chat_id, created_at)\n" .
+                "3. distribution_rounds: Các vòng xoay chia số (id, round_name, description, cc_emails, last_assigned_consultant_id, is_active)\n" .
+                "4. round_consultants: Danh sách sale nằm trong vòng xoay (round_id, consultant_id, is_active, receive_ratio, skip_count, compensation_count, data_per_turn, current_turn_remaining)\n" .
+                "5. leads: Dữ liệu khách hàng được tiếp nhận (id, phone, email, name, source, type, note, last_interaction_date, assigned_to (FK consultants.id), connection_id (FK sheet_connections.id), created_at)\n" .
+                "6. distribution_logs: Nhật ký kết quả định tuyến/chia lead cho sale (id, lead_id, assigned_to (FK consultants.id), round_id, status (ví dụ: 'assigned' (đã chia), 'compensation' (chia đền bù), 'rule_6_month', 'duplicate', 'pending_work_hours', 'blacklisted', 'error', 'no_consultant'), message, received_at)\n" .
+                "7. data_reports: Danh sách ticket báo lỗi đền bù của sale (id, lead_id, consultant_id, round_id, reason, status ['pending', 'approved', 'rejected'], created_at, resolved_at, reject_reason, approval_reason)\n" .
+                "8. routing_rules: Các quy tắc phân phối định tuyến (id, connection_id, target_round_id, condition_column, condition_operator, condition_value, priority, conditions_json, logical_operator)\n" .
+                "9. sheet_connections: Kết nối các nguồn Google Sheets (id, sheet_name, spreadsheet_id, connection_type, is_active, sync_interval, last_sync_at, sync_status, email_template, require_both_contact, sync_mode, is_initialized, is_silent, created_at)\n" .
+                "10. admin_logs: Nhật ký hoạt động quản trị của các tài khoản admin (id, account_id, action, details (JSON), ip_address, created_at)\n" .
+                "11. mail_queue: Hàng đợi gửi email thông báo (id, to_email, cc_email, subject, body_html, status, attempts, last_error, created_at, sent_at)\n" .
+                "12. sheet_sync_records: Lưu trữ row_hash đã đồng bộ từ Google Sheets để check trùng (connection_id, row_hash, synced_at)\n" .
+                "13. system_settings: Cấu hình hệ thống chung (setting_key, setting_value)\n\n" .
+                "LƯU Ý KHI VIẾT TRUY VẤN SQL:\n" .
+                "- Luôn viết truy vấn SELECT hợp lệ cho MariaDB.\n" .
+                "- Sử dụng các phép JOIN để kết nối các bảng (ví dụ: JOIN consultants c ON dl.assigned_to = c.id để lấy tên của Sale thay vì chỉ hiển thị ID).\n" .
+                "- Tránh trả về dữ liệu quá dài. Hãy sử dụng COUNT, SUM, GROUP BY, ORDER BY, LIMIT để thu gọn dữ liệu trước khi trả về.\n" .
+                "- Luôn xử lý khoảng thời gian dựa trên các hàm ngày tháng của SQL (ví dụ: `received_at >= CURDATE()` hoặc `received_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`).\n" .
+                "- Giải thích câu trả lời của bạn một cách rõ ràng dựa trên kết quả thu thập được.";
 
             // Format history for Gemini API
             $contents = [];
@@ -4046,57 +4218,148 @@ switch ($action) {
                 'parts' => [['text' => $message]]
             ];
 
-            $payload = [
-                'contents' => $contents,
-                'systemInstruction' => [
-                    'parts' => [['text' => $systemInstruction]]
+            // Define tools schema
+            $tools = [
+                [
+                    'functionDeclarations' => [
+                        [
+                            'name' => 'execute_readonly_query',
+                            'description' => 'Thực thi một câu lệnh SQL SELECT an toàn trên hệ thống cơ sở dữ liệu để tra cứu thông tin thực tế về leads, tư vấn viên (consultants), cấu hình chia số (rounds), vé lỗi (tickets), nhật ký định tuyến (distribution_logs), hoặc nhật ký quản trị (admin_logs).',
+                            'parameters' => [
+                                'type' => 'OBJECT',
+                                'properties' => [
+                                    'query' => [
+                                        'type' => 'STRING',
+                                        'description' => 'Câu lệnh SQL SELECT cần thực thi.'
+                                    ]
+                                ],
+                                'required' => ['query']
+                            ]
+                        ]
+                    ]
                 ]
             ];
 
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
-            
-            $httpOpts = [
-                'http' => [
-                    'header'  => "Content-Type: application/json\r\n",
-                    'method'  => 'POST',
-                    'content' => json_encode($payload),
-                    'timeout' => 15,
-                    'ignore_errors' => true
-                ]
-            ];
-            $contextStream = stream_context_create($httpOpts);
-            $response = @file_get_contents($url, false, $contextStream);
-            
-            $httpCode = 500;
-            if (isset($http_response_header) && is_array($http_response_header) && count($http_response_header) > 0) {
-                if (preg_match('/HTTP\/\d\.\d\s+(\d+)/i', $http_response_header[0], $matches)) {
-                    $httpCode = (int)$matches[1];
-                }
-            }
+            $maxTurns = 3;
+            $currentTurn = 0;
+            $replyText = '';
 
-            if ($response === false || $httpCode !== 200) {
-                $errMessage = "Lỗi kết nối Gemini API (HTTP " . $httpCode . ")";
-                if ($response !== false) {
-                    $errJson = json_decode($response, true);
-                    if (isset($errJson['error']['message'])) {
-                        $errMessage = "Lỗi Gemini: " . $errJson['error']['message'];
+            while ($currentTurn < $maxTurns) {
+                $payload = [
+                    'contents' => $contents,
+                    'systemInstruction' => [
+                        'parts' => [['text' => $systemInstruction]]
+                    ],
+                    'tools' => $tools
+                ];
+
+                $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+                
+                $httpOpts = [
+                    'http' => [
+                        'header'  => "Content-Type: application/json\r\n",
+                        'method'  => 'POST',
+                        'content' => json_encode($payload),
+                        'timeout' => 20,
+                        'ignore_errors' => true
+                    ]
+                ];
+                $contextStream = stream_context_create($httpOpts);
+                $response = @file_get_contents($url, false, $contextStream);
+                
+                $httpCode = 500;
+                if (isset($http_response_header) && is_array($http_response_header) && count($http_response_header) > 0) {
+                    if (preg_match('/HTTP\/\d\.\d\s+(\d+)/i', $http_response_header[0], $matches)) {
+                        $httpCode = (int)$matches[1];
                     }
                 }
-                
-                echo json_encode([
-                    'success' => true,
-                    'data' => [
-                        'reply' => "⚠️ **Hệ thống gặp lỗi khi liên kết với Gemini API!**\n\nChi tiết: `" . $errMessage . "`\n\nVui lòng kiểm tra lại API Key trong phần Cài đặt."
-                    ]
-                ]);
-                break;
+
+                if ($response === false || $httpCode !== 200) {
+                    $errMessage = "Lỗi kết nối Gemini API (HTTP " . $httpCode . ")";
+                    if ($response !== false) {
+                        $errJson = json_decode($response, true);
+                        if (isset($errJson['error']['message'])) {
+                            $errMessage = "Lỗi Gemini: " . $errJson['error']['message'];
+                        }
+                    }
+                    
+                    echo json_encode([
+                        'success' => true,
+                        'data' => [
+                            'reply' => "⚠️ **Hệ thống gặp lỗi khi liên kết với Gemini API!**\n\nChi tiết: `" . $errMessage . "`"
+                        ]
+                    ]);
+                    exit;
+                }
+
+                $resJson = json_decode($response, true);
+                $candidate = $resJson['candidates'][0] ?? null;
+                if (!$candidate) {
+                    $replyText = "Không nhận được phản hồi từ AI.";
+                    break;
+                }
+
+                $parts = $candidate['content']['parts'] ?? [];
+                $hasFunctionCall = false;
+                $functionCallObj = null;
+
+                foreach ($parts as $part) {
+                    if (isset($part['functionCall'])) {
+                        $hasFunctionCall = true;
+                        $functionCallObj = $part['functionCall'];
+                        break;
+                    }
+                }
+
+                // Append model's response to contents
+                $contents[] = $candidate['content'];
+
+                if ($hasFunctionCall && $functionCallObj) {
+                    $funcName = $functionCallObj['name'];
+                    $funcArgs = $functionCallObj['args'] ?? [];
+                    
+                    if ($funcName === 'execute_readonly_query') {
+                        $sqlQuery = $funcArgs['query'] ?? '';
+                        $queryResult = $executeSafeSql($conn, $sqlQuery);
+                        
+                        $functionResponsePart = [
+                            'functionResponse' => [
+                                'name' => $funcName,
+                                'response' => [
+                                    'result' => $queryResult
+                                ]
+                            ]
+                        ];
+                        
+                        if (isset($functionCallObj['id'])) {
+                            $functionResponsePart['functionResponse']['id'] = $functionCallObj['id'];
+                        }
+
+                        $contents[] = [
+                            'role' => 'function',
+                            'parts' => [$functionResponsePart]
+                        ];
+                    } else {
+                        $contents[] = [
+                            'role' => 'function',
+                            'parts' => [[
+                                'functionResponse' => [
+                                    'name' => $funcName,
+                                    'response' => ['error' => 'Hàm không tồn tại']
+                                ]
+                            ]]
+                        ];
+                    }
+                    
+                    $currentTurn++;
+                } else {
+                    $replyText = $candidate['content']['parts'][0]['text'] ?? '';
+                    break;
+                }
             }
 
-            $resJson = json_decode($response, true);
-            $replyText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            
             if (empty($replyText)) {
-                $replyText = "Tôi không nhận được câu trả lời từ AI. Vui lòng thử lại câu hỏi khác.";
+                $replyText = "Tôi không nhận được câu trả lời từ AI hoặc quá trình xử lý quá hạn. Vui lòng thử lại.";
             }
 
             echo json_encode([
