@@ -77,23 +77,26 @@ export const processMockRequest = async (action: string, payload?: any): Promise
         success: true,
         summary: {
           total: 154,
-          successful: 122,
-          duplicate: 32
+          successful: 110,
+          reminder: 32,
+          error: 12
         },
         rounds: [
           {
             round_id: 1,
             round_name: "Vòng Phân Bổ: Facebook & TikTok Ads",
             total_count: 94,
-            successful_count: 75,
-            duplicate_count: 19
+            successful_count: 70,
+            reminder_count: 18,
+            error_count: 6
           },
           {
             round_id: 2,
             round_name: "Vòng Phân Bổ: Google Ads & Website",
             total_count: 60,
-            successful_count: 47,
-            duplicate_count: 13
+            successful_count: 40,
+            reminder_count: 14,
+            error_count: 6
           }
         ],
         by_date: [

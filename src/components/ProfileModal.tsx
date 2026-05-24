@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomModal } from './ui/CustomModal';
@@ -163,7 +163,7 @@ export const ProfileModal = () => {
       isOpen={isOpen}
       onClose={() => setIsOpen(false)}
       title="Thông tin Tài khoản"
-      width="520px"
+      width="760px"
     >
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', gap: '0.75rem', padding: '0 1rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
         <button
@@ -360,7 +360,7 @@ export const ProfileModal = () => {
         )}
 
         {activeTab === 'activity' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
             {loadingLogs ? (
               <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                 Đang tải lịch sử hoạt động...
@@ -372,40 +372,94 @@ export const ProfileModal = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {activityLogs.map((log: any) => {
-                  let detailsText = '';
-                  try {
-                    const parsed = JSON.parse(log.details);
-                    detailsText = Object.entries(parsed)
-                      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-                      .join(', ');
-                  } catch {
-                    detailsText = log.details || '';
+                  const action = (log.action || '').toUpperCase();
+                  let statusColor = '#7c3aed'; // default purple
+                  let bgColor = 'rgba(124, 58, 237, 0.02)';
+                  if (action.includes('ADD') || action.includes('CREATE') || action.includes('INSERT')) {
+                    statusColor = '#10b981'; // green
+                    bgColor = 'rgba(16, 185, 129, 0.02)';
+                  } else if (action.includes('EDIT') || action.includes('UPDATE')) {
+                    statusColor = '#3b82f6'; // blue
+                    bgColor = 'rgba(59, 130, 246, 0.02)';
+                  } else if (action.includes('DELETE') || action.includes('REMOVE')) {
+                    statusColor = '#ef4444'; // red
+                    bgColor = 'rgba(239, 68, 68, 0.02)';
                   }
 
                   return (
                     <div 
                       key={log.id} 
                       style={{ 
-                        padding: '10px 12px', 
-                        background: 'var(--color-bg)', 
-                        border: '1px solid var(--color-border)', 
-                        borderRadius: 8,
-                        fontSize: '0.8125rem'
+                        padding: '12px 16px', 
+                        background: bgColor, 
+                        border: '1px solid var(--color-border-light)', 
+                        borderLeft: `4px solid ${statusColor}`,
+                        borderRadius: 12,
+                        fontSize: '0.8125rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        transition: 'all 0.15s'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: '8px' }}>
-                        <strong style={{ color: 'var(--color-primary)' }}>{log.action}</strong>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          background: `${statusColor}1A`, // 10% opacity
+                          color: statusColor, 
+                          padding: '3px 8px', 
+                          borderRadius: 6, 
+                          fontSize: '0.7rem', 
+                          fontWeight: 700, 
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em'
+                        }}>
+                          {log.action}
+                        </span>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Clock size={12} /> {new Date(log.created_at).toLocaleString('vi-VN')}
                         </span>
                       </div>
-                      {detailsText && (
-                        <div style={{ color: 'var(--color-text-light)', marginBottom: 4, fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.75rem', background: 'rgba(0,0,0,0.02)', padding: '4px 6px', borderRadius: 4 }}>
-                          {detailsText}
-                        </div>
-                      )}
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                        IP: {log.ip_address}
+
+                      {(() => {
+                        try {
+                          const parsed = JSON.parse(log.details);
+                          if (parsed && typeof parsed === 'object') {
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                                {Object.entries(parsed).map(([k, v]) => {
+                                  const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                                  return (
+                                    <div key={k} style={{ 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      background: 'white', 
+                                      border: '1px solid var(--color-border-light)', 
+                                      padding: '3px 8px', 
+                                      borderRadius: 6, 
+                                      fontSize: '0.7rem' 
+                                    }}>
+                                      <span style={{ color: 'var(--color-text-muted)', marginRight: 4, fontWeight: 500 }}>{k}:</span>
+                                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{valStr}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+                        } catch {
+                          if (log.details) {
+                            return (
+                              <div style={{ color: 'var(--color-text-light)', marginTop: '0.5rem', marginBottom: '0.25rem', fontSize: '0.75rem', background: '#f8fafc', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-light)' }}>
+                                {log.details}
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
+
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} /> IP: {log.ip_address}
                       </div>
                     </div>
                   );

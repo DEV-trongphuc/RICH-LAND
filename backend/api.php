@@ -1531,13 +1531,30 @@ switch ($action) {
 
         $statsTypes = "i" . $types;
         $statsParams = array_merge([$consultantId], $params);
-
         // 1. Summary stats
+        $systemTotalSuccessful = 0;
+        $sqlSystemStats = "
+            SELECT COUNT(*) as system_successful
+            FROM distribution_logs dl
+            WHERE dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') AND $dateCondition
+        ";
+        $stmtSystem = $conn->prepare($sqlSystemStats);
+        if ($stmtSystem) {
+            if (!empty($types)) {
+                $stmtSystem->bind_param($types, ...$params);
+            }
+            $stmtSystem->execute();
+            $systemRaw = $stmtSystem->get_result()->fetch_assoc();
+            $systemTotalSuccessful = (int)($systemRaw['system_successful'] ?? 0);
+            $stmtSystem->close();
+        }
+
         $sqlStats = "
             SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN status IN ('assigned', 'compensation') THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN status = 'duplicate' THEN 1 ELSE 0 END) as duplicate
+                SUM(CASE WHEN status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN status = 'reminder' THEN 1 ELSE 0 END) as reminder,
+                SUM(CASE WHEN status IN ('duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as error,
+                SUM(CASE WHEN status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total
             FROM distribution_logs dl
             WHERE dl.assigned_to = ? AND $dateCondition
         ";
@@ -1553,10 +1570,12 @@ switch ($action) {
             $summary = [
                 'total' => (int)($summaryRaw['total'] ?? 0),
                 'successful' => (int)($summaryRaw['successful'] ?? 0),
-                'duplicate' => (int)($summaryRaw['duplicate'] ?? 0)
+                'reminder' => (int)($summaryRaw['reminder'] ?? 0),
+                'error' => (int)($summaryRaw['error'] ?? 0),
+                'system_total_successful' => $systemTotalSuccessful
             ];
         } else {
-            $summary = ['total' => 0, 'successful' => 0, 'duplicate' => 0];
+            $summary = ['total' => 0, 'successful' => 0, 'reminder' => 0, 'error' => 0, 'system_total_successful' => 0];
         }
 
         // 2. Breakdown stats by round
@@ -1564,9 +1583,10 @@ switch ($action) {
             SELECT 
                 dl.round_id, 
                 IFNULL(dr.round_name, 'Không rõ vòng') as round_name, 
-                COUNT(*) as total_count,
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation') THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN dl.status = 'duplicate' THEN 1 ELSE 0 END) as duplicate_count
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total_count,
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful_count,
+                SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_count,
+                SUM(CASE WHEN dl.status IN ('duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as error_count
             FROM distribution_logs dl
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             WHERE dl.assigned_to = ? AND $dateCondition
@@ -1587,7 +1607,8 @@ switch ($action) {
                     'round_name' => $row['round_name'],
                     'total_count' => (int)$row['total_count'],
                     'successful_count' => (int)$row['successful_count'],
-                    'duplicate_count' => (int)$row['duplicate_count']
+                    'reminder_count' => (int)$row['reminder_count'],
+                    'error_count' => (int)$row['error_count']
                 ];
             }
             $stmtRound->close();
@@ -1598,7 +1619,7 @@ switch ($action) {
         $sqlByDate = "
             SELECT DATE_FORMAT(dl.received_at, '%Y-%m-%d') as date_str, COUNT(*) as count
             FROM distribution_logs dl
-            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation')
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours')
             GROUP BY DATE(dl.received_at)
             ORDER BY date_str ASC
         ";
@@ -1624,7 +1645,7 @@ switch ($action) {
             SELECT IFNULL(l.source, 'Không rõ nguồn') as source_name, COUNT(*) as count
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
-            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation')
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours')
             GROUP BY l.source
             ORDER BY count DESC
         ";

@@ -10,7 +10,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, AreaChart, Area
+  PieChart, Pie, Cell
 } from 'recharts';
 
 interface User {
@@ -1088,52 +1088,52 @@ export const Consultants = () => {
                       <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Data đã bàn giao</div>
                     </div>
                     
-                    <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lỗi trùng</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
-                        {statsData.summary.duplicate}
+                    <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nhắc lại</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 4 }}>
+                        {statsData.summary.reminder || 0}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Đã bị từ chối trùng</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Yêu cầu gọi lại</div>
                     </div>
 
-                    <div style={{ background: '#f1f5f9', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng đã chia</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>
-                        {statsData.summary.total}
+                    <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lỗi</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
+                        {statsData.summary.error || 0}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Tổng số data đổ về</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Trùng lặp / Lỗi chia</div>
                     </div>
 
                     <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ nhận</div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
-                        {statsData.summary.total > 0 
-                          ? Math.round((statsData.summary.successful / statsData.summary.total) * 100) 
+                        {statsData.summary.system_total_successful > 0 
+                          ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100) 
                           : 0}%
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Hiệu suất phân bổ</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả sale</div>
                     </div>
                   </div>
 
-                  {/* Row 1: Daily trend area chart (Full Width) */}
+                  {/* Row 1: Daily trend bar chart (Full Width) */}
                   <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)', width: '100%' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
                     {statsData.by_date && statsData.by_date.length > 0 ? (
                       <div style={{ height: 180, width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
+                          <BarChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
                             <defs>
                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                             <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
                             <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
-                            <Area type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={2} fillOpacity={1} fill="url(#statsDateGradient)" name="Data thành công" />
-                          </AreaChart>
+                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công" />
+                          </BarChart>
                         </ResponsiveContainer>
                       </div>
                     ) : (
@@ -1151,7 +1151,8 @@ export const Consultants = () => {
                       {(() => {
                         const statusChartData = [
                           { name: 'Thành công', value: statsData.summary.successful, color: '#7c3aed' },
-                          { name: 'Trùng lặp', value: statsData.summary.duplicate, color: '#ef4444' }
+                          { name: 'Nhắc lại', value: statsData.summary.reminder, color: '#f59e0b' },
+                          { name: 'Lỗi', value: statsData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
 
                         return statsData.summary.total > 0 && statusChartData.length > 0 ? (
@@ -1206,17 +1207,11 @@ export const Consultants = () => {
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" fill="url(#statsRoundGradient)" radius={[0, 4, 4, 0]} barSize={12} name="Thành công" />
+                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name="Thành công" />
+                              <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name="Nhắc lại" />
+                              <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name="Lỗi" />
                             </BarChart>
                           </ResponsiveContainer>
-                          <svg width={0} height={0}>
-                            <defs>
-                              <linearGradient id="statsRoundGradient" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor="#c084fc" />
-                                <stop offset="100%" stopColor="#7c3aed" />
-                              </linearGradient>
-                            </defs>
-                          </svg>
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
