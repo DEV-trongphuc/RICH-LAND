@@ -58,6 +58,9 @@ const parseNote = (noteText: string) => {
   
   lines.forEach(line => {
     const trimmed = line.trim();
+    if (/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(trimmed)) {
+      return;
+    }
     if (trimmed.startsWith('[LỖI -') || trimmed.startsWith('[LỖI ')) {
       errorNotes.push(trimmed);
     } else if (

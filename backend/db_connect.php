@@ -66,7 +66,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 114) {
+        if ($dbVer >= 115) {
             $runMigration = false;
         }
     }
@@ -87,7 +87,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 114) {
+                    if ($dbVer >= 115) {
                         $runMigration = false;
                     }
                 }
@@ -456,9 +456,15 @@ if ($runMigration) {
         $conn->query("ALTER TABLE accounts ADD COLUMN avatar VARCHAR(255) NULL COMMENT 'Đường dẫn ảnh đại diện của Admin/Assistant'");
     }
 
+    // Auto-migrate: clean up notes with "Nhap du lieu cu (Silent)" or "Nhap du lieu cu" (including Vietnamese accented variations)
+    $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhap du lieu cu (Silent)', '')) WHERE note LIKE '%Nhap du lieu cu (Silent)%'");
+    $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhap du lieu cu', '')) WHERE note LIKE '%Nhap du lieu cu%'");
+    $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhập dữ liệu cũ (Silent)', '')) WHERE note LIKE '%Nhập dữ liệu cũ (Silent)%'");
+    $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhập dữ liệu cũ', '')) WHERE note LIKE '%Nhập dữ liệu cũ%'");
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '114') ON DUPLICATE KEY UPDATE setting_value = '114'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '115') ON DUPLICATE KEY UPDATE setting_value = '115'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

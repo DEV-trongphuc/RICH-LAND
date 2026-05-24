@@ -18,10 +18,8 @@ export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () =
       setTheme(localTheme);
       document.documentElement.setAttribute('data-theme', localTheme);
     } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = prefersDark ? 'dark' : 'light';
-      setTheme(initialTheme);
-      document.documentElement.setAttribute('data-theme', initialTheme);
+      setTheme('light');
+      document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
 

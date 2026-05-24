@@ -537,8 +537,7 @@ export default function App() {
     if (localTheme) {
       document.documentElement.setAttribute('data-theme', localTheme);
     } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
 
