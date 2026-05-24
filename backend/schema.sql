@@ -340,10 +340,10 @@ ALTER TABLE `leads`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `phone` (`phone`),
   ADD KEY `assigned_to` (`assigned_to`),
-  ADD KEY `idx_phone` (`phone`),
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_created_at` (`created_at`),
-  ADD KEY `idx_connection_id` (`connection_id`);
+  ADD KEY `idx_connection_id` (`connection_id`),
+  ADD KEY `idx_last_interaction_date` (`last_interaction_date`);
 
 --
 -- Chỉ mục cho bảng `mail_queue`

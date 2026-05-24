@@ -66,7 +66,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 115) {
+        if ($dbVer >= 116) {
             $runMigration = false;
         }
     }
@@ -87,7 +87,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 115) {
+                    if ($dbVer >= 116) {
                         $runMigration = false;
                     }
                 }
@@ -195,10 +195,16 @@ if ($runMigration) {
         $conn->query("ALTER TABLE round_consultants ADD UNIQUE KEY `idx_round_consultant_unique` (`round_id`, `consultant_id`)");
     }
 
-    // leads phone index
+    // leads phone index (drop redundant non-unique index if exists)
     $chkIdx2 = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_phone'");
-    if ($chkIdx2 && $chkIdx2->num_rows === 0) {
-        $conn->query("ALTER TABLE leads ADD INDEX `idx_phone` (`phone`)");
+    if ($chkIdx2 && $chkIdx2->num_rows > 0) {
+        $conn->query("DROP INDEX `idx_phone` ON leads");
+    }
+
+    // leads last_interaction_date index
+    $chkIdxLastDate = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_last_interaction_date'");
+    if ($chkIdxLastDate && $chkIdxLastDate->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD INDEX `idx_last_interaction_date` (`last_interaction_date`)");
     }
 
     // leads email index
@@ -464,7 +470,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '115') ON DUPLICATE KEY UPDATE setting_value = '115'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '116') ON DUPLICATE KEY UPDATE setting_value = '116'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

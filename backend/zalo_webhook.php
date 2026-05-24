@@ -138,23 +138,27 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/reject') === 0 || strpos($textLower, '/round') === 0 || strpos($textLower, '/check') === 0 || strpos($textLower, '/week') === 0) {
             // Kiểm tra phân quyền Admin
             $isAdmin = false;
+            $adminRole = '';
             $adminName = '';
             $adminAccountId = 0;
-            $stmtCheck = $conn->prepare("SELECT id, name FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
+            $stmtCheck = $conn->prepare("SELECT id, name, role FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
             if ($stmtCheck) {
                 $stmtCheck->bind_param("s", $chatId);
                 $stmtCheck->execute();
                 $resCheck = $stmtCheck->get_result();
                 if ($resCheck && $rowCheck = $resCheck->fetch_assoc()) {
-                    $isAdmin = true;
-                    $adminName = $rowCheck['name'] ?: 'Quản trị viên';
-                    $adminAccountId = (int)$rowCheck['id'];
+                    $adminRole = $rowCheck['role'];
+                    if ($adminRole === 'admin' || $adminRole === 'assistant') {
+                        $isAdmin = true;
+                        $adminName = $rowCheck['name'] ?: 'Quản trị viên';
+                        $adminAccountId = (int)$rowCheck['id'];
+                    }
                 }
                 $stmtCheck->close();
             }
 
             if (!$isAdmin) {
-                sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh này chỉ dành cho Quản trị viên đã xác thực Zalo trên hệ thống.");
+                sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh này chỉ dành cho Quản trị viên/Trợ lý đã xác thực Zalo trên hệ thống.");
                 exit;
             }
 
@@ -400,6 +404,10 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             if (strpos($textLower, '/accept') === 0) {
+                if ($adminRole !== 'admin') {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh duyệt ticket lỗi này yêu cầu quyền tối cao (Admin). Tài khoản Trợ lý của bạn không đủ đặc quyền.");
+                    exit;
+                }
                 $cmdArg = trim(substr($text, 7));
                 $ticketId = 0;
                 $customReason = '';
@@ -651,6 +659,10 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             if (strpos($textLower, '/reject') === 0) {
+                if ($adminRole !== 'admin') {
+                    sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh từ chối ticket lỗi này yêu cầu quyền tối cao (Admin). Tài khoản Trợ lý của bạn không đủ đặc quyền.");
+                    exit;
+                }
                 $cmdArg = trim(substr($text, 7));
                 $ticketId = 0;
                 $rejectReason = '';
