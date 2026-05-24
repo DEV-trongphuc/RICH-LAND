@@ -393,7 +393,7 @@ export const Dashboard = () => {
                         {(() => {
                           const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string) => {
                             if (status === 'error' && reportStatus === 'approved') {
-                              return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Data Lỗi' };
+                              return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Ticket' };
                             }
                             switch (status) {
                               case 'assigned':
@@ -407,7 +407,7 @@ export const Dashboard = () => {
                               case 'pending':
                                 return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Chờ chia' };
                               case 'error':
-                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Bị lỗi' };
+                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Ticket' };
                               case 'silent':
                                 return { bg: '#e2e8f0', color: '#475569', text: 'Chỉ đồng bộ' };
                               default:

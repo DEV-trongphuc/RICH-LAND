@@ -370,7 +370,7 @@ if ($isSilent == 1) {
                 if ($cRow && $cRow['status'] === 'active') {
                     require_once __DIR__ . '/mailer.php';
                     require_once __DIR__ . '/zalo_bot.php';
-                    $timeline = getLeadHistoryTimeline($conn, $leadId);
+                    $timeline = getLeadHistoryTimeline($conn, $leadId, true);
                     try {
                         sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
                     } catch (Exception $mailEx) {
@@ -414,7 +414,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
             if ($cRow && $cRow['status'] === 'active') {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
-                $timeline = getLeadHistoryTimeline($conn, $leadId);
+                $timeline = getLeadHistoryTimeline($conn, $leadId, true);
                 try {
                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
                 } catch (Exception $mailEx) {

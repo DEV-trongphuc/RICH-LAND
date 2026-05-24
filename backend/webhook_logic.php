@@ -1048,10 +1048,11 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
 /**
  * Lấy lịch sử phân bổ gần nhất của Lead để hiển thị khi nhắc trùng
  */
-function getLeadHistoryTimeline($conn, $leadId) {
+function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false) {
     $timeline = [];
     if (empty($leadId)) return $timeline;
 
+    $limit = $excludeLatestIfReminder ? 6 : 5;
     $stmt = $conn->prepare("
         SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, dr.round_name 
         FROM distribution_logs dl 
@@ -1059,10 +1060,10 @@ function getLeadHistoryTimeline($conn, $leadId) {
         LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
         WHERE dl.lead_id = ? 
         ORDER BY dl.received_at DESC 
-        LIMIT 5
+        LIMIT ?
     ");
     if ($stmt) {
-        $stmt->bind_param("i", $leadId);
+        $stmt->bind_param("ii", $leadId, $limit);
         $stmt->execute();
         $res = $stmt->get_result();
         
@@ -1076,8 +1077,22 @@ function getLeadHistoryTimeline($conn, $leadId) {
             'unassigned' => 'Chưa phân bổ'
         ];
 
+        $isFirst = true;
+        $count = 0;
         while ($row = $res->fetch_assoc()) {
             $statusRaw = $row['status'] ?? '';
+            
+            if ($excludeLatestIfReminder && $isFirst && ($statusRaw === 'reminder' || $statusRaw === 'silent')) {
+                $isFirst = false;
+                continue;
+            }
+            $isFirst = false;
+            
+            if ($count >= 5) {
+                break;
+            }
+            $count++;
+
             $statusText = $statusTranslations[$statusRaw] ?? $statusRaw;
             
             $msg = $row['message'] ?? '';

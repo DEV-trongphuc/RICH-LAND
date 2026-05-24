@@ -440,13 +440,13 @@ export const DataList = () => {
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'error' && reportStatus === 'approved') {
-      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Data Lỗi</span>;
+      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Ticket</span>;
     }
     switch (status) {
       case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
       case 'compensation': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>;
       case 'pending_work_hours': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#ffedd5', color: '#ea580c' }}>Chờ giờ làm</span>;
-      case 'error': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Bị Lỗi</span>;
+      case 'error': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Ticket</span>;
       case 'pending': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>;
       case 'reminder': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>;
       case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
@@ -600,8 +600,8 @@ export const DataList = () => {
               color: 'var(--color-warning)',
               fontSize: '0.6875rem',
               fontWeight: 600
-            }} title="Bị lỗi">
-              <span>Lỗi:</span>
+            }} title="Ticket">
+              <span>Ticket:</span>
               <strong>{dayData.error}</strong>
             </div>
           )}
@@ -763,7 +763,7 @@ export const DataList = () => {
               { value: 'duplicate', label: 'Trùng lặp' },
               { value: 'rule_6_month', label: 'Quy định 6 tháng' },
               { value: 'silent', label: 'Chỉ đồng bộ' },
-              { value: 'error', label: 'Bị Lỗi' }
+              { value: 'error', label: 'Ticket' }
             ]}
             value={statusFilter}
             onChange={val => updateParams('status', val.toString())}
@@ -893,7 +893,7 @@ export const DataList = () => {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-warning)' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Bị lỗi</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Ticket</span>
               </div>
             </div>
           </div>

@@ -3671,7 +3671,7 @@ switch ($action) {
                             require_once __DIR__ . '/zalo_bot.php';
                             require_once __DIR__ . '/webhook_logic.php';
 
-                            $timeline = getLeadHistoryTimeline($conn, $report['lead_id']);
+                            $timeline = getLeadHistoryTimeline($conn, $report['lead_id'], true);
 
                             // Send Zalo reminder
                             try {
@@ -6081,7 +6081,7 @@ switch ($action) {
 
             if ($isDuplicateLead) {
                 try {
-                    $timeline = getLeadHistoryTimeline($conn, $lead_id);
+                    $timeline = getLeadHistoryTimeline($conn, $lead_id, true);
                     try {
                         sendLeadReminderEmailToSale(
                             $new_cons_email,
@@ -7489,7 +7489,7 @@ switch ($action) {
                         require_once __DIR__ . '/mailer.php';
                         require_once __DIR__ . '/zalo_bot.php';
                         
-                        $timeline = getLeadHistoryTimeline($conn, $leadId);
+                        $timeline = getLeadHistoryTimeline($conn, $leadId, true);
                         try {
                             sendLeadReminderEmailToSale(
                                 $cRow['email'],
