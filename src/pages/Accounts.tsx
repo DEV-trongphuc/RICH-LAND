@@ -358,7 +358,7 @@ export const Accounts = () => {
                     <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
                       <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <Avatar name={acc.name} size={36} />
+                          <Avatar src={acc.avatar} name={acc.name} size={36} />
                           <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
                             {acc.name}
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
@@ -698,7 +698,7 @@ export const Accounts = () => {
                         </td>
                         <td data-label="Người thực hiện" style={{ padding: '1rem 1.5rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Avatar name={log.account_name || 'System'} size={28} />
+                            <Avatar src={log.account_avatar} name={log.account_name || 'System'} size={28} />
                             <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
                               {log.account_name || 'Hệ thống'}
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>{log.account_email}</div>

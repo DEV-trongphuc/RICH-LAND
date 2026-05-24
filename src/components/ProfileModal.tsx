@@ -1,27 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomModal } from './ui/CustomModal';
+import { Avatar } from './ui/Avatar';
 import toast from 'react-hot-toast';
 
 export const ProfileModal = () => {
   const { user, login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
   
   // Profile State
-  const [profileData, setProfileData] = useState({ name: '', email: '' });
+  const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '' });
   
   // Password State
   const [showOldPass, setShowOldPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [passData, setPassData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
 
+  // Activity Logs State
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const handleOpen = () => {
-      setProfileData({ name: user?.name || '', email: user?.email || user?.username || '' });
+      setProfileData({ 
+        name: user?.name || '', 
+        email: user?.email || user?.username || '',
+        avatar: user?.avatar || ''
+      });
       setPassData({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setActiveTab('profile');
       setIsOpen(true);
@@ -29,6 +41,62 @@ export const ProfileModal = () => {
     window.addEventListener('open-profile-modal', handleOpen);
     return () => window.removeEventListener('open-profile-modal', handleOpen);
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'activity' && isOpen) {
+      const fetchLogs = async () => {
+        setLoadingLogs(true);
+        try {
+          const res = await fetchAPI('get_my_activity_logs');
+          if (res.success) {
+            setActivityLogs(res.data || []);
+          }
+        } catch (err) {
+          console.error('Lỗi khi tải lịch sử hoạt động:', err);
+        } finally {
+          setLoadingLogs(false);
+        }
+      };
+      fetchLogs();
+    }
+  }, [activeTab, isOpen]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file hình ảnh hợp lệ.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Kích thước ảnh không được vượt quá 5MB.');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+
+      const res = await fetchAPI('upload_avatar', {
+        method: 'POST',
+        body: fd
+      });
+
+      if (res.success && res.url) {
+        setProfileData(prev => ({ ...prev, avatar: res.url }));
+        toast.success('Tải ảnh đại diện lên thành công!');
+      } else {
+        toast.error(res.message || 'Lỗi khi tải ảnh lên');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi kết nối: ' + err.message);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +108,13 @@ export const ProfileModal = () => {
     try {
       const res = await fetchAPI('update_profile', {
         method: 'POST',
-        body: JSON.stringify({ name: profileData.name, email: profileData.email })
+        body: JSON.stringify({ name: profileData.name, avatar: profileData.avatar })
       });
       if (res.success) {
         toast.success('Cập nhật thông tin thành công!');
-        // Update local user context so UI reflects the new name/email
         const token = localStorage.getItem('domation_token') || '';
         if (user) {
-          login(token, { ...user, name: profileData.name, email: profileData.email, username: profileData.email } as any);
+          login(token, { ...user, name: profileData.name, avatar: profileData.avatar } as any);
         }
         setIsOpen(false);
       } else {
@@ -96,9 +163,9 @@ export const ProfileModal = () => {
       isOpen={isOpen}
       onClose={() => setIsOpen(false)}
       title="Thông tin Tài khoản"
-      width="500px"
+      width="520px"
     >
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', gap: '1rem', padding: '0 1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', gap: '0.75rem', padding: '0 1rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
         <button
           onClick={() => setActiveTab('profile')}
           style={{
@@ -106,10 +173,10 @@ export const ProfileModal = () => {
             fontWeight: activeTab === 'profile' ? 700 : 500,
             color: activeTab === 'profile' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             borderBottom: activeTab === 'profile' ? '2px solid var(--color-primary)' : '2px solid transparent',
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9375rem', transition: 'all 0.2s'
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
           }}
         >
-          <User size={18} /> Hồ sơ của tôi
+          <User size={16} /> Hồ sơ của tôi
         </button>
         <button
           onClick={() => setActiveTab('password')}
@@ -118,16 +185,77 @@ export const ProfileModal = () => {
             fontWeight: activeTab === 'password' ? 700 : 500,
             color: activeTab === 'password' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             borderBottom: activeTab === 'password' ? '2px solid var(--color-primary)' : '2px solid transparent',
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9375rem', transition: 'all 0.2s'
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
           }}
         >
-          <Key size={18} /> Đổi mật khẩu
+          <Key size={16} /> Đổi mật khẩu
+        </button>
+        <button
+          onClick={() => setActiveTab('activity')}
+          style={{
+            padding: '12px 0', border: 'none', background: 'transparent', cursor: 'pointer',
+            fontWeight: activeTab === 'activity' ? 700 : 500,
+            color: activeTab === 'activity' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            borderBottom: activeTab === 'activity' ? '2px solid var(--color-primary)' : '2px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
+          }}
+        >
+          <Activity size={16} /> Thống kê hoạt động
         </button>
       </div>
 
       <div style={{ padding: '0 1rem' }}>
-        {activeTab === 'profile' ? (
+        {activeTab === 'profile' && (
           <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Avatar Upload Container */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <Avatar src={profileData.avatar} name={profileData.name || 'User'} size={64} />
+                {isUploadingAvatar && (
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 600 }}>Tải...</span>
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                  Ảnh đại diện
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn outline sm"
+                    style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white' }}
+                    disabled={isUploadingAvatar}
+                  >
+                    Tải ảnh lên
+                  </button>
+                  {profileData.avatar && (
+                    <button
+                      type="button"
+                      onClick={() => setProfileData({ ...profileData, avatar: '' })}
+                      className="btn outline sm"
+                      style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'white' }}
+                    >
+                      Xóa ảnh
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                  Chấp nhận JPG, PNG, WEBP (tối đa 5MB)
+                </span>
+              </div>
+            </div>
+
             <div className="form-group">
               <label>Tên hiển thị</label>
               <div style={{ position: 'relative' }}>
@@ -151,9 +279,9 @@ export const ProfileModal = () => {
                   type="text"
                   className="form-control"
                   value={profileData.email}
-                  onChange={e => setProfileData({ ...profileData, email: e.target.value })}
-                  placeholder="Nhập email đăng nhập..."
-                  style={{ paddingLeft: 42 }}
+                  disabled
+                  placeholder="Email đăng nhập..."
+                  style={{ paddingLeft: 42, cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' }}
                 />
               </div>
             </div>
@@ -164,11 +292,12 @@ export const ProfileModal = () => {
               </button>
             </div>
           </form>
-        ) : (
+        )}
+
+        {activeTab === 'password' && (
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            
             <div style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', padding: '12px 16px', borderRadius: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <ShieldAlert size={20} color="#ef4444" style={{ marginTop: 2 }} />
+              <ShieldAlert size={20} color="#ef4444" style={{ marginTop: 2, flexShrink: 0 }} />
               <div>
                 <h4 style={{ color: '#991b1b', fontSize: '0.875rem', fontWeight: 700, margin: '0 0 4px 0' }}>Bảo mật tài khoản</h4>
                 <p style={{ color: '#b91c1c', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
@@ -228,6 +357,62 @@ export const ProfileModal = () => {
               </button>
             </div>
           </form>
+        )}
+
+        {activeTab === 'activity' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+            {loadingLogs ? (
+              <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                Đang tải lịch sử hoạt động...
+              </div>
+            ) : activityLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                Không có hoạt động nào được ghi nhận.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {activityLogs.map((log: any) => {
+                  let detailsText = '';
+                  try {
+                    const parsed = JSON.parse(log.details);
+                    detailsText = Object.entries(parsed)
+                      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                      .join(', ');
+                  } catch {
+                    detailsText = log.details || '';
+                  }
+
+                  return (
+                    <div 
+                      key={log.id} 
+                      style={{ 
+                        padding: '10px 12px', 
+                        background: 'var(--color-bg)', 
+                        border: '1px solid var(--color-border)', 
+                        borderRadius: 8,
+                        fontSize: '0.8125rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: '8px' }}>
+                        <strong style={{ color: 'var(--color-primary)' }}>{log.action}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      {detailsText && (
+                        <div style={{ color: 'var(--color-text-light)', marginBottom: 4, fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.75rem', background: 'rgba(0,0,0,0.02)', padding: '4px 6px', borderRadius: 4 }}>
+                          {detailsText}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                        IP: {log.ip_address}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </CustomModal>

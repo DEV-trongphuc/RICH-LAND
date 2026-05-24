@@ -53,6 +53,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     navigate('/login');
   };
 
+  const handleProfileClick = () => {
+    if (user?.role === 'admin' || user?.role === 'assistant') {
+      window.dispatchEvent(new CustomEvent('open-profile-modal'));
+    }
+  };
+
   return (
     <>
       {isMobileOpen && (
@@ -278,11 +284,24 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
       {/* Footer User */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          padding: '0.625rem', borderRadius: 10, cursor: 'pointer',
-          justifyContent: isCollapsed ? 'center' : 'space-between'
-        }}>
+        <div 
+          onClick={handleProfileClick}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.75rem',
+            padding: '0.625rem', borderRadius: 10,
+            cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
+            justifyContent: isCollapsed ? 'center' : 'space-between',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={e => {
+            if (user?.role === 'admin' || user?.role === 'assistant') {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Avatar src={user?.avatar} name={user?.name} size={32} />
 
@@ -295,7 +314,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           </div>
 
           {!isCollapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-profile-modal'))}
                 style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
@@ -319,13 +338,13 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         </div>
 
         {isCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }} onClick={e => e.stopPropagation()}>
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-change-password'))}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-profile-modal'))}
               style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#3b82f6')}
               onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-              title="Đổi mật khẩu"
+              title="Hồ sơ & Đổi mật khẩu"
             >
               <Key size={16} />
             </button>

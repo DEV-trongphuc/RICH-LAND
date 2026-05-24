@@ -1,12 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, AreaChart, Area
+} from 'recharts';
 
 interface User {
   id: number;
@@ -69,6 +74,15 @@ export const Consultants = () => {
   const [quickMessageTarget, setQuickMessageTarget] = useState<any>(null);
   const [quickMessageText, setQuickMessageText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+
+  // Consultant stats state
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [statsConsultant, setStatsConsultant] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsData, setStatsData] = useState<any>(null);
+  const [statsDateMode, setStatsDateMode] = useState<string>('this_month');
+  const [statsStartDate, setStatsStartDate] = useState<string>('');
+  const [statsEndDate, setStatsEndDate] = useState<string>('');
   
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [formData, setFormData] = useState<{
@@ -313,6 +327,33 @@ export const Consultants = () => {
     }
   };
 
+  const fetchConsultantStats = async (consId: number, mode: string, start?: string, end?: string) => {
+    setStatsLoading(true);
+    try {
+      let query = `get_consultant_stats&consultant_id=${consId}&date_mode=${mode}`;
+      if (mode === 'custom' && start && end) {
+        query += `&start_date=${start}&end_date=${end}`;
+      }
+      const json = await fetchAPI(query);
+      if (json.success) {
+        setStatsData(json);
+      } else {
+        toast.error(json.message || 'Lỗi khi tải báo cáo thống kê');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi kết nối: ' + e.message);
+    }
+    setStatsLoading(false);
+  };
+
+  useEffect(() => {
+    if (statsModalOpen && statsConsultant) {
+      if (statsDateMode !== 'custom' || (statsStartDate && statsEndDate)) {
+        fetchConsultantStats(statsConsultant.id, statsDateMode, statsStartDate, statsEndDate);
+      }
+    }
+  }, [statsModalOpen, statsConsultant, statsDateMode, statsStartDate, statsEndDate]);
+
   const activeCount   = users.filter(u => u.status === 'active').length;
   const leaveCount    = users.filter(u => u.status === 'leave').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
@@ -495,6 +536,20 @@ export const Consultants = () => {
                     </td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
+                        <button 
+                          onClick={() => { 
+                            setStatsConsultant(u); 
+                            setStatsDateMode('this_month');
+                            setStatsStartDate('');
+                            setStatsEndDate('');
+                            setStatsModalOpen(true); 
+                          }} 
+                          className="btn ghost sm" 
+                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }} 
+                          title="Thống kê hiệu suất"
+                        >
+                          <BarChart2 size={14} />
+                        </button>
                         <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title="Xóa nhân sự">
                           <Trash2 size={14} />
                         </button>
@@ -917,6 +972,333 @@ export const Consultants = () => {
         </div>,
         document.body
       )}
+      {/* Statistics Modal */}
+      {statsModalOpen && statsConsultant && typeof document !== 'undefined' && createPortal(
+        <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)}>
+          <div 
+            className="card" 
+            style={{ 
+              width: '100%', 
+              maxWidth: 900, 
+              maxHeight: '92vh', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              animation: 'slideUp 0.2s ease-out' 
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>Báo cáo hiệu suất TVV</h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • {statsConsultant.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Timeframe Filter Dropdown in Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', marginRight: '1rem', flexWrap: 'nowrap' }}>
+                <Calendar size={18} color="var(--color-text-light)" style={{ display: 'flex', alignItems: 'center' }} />
+                <div style={{ position: 'relative', zIndex: 100 }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'this_month', label: 'Tháng này (Mặc định)' },
+                      { value: 'today', label: 'Hôm nay' },
+                      { value: 'yesterday', label: 'Hôm qua' },
+                      { value: '7_days', label: '7 ngày qua' },
+                      { value: '30_days', label: '30 ngày qua' },
+                      { value: 'last_month', label: 'Tháng trước' },
+                      { value: 'all', label: 'Tất cả thời gian' },
+                      { value: 'custom', label: 'Tự chọn ngày...' }
+                    ]}
+                    value={statsDateMode}
+                    onChange={val => setStatsDateMode(String(val))}
+                    width={180}
+                  />
+                </div>
+
+                {statsDateMode === 'custom' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', animation: 'slideUp 0.15s ease-out', flexShrink: 0 }}>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
+                      value={statsStartDate}
+                      onChange={e => setStatsStartDate(e.target.value)}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>đến</span>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
+                      value={statsEndDate}
+                      onChange={e => setStatsEndDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <button 
+                type="button" 
+                onClick={() => setStatsModalOpen(false)} 
+                style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} 
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+              {statsLoading && !statsData ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
+                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Đang tải báo cáo...</span>
+                </div>
+              ) : !statsData ? (
+                <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>
+                  Không có dữ liệu thống kê.
+                </div>
+              ) : (
+                <>
+                  {/* Subtle Loading overlay if reloading in background */}
+                  {statsLoading && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 10, overflow: 'hidden' }}>
+                      <div style={{ width: '30%', height: '100%', background: 'var(--color-primary)', borderRadius: 'inherit', animation: 'loadingBar 1.5s infinite ease-in-out' }} />
+                    </div>
+                  )}
+                  <style>{`
+                    @keyframes loadingBar {
+                      0% { transform: translateX(-100%); }
+                      100% { transform: translateX(330%); }
+                    }
+                  `}</style>
+                  
+                  {/* KPI Cards Row (4 Columns) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                    <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thành công</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
+                        {statsData.summary.successful}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Data đã bàn giao</div>
+                    </div>
+                    
+                    <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lỗi trùng</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
+                        {statsData.summary.duplicate}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Đã bị từ chối trùng</div>
+                    </div>
+
+                    <div style={{ background: '#f1f5f9', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng đã chia</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>
+                        {statsData.summary.total}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Tổng số data đổ về</div>
+                    </div>
+
+                    <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ nhận</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
+                        {statsData.summary.total > 0 
+                          ? Math.round((statsData.summary.successful / statsData.summary.total) * 100) 
+                          : 0}%
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Hiệu suất phân bổ</div>
+                    </div>
+                  </div>
+
+                  {/* Row 1: Daily trend area chart (Full Width) */}
+                  <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)', width: '100%' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
+                    {statsData.by_date && statsData.by_date.length > 0 ? (
+                      <div style={{ height: 180, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                            <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
+                            <Area type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={2} fillOpacity={1} fill="url(#statsDateGradient)" name="Data thành công" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                        Không có dữ liệu phân bổ theo ngày
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Row 2: Status Ratio (Donut) & Rounds Breakdown */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    {/* Donut chart for status ratio */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
+                      {(() => {
+                        const statusChartData = [
+                          { name: 'Thành công', value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: 'Trùng lặp', value: statsData.summary.duplicate, color: '#ef4444' }
+                        ].filter(item => item.value > 0);
+
+                        return statsData.summary.total > 0 && statusChartData.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', justifyContent: 'center' }}>
+                            <div style={{ width: 140, height: 140, flexShrink: 0 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={statusChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={35}
+                                    outerRadius={55}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                  >
+                                    {statusChartData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.75rem' }}>
+                              {statusChartData.map((item, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                                    {item.name}: <strong style={{ fontSize: '0.8125rem' }}>{item.value}</strong> ({Math.round(item.value / statsData.summary.total * 100)}%)
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
+                            Không có dữ liệu lưu lượng
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Rounds breakdown chart */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Phân bổ theo Vòng (Round)</h4>
+                      {statsData.rounds.length > 0 ? (
+                        <div style={{ height: 160, width: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={statsData.rounds} layout="vertical" margin={{ left: -10, right: 10, top: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
+                              <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                              <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
+                              <Bar dataKey="successful_count" fill="url(#statsRoundGradient)" radius={[0, 4, 4, 0]} barSize={12} name="Thành công" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                          <svg width={0} height={0}>
+                            <defs>
+                              <linearGradient id="statsRoundGradient" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#c084fc" />
+                                <stop offset="100%" stopColor="#7c3aed" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
+                          Không có dữ liệu chia số theo vòng
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Marketing Sources & Tickets Reports */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    {/* Source breakdown list */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
+                      {statsData.by_source && statsData.by_source.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
+                          {statsData.by_source.map((src: any, idx: number) => {
+                            const sourcePercent = statsData.summary.successful > 0 
+                              ? Math.round((src.count / statsData.summary.successful) * 100)
+                              : 0;
+                            return (
+                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{src.source}</span>
+                                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} data ({sourcePercent}%)</span>
+                                </div>
+                                <div style={{ width: '100%', height: 4, background: '#f1f5f9', borderRadius: 2 }}>
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1.5rem 0' }}>
+                          Không có dữ liệu nguồn data
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tickets Reports statistics */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
+                      {statsData.tickets ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                          <div style={{ background: '#f8fafc', padding: '6px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-success-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-success)', fontWeight: 700 }}>ĐÃ BÙ</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 2 }}>{statsData.tickets.approved}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-warning-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-warning)', fontWeight: 700 }}>ĐANG CHỜ</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 2 }}>{statsData.tickets.pending}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-danger-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-danger)', fontWeight: 700 }}>TỪ CHỐI</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 2 }}>{statsData.tickets.rejected}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1rem 0' }}>
+                          Không có dữ liệu ticket
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '1rem 1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>Đóng</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <ConfirmModal 
         isOpen={confirmDeleteOpen} 
         onClose={() => setConfirmDeleteOpen(false)} 

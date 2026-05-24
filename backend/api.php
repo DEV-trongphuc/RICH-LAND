@@ -159,6 +159,7 @@ if (!in_array($action, $publicActions)) {
         'edit_rule',
         'delete_rule',
         'reorder_rules',
+        'get_consultant_stats',
         'add_connection',
         'edit_connection',
         'delete_connection',
@@ -178,8 +179,7 @@ if (!in_array($action, $publicActions)) {
         'test_email',
         'block_lead',
         'get_zalo_send_logs',
-        'ai_chat',
-        'upload_avatar'
+        'ai_chat'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -424,7 +424,8 @@ switch ($action) {
                         'username' => $user['username'],
                         'email' => $user['email'] ?? '',
                         'role' => $user['role'],
-                        'name' => $user['name']
+                        'name' => $user['name'],
+                        'avatar' => $user['avatar'] ?? null
                     ]
                 ]);
                 exit;
@@ -508,7 +509,8 @@ switch ($action) {
                     'username' => $user['username'],
                     'email' => $user['email'] ?? '',
                     'role' => $user['role'],
-                    'name' => $user['name']
+                    'name' => $user['name'],
+                    'avatar' => $user['avatar'] ?? null
                 ]
             ]);
         } else {
@@ -1474,6 +1476,247 @@ switch ($action) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
         }
+        break;
+
+    case 'get_consultant_stats':
+        $consultantId = isset($_GET['consultant_id']) ? (int)$_GET['consultant_id'] : 0;
+        if (empty($consultantId)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu consultant_id']);
+            break;
+        }
+
+        $dateMode = $_GET['date_mode'] ?? 'all';
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+
+        $today = date('Y-m-d');
+        $dateCondition = "1=1";
+        $params = [];
+        $types = "";
+
+        if ($dateMode === 'today') {
+            $dateCondition = "dl.received_at >= ? AND dl.received_at <= ?";
+            $params[] = $today . ' 00:00:00';
+            $params[] = $today . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === 'yesterday') {
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $dateCondition = "dl.received_at >= ? AND dl.received_at <= ?";
+            $params[] = $yesterday . ' 00:00:00';
+            $params[] = $yesterday . ' 23:59:59';
+            $types .= "ss";
+        } elseif ($dateMode === '7_days') {
+            $dateCondition = "dl.received_at >= ?";
+            $params[] = date('Y-m-d', strtotime('-7 days')) . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === '30_days') {
+            $dateCondition = "dl.received_at >= ?";
+            $params[] = date('Y-m-d', strtotime('-30 days')) . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === 'this_month') {
+            $dateCondition = "dl.received_at >= ?";
+            $params[] = date('Y-m-01') . ' 00:00:00';
+            $types .= "s";
+        } elseif ($dateMode === 'last_month') {
+            $dateCondition = "dl.received_at >= ? AND dl.received_at < ?";
+            $params[] = date('Y-m-01', strtotime('first day of last month')) . ' 00:00:00';
+            $params[] = date('Y-m-01') . ' 00:00:00';
+            $types .= "ss";
+        } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $dateCondition = "dl.received_at >= ? AND dl.received_at <= ?";
+            $params[] = $startDate . ' 00:00:00';
+            $params[] = $endDate . ' 23:59:59';
+            $types .= "ss";
+        }
+
+        $statsTypes = "i" . $types;
+        $statsParams = array_merge([$consultantId], $params);
+
+        // 1. Summary stats
+        $sqlStats = "
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status IN ('assigned', 'compensation') THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN status = 'duplicate' THEN 1 ELSE 0 END) as duplicate
+            FROM distribution_logs dl
+            WHERE dl.assigned_to = ? AND $dateCondition
+        ";
+        $stmtStats = $conn->prepare($sqlStats);
+        if ($stmtStats) {
+            if (!empty($statsTypes)) {
+                $stmtStats->bind_param($statsTypes, ...$statsParams);
+            }
+            $stmtStats->execute();
+            $summaryRaw = $stmtStats->get_result()->fetch_assoc();
+            $stmtStats->close();
+            
+            $summary = [
+                'total' => (int)($summaryRaw['total'] ?? 0),
+                'successful' => (int)($summaryRaw['successful'] ?? 0),
+                'duplicate' => (int)($summaryRaw['duplicate'] ?? 0)
+            ];
+        } else {
+            $summary = ['total' => 0, 'successful' => 0, 'duplicate' => 0];
+        }
+
+        // 2. Breakdown stats by round
+        $sqlRoundStats = "
+            SELECT 
+                dl.round_id, 
+                IFNULL(dr.round_name, 'Không rõ vòng') as round_name, 
+                COUNT(*) as total_count,
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation') THEN 1 ELSE 0 END) as successful_count,
+                SUM(CASE WHEN dl.status = 'duplicate' THEN 1 ELSE 0 END) as duplicate_count
+            FROM distribution_logs dl
+            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+            WHERE dl.assigned_to = ? AND $dateCondition
+            GROUP BY dl.round_id, dr.round_name
+            ORDER BY total_count DESC
+        ";
+        $roundsStats = [];
+        $stmtRound = $conn->prepare($sqlRoundStats);
+        if ($stmtRound) {
+            if (!empty($statsTypes)) {
+                $stmtRound->bind_param($statsTypes, ...$statsParams);
+            }
+            $stmtRound->execute();
+            $resRound = $stmtRound->get_result();
+            while ($row = $resRound->fetch_assoc()) {
+                $roundsStats[] = [
+                    'round_id' => $row['round_id'] !== null ? (int)$row['round_id'] : null,
+                    'round_name' => $row['round_name'],
+                    'total_count' => (int)$row['total_count'],
+                    'successful_count' => (int)$row['successful_count'],
+                    'duplicate_count' => (int)$row['duplicate_count']
+                ];
+            }
+            $stmtRound->close();
+        }
+
+        // 3. Daily trend stats
+        $byDate = [];
+        $sqlByDate = "
+            SELECT DATE_FORMAT(dl.received_at, '%Y-%m-%d') as date_str, COUNT(*) as count
+            FROM distribution_logs dl
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation')
+            GROUP BY DATE(dl.received_at)
+            ORDER BY date_str ASC
+        ";
+        $stmtByDate = $conn->prepare($sqlByDate);
+        if ($stmtByDate) {
+            if (!empty($statsTypes)) {
+                $stmtByDate->bind_param($statsTypes, ...$statsParams);
+            }
+            $stmtByDate->execute();
+            $resByDate = $stmtByDate->get_result();
+            while ($row = $resByDate->fetch_assoc()) {
+                $byDate[] = [
+                    'date' => date('d/m', strtotime($row['date_str'])),
+                    'count' => (int)$row['count']
+                ];
+            }
+            $stmtByDate->close();
+        }
+
+        // 4. Source distribution stats
+        $bySource = [];
+        $sqlBySource = "
+            SELECT IFNULL(l.source, 'Không rõ nguồn') as source_name, COUNT(*) as count
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation')
+            GROUP BY l.source
+            ORDER BY count DESC
+        ";
+        $stmtBySource = $conn->prepare($sqlBySource);
+        if ($stmtBySource) {
+            if (!empty($statsTypes)) {
+                $stmtBySource->bind_param($statsTypes, ...$statsParams);
+            }
+            $stmtBySource->execute();
+            $resBySource = $stmtBySource->get_result();
+            while ($row = $resBySource->fetch_assoc()) {
+                $bySource[] = [
+                    'source' => $row['source_name'],
+                    'count' => (int)$row['count']
+                ];
+            }
+            $stmtBySource->close();
+        }
+
+        // 5. Ticket reports stats
+        $ticketCondition = "1=1";
+        $ticketParams = [];
+        $ticketTypes = "";
+        
+        if ($dateMode === 'today') {
+            $ticketCondition = "created_at >= ? AND created_at <= ?";
+            $ticketParams[] = $today . ' 00:00:00';
+            $ticketParams[] = $today . ' 23:59:59';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === 'yesterday') {
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $ticketCondition = "created_at >= ? AND created_at <= ?";
+            $ticketParams[] = $yesterday . ' 00:00:00';
+            $ticketParams[] = $yesterday . ' 23:59:59';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === '7_days') {
+            $ticketCondition = "created_at >= ?";
+            $ticketParams[] = date('Y-m-d', strtotime('-7 days')) . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === '30_days') {
+            $ticketCondition = "created_at >= ?";
+            $ticketParams[] = date('Y-m-d', strtotime('-30 days')) . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === 'this_month') {
+            $ticketCondition = "created_at >= ?";
+            $ticketParams[] = date('Y-m-01') . ' 00:00:00';
+            $ticketTypes .= "s";
+        } elseif ($dateMode === 'last_month') {
+            $ticketCondition = "created_at >= ? AND created_at < ?";
+            $ticketParams[] = date('Y-m-01', strtotime('first day of last month')) . ' 00:00:00';
+            $ticketParams[] = date('Y-m-01') . ' 00:00:00';
+            $ticketTypes .= "ss";
+        } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $ticketCondition = "created_at >= ? AND created_at <= ?";
+            $ticketParams[] = $startDate . ' 00:00:00';
+            $ticketParams[] = $endDate . ' 23:59:59';
+            $ticketTypes .= "ss";
+        }
+
+        $stmtTickets = $conn->prepare("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+            FROM data_reports
+            WHERE consultant_id = ? AND $ticketCondition
+        ");
+        $ticketsStats = ['total' => 0, 'approved' => 0, 'rejected' => 0, 'pending' => 0];
+        if ($stmtTickets) {
+            $bindTypes = "i" . $ticketTypes;
+            $bindParams = array_merge([$consultantId], $ticketParams);
+            $stmtTickets->bind_param($bindTypes, ...$bindParams);
+            $stmtTickets->execute();
+            $rawTickets = $stmtTickets->get_result()->fetch_assoc();
+            $ticketsStats = [
+                'total' => (int)($rawTickets['total'] ?? 0),
+                'approved' => (int)($rawTickets['approved'] ?? 0),
+                'rejected' => (int)($rawTickets['rejected'] ?? 0),
+                'pending' => (int)($rawTickets['pending'] ?? 0)
+            ];
+            $stmtTickets->close();
+        }
+
+        echo json_encode([
+            'success' => true,
+            'summary' => $summary,
+            'rounds' => $roundsStats,
+            'by_date' => $byDate,
+            'by_source' => $bySource,
+            'tickets' => $ticketsStats
+        ]);
         break;
 
     case 'unlink_zalo':
@@ -4002,7 +4245,7 @@ switch ($action) {
 
     case 'get_accounts':
         // Include email field for display and ticket notification settings
-        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login FROM accounts ORDER BY created_at DESC");
+        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts ORDER BY created_at DESC");
         $data = [];
         while ($row = $res->fetch_assoc())
             $data[] = $row;
@@ -4010,7 +4253,7 @@ switch ($action) {
         break;
 
     case 'get_admin_logs':
-        $res = $conn->query("SELECT al.*, a.name as account_name, a.email as account_email 
+        $res = $conn->query("SELECT al.*, a.name as account_name, a.email as account_email, a.avatar as account_avatar 
                              FROM admin_logs al 
                              LEFT JOIN accounts a ON al.account_id = a.id 
                              ORDER BY al.created_at DESC 
@@ -4128,7 +4371,7 @@ switch ($action) {
         // Query recent admin logs
         $adminLogs = [];
         $sqlAdmin = "SELECT al.id, al.account_id, al.action, al.details, al.created_at as timestamp, al.ip_address,
-                            a.name as admin_name
+                            a.name as admin_name, a.avatar as admin_avatar
                      FROM admin_logs al
                      LEFT JOIN accounts a ON al.account_id = a.id
                      ORDER BY al.id DESC LIMIT 40";
@@ -4221,7 +4464,8 @@ switch ($action) {
                     'tag' => $tag,
                     'tag_color' => $tagColor,
                     'details' => $detailsStr,
-                    'admin_name' => $adminName
+                    'admin_name' => $adminName,
+                    'consultant_avatar' => $row['admin_avatar']
                 ];
             }
         }
@@ -4404,8 +4648,9 @@ switch ($action) {
 
     case 'update_profile':
         $input = json_decode(file_get_contents('php://input'), true);
-        $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
+        $name = trim($input['name'] ?? '');
+        $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
+        if ($avatar === '') $avatar = null;
         $userId = $decodedUser['id'];
 
         if (empty($name)) {
@@ -4413,14 +4658,35 @@ switch ($action) {
             break;
         }
 
-        $upd = $conn->prepare("UPDATE accounts SET name = ?, email = ? WHERE id = ?");
-        $upd->bind_param("ssi", $name, $email, $userId);
+        $upd = $conn->prepare("UPDATE accounts SET name = ?, avatar = ? WHERE id = ?");
+        $upd->bind_param("ssi", $name, $avatar, $userId);
         if ($upd->execute()) {
-            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'email' => $email]);
+            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'avatar' => $avatar]);
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);
         }
+        break;
+
+    case 'get_my_activity_logs':
+        $userId = $decodedUser['id'];
+        $stmt = $conn->prepare("SELECT al.*, a.name as account_name, a.email as account_email 
+                                FROM admin_logs al 
+                                LEFT JOIN accounts a ON al.account_id = a.id 
+                                WHERE al.account_id = ? 
+                                ORDER BY al.created_at DESC 
+                                LIMIT 200");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        $stmt->close();
+        echo json_encode(['success' => true, 'data' => $data]);
         break;
 
     case 'change_password':

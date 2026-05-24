@@ -181,7 +181,20 @@ export const Dashboard = () => {
   };
 
   return (
-    <div style={{ animation: 'slideUp 0.3s ease-out' }}>
+    <div style={{ animation: 'slideUp 0.3s ease-out', position: 'relative' }}>
+      {/* Background loading bar indicator */}
+      {loading && stats && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 9999, overflow: 'hidden' }}>
+          <div style={{ width: '30%', height: '100%', background: 'var(--color-primary)', borderRadius: 'inherit', animation: 'loadingBar 1.5s infinite ease-in-out' }} />
+        </div>
+      )}
+      <style>{`
+        @keyframes loadingBar {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(330%); }
+        }
+      `}</style>
+
       {/* Header */}
       <div className="page-header">
         <div>
@@ -216,7 +229,7 @@ export const Dashboard = () => {
 
       {/* KPI Cards */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        {loading ? (
+        {loading && !stats ? (
           Array.from({ length: 4 }).map((_, i) => <KpiCardSkeleton key={i} />)
         ) : kpiCards.map((card, i) => {
           const Icon = card.icon;
@@ -251,7 +264,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Chart + List row */}
-      {loading ? (
+      {loading && !stats ? (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem' }}>
             <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
@@ -421,7 +434,7 @@ export const Dashboard = () => {
       )}
 
       {/* Source Pie + Quality row */}
-      {loading ? (
+      {loading && !stats ? (
         <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="card" style={{ padding: '1.25rem' }}>

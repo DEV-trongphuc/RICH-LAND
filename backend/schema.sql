@@ -38,7 +38,8 @@ CREATE TABLE `accounts` (
   `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
   `is_confirmed` tinyint(1) DEFAULT 0 COMMENT 'Xác nhận Email',
   `confirm_token` varchar(64) DEFAULT NULL COMMENT 'Token xác nhận Email',
-  `last_login` datetime DEFAULT NULL
+  `last_login` datetime DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL COMMENT 'Đường dẫn ảnh đại diện của Admin/Assistant'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

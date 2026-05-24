@@ -1,7 +1,26 @@
 import { Menu, Search, Command, Activity } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Avatar } from '../ui/Avatar';
 
 export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () => void; onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
+  const { user } = useAuth();
+
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'admin': return 'Quản trị viên';
+      case 'assistant': return 'Trợ lý';
+      case 'viewer': return 'Người xem';
+      case 'sale': return 'Tư vấn viên';
+      default: return 'Người dùng';
+    }
+  };
+
+  const handleProfileClick = () => {
+    if (user?.role === 'admin' || user?.role === 'assistant') {
+      window.dispatchEvent(new CustomEvent('open-profile-modal'));
+    }
+  };
   return (
     <header style={{
       height: 66,
@@ -114,23 +133,32 @@ export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () =
           }} />
         </button>
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          paddingLeft: '0.875rem',
-          borderLeft: '1px solid var(--color-border)',
-          cursor: 'pointer'
-        }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: '0.7rem', fontWeight: 700
-          }}>AD</div>
+        <div 
+          onClick={handleProfileClick}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.625rem',
+            paddingLeft: '0.875rem',
+            borderLeft: '1px solid var(--color-border)',
+            cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={e => {
+            if (user?.role === 'admin' || user?.role === 'assistant') {
+              e.currentTarget.style.background = 'var(--color-bg)';
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          <Avatar src={user?.avatar} name={user?.name} size={32} />
           <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Admin System</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>Quản trị viên</span>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{getRoleLabel(user?.role)}</span>
           </div>
         </div>
       </div>
