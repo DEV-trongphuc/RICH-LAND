@@ -10,9 +10,10 @@ interface CustomModalProps {
   title?: string;
   width?: string | number;
   children: React.ReactNode;
+  showCloseIcon?: boolean;
 }
 
-export const CustomModal: React.FC<CustomModalProps> = ({ isOpen, onClose, title, width, children }) => {
+export const CustomModal: React.FC<CustomModalProps> = ({ isOpen, onClose, title, width, children, showCloseIcon = true }) => {
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -46,12 +47,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({ isOpen, onClose, title
             {title && (
               <div className={styles.header}>
                 <h3 className={styles.title}>{title}</h3>
-                <button className={styles.closeBtn} onClick={onClose}>
-                  <X size={20} />
-                </button>
+                {showCloseIcon && (
+                  <button className={styles.closeBtn} onClick={onClose}>
+                    <X size={20} />
+                  </button>
+                )}
               </div>
             )}
-            {!title && (
+            {!title && showCloseIcon && (
               <button className={`${styles.closeBtn} ${styles.floatingClose}`} onClick={onClose}>
                 <X size={20} />
               </button>

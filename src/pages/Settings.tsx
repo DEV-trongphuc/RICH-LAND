@@ -68,6 +68,15 @@ export const Settings = () => {
   // Tab State
   const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check' | 'ai'>('processing');
 
+  const tabOptions = [
+    { value: 'processing', label: 'Cấu hình Xử lý', icon: <SettingsIcon size={16} /> },
+    { value: 'mail', label: 'Cấu hình Email', icon: <Mail size={16} /> },
+    { value: 'zalo', label: 'Cấu hình Zalo Bot', icon: <MessageCircle size={16} /> },
+    { value: 'report', label: 'Báo cáo', icon: <BarChart2 size={16} /> },
+    { value: 'duplicate_check', label: 'Ánh xạ dữ liệu cũ', icon: <FileSpreadsheet size={16} /> },
+    { value: 'ai', label: 'Cấu hình Trợ lý AI', icon: <Zap size={16} /> }
+  ];
+
   // States for Gemini API Connection
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash');
@@ -715,11 +724,21 @@ export const Settings = () => {
         </div>
         <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
           {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
-          Lưu cấu hình
+          <span className="hide-on-mobile">Lưu cấu hình</span>
         </button>
       </div>
 
-      <div className="mobile-filter-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+      {/* Mobile Tab Selector */}
+      <div className="mobile-only" style={{ marginBottom: '1.5rem' }}>
+        <CustomSelect
+          options={tabOptions}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val)}
+          width="100%"
+        />
+      </div>
+
+      <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
         <button
           onClick={() => setActiveTab('processing')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
@@ -2969,6 +2988,35 @@ function doPost(e) {
           </div>
         )}
       </ConfirmModal>
+
+      {/* Floating Save Button on Mobile */}
+      {!loading && activeTab !== 'duplicate_check' && (
+        <div className="mobile-only" style={{
+          position: 'fixed',
+          bottom: '2rem',
+          right: '1.5rem',
+          zIndex: 99,
+        }}>
+          <button 
+            className="btn primary" 
+            onClick={handleSave} 
+            disabled={saving} 
+            style={{ 
+              borderRadius: '50%', 
+              width: 56, 
+              height: 56, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: 0,
+              boxShadow: '0 4px 14px 0 rgba(124, 58, 237, 0.4)'
+            }}
+            title="Lưu cấu hình"
+          >
+            {saving ? <Activity size={24} className="spin" /> : <Save size={24} />}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

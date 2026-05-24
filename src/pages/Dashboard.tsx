@@ -201,8 +201,8 @@ export const Dashboard = () => {
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Tổng quan Phân bổ Data</h1>
           <p className="page-subtitle">Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.</p>
         </div>
-        <div className="mobile-stack mobile-w-full" style={{ display: 'flex', gap: '12px' }}>
-          <div className="mobile-w-full" style={{ position: 'relative', zIndex: 100 }}>
+        <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -213,16 +213,17 @@ export const Dashboard = () => {
                 }
                 setDateFilter(String(val));
               }}
-              width={200}
+              width="100%"
             />
           </div>
           <button
-            className="btn outline mobile-w-full"
+            className="btn outline"
             onClick={() => fetchDashboard()}
             disabled={loading}
+            title="Làm mới dữ liệu"
+            style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
-            Làm mới dữ liệu
           </button>
         </div>
       </div>

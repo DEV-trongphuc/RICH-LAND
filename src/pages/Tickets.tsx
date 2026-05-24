@@ -520,7 +520,7 @@ export const Tickets = () => {
             Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên
           </p>
         </div>
-        <div className="mobile-filter-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {FILTER_TABS.map(tab => (
             <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
               {tab.label} {`(${stats[tab.key]})`}
@@ -552,13 +552,93 @@ export const Tickets = () => {
             {pendingCount} chờ duyệt
           </div>
         </div>
-      </div>
 
-      {/* Mobile Filter Toggle */}
-      <div className="mobile-only" style={{ marginBottom: '1rem' }}>
-        <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
-          <Filter size={16} /> {showMobileFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
-        </button>
+        {/* Mobile Actions (Dropdown + Icons) */}
+        <div className="mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+            {/* Status Dropdown */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <CustomSelect
+                options={FILTER_TABS.map(tab => ({
+                  value: tab.key,
+                  label: `${tab.label} (${stats[tab.key] || 0})`,
+                  icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
+                }))}
+                value={activeFilter}
+                onChange={val => updateParams('status', val.toString())}
+                width="100%"
+              />
+            </div>
+            
+            {/* Filter Toggle Button (Icon only) */}
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              title={showMobileFilters ? "Ẩn bộ lọc" : "Hiện bộ lọc"}
+              style={{
+                padding: 0,
+                borderRadius: 8,
+                border: '1px solid',
+                borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
+                background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                flexShrink: 0
+              }}
+            >
+              <Filter size={16} />
+            </button>
+
+            {/* Reload Button */}
+            <button
+              onClick={fetchReports}
+              disabled={loading}
+              title="Làm mới"
+              style={{
+                padding: 0,
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-muted)',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                flexShrink: 0
+              }}
+            >
+              <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              title="Thiết lập thông báo Ticket"
+              style={{
+                padding: 0,
+                borderRadius: 8,
+                border: '1px solid var(--color-primary)',
+                background: 'rgba(124,58,237,0.08)',
+                color: 'var(--color-primary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                flexShrink: 0
+              }}
+            >
+              <Settings2 size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── Filter bar: Sale + Date ── */}

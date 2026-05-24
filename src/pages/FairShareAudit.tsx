@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Scale, Users, AlertTriangle, RefreshCw, BarChart2, Info,
+  Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers
 } from 'lucide-react';
 import {
@@ -295,16 +295,16 @@ export const FairShareAudit = () => {
           </h1>
           <p className="page-subtitle">Kiểm tra toán học & đo lường độ lệch chuẩn, chỉ số Gini để đảm bảo data được chia công bằng.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', zIndex: 100 }}>
+        <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 180 }}>
             <CustomSelect
               options={roundOptions}
               value={roundFilter}
               onChange={(val) => setRoundFilter(String(val))}
-              width={180}
+              width="100%"
             />
           </div>
-          <div style={{ position: 'relative', zIndex: 100 }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 160 }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -315,14 +315,16 @@ export const FairShareAudit = () => {
                 }
                 setDateFilter(String(val));
               }}
-              width={160}
+              width="100%"
             />
           </div>
-          <button className="btn outline" onClick={() => fetchStats()} disabled={loading} style={{ width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <RefreshCw size={16} className={loading ? 'spin' : ''} />
-          </button>
-          <button className="btn secondary" onClick={() => setShowInfoModal(true)} style={{ height: 40 }}>
-            <Info size={16} /> Giải thích chỉ số
+          <button
+            className="btn outline"
+            onClick={() => setShowInfoModal(true)}
+            title="Giải thích chỉ số"
+            style={{ width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <Info size={16} />
           </button>
         </div>
       </div>
@@ -733,6 +735,7 @@ export const FairShareAudit = () => {
         onClose={() => setShowInfoModal(false)} 
         title="Giải thích thuật ngữ & Công thức tính toán"
         width="550px"
+        showCloseIcon={false}
       >
         <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '70vh', overflowY: 'auto' }} className="custom-scrollbar">
           <div>

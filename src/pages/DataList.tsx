@@ -629,9 +629,9 @@ export const DataList = () => {
           </h1>
           <p className="page-subtitle">Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div className="data-list-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {/* View Mode Toggle Buttons */}
-          <div style={{
+          <div className="view-mode-toggle-container" style={{
             display: 'flex',
             background: 'var(--color-bg)',
             border: '1px solid var(--color-border)',
@@ -661,7 +661,7 @@ export const DataList = () => {
                 height: '32px'
               }}
             >
-              <LayoutList size={14} /> Danh sách
+              <LayoutList size={14} /> <span className="hide-on-mobile">Danh sách</span>
             </button>
             <button
               type="button"
@@ -683,15 +683,15 @@ export const DataList = () => {
                 height: '32px'
               }}
             >
-              <Calendar size={14} /> Lịch biểu
+              <Calendar size={14} /> <span className="hide-on-mobile">Lịch biểu</span>
             </button>
           </div>
 
           <button className="btn outline" onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))} style={{ padding: '0 1.25rem', height: 38 }}>
-            <Plus size={16} /> <span className="hidden sm:inline">Thêm Data</span>
+            <Plus size={16} /> <span>Thêm<span className="hide-on-mobile"> Data</span></span>
           </button>
           <button className="btn primary" onClick={handleExportCSV} style={{ padding: '0 1.25rem', height: 38 }}>
-            <Download size={16} /> Xuất CSV
+            <Download size={16} /> <span>Xuất<span className="hide-on-mobile"> CSV</span></span>
           </button>
         </div>
       </div>
@@ -913,7 +913,8 @@ export const DataList = () => {
               }}>
                 {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(wd => (
                   <div key={wd} style={{ padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: wd === 'CN' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                    {wd}
+                    <span className="hide-on-mobile">{wd}</span>
+                    <span className="mobile-only">{wd === 'CN' ? 'CN' : wd.replace('Thứ ', 'T')}</span>
                   </div>
                 ))}
               </div>

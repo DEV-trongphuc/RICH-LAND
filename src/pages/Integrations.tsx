@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -80,6 +80,7 @@ const generateDefaultTemplate = (mappings: { sheet_col: string; sys_field: strin
 export const Integrations = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selected, setSelected] = useState<Connection | null>(null);
+  const [mobileActiveView, setMobileActiveView] = useState<'list' | 'detail'>('list');
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -523,7 +524,7 @@ export const Integrations = () => {
     <>
       <div className="responsive-flex-row responsive-height-auto" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 66px - 3rem)', minHeight: 0, animation: 'fadeIn 0.3s' }}>
         {/* LEFT PANEL: Sheet connections list */}
-        <div className="responsive-filter-item" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={`responsive-filter-item ${mobileActiveView === 'detail' ? 'hide-on-mobile' : ''}`} style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Quản lý các nguồn đổ Data</p>
@@ -552,7 +553,7 @@ export const Integrations = () => {
               return (
                 <div
                   key={conn.id}
-                  onClick={() => setSelected(conn)}
+                  onClick={() => { setSelected(conn); setMobileActiveView('detail'); }}
                   style={{
                     background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
                     border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
@@ -612,7 +613,17 @@ export const Integrations = () => {
         </div>
 
         {/* RIGHT PANEL: Selected sheet config */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={mobileActiveView === 'list' ? 'hide-on-mobile' : ''} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Back button on mobile */}
+          <div className="mobile-only" style={{ marginBottom: '0.25rem' }}>
+            <button
+              onClick={() => setMobileActiveView('list')}
+              className="btn outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', height: 36, padding: '0 10px', fontSize: '0.8125rem' }}
+            >
+              <ChevronLeft size={16} /> Quay lại danh sách
+            </button>
+          </div>
           {!selected ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>

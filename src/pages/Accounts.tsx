@@ -303,7 +303,7 @@ export const Accounts = () => {
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Quản trị hệ thống và phân quyền truy cập cho nhân viên.</p>
         </div>
         <button onClick={openAddModal} className="btn primary responsive-btn-full" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', fontSize: '0.875rem' }}>
-          <Plus size={18} /> Thêm tài khoản
+          <Plus size={18} /> <span>Thêm<span className="hide-on-mobile"> tài khoản</span></span>
         </button>
       </div>
 
@@ -327,7 +327,7 @@ export const Accounts = () => {
             flexShrink: 0
           }}
         >
-          <UserCog size={16} /> Danh sách Tài khoản
+          <UserCog size={16} /> <span><span className="hide-on-mobile">Danh sách </span>Tài khoản</span>
         </button>
         <button 
           onClick={() => setActiveTab('logs')}
@@ -347,7 +347,7 @@ export const Accounts = () => {
             flexShrink: 0
           }}
         >
-          <History size={16} /> Nhật ký hoạt động Admin
+          <History size={16} /> <span>Nhật ký<span className="hide-on-mobile"> hoạt động Admin</span></span>
         </button>
       </div>
  
@@ -502,7 +502,7 @@ export const Accounts = () => {
             <TableSkeleton cols={5} rows={8} />
           ) : (
             <>
-              <div className="table-wrap responsive-table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
+              <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>

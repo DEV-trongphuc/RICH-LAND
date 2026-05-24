@@ -295,9 +295,9 @@ export const Rounds = () => {
           </p>
         </div>
 
-        <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {/* View Toggle */}
-          <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: 4, borderRadius: 'var(--radius-md)' }}>
+          <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: 4, borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
             <button
               onClick={() => setViewMode('grid')}
               style={{
@@ -308,7 +308,7 @@ export const Rounds = () => {
                 fontWeight: viewMode === 'grid' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
               }}
             >
-              <LayoutGrid size={16} /> Lưới
+              <LayoutGrid size={16} /> <span className="hide-on-mobile">Lưới</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -320,14 +320,14 @@ export const Rounds = () => {
                 fontWeight: viewMode === 'list' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
               }}
             >
-              <List size={16} /> Danh sách
+              <List size={16} /> <span className="hide-on-mobile">Danh sách</span>
             </button>
           </div>
-          <button className="btn outline" onClick={() => navigate('/fair-share')} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Scale size={16} /> Đối soát công bằng
+          <button className="btn outline" onClick={() => navigate('/fair-share')} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <Scale size={16} /> <span>Đối soát<span className="hide-on-mobile"> công bằng</span></span>
           </button>
-          <button className="btn primary" onClick={openAddModal}>
-            <Plus size={18} /> Thêm Vòng
+          <button className="btn primary" onClick={openAddModal} style={{ flexShrink: 0 }}>
+            <Plus size={18} /> <span>Thêm<span className="hide-on-mobile"> Vòng</span></span>
           </button>
         </div>
       </div>
@@ -836,9 +836,9 @@ export const Rounds = () => {
                               </div>
 
                               {/* Special Rule: Ratio + Data Per Turn */}
-                              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                              <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
                                 {/* Row 1: Data per turn */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Nhận</span>
                                   <input
                                     type="number"

@@ -25,7 +25,7 @@
   position: relative;
   width: 100%;
   max-width: 500px;
-  max-height: calc(100vh - 3rem);
+  max-height: 80vh;
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);

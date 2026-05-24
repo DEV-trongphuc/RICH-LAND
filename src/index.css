@@ -185,6 +185,64 @@
   .panel-title {
     font-size: 0.95rem !important;
   }
+
+  /* CRM Mobile Buttons & Layout Optimizations */
+  .data-list-actions {
+    width: 100% !important;
+    gap: 0.5rem !important;
+    justify-content: flex-start !important;
+  }
+
+  .view-mode-toggle-container {
+    height: 36px !important;
+    margin-right: 0 !important;
+  }
+
+  .view-mode-toggle-container button {
+    height: 30px !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
+  }
+}
+
+/* --- Performance Stats Modal Header Styles --- */
+.stats-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  gap: 1.5rem;
+}
+
+.stats-header-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.stats-header-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-light);
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.stats-header-close:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.stats-custom-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 @media (max-width: 480px) {

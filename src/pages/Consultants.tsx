@@ -1053,17 +1053,6 @@ export const Consultants = () => {
                   </div>
                 )}
               </div>
-
-              <button 
-                type="button" 
-                onClick={() => setStatsModalOpen(false)} 
-                className="stats-header-close"
-                style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} 
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                <X size={20} />
-              </button>
             </div>
 
             {/* Content Area */}
