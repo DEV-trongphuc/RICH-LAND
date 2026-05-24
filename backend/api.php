@@ -2257,7 +2257,7 @@ switch ($action) {
             $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
             $emailTemplate = $input['email_template'] ?? null;
 
-            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL WHERE id=?");
+            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
             $stmt->bind_param("ssiiissiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
@@ -6519,7 +6519,7 @@ switch ($action) {
                     if ($isSilent == 1) {
                         if ($crmCheck['isDuplicate']) {
                             $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name);
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
                             $duplicateCount++;
                             logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
                         } else {
@@ -6531,7 +6531,7 @@ switch ($action) {
                     } else {
                         if ($crmCheck['isDuplicate']) {
                             $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                            $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name);
+                            $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
                             logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
                             $duplicateCount++;
                             

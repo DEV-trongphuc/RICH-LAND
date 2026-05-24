@@ -391,7 +391,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     }
     
     $whereClause = implode(" OR ", $where);
-    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.status as consultant_status, c.leave_start, c.leave_end 
+    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
                             FROM leads l 
                             LEFT JOIN consultants c ON l.assigned_to = c.id 
                             WHERE $whereClause 
@@ -446,6 +446,8 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             'isDuplicate' => $isDuplicate,
             'monthsSinceLastInteraction' => $months,
             'assignedTo' => $assignedTo,
+            'assignedName' => $row['consultant_name'] ?? 'Không rõ',
+            'lastInteractionDate' => $row['last_interaction_date'],
             'originalAssignedTo' => $row['assigned_to'],
             'consultantStatus' => $effectiveStatus
         ];
@@ -455,6 +457,8 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         'isDuplicate' => false,
         'monthsSinceLastInteraction' => 0,
         'assignedTo' => null,
+        'assignedName' => 'Không rõ',
+        'lastInteractionDate' => null,
         'originalAssignedTo' => null,
         'consultantStatus' => null
     ];
@@ -786,7 +790,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null) {
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false) {
     $phone = normalizePhone($phone);
     if (empty($phone) && empty($email)) return null;
     
@@ -825,7 +829,10 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     
     if ($id) {
         $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
-        if ($assignedConsultantId) {
+        if ($onlyUpdateDate) {
+            $uStmt = $conn->prepare("UPDATE leads SET last_interaction_date = ? WHERE id = ?");
+            $uStmt->bind_param("si", $dateVal, $id);
+        } else if ($assignedConsultantId) {
             $uStmt = $conn->prepare("UPDATE leads SET 
                 name = IF(? != '' AND (name = '' OR name IS NULL), ?, name),
                 email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),

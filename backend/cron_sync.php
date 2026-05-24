@@ -42,6 +42,104 @@ if (!function_exists('logSync')) {
     }
 }
 
+if (!function_exists('sendSheetSyncErrorAlert')) {
+    function sendSheetSyncErrorAlert($conn, $connItem, $errorMessage) {
+        logSync("Sending sync error notification for connection {$connItem['sheet_name']}...");
+        
+        $sheetName = $connItem['sheet_name'];
+        $spreadsheetId = $connItem['spreadsheet_id'] ?? 'Không rõ';
+        $timeStr = date('d/m/Y H:i:s');
+        
+        // Fetch all admins
+        $adminRes = $conn->query("SELECT name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+        if (!$adminRes) {
+            logSync("No admin found or query failed.");
+            return;
+        }
+        
+        $admins = [];
+        while ($row = $adminRes->fetch_assoc()) {
+            $admins[] = $row;
+        }
+        
+        if (empty($admins)) {
+            logSync("No admin accounts to notify.");
+            return;
+        }
+        
+        // 1. Zalo Alert
+        $botToken = get_system_setting($conn, 'zalo_bot_token');
+        if (!empty($botToken)) {
+            $zaloMsg = "⚠️ [ CẢNH BÁO LỖI ĐỒNG BỘ TRANG TÍNH ]\n\n"
+                     . "- Kết nối: $sheetName\n"
+                     . "- ID Bảng tính: " . (strlen($spreadsheetId) > 20 ? substr($spreadsheetId, 0, 10) . '...' . substr($spreadsheetId, -10) : $spreadsheetId) . "\n"
+                     . "- Thời gian: $timeStr\n"
+                     . "- Chi tiết lỗi: $errorMessage\n\n"
+                     . "Vui lòng kiểm tra lại thiết lập kết nối Sheets hoặc liên kết Google Sheets.";
+                     
+            foreach ($admins as $admin) {
+                if (!empty($admin['zalo_chat_id'])) {
+                    try {
+                        sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                    } catch (Exception $zEx) {
+                        logSync("Error sending Zalo alert to admin {$admin['name']}: " . $zEx->getMessage());
+                    }
+                }
+            }
+        }
+        
+        // 2. Email Alert
+        $frontendUrl = get_system_setting($conn, 'frontend_url');
+        if (empty($frontendUrl)) {
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+        }
+        $frontendUrl = rtrim($frontendUrl, '/');
+        
+        $emailContent = '
+        <p>Xin chào Admin,</p>
+        <p>Hệ thống vừa phát hiện lỗi đồng bộ Google Sheets đối với kết nối sau:</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 150px; background-color: #f8fafc;">Tên kết nối:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">' . htmlspecialchars($sheetName) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Spreadsheet ID:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-family: monospace;">' . htmlspecialchars($spreadsheetId) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Thời gian lỗi:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">' . $timeStr . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; color: #dc2626;">Chi tiết lỗi:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 500;">' . htmlspecialchars($errorMessage) . '</td>
+            </tr>
+        </table>
+        <p>Vui lòng truy cập trang quản trị <a href="' . $frontendUrl . '/integrations">Cấu hình tích hợp</a> để kiểm tra và khắc phục lỗi.</p>
+        ';
+        
+        foreach ($admins as $admin) {
+            if (!empty($admin['email'])) {
+                try {
+                    sendEmailNotification(
+                        $admin['email'],
+                        "[CẢNH BÁO] Lỗi đồng bộ Google Sheets - " . $sheetName,
+                        "LỖI ĐỒNG BỘ TRANG TÍNH",
+                        $emailContent,
+                        '',
+                        false
+                    );
+                } catch (Exception $eEx) {
+                    logSync("Error sending Email alert to admin {$admin['name']}: " . $eEx->getMessage());
+                }
+            }
+        }
+    }
+}
+
 if (!function_exists('releasePendingWorkHoursLeads')) {
     function releasePendingWorkHoursLeads($conn) {
         logSync("Checking for pending work hours leads to release...");
@@ -858,6 +956,13 @@ foreach ($connections as $connItem) {
                     }
 
                     if ($crmCheckResult['isDuplicate']) {
+                        if (!empty($crmCheckResult['originalAssignedTo'])) {
+                            $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';
+                            $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';
+                            $dupMonths = $crmCheckResult['monthsSinceLastInteraction'] ?? $dupCheckMonths;
+                            $noteAppend = "\n[Lưu ý: Trùng số của $prevName trên $dupMonths tháng. Cập nhật lần cuối: $prevDate]";
+                            $note = trim($note) === '' ? trim($noteAppend, "\n") : $note . $noteAppend;
+                        }
                         $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connItem['id'], null, $name);
                     } else {
                         $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
@@ -965,17 +1070,23 @@ foreach ($connections as $connItem) {
         logSync("Finished Connection ID {$connItem['id']}. Synced $syncedCount new leads.");
 
         // Reset status
-        $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle' WHERE id = ?");
+        $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle', last_error = NULL WHERE id = ?");
         $upStmt->bind_param("i", $connItem['id']);
         $upStmt->execute();
         $upStmt->close();
 
     } catch (Exception $e) {
-        logSync("Error processing ID {$connItem['id']}: " . $e->getMessage());
-        $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error' WHERE id = ?");
-        $upStmt->bind_param("i", $connItem['id']);
+        $errorMessage = $e->getMessage();
+        logSync("Error processing ID {$connItem['id']}: " . $errorMessage);
+        $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error', last_error = ? WHERE id = ?");
+        $upStmt->bind_param("si", $errorMessage, $connItem['id']);
         $upStmt->execute();
         $upStmt->close();
+
+        // Notify admins if transition to error or if the error is different
+        if (($connItem['sync_status'] ?? 'idle') !== 'error' || ($connItem['last_error'] ?? '') !== $errorMessage) {
+            sendSheetSyncErrorAlert($conn, $connItem, $errorMessage);
+        }
     }
 }
 

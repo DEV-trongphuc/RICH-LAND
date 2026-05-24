@@ -468,7 +468,14 @@ try {
     }
 
     if ($crmCheckResult['isDuplicate']) {
-        // Existed but older than 6 months -> new assignment
+        // Existed but older than N months -> new assignment
+        if (!empty($crmCheckResult['originalAssignedTo'])) {
+            $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';
+            $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';
+            $dupMonths = $crmCheckResult['monthsSinceLastInteraction'] ?? $dupCheckMonths;
+            $noteAppend = "\n[Lưu ý: Trùng số của $prevName trên $dupMonths tháng. Cập nhật lần cuối: $prevDate]";
+            $note = trim($note) === '' ? trim($noteAppend, "\n") : $note . $noteAppend;
+        }
         $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId, null, $name);
     } else {
         $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);

@@ -48,12 +48,14 @@ if (!function_exists('pruneAdminLogs')) {
             ) tmp
         )");
         
-        // Cắt giảm distribution_logs tối đa 1000 bản ghi
+        // [TỐI ƯU PRODUCTION] Không tự động dọn dẹp distribution_logs để giữ số liệu báo cáo lịch sử đầy đủ
+        /*
         $conn->query("DELETE FROM distribution_logs WHERE id < (
             SELECT MIN(id) FROM (
                 SELECT id FROM distribution_logs ORDER BY id DESC LIMIT 1000
             ) tmp
         )");
+        */
     }
 }
 
@@ -64,7 +66,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 112) {
+        if ($dbVer >= 114) {
             $runMigration = false;
         }
     }
@@ -85,7 +87,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 112) {
+                    if ($dbVer >= 114) {
                         $runMigration = false;
                     }
                 }
@@ -98,6 +100,12 @@ if ($runMigration) {
 }
 
 if ($runMigration) {
+    // Auto-migrate: ensure last_error column exists in sheet_connections
+    $checkColLE = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'last_error'");
+    if ($checkColLE && $checkColLE->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN last_error VARCHAR(255) NULL COMMENT 'Chi tiết lỗi đồng bộ gần nhất'");
+    }
+
     // Auto-migrate: ensure custom_label column exists in field_mappings
     $checkCol = $conn->query("SHOW COLUMNS FROM field_mappings LIKE 'custom_label'");
     if ($checkCol && $checkCol->num_rows === 0) {
@@ -394,6 +402,12 @@ if ($runMigration) {
         $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_dashboard_opt` (`received_at`, `status`, `assigned_to`, `round_id`)");
     }
 
+    // distribution_logs assigned_to & received_at composite index for consultant stats optimization
+    $chkIdxAssignedDateStatus = $conn->query("SHOW INDEX FROM distribution_logs WHERE Key_name='idx_assigned_date_status'");
+    if ($chkIdxAssignedDateStatus && $chkIdxAssignedDateStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_assigned_date_status` (`assigned_to`, `received_at`, `status`)");
+    }
+
     // data_reports created_at index for sorting
     $chkIdxReportCreated = $conn->query("SHOW INDEX FROM data_reports WHERE Key_name='idx_created_at'");
     if ($chkIdxReportCreated && $chkIdxReportCreated->num_rows === 0) {
@@ -444,7 +458,7 @@ if ($runMigration) {
 
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '112') ON DUPLICATE KEY UPDATE setting_value = '112'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '114') ON DUPLICATE KEY UPDATE setting_value = '114'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

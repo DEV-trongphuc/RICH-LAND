@@ -129,7 +129,9 @@ export const MOCK_DB = {
       sync_interval: 15, 
       connection_type: 'sheets',
       require_both_contact: 1,
-      last_sync_at: new Date(Date.now() - 300000).toISOString()
+      last_sync_at: new Date(Date.now() - 300000).toISOString(),
+      sync_status: 'idle',
+      last_error: null
     },
     { 
       id: 2, 
@@ -140,7 +142,22 @@ export const MOCK_DB = {
       sync_interval: 0, 
       connection_type: 'landing_page',
       require_both_contact: 0,
-      last_sync_at: new Date(Date.now() - 86400000).toISOString()
+      last_sync_at: new Date(Date.now() - 86400000).toISOString(),
+      sync_status: 'idle',
+      last_error: null
+    },
+    { 
+      id: 3, 
+      sheet_name: 'Form Đăng Ký Học Thử Google (Demo Lỗi)', 
+      spreadsheet_id: '1InvalidSpreadsheetID_xyz123', 
+      webhook_token: 'tok_demo9999', 
+      is_active: 1, 
+      sync_interval: 5, 
+      connection_type: 'sheets',
+      require_both_contact: 0,
+      last_sync_at: new Date(Date.now() - 600000).toISOString(),
+      sync_status: 'error',
+      last_error: 'Failed to fetch CSV. HTTP Code: 404. Spreadsheet might be private or invalid.'
     }
   ],
 

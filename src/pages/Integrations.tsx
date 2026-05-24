@@ -34,6 +34,8 @@ type Connection = {
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   last_sync_at?: string;
+  sync_status?: 'idle' | 'syncing' | 'error' | string;
+  last_error?: string | null;
   stats?: {
     total: number;
     assigned: number;
@@ -582,7 +584,25 @@ export const Integrations = () => {
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: conn.is_active ? 'var(--color-success)' : 'var(--color-border)' }} />
+                    <span 
+                      style={{ 
+                        width: 8, 
+                        height: 8, 
+                        borderRadius: '50%', 
+                        background: !conn.is_active 
+                          ? 'var(--color-border)' 
+                          : conn.sync_status === 'error' 
+                            ? 'var(--color-danger)' 
+                            : conn.sync_status === 'syncing' 
+                              ? '#eab308' 
+                              : 'var(--color-success)',
+                        boxShadow: conn.is_active && conn.sync_status === 'error' 
+                          ? '0 0 8px var(--color-danger)' 
+                          : conn.is_active && conn.sync_status === 'syncing' 
+                            ? '0 0 8px #eab308' 
+                            : 'none'
+                      }} 
+                    />
                     <ChevronRight size={14} color="var(--color-text-muted)" />
                   </div>
                 </div>
@@ -758,10 +778,114 @@ export const Integrations = () => {
                   </div>
                 )}
 
-                {selected.spreadsheet_id && (
-                  <div style={{ marginTop: '1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }}></span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-success)', fontWeight: 600 }}>Cronjob Sync đang hoạt động với ID: {selected.spreadsheet_id}</span>
+                {selected.spreadsheet_id && selected.sync_status === 'error' && (
+                  <div style={{
+                    marginTop: '1rem',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    borderRadius: 12,
+                    padding: '1rem 1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--color-danger)'
+                      }}>
+                        <AlertCircle size={18} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-danger)', margin: 0 }}>
+                          LỖI ĐỒNG BỘ TRANG TÍNH
+                        </h4>
+                        <p style={{ fontSize: '0.75rem', color: 'rgba(220, 38, 38, 0.8)', marginTop: 2 }}>
+                          Phát hiện sự cố đồng bộ tự động với Google Sheets
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{
+                      background: 'rgba(0, 0, 0, 0.02)',
+                      border: '1px solid rgba(239, 68, 68, 0.1)',
+                      borderRadius: 8,
+                      padding: '0.75rem',
+                      fontSize: '0.8125rem',
+                      fontFamily: 'monospace',
+                      color: 'var(--color-danger)',
+                      wordBreak: 'break-all'
+                    }}>
+                      {selected.last_error || 'Unknown error occurred during CSV parsing.'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', gap: 6, alignItems: 'center', lineHeight: '1.4' }}>
+                      <Info size={14} style={{ flexShrink: 0 }} />
+                      <span><strong>Hướng dẫn khắc phục:</strong> Vui lòng đảm bảo bảng tính có ID: <code>{selected.spreadsheet_id}</code> được thiết lập chia sẻ quyền truy cập "Người xem" (Viewer) công khai cho bất kỳ ai có liên kết, và tên Sheet được khớp chính xác.</span>
+                    </div>
+                  </div>
+                )}
+
+                {selected.spreadsheet_id && selected.sync_status === 'syncing' && (
+                  <div style={{
+                    marginTop: '1rem',
+                    background: 'rgba(234, 179, 8, 0.08)',
+                    border: '1px solid rgba(234, 179, 8, 0.25)',
+                    borderRadius: 12,
+                    padding: '1rem 1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: 'rgba(234, 179, 8, 0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#d97706'
+                    }}>
+                      <RefreshCw size={18} className="spin" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#d97706', margin: 0 }}>
+                        ĐANG ĐỒNG BỘ DỮ LIỆU...
+                      </h4>
+                      <p style={{ fontSize: '0.75rem', color: '#b45309', marginTop: 2 }}>
+                        Tiến trình quét và chia data từ Google Sheets đang chạy ngầm
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selected.spreadsheet_id && selected.sync_status !== 'error' && selected.sync_status !== 'syncing' && (
+                  <div style={{
+                    marginTop: '1rem',
+                    background: 'var(--color-success-light)',
+                    border: '1px solid var(--color-success)',
+                    borderRadius: 12,
+                    padding: '1rem 1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'var(--color-success)'
+                    }}>
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-success)', margin: 0 }}>
+                        ĐỒNG BỘ HOẠT ĐỘNG BÌNH THƯỜNG
+                      </h4>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-success)', opacity: 0.8, marginTop: 2 }}>
+                        Kết nối với ID <code>{selected.spreadsheet_id}</code> hoạt động ổn định và sẵn sàng đồng bộ
+                      </p>
+                    </div>
                   </div>
                 )}
 
