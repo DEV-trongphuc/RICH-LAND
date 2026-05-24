@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -141,7 +141,6 @@ export const Tickets = () => {
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
@@ -164,6 +163,24 @@ export const Tickets = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [ticketAutoApprove, setTicketAutoApprove] = useState(false);
+
+  const [ticketAutoApproveRules, setTicketAutoApproveRules] = useState<any[]>([]);
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
+
+  // Auto-Approve main settings modal
+  const [showAutoApproveModal, setShowAutoApproveModal] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Auto-Approve rule modal (Rule Editor)
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<any>(null);
+  const [ruleName, setRuleName] = useState('');
+  const [ruleActive, setRuleActive] = useState(true);
+  const [ruleRounds, setRuleRounds] = useState<any[]>(['all']);
+  const [ruleSales, setRuleSales] = useState<any[]>(['all']);
+  const [ruleConnections, setRuleConnections] = useState<any[]>(['all']);
+  const [ruleKeywords, setRuleKeywords] = useState('');
 
   const { user } = useAuth();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -225,6 +242,14 @@ export const Tickets = () => {
       .then(res => {
         if (res.success && res.data) {
           setTicketAutoApprove(Number(res.data.ticket_auto_approve_enabled) === 1);
+          if (res.data.ticket_auto_approve_rules) {
+            try {
+              const parsed = JSON.parse(res.data.ticket_auto_approve_rules);
+              if (Array.isArray(parsed)) setTicketAutoApproveRules(parsed);
+            } catch (e) {
+              console.error('Lỗi parse rule auto duyệt:', e);
+            }
+          }
         }
       })
       .catch(err => console.error('Lỗi tải cấu hình auto duyệt:', err));
@@ -236,6 +261,22 @@ export const Tickets = () => {
         }
       })
       .catch(err => console.error('Lỗi tải danh sách TVV:', err));
+
+    fetchAPI('get_rounds')
+      .then(res => {
+        if (res.success && res.data) {
+          setRounds(res.data);
+        }
+      })
+      .catch(err => console.error('Lỗi tải vòng phân bổ:', err));
+
+    fetchAPI('get_connections')
+      .then(res => {
+        if (res.success && res.data) {
+          setConnections(res.data);
+        }
+      })
+      .catch(err => console.error('Lỗi tải nguồn kết nối:', err));
   }, []);
 
 
@@ -402,6 +443,56 @@ export const Tickets = () => {
       toast.error('Đã xảy ra lỗi: ' + err.message);
     }
     setIsBlocking(false);
+  };
+
+
+  const roundOptions = [
+    { value: 'all', label: 'Tất cả các vòng', icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
+    ...rounds.map(r => ({
+      value: Number(r.id),
+      label: r.round_name,
+      icon: <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />
+    }))
+  ];
+
+  const saleOptions = [
+    { value: 'all', label: 'Tất cả Sales', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
+    ...allConsultants.map(c => ({
+      value: Number(c.id),
+      label: c.name,
+      icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />
+    }))
+  ];
+
+  const connectionOptions = [
+    { value: 'all', label: 'Tất cả các nguồn', icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
+    ...connections.map(conn => ({
+      value: Number(conn.id),
+      label: conn.sheet_name,
+      icon: <Database size={14} style={{ color: 'var(--color-text-muted)' }} />
+    }))
+  ];
+
+  const handleSaveAutoApprove = async () => {
+    setSavingSettings(true);
+    try {
+      const res = await fetchAPI('save_settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          ticket_auto_approve_enabled: ticketAutoApprove ? 1 : 0,
+          ticket_auto_approve_rules: ticketAutoApproveRules
+        })
+      });
+      if (res.success) {
+        toast.success("Đã lưu cấu hình Tự động duyệt ticket thành công!");
+        setShowAutoApproveModal(false);
+      } else {
+        toast.error("Lỗi khi lưu cấu hình!");
+      }
+    } catch (e: any) {
+      toast.error("Lỗi kết nối: " + e.message);
+    }
+    setSavingSettings(false);
   };
 
   // Since pagination and filters are handled server-side, reports are already filtered
@@ -589,7 +680,7 @@ export const Tickets = () => {
         }}>
           {/* Auto duyệt Toggle */}
           <div 
-            onClick={() => navigate('/settings?tab=processing#auto-approve')}
+            onClick={() => setShowAutoApproveModal(true)}
             title="Cấu hình quy tắc tự động duyệt"
             style={{ 
               display: 'flex', 
@@ -1676,6 +1767,390 @@ export const Tickets = () => {
             >
               {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
               Xác nhận chặn
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Auto-Approve Settings Modal */}
+      <CustomModal
+        isOpen={showAutoApproveModal}
+        onClose={() => setShowAutoApproveModal(false)}
+        title="Cấu hình Tự Động Duyệt Ticket"
+        width="680px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
+          
+          {/* Main switch toggle */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px 20px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>Trạng thái tự động duyệt ticket</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.
+              </span>
+            </div>
+            <div 
+              onClick={() => setTicketAutoApprove(!ticketAutoApprove)}
+              style={{
+                width: 48, height: 26, borderRadius: 13,
+                background: ticketAutoApprove ? 'var(--color-success)' : 'var(--color-border)',
+                position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
+                boxShadow: ticketAutoApprove ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none',
+                flexShrink: 0
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 20, height: 20, borderRadius: '50%',
+                background: 'white', left: ticketAutoApprove ? 25 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+              }} />
+            </div>
+          </div>
+
+          {/* Rules list section */}
+          {ticketAutoApprove && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                  Danh sách luật duyệt tự động
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingRule(null);
+                    setRuleName('');
+                    setRuleActive(true);
+                    setRuleRounds(['all']);
+                    setRuleSales(['all']);
+                    setRuleConnections(['all']);
+                    setRuleKeywords('');
+                    setRuleModalOpen(true);
+                  }}
+                  className="btn primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
+                >
+                  <Plus size={16} /> Thêm Luật Mới
+                </button>
+              </div>
+
+              {ticketAutoApproveRules.length === 0 ? (
+                <div style={{
+                  textAlign: 'center', padding: '3rem 2rem', border: '2px dashed var(--color-border)',
+                  borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
+                }}>
+                  Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
+                  {ticketAutoApproveRules.map((rule) => {
+                    const targetRounds = rule.rounds.includes('all')
+                      ? 'Tất cả vòng'
+                      : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
+
+                    const targetSales = rule.sales.includes('all')
+                      ? 'Tất cả Sales'
+                      : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
+
+                    const targetConns = (rule.connections || []).includes('all') || !rule.connections
+                      ? 'Tất cả nguồn'
+                      : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || 'Không xác định';
+
+                    const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
+
+                    return (
+                      <div
+                        key={rule.id}
+                        style={{
+                          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                          background: rule.active ? 'var(--color-surface)' : 'rgba(0,0,0,0.02)',
+                          padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                          position: 'relative', transition: 'all 0.2s',
+                          opacity: rule.active ? 1 : 0.65
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                              {rule.name}
+                              {!rule.active && (
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
+                                  Tắt
+                                </span>
+                              )}
+                            </h4>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            {/* Quick toggle */}
+                            <div
+                              onClick={() => {
+                                setTicketAutoApproveRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+                              }}
+                              style={{
+                                width: 32, height: 18, borderRadius: 9,
+                                background: rule.active ? 'var(--color-success)' : 'var(--color-border)',
+                                position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+                                marginRight: '0.5rem',
+                                flexShrink: 0
+                              }}
+                            >
+                              <div style={{
+                                position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
+                                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                left: rule.active ? 16 : 2, transition: 'left 0.2s'
+                              }} />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingRule(rule);
+                                setRuleName(rule.name);
+                                setRuleActive(rule.active);
+                                setRuleRounds(rule.rounds);
+                                setRuleSales(rule.sales);
+                                setRuleConnections(rule.connections || ['all']);
+                                setRuleKeywords(Array.isArray(rule.keywords) ? rule.keywords.join(', ') : rule.keywords);
+                                setRuleModalOpen(true);
+                              }}
+                              style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title="Chỉnh sửa"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Bạn có chắc chắn muốn xóa luật "${rule.name}"?`)) {
+                                  setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
+                                }
+                              }}
+                              style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title="Xóa"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Details/Tags */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--color-text-muted)' }}>Vòng:</span>
+                            <span style={{ fontWeight: 600 }}>{targetRounds}</span>
+                          </div>
+                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--color-text-muted)' }}>Sales:</span>
+                            <span style={{ fontWeight: 600 }}>{targetSales}</span>
+                          </div>
+                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--color-text-muted)' }}>Nguồn:</span>
+                            <span style={{ fontWeight: 600 }}>{targetConns}</span>
+                          </div>
+                        </div>
+
+                        {/* Keywords list */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>Từ khóa ({kwList.length}):</span>
+                          {kwList.map((kw: string, i: number) => (
+                            <span
+                              key={i}
+                              style={{
+                                fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)',
+                                color: 'var(--color-success)', borderRadius: 4, fontWeight: 600
+                              }}
+                            >
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+            <button onClick={() => setShowAutoApproveModal(false)} className="btn ghost" type="button">Hủy</button>
+            <button
+              onClick={handleSaveAutoApprove}
+              disabled={savingSettings}
+              className="btn primary"
+              type="button"
+            >
+              <Save size={16} /> {savingSettings ? 'Đang lưu...' : 'Lưu cấu hình'}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Custom Modal for Auto-Approve Rule */}
+      <CustomModal
+        isOpen={ruleModalOpen}
+        onClose={() => setRuleModalOpen(false)}
+        title={editingRule ? "Chỉnh sửa Luật Tự Động Duyệt" : "Thêm Luật Tự Động Duyệt Mới"}
+        width="620px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
+          {/* Name */}
+          <div>
+            <label className="form-label" style={{ fontWeight: 600 }}>Tên luật duyệt tự động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ví dụ: Lỗi số điện thoại — Vòng A"
+              value={ruleName}
+              onChange={e => setRuleName(e.target.value)}
+            />
+          </div>
+
+          {/* Scope: Rounds */}
+          <div>
+            <CustomSelect
+              label="Áp dụng cho Vòng phân bổ"
+              options={roundOptions}
+              value={ruleRounds}
+              onChange={setRuleRounds}
+              multiple={true}
+              searchable={true}
+              placeholder="Chọn vòng phân bổ..."
+            />
+          </div>
+
+          {/* Scope: Sales */}
+          <div>
+            <CustomSelect
+              label="Áp dụng cho Tư vấn viên (Sales)"
+              options={saleOptions}
+              value={ruleSales}
+              onChange={setRuleSales}
+              multiple={true}
+              searchable={true}
+              placeholder="Chọn tư vấn viên..."
+            />
+          </div>
+
+          {/* Scope: Sources (Sheet Connections) */}
+          <div>
+            <CustomSelect
+              label="Áp dụng cho Nguồn dữ liệu (Sources)"
+              options={connectionOptions}
+              value={ruleConnections}
+              onChange={setRuleConnections}
+              multiple={true}
+              searchable={true}
+              placeholder="Chọn nguồn dữ liệu..."
+            />
+          </div>
+
+          {/* Keywords / Reasons */}
+          <div>
+            <label className="form-label" style={{ fontWeight: 600 }}>Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <textarea
+              className="form-input"
+              placeholder="Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được"
+              value={ruleKeywords}
+              onChange={e => setRuleKeywords(e.target.value)}
+              style={{ minHeight: 80, resize: 'vertical' }}
+            />
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+              Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.
+            </span>
+          </div>
+
+          {/* Active status */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)', marginTop: '0.25rem'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>Trạng thái hoạt động</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Kích hoạt hoặc tạm ngưng áp dụng luật này</span>
+            </div>
+            <div
+              onClick={() => setRuleActive(!ruleActive)}
+              style={{
+                width: 44, height: 24, borderRadius: 12,
+                background: ruleActive ? 'var(--color-success)' : 'var(--color-border)',
+                position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
+                boxShadow: ruleActive ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
+                flexShrink: 0
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%',
+                background: 'white', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+              }} />
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn outline"
+              onClick={() => setRuleModalOpen(false)}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                if (!ruleName.trim()) {
+                  toast.error("Vui lòng nhập tên luật!");
+                  return;
+                }
+                if (!ruleKeywords.trim()) {
+                  toast.error("Vui lòng nhập từ khóa duyệt!");
+                  return;
+                }
+                if (ruleRounds.length === 0) {
+                  toast.error("Vui lòng chọn ít nhất một vòng áp dụng!");
+                  return;
+                }
+                if (ruleSales.length === 0) {
+                  toast.error("Vui lòng chọn ít nhất một Sale áp dụng!");
+                  return;
+                }
+                if (ruleConnections.length === 0) {
+                  toast.error("Vui lòng chọn ít nhất một nguồn áp dụng!");
+                  return;
+                }
+
+                const keywordsArray = ruleKeywords.split(',')
+                  .map(k => k.trim())
+                  .filter(k => k.length > 0);
+
+                const newRule = {
+                  id: editingRule ? editingRule.id : Date.now(),
+                  name: ruleName.trim(),
+                  active: ruleActive,
+                  rounds: ruleRounds,
+                  sales: ruleSales,
+                  connections: ruleConnections,
+                  keywords: keywordsArray
+                };
+
+                if (editingRule) {
+                  setTicketAutoApproveRules(prev => prev.map(r => r.id === editingRule.id ? newRule : r));
+                  toast.success("Đã cập nhật luật thành công!");
+                } else {
+                  setTicketAutoApproveRules(prev => [...prev, newRule]);
+                  toast.success("Đã thêm luật mới thành công!");
+                }
+                setRuleModalOpen(false);
+              }}
+            >
+              Xác nhận
             </button>
           </div>
         </div>
