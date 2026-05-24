@@ -2152,7 +2152,7 @@ export const DataList = () => {
 
       <style>{`
         :root {
-          --color-calendar-weekend: #f1f0f4;
+          --color-calendar-weekend: #f7f8fa81;
         }
         [data-theme="dark"] {
           --color-calendar-weekend: #141b2d;
