@@ -199,6 +199,85 @@ export const FairShareAudit = () => {
     return null;
   };
 
+  // Automated smart insights calculation based on Fairness Gini Index & Deviations
+  const renderSmartInsights = () => {
+    if (!data || !data.consultants || data.consultants.length === 0) return null;
+    
+    const fairness = data.fairnessIndex || 0;
+    
+    // If fairness is good (>= 75), do not render the insights box
+    if (fairness >= 75) return null;
+    
+    // Find highest surplus and highest deficit
+    let maxSurplus = 0;
+    let maxSurplusSale: any = null;
+    let maxDeficit = 0;
+    let maxDeficitSale: any = null;
+    
+    data.consultants.forEach((c: any) => {
+      const targetShare = data.mean * c.receive_ratio;
+      const diff = c.assigned_count - targetShare;
+      const diffPercent = targetShare > 0 ? (diff / targetShare) * 100 : 0;
+      
+      if (diff > maxSurplus) {
+        maxSurplus = diff;
+        maxSurplusSale = { ...c, diff, diffPercent };
+      }
+      if (diff < maxDeficit) {
+        maxDeficit = diff;
+        maxDeficitSale = { ...c, diff, diffPercent };
+      }
+    });
+
+    const title = `Khuyến Nghị Cần Điều Chỉnh: Phát hiện độ lệch phân phối cao (${fairness}%)`;
+    const bgColor = 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(239, 68, 68, 0.08) 100%)';
+    const borderColor = 'rgba(239, 68, 68, 0.2)';
+    const borderLeftColor = '#ef4444';
+    const iconColor = '#ef4444';
+    const titleColor = '#991b1b';
+    const descColor = '#b91c1c';
+
+    return (
+      <div style={{
+        background: bgColor,
+        border: `1px solid ${borderColor}`,
+        borderLeft: `4px solid ${borderLeftColor}`,
+        borderRadius: '12px',
+        padding: '1.25rem',
+        marginBottom: '1.5rem',
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'flex-start'
+      }}>
+        <div style={{ background: `${iconColor}15`, padding: 8, borderRadius: '50%', color: iconColor, flexShrink: 0 }}>
+          <AlertTriangle size={18} />
+        </div>
+        <div>
+          <h4 style={{ fontWeight: 800, fontSize: '0.875rem', color: titleColor, marginBottom: 4 }}>
+            {title}
+          </h4>
+          <div style={{ fontSize: '0.8125rem', color: descColor, lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div>
+              {maxSurplusSale && (
+                <span>
+                  • Tư vấn viên <strong>{maxSurplusSale.name}</strong> đang nhận vượt chỉ tiêu <strong>+{maxSurplusSale.diff.toFixed(1)} lead</strong> (+{maxSurplusSale.diffPercent.toFixed(0)}%).
+                </span>
+              )}
+              {maxDeficitSale && (
+                <span style={{ marginLeft: maxDeficitSale ? '12px' : 0 }}>
+                  • <strong>{maxDeficitSale.name}</strong> đang nhận thiếu chỉ tiêu <strong>{maxDeficitSale.diff.toFixed(1)} lead</strong> ({maxDeficitSale.diffPercent.toFixed(0)}%).
+                </span>
+              )}
+            </div>
+            <p style={{ margin: 0, opacity: 0.9 }}>
+              <strong>Gợi ý xử lý:</strong> Cân nhắc kiểm tra lại cấu hình lượt xoay ca trực trong mục <strong>Vòng phân bổ</strong>, trạng thái hoạt động trực tuyến (Zalo/Web) của các TVV trên, hoặc tạm thời giảm Tỷ lệ (Ratio) nhận của <strong>{maxSurplusSale?.name}</strong> xuống để hệ thống tự động bù số cho <strong>{maxDeficitSale?.name}</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ animation: 'slideUp 0.3s ease-out', position: 'relative' }} className="fade-in-view">
       {/* Background loading bar */}
@@ -351,6 +430,9 @@ export const FairShareAudit = () => {
           </>
         )}
       </div>
+
+      {/* Smart Auto-Tuning Insights Block */}
+      {!loading && data && renderSmartInsights()}
 
       {/* Main Charts area */}
       <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
