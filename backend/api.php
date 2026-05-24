@@ -179,7 +179,8 @@ if (!in_array($action, $publicActions)) {
         'test_email',
         'block_lead',
         'get_zalo_send_logs',
-        'ai_chat'
+        'ai_chat',
+        'get_fair_share_stats'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -5606,6 +5607,231 @@ switch ($action) {
                 'roundRatio' => $roundRatio,
                 'sourceStats' => $sourceStats,
                 'errorStats' => $errorStats
+            ]
+        ]);
+        break;
+
+    case 'get_fair_share_stats':
+        $date = $_GET['date'] ?? 'Tuần này';
+        $roundId = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int)$_GET['round_id'] : 0;
+
+        // Date conditions
+        $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        if ($date === 'Hôm nay') {
+            $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        } else if ($date === 'Hôm qua') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
+        } else if ($date === 'Tuần này') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === 'Tuần trước') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } else if ($date === 'Tuần trước nữa') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === '7 ngày qua') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } else if ($date === '30 ngày qua') {
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } else if ($date === 'Tháng này') {
+            $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } else if ($date === 'Tháng trước') {
+            $dateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+            $start = $conn->real_escape_string($matches[1]);
+            $end = $conn->real_escape_string($matches[2]);
+            $dateCondition = "received_at >= '$start 00:00:00' AND received_at <= '$end 23:59:59'";
+        }
+
+        $roundCondition = "";
+        if ($roundId > 0) {
+            $roundCondition = " AND round_id = $roundId";
+        }
+
+        // Fetch consultants matching the round or all active
+        $consultants = [];
+        if ($roundId > 0) {
+            $sql = "SELECT c.id, c.name, c.avatar, COALESCE(rc.receive_ratio, 1) as receive_ratio, rc.round_id, r.round_name
+                    FROM consultants c
+                    JOIN round_consultants rc ON c.id = rc.consultant_id
+                    JOIN distribution_rounds r ON rc.round_id = r.id
+                    WHERE rc.round_id = $roundId AND c.status = 'active'
+                    ORDER BY c.name ASC";
+        } else {
+            $sql = "SELECT c.id, c.name, c.avatar, 1 as receive_ratio, 0 as round_id, 'Tất cả các Vòng' as round_name
+                    FROM consultants c
+                    WHERE c.status = 'active'
+                    ORDER BY c.name ASC";
+        }
+        $res = $conn->query($sql);
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $consultants[(int)$row['id']] = [
+                    'id' => (int)$row['id'],
+                    'name' => $row['name'],
+                    'avatar' => $row['avatar'],
+                    'receive_ratio' => (int)$row['receive_ratio'],
+                    'round_id' => (int)$row['round_id'],
+                    'round_name' => $row['round_name'],
+                    'assigned_count' => 0,
+                    'ticket_count' => 0,
+                    'duplicate_count' => 0,
+                    'sources' => []
+                ];
+            }
+        }
+
+        // Query distinct sources active in this period to build charts easily
+        $sources = [];
+        $sourcesSql = "SELECT DISTINCT COALESCE(sc.sheet_name, l.source) as source 
+                       FROM distribution_logs dl 
+                       JOIN leads l ON dl.lead_id = l.id
+                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+                       WHERE $dateCondition $roundCondition AND dl.status != 'silent'";
+        $sourcesRes = $conn->query($sourcesSql);
+        if ($sourcesRes) {
+            while ($row = $sourcesRes->fetch_assoc()) {
+                if ($row['source']) {
+                    $sources[] = $row['source'];
+                }
+            }
+        }
+        if (empty($sources)) {
+            $sources = ['FB Ads', 'Google Ads', 'TikTok Ads', 'Google Sheet'];
+        }
+
+        // Query lead assignment counts
+        $leadCountsSql = "SELECT assigned_to, COUNT(*) as cnt 
+                          FROM distribution_logs 
+                          WHERE $dateCondition $roundCondition 
+                            AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                          GROUP BY assigned_to";
+        $countsRes = $conn->query($leadCountsSql);
+        if ($countsRes) {
+            while ($row = $countsRes->fetch_assoc()) {
+                $cId = (int)$row['assigned_to'];
+                if (isset($consultants[$cId])) {
+                    $consultants[$cId]['assigned_count'] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Query source breakdown per consultant
+        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(sc.sheet_name, l.source) as source, COUNT(*) as cnt 
+                            FROM distribution_logs dl
+                            JOIN leads l ON dl.lead_id = l.id
+                            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+                            WHERE $dateCondition $roundCondition 
+                              AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
+                            GROUP BY dl.assigned_to, COALESCE(sc.sheet_name, l.source)";
+        $srcRes = $conn->query($sourceCountsSql);
+        if ($srcRes) {
+            while ($row = $srcRes->fetch_assoc()) {
+                $cId = (int)$row['assigned_to'];
+                $sourceName = $row['source'] ?: 'Không xác định';
+                if (isset($consultants[$cId])) {
+                    $consultants[$cId]['sources'][$sourceName] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Query ticket error counts (data_reports approved)
+        $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
+        $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
+                            FROM data_reports 
+                            WHERE status = 'approved' AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                            GROUP BY consultant_id";
+        $tktRes = $conn->query($ticketCountsSql);
+        if ($tktRes) {
+            while ($row = $tktRes->fetch_assoc()) {
+                $cId = (int)$row['consultant_id'];
+                if (isset($consultants[$cId])) {
+                    $consultants[$cId]['ticket_count'] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Query duplicate counts per consultant
+        $duplicateCountsSql = "SELECT assigned_to, COUNT(*) as cnt 
+                               FROM distribution_logs 
+                               WHERE $dateCondition $roundCondition AND status = 'duplicate'
+                               GROUP BY assigned_to";
+        $dupRes = $conn->query($duplicateCountsSql);
+        if ($dupRes) {
+            while ($row = $dupRes->fetch_assoc()) {
+                $cId = (int)$row['assigned_to'];
+                if (isset($consultants[$cId])) {
+                    $consultants[$cId]['duplicate_count'] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Perform statistical calculations
+        $rawCounts = [];
+        $normalizedCounts = [];
+        $totalLeads = 0;
+        foreach ($consultants as $c) {
+            $rawCounts[] = $c['assigned_count'];
+            $ratio = max(1, $c['receive_ratio']);
+            $normalizedCounts[] = $c['assigned_count'] / $ratio;
+            $totalLeads += $c['assigned_count'];
+        }
+
+        $N = count($consultants);
+        $mean = 0;
+        $standardDeviation = 0;
+        $giniRaw = 0;
+        $giniNormalized = 0;
+
+        if ($N > 0) {
+            // Mean
+            $mean = $totalLeads / $N;
+
+            // Raw Standard Deviation
+            $sumSqDiff = 0;
+            foreach ($rawCounts as $x) {
+                $sumSqDiff += pow($x - $mean, 2);
+            }
+            $standardDeviation = sqrt($sumSqDiff / $N);
+
+            // Raw Gini Coefficient
+            $sumRaw = array_sum($rawCounts);
+            if ($sumRaw > 0) {
+                $doubleSumDiffRaw = 0;
+                for ($i = 0; $i < $N; $i++) {
+                    for ($j = 0; $j < $N; $j++) {
+                        $doubleSumDiffRaw += abs($rawCounts[$i] - $rawCounts[$j]);
+                    }
+                }
+                $giniRaw = $doubleSumDiffRaw / (2 * $N * $sumRaw);
+            }
+
+            // Normalized Gini Coefficient (Fairness Index uses this to account for ratio settings)
+            $sumNorm = array_sum($normalizedCounts);
+            if ($sumNorm > 0) {
+                $doubleSumDiffNorm = 0;
+                for ($i = 0; $i < $N; $i++) {
+                    for ($j = 0; $j < $N; $j++) {
+                        $doubleSumDiffNorm += abs($normalizedCounts[$i] - $normalizedCounts[$j]);
+                    }
+                }
+                $giniNormalized = $doubleSumDiffNorm / (2 * $N * $sumNorm);
+            }
+        }
+
+        // Convert Gini to Fairness Index
+        $fairnessIndex = (1 - $giniNormalized) * 100;
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'totalLeads' => $totalLeads,
+                'totalConsultants' => $N,
+                'mean' => round($mean, 2),
+                'standardDeviation' => round($standardDeviation, 2),
+                'giniRaw' => round($giniRaw, 4),
+                'giniNormalized' => round($giniNormalized, 4),
+                'fairnessIndex' => round($fairnessIndex, 1),
+                'sources' => $sources,
+                'consultants' => array_values($consultants)
             ]
         ]);
         break;

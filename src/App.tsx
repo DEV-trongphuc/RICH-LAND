@@ -20,6 +20,7 @@ const Accounts = lazy(() => import('./pages/Accounts').then(module => ({ default
 const ReportData = lazy(() => import('./pages/ReportData').then(module => ({ default: module.ReportData })));
 const DemoEntry = lazy(() => import('./pages/DemoEntry').then(module => ({ default: module.DemoEntry })));
 const SalePortal = lazy(() => import('./pages/SalePortal').then(module => ({ default: module.SalePortal })));
+const FairShareAudit = lazy(() => import('./pages/FairShareAudit').then(module => ({ default: module.FairShareAudit })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -59,7 +60,7 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share'];
   const isAdminPath = adminPaths.includes(currentPath);
 
   if (isAdminPath && user?.role !== 'admin') {
@@ -99,6 +100,9 @@ const AppTabs = () => {
           </div>
           <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }}>
             {visitedPaths.includes('/accounts') && <Accounts />}
+          </div>
+          <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/fair-share') && <FairShareAudit />}
           </div>
         </>
       )}
@@ -559,6 +563,7 @@ export default function App() {
                 <Route path="/integrations" element={<AppTabs />} />
                 <Route path="/settings" element={<AppTabs />} />
                 <Route path="/accounts" element={<AppTabs />} />
+                <Route path="/fair-share" element={<AppTabs />} />
               </Route>
 
               {/* All authenticated users */}

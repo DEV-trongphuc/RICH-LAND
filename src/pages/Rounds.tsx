@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Users, Edit3, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Users, Edit3, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
@@ -22,6 +23,7 @@ const getColorForName = (name: string) => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 export const Rounds = () => {
+  const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -321,7 +323,9 @@ export const Rounds = () => {
               <List size={16} /> Danh sách
             </button>
           </div>
-
+          <button className="btn outline" onClick={() => navigate('/fair-share')} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Scale size={16} /> Đối soát công bằng
+          </button>
           <button className="btn primary" onClick={openAddModal}>
             <Plus size={18} /> Thêm Vòng
           </button>
