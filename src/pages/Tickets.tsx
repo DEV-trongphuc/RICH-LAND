@@ -735,7 +735,8 @@ export const Tickets = () => {
                         )}
                       </div>
                       {r.status !== 'pending' && (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Avatar src={r.resolved_by_avatar} name={r.resolved_by || 'Hệ thống'} size={16} />
                           <span>
                             {r.status === 'approved' ? 'Duyệt' : 'Từ chối'} bởi: <strong style={{ color: 'var(--color-text-muted)' }}>{r.resolved_by || 'Hệ thống'}</strong>
                           </span>
@@ -1247,8 +1248,8 @@ export const Tickets = () => {
                                   borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
                                   flexWrap: 'wrap'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
-                                    <User size={13} style={{ opacity: 0.7 }} />
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <Avatar name={displayAdmin} size={16} />
                                     <span>Xử lý bởi: <strong style={{ color: '#334155' }}>{displayAdmin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
@@ -1353,8 +1354,8 @@ export const Tickets = () => {
                                   borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
                                   flexWrap: 'wrap'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
-                                    <User size={13} style={{ opacity: 0.7 }} />
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+                                    <Avatar name={parsed.admin} size={16} />
                                     <span>Chặn bởi: <strong style={{ color: '#334155' }}>{parsed.admin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>

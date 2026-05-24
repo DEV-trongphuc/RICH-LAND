@@ -456,9 +456,10 @@ export const SalePortal = () => {
           </div>
         </div>
 
-        <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div className="portal-header-user-info" style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{user?.name}</div>
+        <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Avatar src={user?.avatar} name={user?.name} size={36} />
+          <div className="portal-header-user-info" style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>{user?.name}</div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{user?.email}</div>
           </div>
           <button

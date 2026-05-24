@@ -3111,7 +3111,8 @@ switch ($action) {
                    c.name as consultant_name, c.zalo_chat_id, c.avatar as consultant_avatar, dr.round_name,
                    (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
                    (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
-                   (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at
+                   (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at,
+                   (SELECT a.avatar FROM accounts a WHERE a.name = r.resolved_by LIMIT 1) as resolved_by_avatar
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
             JOIN consultants c ON r.consultant_id = c.id
@@ -5232,7 +5233,7 @@ switch ($action) {
         }
 
         // Query Top Consultants
-        $topConsultantsSql = "SELECT c.name, COUNT(dl.id) as data_count 
+        $topConsultantsSql = "SELECT c.name, c.avatar, COUNT(dl.id) as data_count 
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
                               WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month') 
@@ -5246,6 +5247,7 @@ switch ($action) {
             $percent = round(($row['data_count'] / $totalAssignedForTop) * 100, 1);
             $topConsultants[] = [
                 'name' => $row['name'],
+                'avatar' => $row['avatar'],
                 'data' => (int) $row['data_count'],
                 'percent' => $percent,
                 'color' => $colors[$i % 4]

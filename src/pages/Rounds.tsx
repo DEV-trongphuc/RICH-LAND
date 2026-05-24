@@ -899,8 +899,8 @@ export const Rounds = () => {
                                 <span>{r.lead_name}</span>
                                 <span style={{ color: 'var(--color-primary)', fontWeight: 500, fontSize: '0.8125rem' }}>({r.lead_phone})</span>
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <Users size={12} />
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <Avatar src={r.consultant_avatar} name={r.consultant_name} size={16} />
                                 <span>Sale: <strong>{r.consultant_name}</strong></span>
                               </div>
                             </div>
