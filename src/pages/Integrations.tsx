@@ -525,8 +525,8 @@ export const Integrations = () => {
         {/* LEFT PANEL: Sheet connections list */}
         <div className="responsive-filter-item" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
-            <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Quản lý các nguồn đổ Data</p>
+            <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.025em', marginBottom: 4 }}>Tích hợp Data</h1>
+            <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Quản lý các nguồn đổ Data</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -928,7 +928,7 @@ export const Integrations = () => {
                     </div>
                   </div>
 
-                  <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                     <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
                     <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
                       <strong>Cơ chế tự động gom Ghi chú:</strong>
@@ -1035,7 +1035,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     </div>
                   </div>
 
-                  <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                     <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
                       <strong>Mẹo cấu hình:</strong> Bạn có thể map <strong>nhiều cột trên Sheets</strong> vào <strong>cùng 1 trường hệ thống</strong> (ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!
@@ -1085,7 +1085,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                             </td>
                             <td>
                               {m.custom_label ? (
-                                <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600 }}>
+                                <span className="badge success" style={{ padding: '4px 10px', fontSize: '0.875rem' }}>
                                   {m.custom_label}
                                 </span>
                               ) : (
@@ -1150,18 +1150,18 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title="Kết nối Google Sheets"
         width="700px"
       >
-        <div style={{ padding: '1.5rem', background: 'white' }}>
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 16, left: 0, right: 0, height: 1, background: '#e2e8f0', zIndex: 0 }}></div>
+            <div style={{ position: 'absolute', top: 16, left: 0, right: 0, height: 1, background: 'var(--color-border)', zIndex: 0 }}></div>
             {[1, 2, 3].map(step => (
               <div key={step} style={{
                 width: 32, height: 32, borderRadius: '50%',
-                background: addStep >= step ? 'var(--color-primary)' : '#f8fafc',
-                color: addStep >= step ? 'white' : '#94a3b8',
+                background: addStep >= step ? 'var(--color-primary)' : 'var(--color-bg)',
+                color: addStep >= step ? 'white' : 'var(--color-text-muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 700, fontSize: '0.875rem', position: 'relative', zIndex: 1,
-                border: addStep >= step ? 'none' : '1px solid #e2e8f0'
+                border: addStep >= step ? 'none' : '1px solid var(--color-border)'
               }}>
                 {step}
               </div>
@@ -1171,13 +1171,13 @@ fetch("${webhookUrl(selected.webhook_token)}", {
           {addStep === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   Cấu hình Google Sheets <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem' }}><FileSpreadsheet size={14} /></div>
                 </h2>
-                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Kết nối bảng tính của bạn để tự động nạp dữ liệu Khách hàng.</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Kết nối bảng tính của bạn để tự động nạp dữ liệu Khách hàng.</p>
               </div>
 
-              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, padding: '1rem 1.25rem', color: '#0369a1', fontSize: '0.875rem' }}>
+              <div style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-hover)', borderRadius: 12, padding: '1rem 1.25rem', color: 'var(--color-primary)', fontSize: '0.875rem' }}>
                 <p style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}><Info size={16} /> Hướng dẫn nhanh:</p>
                 <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 4, lineHeight: 1.6 }}>
                   <li>Bấm nút <strong>Chia sẻ (Share)</strong> trên file Google Sheets.</li>
@@ -1187,12 +1187,12 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Đường dẫn Google Sheet (hoặc ID)</label>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Đường dẫn Google Sheet (hoặc ID)</label>
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: 10, left: 12, color: '#94a3b8' }}><Link2 size={16} /></div>
                   <input
                     className="form-input"
-                    style={{ paddingLeft: 36, background: '#f8fafc', border: 'none' }}
+                    style={{ paddingLeft: 36, background: 'var(--color-bg)', border: 'none' }}
                     placeholder="Dán link hoặc Spreadsheet ID vào đây..."
                     value={newSpreadsheetId}
                     onChange={e => handleUrlChange(e.target.value)}
@@ -1201,9 +1201,9 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Tên trang tính (Sheet Name)</label>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Tên trang tính (Sheet Name)</label>
                 {isFetchingSheets ? (
-                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: 8, fontSize: '0.875rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--color-border-light)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <RefreshCw size={16} className="spin" /> Đang quét danh sách các Sheet...
                   </div>
                 ) : fetchedSheets.length > 0 ? (
@@ -1216,7 +1216,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   <div>
                     <input
                       className="form-input"
-                      style={{ background: '#f8fafc', border: 'none', fontWeight: 600, color: '#0f172a' }}
+                      style={{ background: 'var(--color-bg)', border: 'none', fontWeight: 600, color: 'var(--color-text)' }}
                       placeholder="VD: Sheet1"
                       value={newConnName}
                       onChange={e => setNewConnName(e.target.value)}
@@ -1231,9 +1231,9 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
 
               {/* Chỉ đồng bộ check trùng */}
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
                 </div>
                 <ToggleSwitch
@@ -1247,10 +1247,10 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
               {isSilent && (
                 <>
-                  <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease-in-out' }}>
+                  <div style={{ background: 'var(--color-success-light)', border: '1px dashed var(--color-success)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease-in-out' }}>
                     <div>
-                      <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
-                      <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-success)', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
                     </div>
                     <ToggleSwitch
                       checked={syncSaleperson}
@@ -1258,7 +1258,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     />
                   </div>
                   {syncSaleperson && (
-                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '0.5rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                    <div style={{ background: 'var(--color-info-light)', border: '1px solid var(--color-info)', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '0.5rem', fontSize: '0.75rem', color: 'var(--color-info)', lineHeight: 1.5 }}>
                       <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
                       </div>
@@ -1304,9 +1304,9 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               )}
 
               {!isSilent && syncPreset === 'custom' && (
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   <div style={{ width: 140 }}>
-                    <label className="form-label" style={{ fontWeight: 800, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Số phút tùy chỉnh</label>
+                    <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Số phút tùy chỉnh</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         type="number" min={1} className="form-input"
@@ -1316,15 +1316,15 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>phút</span>
                     </div>
                   </div>
-                  <div style={{ flex: 1, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5 }}>
+                  <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
                     Lưu ý: Thời gian quá ngắn (dưới 5 phút) có thể khiến Google giới hạn băng thông.
                   </div>
                 </div>
               )}
 
               {!isSilent && (
-                <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
-                  <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
+                <div style={{ marginTop: '1rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 12 }}>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: '0.5rem', display: 'block' }}>Chế độ quét dữ liệu</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
                       <input
@@ -1335,8 +1335,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                         style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
                       />
                       <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Quét toàn bộ Data hiện có</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hút toàn bộ dữ liệu đang có sẵn trên Sheets vào CRM (Mặc định).</div>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>Quét toàn bộ Data hiện có</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Hút toàn bộ dữ liệu đang có sẵn trên Sheets vào CRM (Mặc định).</div>
                       </div>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
@@ -1348,16 +1348,16 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                         style={{ marginTop: 2, accentColor: 'var(--color-primary)' }}
                       />
                       <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ quét Data mới (Bỏ qua Data cũ)</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Hệ thống sẽ chạy ngầm đánh dấu bỏ qua toàn bộ dòng cũ. Chỉ những dòng được thêm vào SAU KHI kết nối mới được hút vào CRM.</div>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>Chỉ quét Data mới (Bỏ qua Data cũ)</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Hệ thống sẽ chạy ngầm đánh dấu bỏ qua toàn bộ dòng cũ. Chỉ những dòng được thêm vào SAU KHI kết nối mới được hút vào CRM.</div>
                       </div>
                     </label>
                   </div>
                 </div>
               )}
 
-              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
-                <span onClick={() => setShowAddConn(false)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'var(--color-surface)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid var(--color-border)', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
+                <span onClick={() => setShowAddConn(false)} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button
                   className="btn"
                   onClick={handleFetchColumns}
@@ -1374,12 +1374,12 @@ fetch("${webhookUrl(selected.webhook_token)}", {
           {addStep === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Cấu hình Trường dữ liệu</h2>
-                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Domation DATA.</p>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>Cấu hình Trường dữ liệu</h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Domation DATA.</p>
               </div>
 
               {/* Add Mapping Row at the TOP */}
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+              <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                 <div style={{ flex: '1 1 180px' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Cột trên Sheets</label>
                   {fetchedColumns.length > 0 ? (
@@ -1389,7 +1389,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       onChange={v => setNewMappingCol(String(v))}
                     />
                   ) : (
-                    <input className="form-input" style={{ border: '1px solid #cbd5e1' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
+                    <input className="form-input" style={{ border: '1px solid var(--color-border)' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder="VD: Nguồn KH" />
                   )}
                 </div>
                 <div style={{ flex: '1 1 160px' }}>
@@ -1400,7 +1400,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Tên hiển thị trong Email (Tùy chọn)</label>
                   <input
                     className="form-input"
-                    style={{ border: '1px solid #cbd5e1', height: 38 }}
+                    style={{ border: '1px solid var(--color-border)', height: 38 }}
                     placeholder="VD: Khung giờ tư vấn"
                     value={newMappingCustomLabel}
                     onChange={e => setNewMappingCustomLabel(e.target.value)}
@@ -1443,8 +1443,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
 
               {/* Mappings Table BELOW */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }} className="responsive-table-wrap">
-                <div className="responsive-mapping-header" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', background: '#f8fafc', padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }} className="responsive-table-wrap">
+                <div className="responsive-mapping-header" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderBottom: '1px solid var(--color-border)', fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
                   <div>Tên cột trên Sheets</div>
                   <div>Trường hiển thị trong Email</div>
                   <div>Trường hệ thống</div>
@@ -1452,13 +1452,13 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {tempMappings.map((m, idx) => (
-                    <div key={idx} className="responsive-mapping-row" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid #f1f5f9' : 'none', alignItems: 'center' }}>
+                    <div key={idx} className="responsive-mapping-row" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1fr 40px', padding: '0.75rem 1rem', borderBottom: idx < tempMappings.length - 1 ? '1px solid var(--color-border-light)' : 'none', alignItems: 'center' }}>
                       <div
                         title={m.sheet_col}
                         style={{
                           fontFamily: 'monospace',
                           fontSize: '0.875rem',
-                          color: '#0f172a',
+                          color: 'var(--color-text)',
                           fontWeight: 600,
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
@@ -1470,7 +1470,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       </div>
                       <div>
                         {m.custom_label ? (
-                          <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '3px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600 }}>
+                          <span className="badge success" style={{ padding: '3px 8px', fontSize: '0.75rem' }}>
                             {m.custom_label}
                           </span>
                         ) : (
@@ -1493,8 +1493,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
               </div>
 
-              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
-                <span onClick={() => setAddStep(1)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'var(--color-surface)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid var(--color-border)', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
+                <span onClick={() => setAddStep(1)} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button
                   className="btn"
                   onClick={() => {
@@ -1522,31 +1522,31 @@ fetch("${webhookUrl(selected.webhook_token)}", {
           {addStep === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Thiết lập Mẫu Email giao Data</h2>
-                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Cấu hình nội dung thông tin Khách hàng sẽ được gửi cho Sale khi có Data mới.</p>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>Thiết lập Mẫu Email giao Data</h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Cấu hình nội dung thông tin Khách hàng sẽ được gửi cho Sale khi có Data mới.</p>
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung (Hỗ trợ biến)</label>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung (Hỗ trợ biến)</label>
                 <div style={{ position: 'relative' }}>
                   <textarea
                     className="form-input"
-                    style={{ minHeight: 150, background: '#f8fafc', border: '1px solid #cbd5e1', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem' }}
+                    style={{ minHeight: 150, background: 'var(--color-bg)', border: '1px solid var(--color-border)', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem' }}
                     value={emailTemplate}
                     onChange={e => setEmailTemplate(e.target.value)}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                   {getSelectFields().map(f => (
-                    <span key={f.value} onClick={() => setEmailTemplate(emailTemplate + `\n${f.label}: {${f.value}}`)} style={{ cursor: 'pointer', background: '#f1f5f9', color: '#0f172a', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid #e2e8f0' }}>
+                    <span key={f.value} onClick={() => setEmailTemplate(emailTemplate + `\n${f.label}: {${f.value}}`)} style={{ cursor: 'pointer', background: 'var(--color-border-light)', color: 'var(--color-text)', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--color-border)' }}>
                       {'{'}{f.value}{'}'}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div style={{ position: 'sticky', bottom: '-24px', background: 'white', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #f1f5f9', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
-                <span onClick={() => setAddStep(2)} style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
+              <div style={{ position: 'sticky', bottom: '-24px', background: 'var(--color-surface)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid var(--color-border)', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px' }}>
+                <span onClick={() => setAddStep(2)} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Quay lại</span>
                 <button className="btn" onClick={handleAddConnection} style={{ background: 'var(--color-primary)', color: 'white', fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   Hoàn tất kết nối <CheckCircle2 size={16} />
                 </button>
@@ -1581,16 +1581,16 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title={selected?.connection_type === 'landing_page' ? "Chỉnh sửa cấu hình Landing Page" : "Chỉnh sửa cấu hình đồng bộ"}
         width="600px"
       >
-        <div style={{ padding: '1.5rem', background: 'white' }}>
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 {selected?.connection_type === 'landing_page' ? 'Cấu hình Landing Page' : 'Cấu hình chu kỳ đồng bộ'}
                 <div style={{ background: 'var(--color-primary)', color: 'white', width: 22, height: 22, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {selected?.connection_type === 'landing_page' ? <Zap size={14} /> : <Clock size={14} />}
                 </div>
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                 {selected?.connection_type === 'landing_page'
                   ? `Thay đổi cấu hình nhận dữ liệu và email cho ${selected?.sheet_name || 'Landing Page'}.`
                   : `Thay đổi thời gian hệ thống tự động tải dữ liệu từ ${selected?.sheet_name || 'Sheets'}.`}
@@ -1598,10 +1598,10 @@ fetch("${webhookUrl(selected.webhook_token)}", {
             </div>
 
             {/* Chỉ đồng bộ check trùng */}
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <div>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
+                <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>Chỉ đồng bộ check trùng (Không chia số)</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Nếu bật, dữ liệu sẽ chỉ lưu vào CRM làm căn cứ lọc trùng, tuyệt đối không phân phối cho Sale và không thông báo.</div>
               </div>
               <ToggleSwitch
                 checked={editIsSilent}
@@ -1614,10 +1614,10 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
             {editIsSilent && (
               <>
-                <div style={{ background: '#f0fdf4', border: '1px dashed #bbf7d0', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', transition: 'all 0.3s ease-in-out' }}>
+                <div style={{ background: 'var(--color-success-light)', border: '1px dashed var(--color-success)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', transition: 'all 0.3s ease-in-out' }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
-                    <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
+                    <div style={{ fontWeight: 700, color: 'var(--color-success)', fontSize: '0.875rem' }}>Đồng bộ Salesperson & Báo trùng</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Tìm và gắn Sale phụ trách (theo email). Nếu trùng khớp với Sale đang có trong CRM, hệ thống sẽ gửi thông báo báo trùng cho Sale.</div>
                   </div>
                   <ToggleSwitch
                     checked={editSyncSaleperson}
@@ -1625,7 +1625,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   />
                 </div>
                 {editSyncSaleperson && (
-                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                  <div style={{ background: 'var(--color-info-light)', border: '1px solid var(--color-info)', padding: '1rem', borderRadius: 12, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--color-info)', lineHeight: 1.5 }}>
                     <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Info size={14} color="#3b82f6" /> Hướng dẫn cấu hình:
                     </div>
@@ -1640,7 +1640,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 {/* Chu kỳ đồng bộ */}
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
+                    <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chu kỳ đồng bộ</label>
                   </div>
 
                   <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
@@ -1655,22 +1655,22 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                         key={preset.id}
                         onClick={() => setEditSyncPreset(preset.id as any)}
                         style={{
-                          border: editSyncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                          background: editSyncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
+                          border: editSyncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          background: editSyncPreset === preset.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
                           borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                           transition: 'all 0.2s', opacity: editSyncPreset === preset.id ? 1 : 0.6
                         }}
                       >
-                        <div style={{ color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
+                        <div style={{ color: editSyncPreset === preset.id ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{preset.time}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: editSyncPreset === preset.id ? 'var(--color-primary-hover)' : 'var(--color-text-muted)' }}>{preset.label}</div>
                       </div>
                     ))}
                   </div>
 
                   {editSyncPreset === 'custom' && (
-                    <div style={{ marginTop: 12, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                    <div style={{ marginTop: 12, background: 'var(--color-bg)', padding: 12, borderRadius: 8, border: '1px dashed var(--color-border)' }}>
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Nhập số phút tùy chỉnh:</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <input
@@ -1682,7 +1682,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                           value={editCustomSyncMins}
                           onChange={e => setEditCustomSyncMins(Number(e.target.value))}
                         />
-                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>phút</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>phút</span>
                       </div>
                     </div>
                   )}
@@ -1691,39 +1691,39 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 {/* Chế độ đồng bộ */}
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chế độ đồng bộ</label>
+                    <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>Chế độ đồng bộ</label>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div
                       onClick={() => setEditSyncMode('all')}
                       style={{
-                        border: editSyncMode === 'all' ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                        background: editSyncMode === 'all' ? 'var(--color-primary-light)' : '#ffffff',
+                        border: editSyncMode === 'all' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: editSyncMode === 'all' ? 'var(--color-primary-light)' : 'var(--color-surface)',
                         borderRadius: 12, padding: '1rem', cursor: 'pointer',
                         display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'all' ? 1 : 0.6
                       }}
                     >
-                      <div style={{ color: editSyncMode === 'all' ? 'var(--color-primary)' : '#94a3b8', marginTop: 2 }}><RefreshCw size={20} /></div>
+                      <div style={{ color: editSyncMode === 'all' ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2 }}><RefreshCw size={20} /></div>
                       <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'all' ? 'var(--color-primary)' : '#0f172a' }}>Tất cả dữ liệu</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Phân luồng từ dòng 1 đến cuối. (Phù hợp File mới hoàn toàn)</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'all' ? 'var(--color-primary)' : 'var(--color-text)' }}>Tất cả dữ liệu</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>Phân luồng từ dòng 1 đến cuối. (Phù hợp File mới hoàn toàn)</div>
                       </div>
                     </div>
 
                     <div
                       onClick={() => setEditSyncMode('new_only')}
                       style={{
-                        border: editSyncMode === 'new_only' ? '2px solid var(--color-warning)' : '1px solid #e2e8f0',
-                        background: editSyncMode === 'new_only' ? 'var(--color-warning-light)' : '#ffffff',
+                        border: editSyncMode === 'new_only' ? '2px solid var(--color-warning)' : '1px solid var(--color-border)',
+                        background: editSyncMode === 'new_only' ? 'var(--color-warning-light)' : 'var(--color-surface)',
                         borderRadius: 12, padding: '1rem', cursor: 'pointer',
                         display: 'flex', gap: 12, transition: 'all 0.2s', opacity: editSyncMode === 'new_only' ? 1 : 0.6
                       }}
                     >
-                      <div style={{ color: editSyncMode === 'new_only' ? 'var(--color-warning)' : '#94a3b8', marginTop: 2 }}><Zap size={20} /></div>
+                      <div style={{ color: editSyncMode === 'new_only' ? 'var(--color-warning)' : 'var(--color-text-muted)', marginTop: 2 }}><Zap size={20} /></div>
                       <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'new_only' ? 'var(--color-warning-dark)' : '#0f172a' }}>Chỉ dữ liệu mới</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>Bỏ qua các dòng đã có. Chỉ phân luồng dòng mới phát sinh từ thời điểm bật.</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: editSyncMode === 'new_only' ? 'var(--color-warning)' : 'var(--color-text)' }}>Chỉ dữ liệu mới</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>Bỏ qua các dòng đã có. Chỉ phân luồng dòng mới phát sinh từ thời điểm bật.</div>
                       </div>
                     </div>
                   </div>
@@ -1733,12 +1733,12 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
             {/* Mẫu nội dung Email */}
             <div>
-              <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung Email (Hỗ trợ biến)</label>
+              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Mẫu nội dung Email (Hỗ trợ biến)</label>
               <div style={{ position: 'relative' }}>
                 <textarea
                   className="form-input"
                   rows={6}
-                  style={{ minHeight: 120, background: '#f8fafc', border: '1px solid #cbd5e1', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem', width: '100%', boxSizing: 'border-box' }}
+                  style={{ minHeight: 120, background: 'var(--color-bg)', border: '1px solid var(--color-border)', lineHeight: 1.6, fontFamily: 'monospace', fontSize: '0.875rem', width: '100%', boxSizing: 'border-box' }}
                   placeholder={"Nhập mẫu email. Ví dụ:\nThông tin khách hàng:\n- Họ tên: {name}\n- Điện thoại: {phone}"}
                   value={editEmailTemplate}
                   onChange={e => setEditEmailTemplate(e.target.value)}
@@ -1749,7 +1749,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   <span
                     key={f.value}
                     onClick={() => setEditEmailTemplate(editEmailTemplate + (editEmailTemplate && !editEmailTemplate.endsWith('\n') ? '\n' : '') + `${f.label}: {${f.value}}`)}
-                    style={{ cursor: 'pointer', background: '#f1f5f9', color: '#0f172a', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
+                    style={{ cursor: 'pointer', background: 'var(--color-border-light)', color: 'var(--color-text)', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--color-border)' }}
                   >
                     {'{'}{f.value}{'}'}
                   </span>
@@ -1757,7 +1757,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
               <button className="btn outline" onClick={() => setShowEditConn(false)} style={{ padding: '0.5rem 1.25rem' }}>Hủy bỏ</button>
               <button className="btn primary" onClick={handleSaveEditConn} disabled={isSaving} style={{ padding: '0.5rem 1.25rem', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {isSaving ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />} Lưu cấu hình
@@ -1773,22 +1773,22 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title="Tạo API Landing Page"
         width="500px"
       >
-        <div style={{ padding: '1.5rem', background: 'white' }}>
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 Kết nối Landing Page <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem' }}><Zap size={14} /></div>
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                 Tạo một Endpoint (Đường dẫn API) để gắn vào trang đích của bạn.
               </p>
             </div>
 
             <div>
-              <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Tên kết nối</label>
+              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Tên kết nối</label>
               <input
                 className="form-input"
-                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', fontWeight: 600, color: '#0f172a' }}
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text)' }}
                 placeholder="VD: Landing Page Bất Động Sản"
                 value={newApiName}
                 onChange={e => setNewApiName(e.target.value)}
@@ -1797,7 +1797,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
           </div>
         </div>
 
-        <div style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+        <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
           <button className="btn outline" onClick={() => setShowAddApi(false)}>Hủy</button>
           <button className="btn primary" onClick={handleAddApiConnection} disabled={isSaving || !newApiName.trim()} style={{ background: 'var(--color-primary)', border: 'none' }}>
             {isSaving ? 'Đang tạo...' : 'Tạo API Endpoint'}

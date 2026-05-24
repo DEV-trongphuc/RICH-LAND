@@ -513,10 +513,10 @@ export const Tickets = () => {
       {/* ── Header ── */}
       <div className="page-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <TicketIcon size={28} color="var(--color-primary)" /> Ticket Lỗi Data
           </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
             Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên
           </p>
         </div>
@@ -662,10 +662,10 @@ export const Tickets = () => {
           }}
             style={{
               fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
-              border: '1.5px solid #fca5a5', background: 'linear-gradient(135deg,#fff5f5,#fee2e2)',
-              color: '#dc2626', fontWeight: 700, cursor: 'pointer',
+              border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
+              color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 4,
-              boxShadow: '0 1px 4px rgba(220,38,38,0.12)',
+              boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
               transition: 'all 0.15s'
             }}>
             ✕ Xóa lọc
@@ -825,18 +825,18 @@ export const Tickets = () => {
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                           fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                          background: r.status === 'pending' ? '#fef3c7' : r.status === 'approved' ? '#d1fae5' : '#f3f4f6',
-                          color: r.status === 'pending' ? '#b45309' : r.status === 'approved' ? '#065f46' : '#6b7280'
+                          background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
+                          color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
                         }}>
                           {r.status === 'pending' ? 'Chờ duyệt' : r.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
                         </div>
                         {r.status === 'rejected' && r.reject_reason && (
-                          <div style={{ fontSize: '0.75rem', color: '#dc2626', background: '#fee2e2', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
                             Lý do: {r.reject_reason}
                           </div>
                         )}
                         {r.status === 'approved' && r.approval_reason && (
-                          <div style={{ fontSize: '0.75rem', color: '#065f46', background: '#d1fae5', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
                             Lý do: {r.approval_reason}
                           </div>
                         )}
@@ -1091,11 +1091,11 @@ export const Tickets = () => {
                           }}
                           title="Chặn & Blacklist khách hàng này"
                           style={{
-                            background: '#fee2e2',
-                            border: '1px solid #fecaca',
+                            background: 'var(--color-danger-light)',
+                            border: '1px solid var(--color-danger-light)',
                             borderRadius: '6px',
                             padding: '3px 8px',
-                            color: '#ef4444',
+                            color: 'var(--color-danger)',
                             fontSize: '0.75rem',
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -1106,12 +1106,12 @@ export const Tickets = () => {
                             transition: 'all 0.2s'
                           }}
                           onMouseOver={e => {
-                            e.currentTarget.style.background = '#fca5a5';
-                            e.currentTarget.style.color = '#b91c1c';
+                            e.currentTarget.style.background = 'var(--color-danger)';
+                            e.currentTarget.style.color = '#ffffff';
                           }}
                           onMouseOut={e => {
-                            e.currentTarget.style.background = '#fee2e2';
-                            e.currentTarget.style.color = '#ef4444';
+                            e.currentTarget.style.background = 'var(--color-danger-light)';
+                            e.currentTarget.style.color = 'var(--color-danger)';
                           }}
                         >
                           <AlertTriangle size={12} />
@@ -1147,15 +1147,15 @@ export const Tickets = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
                     <div>
                       {selectedLead.status === 'assigned' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>}
-                      {selectedLead.status === 'compensation' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>}
-                      {selectedLead.status === 'pending_work_hours' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#ffedd5', color: '#ea580c' }}>Chờ giờ làm</span>}
+                      {selectedLead.status === 'compensation' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>Data Bù</span>}
+                      {selectedLead.status === 'pending_work_hours' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ giờ làm</span>}
                       {selectedLead.status === 'error' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Ticket</span>}
                       {selectedLead.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>}
-                      {selectedLead.status === 'reminder' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>}
+                      {selectedLead.status === 'reminder' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: theme === 'dark' ? 'rgba(219, 39, 119, 0.15)' : '#fce7f3', color: theme === 'dark' ? '#f472b6' : '#db2777' }}>Nhắc lại</span>}
                       {selectedLead.status === 'duplicate' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>}
                       {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>}
-                      {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>}
-                      {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Blacklist</span>}
+                      {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Chỉ đồng bộ</span>}
+                      {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Blacklist</span>}
                     </div>
                   </div>
                 </div>
@@ -1166,14 +1166,14 @@ export const Tickets = () => {
                     <>
                       {/* Clean Note Card */}
                       <div style={{ 
-                        background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)', 
-                        border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef3c7',
+                        background: 'var(--color-warning-light)', 
+                        border: '1px solid var(--color-warning-light)',
                         padding: '1.25rem', 
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
-                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.03)'
+                        boxShadow: 'none'
                       }}
                       className="premium-alert-card"
                       >
@@ -1672,8 +1672,8 @@ export const Tickets = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
             <div style={{ 
-              width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', 
-              color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+              width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)', 
+              color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
             }}>
               <AlertTriangle size={20} />
             </div>
@@ -1687,7 +1687,7 @@ export const Tickets = () => {
             </div>
           </div>
 
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Hình thức chặn:</div>
             
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>

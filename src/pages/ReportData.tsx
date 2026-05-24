@@ -41,6 +41,19 @@ interface ReportContext {
 }
 
 export const ReportData = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [params] = useState({
@@ -131,54 +144,54 @@ export const ReportData = () => {
             </div>
           ) : ctxError ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+              <div style={{ background: 'var(--color-surface)', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)', border: '1px solid var(--color-border)' }}>
                 <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#fca5a5,#f87171)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                   <XCircle size={36} color="white" />
                 </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Đường dẫn không hợp lệ</h2>
-                <p style={{ color: '#64748b', fontSize: '0.9rem' }}>{ctxError}</p>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>Đường dẫn không hợp lệ</h2>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{ctxError}</p>
               </div>
             </div>
           ) : submitStatus === 'success' ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ background: 'white', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+              <div style={{ background: 'var(--color-surface)', borderRadius: 20, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.4)', border: '1px solid var(--color-border)' }}>
                 <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                   <CheckCircle size={36} color="white" />
                 </div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Gửi Báo Cáo Thành Công!</h3>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: 1.7 }}>Báo cáo đã được gửi tới Admin. Nếu hợp lệ, bạn sẽ nhận Data bù ưu tiên trong lượt tiếp theo.</p>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>Gửi Báo Cáo Thành Công!</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.7 }}>Báo cáo đã được gửi tới Admin. Nếu hợp lệ, bạn sẽ nhận Data bù ưu tiên trong lượt tiếp theo.</p>
               </div>
             </div>
           ) : (
             <div className="report-card">
               {/* ── LEFT: Info card (white) ── */}
               <div className="info-card">
-                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Thông tin Data cần báo cáo
                 </div>
 
                 {context && (
                   <>
                     {/* Customer avatar block */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: '1px solid #e0e7ff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #e0e7ff' }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
                         {initials(context.lead_name)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Khách hàng</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{context.lead_name}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#d97706', marginTop: 1 }}>{context.lead_phone}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Khách hàng</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{context.lead_name}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#d97706', marginTop: 1 }}>{context.lead_phone}</div>
                       </div>
                     </div>
 
                     {/* Sale avatar block */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: 14, border: '1px solid #bbf7d0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: theme === 'dark' ? 'rgba(16, 185, 129, 0.1)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid #bbf7d0' }}>
                       <div style={{ width: 38, height: 38, borderRadius: '50%', background: getColor(context.consultant_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0, boxShadow: '0 3px 6px rgba(0,0,0,0.12)' }}>
                         {initials(context.consultant_name)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Sale phụ trách</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#15803d' }}>{context.consultant_name}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Sale phụ trách</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#15803d' }}>{context.consultant_name}</div>
                       </div>
                     </div>
 
@@ -197,33 +210,33 @@ export const ReportData = () => {
                       <div className={`extra-details ${expandedMobile ? 'expanded' : ''}`}>
                         {context.lead_email && (
                           <>
-                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <InfoItem label="Email" value={context.lead_email} />
                           </>
                         )}
                         {context.lead_type && (
                           <>
-                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <InfoItem label="Loại Data" value={context.lead_type} />
                           </>
                         )}
-                        <div style={{ height: 1, background: '#f1f5f9' }} />
+                        <div style={{ height: 1, background: 'var(--color-border)' }} />
                         <InfoItem label="Vòng phân bổ" value={context.round_name} accent />
-                        <div style={{ height: 1, background: '#f1f5f9' }} />
+                        <div style={{ height: 1, background: 'var(--color-border)' }} />
                         <InfoItem label="Nhận lúc" value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
                         {context.lead_note && (
                           <>
-                            <div style={{ height: 1, background: '#f1f5f9' }} />
+                            <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <div>
-                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
                               <div style={{ 
                                 fontSize: '0.8rem', 
                                 fontWeight: 500, 
-                                color: '#475569', 
-                                background: '#f8fafc', 
+                                color: 'var(--color-text-light)', 
+                                background: 'var(--color-bg)', 
                                 padding: '8px 12px', 
                                 borderRadius: 8, 
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--color-border)',
                                 whiteSpace: 'pre-wrap',
                                 maxHeight: '120px',
                                 overflowY: 'auto',
@@ -256,8 +269,8 @@ export const ReportData = () => {
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#fde68a,#f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(245,158,11,0.3)' }}>
                       <Shield size={26} color="white" />
                     </div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Đã gửi báo cáo trước đó</h3>
-                    <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Báo cáo đang chờ Admin xét duyệt.</p>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Đã gửi báo cáo trước đó</h3>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Báo cáo đang chờ Admin xét duyệt.</p>
                   </div>
                 )}
 
@@ -266,8 +279,8 @@ export const ReportData = () => {
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <CheckCircle size={26} color="white" />
                     </div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Báo cáo đã được duyệt ✅</h3>
-                    <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Bạn sẽ được ưu tiên nhận Data bù trong lượt tiếp theo.</p>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Báo cáo đã được duyệt ✅</h3>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Bạn sẽ được ưu tiên nhận Data bù trong lượt tiếp theo.</p>
                   </div>
                 )}
 
@@ -280,7 +293,7 @@ export const ReportData = () => {
                       </div>
                     )}
 
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Chọn lý do lỗi</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Chọn lý do lỗi</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {REPORT_REASONS.map(r => (
@@ -288,7 +301,7 @@ export const ReportData = () => {
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '10px 14px',
                           border: '1.5px solid', borderColor: reason === r ? '#8b5cf6' : 'transparent',
-                          background: reason === r ? 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))' : '#f8fafc',
+                          background: reason === r ? (theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))') : 'var(--color-bg)',
                           borderRadius: 12, cursor: 'pointer',
                           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: reason === r ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
@@ -297,18 +310,18 @@ export const ReportData = () => {
                           <input type="radio" name="reason" value={r} checked={reason === r}
                             onChange={() => setReason(r)}
                             style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.85rem', color: reason === r ? '#5b21b6' : '#475569', fontWeight: reason === r ? 700 : 400 }}>{r}</span>
+                          <span style={{ fontSize: '0.85rem', color: reason === r ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r ? 700 : 400 }}>{r}</span>
                         </label>
                       ))}
                     </div>
 
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>Ghi chú thêm</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>Ghi chú thêm</div>
                     <textarea 
                       required={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)'} 
                       value={customReason} 
                       onChange={e => setCustomReason(e.target.value)}
                       placeholder={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? 'Nhập chi tiết lý do lỗi (bắt buộc)...' : 'Nhập ghi chú thêm nếu có (tùy chọn)...'}
-                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0 }} />
+                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0, background: 'var(--color-surface)', color: 'var(--color-text)' }} />
 
                     <button type="submit" disabled={submitting}
                       style={{
@@ -346,8 +359,8 @@ export const ReportData = () => {
 
 const InfoItem = ({ label, value, accent }: { label: string; value: string; accent?: boolean }) => (
   <div>
-    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
-    <div style={{ fontSize: '0.83rem', fontWeight: accent ? 700 : 500, color: accent ? '#7c3aed' : '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>{value}</div>
+    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
+    <div style={{ fontSize: '0.83rem', fontWeight: accent ? 700 : 500, color: accent ? 'var(--color-primary)' : 'var(--color-text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>{value}</div>
   </div>
 );
 
@@ -389,7 +402,7 @@ const ResponsiveStyle = () => (
       height: 600px;
       max-height: 80vh;
       margin: auto;
-      background: white;
+      background: var(--color-surface);
       border-radius: 20px;
       box-shadow: 0 24px 64px rgba(0,0,0,0.35);
       overflow: hidden;
@@ -397,7 +410,7 @@ const ResponsiveStyle = () => (
     }
     .info-card {
       flex: 0 0 320px;
-      background: white;
+      background: var(--color-bg);
       padding: 24px 22px;
       display: flex;
       flex-direction: column;
@@ -407,11 +420,11 @@ const ResponsiveStyle = () => (
     }
     .form-card {
       flex: 1;
-      background: rgba(255,255,255,0.97);
+      background: var(--color-surface);
       padding: 22px 22px;
       display: flex;
       flex-direction: column;
-      border-left: 1px solid #f1f5f9;
+      border-left: 1px solid var(--color-border);
       box-sizing: border-box;
       overflow-y: auto;
     }
@@ -419,10 +432,10 @@ const ResponsiveStyle = () => (
       display: none;
       width: 100%;
       padding: 10px;
-      background: #f8fafc;
-      border: 1.5px dashed #cbd5e1;
+      background: var(--color-bg);
+      border: 1.5px dashed var(--color-border);
       border-radius: 12px;
-      color: #7c3aed;
+      color: var(--color-primary);
       font-size: 0.8rem;
       font-weight: 700;
       cursor: pointer;
@@ -433,8 +446,8 @@ const ResponsiveStyle = () => (
       box-sizing: border-box;
     }
     .mobile-toggle-btn:hover {
-      background: #f1f5f9;
-      border-color: #8b5cf6;
+      background: var(--color-border-light);
+      border-color: var(--color-primary);
     }
     .extra-details {
       display: flex;
@@ -449,20 +462,24 @@ const ResponsiveStyle = () => (
     }
     .info-card::-webkit-scrollbar-track,
     .form-card::-webkit-scrollbar-track {
-      background: #f8fafc;
+      background: var(--color-bg);
       border-radius: 3px;
     }
     .info-card::-webkit-scrollbar-thumb,
     .form-card::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: var(--color-border);
       border-radius: 3px;
     }
     .info-card::-webkit-scrollbar-thumb:hover,
     .form-card::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: var(--color-text-muted);
     }
 
     @media (max-width: 768px) {
+      .report-container h1 {
+        font-size: 1.2rem !important;
+        text-align: center;
+      }
       .report-wrapper {
         height: auto;
         min-height: 100vh;
@@ -482,7 +499,7 @@ const ResponsiveStyle = () => (
         flex: none;
         width: 100%;
         max-height: none; /* remove fixed max-height since button controls fold/unfold */
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--color-border);
         padding: 20px 16px;
       }
       .form-card {

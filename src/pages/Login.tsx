@@ -186,7 +186,7 @@ export const Login = () => {
         </div>
 
         {/* Right Side: Login Form */}
-        <div style={{
+        <div className="login-form-container" style={{
           flex: '0 1 400px',
           width: '100%',
           background: 'rgba(255, 255, 255, 0.98)',
@@ -321,6 +321,11 @@ export const Login = () => {
         @media (max-width: 768px) {
           .features-panel {
             display: none !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .login-form-container {
+            padding: 2rem 1.25rem !important;
           }
         }
       `}</style>

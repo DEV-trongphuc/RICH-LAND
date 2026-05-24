@@ -171,6 +171,35 @@
   .mobile-ml-0 {
     margin-left: 0 !important;
   }
+
+  /* Responsive title font-size overrides to prevent wrap */
+  .page-title {
+    font-size: 1.2rem !important;
+  }
+  .page-subtitle {
+    font-size: 0.78rem !important;
+  }
+  .modal-header h3 {
+    font-size: 1.05rem !important;
+  }
+  .panel-title {
+    font-size: 0.95rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.1rem !important;
+  }
+  .page-subtitle {
+    font-size: 0.72rem !important;
+  }
+  .modal-header h3 {
+    font-size: 0.95rem !important;
+  }
+  .panel-title {
+    font-size: 0.85rem !important;
+  }
 }
 
 
@@ -243,7 +272,6 @@
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark mode */
 [data-theme="dark"] {
   --color-bg: #0a0e1a;
   --color-surface: #121826;
@@ -256,6 +284,29 @@
   --color-primary: #818cf8;
   --color-primary-hover: #6366f1;
   --color-primary-light: rgba(129, 140, 248, 0.08);
+
+  /* Optimized semantic contrast for dark theme */
+  --color-success: #34d399;
+  --color-success-light: rgba(52, 211, 153, 0.15);
+  --color-warning: #fbbf24;
+  --color-warning-light: rgba(251, 191, 36, 0.15);
+  --color-danger: #f87171;
+  --color-danger-light: rgba(248, 113, 113, 0.15);
+  --color-info: #60a5fa;
+  --color-info-light: rgba(96, 165, 250, 0.15);
+
+  /* Optimized lead score colors for dark theme */
+  --score-hot: #f87171;
+  --score-warm: #fb923c;
+  --score-neutral: #fbbf24;
+  --score-cool: #60a5fa;
+  --score-cold: #9ca3af;
+}
+
+[data-theme="dark"] th {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* ================================================

@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx';
 const thStyle: React.CSSProperties = {
   position: 'sticky',
   top: 0,
-  background: '#f8fafc',
+  background: 'var(--color-bg)',
   zIndex: 1,
   padding: '10px 16px',
   boxShadow: 'inset 0 -1px 0 var(--color-border)',
@@ -891,20 +891,20 @@ export const Settings = () => {
 
                         {/* Summary Cards */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tổng Data</div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>{total}</div>
                           </div>
-                          <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: 10, border: '1px solid #fee2e2' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase' }}>Trùng CRM</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b91c1c', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                              {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef4444' }}>({dupPercent}%)</span>
+                          <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-danger-light)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-danger)', textTransform: 'uppercase' }}>Trùng CRM</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                              {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-danger)' }}>({dupPercent}%)</span>
                             </div>
                           </div>
-                          <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 10, border: '1px solid #d1fae5' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#047857', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                              {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>({newPercent}%)</span>
+                          <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-success-light)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-success)', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                              {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-success)' }}>({newPercent}%)</span>
                             </div>
                           </div>
                         </div>
@@ -923,10 +923,10 @@ export const Settings = () => {
                         </div>
 
                         {/* Table View */}
-                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: '#fff' }}>
+                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
                           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                             <thead>
-                              <tr style={{ background: '#f8fafc' }}>
+                              <tr style={{ background: 'var(--color-bg)' }}>
                                 <th style={{ ...thStyle, width: '50px' }}>STT</th>
                                 <th style={thStyle}>Khách hàng</th>
                                 <th style={thStyle}>Liên hệ</th>
@@ -939,19 +939,19 @@ export const Settings = () => {
                                 paginatedResults.map((item, idx) => {
                                   const globalIdx = (resultsPage - 1) * pageSize + idx + 1;
                                   const statusBadge = item.has_record
-                                    ? <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: '#fee2e2', color: '#b91c1c', fontWeight: 700 }}>TRÙNG CRM</span>
-                                    : <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: '#d1fae5', color: '#047857', fontWeight: 700 }}>MỚI</span>;
+                                    ? <span className="badge danger" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>TRÙNG CRM</span>
+                                    : <span className="badge success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>MỚI</span>;
 
                                   let ownerStatusBadge = null;
                                   if (item.consultant_status) {
-                                    const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
-                                    const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
+                                    const statusBg = item.consultant_status === 'active' ? 'var(--color-success-light)' : (item.consultant_status === 'leave' ? 'var(--color-warning-light)' : 'var(--color-border)');
+                                    const statusText = item.consultant_status === 'active' ? 'var(--color-success)' : (item.consultant_status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)');
                                     const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
                                     ownerStatusBadge = <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>{statusLabel}</span>;
                                   }
 
                                   return (
-                                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background-color 0.15s' }}>
                                       <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1120,7 +1120,7 @@ export const Settings = () => {
                                   justifyContent: 'center',
                                   transition: 'background-color 0.2s'
                                 }}
-                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-light)'}
                                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
                                 <Trash2 size={16} />
@@ -1129,13 +1129,21 @@ export const Settings = () => {
                           ) : (
                             <label
                               htmlFor="bulk-file-upload"
-                              onDragOver={(e) => e.preventDefault()}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                e.currentTarget.style.background = 'var(--color-border-light)';
+                              }}
+                              onDragLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)';
+                                e.currentTarget.style.background = 'var(--color-bg)';
+                              }}
                               onDrop={handleFileDrop}
                               style={{
                                 width: '100%',
                                 minHeight: '110px',
                                 border: '2px dashed var(--color-border)',
-                                background: '#f8fafc',
+                                background: 'var(--color-bg)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -1180,7 +1188,7 @@ export const Settings = () => {
 
                     {/* Column Mapping */}
                     {headers.length > 0 && (
-                      <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                      <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <SettingsIcon size={14} /> Ánh xạ cột lọc trùng
                         </h4>
@@ -1243,7 +1251,7 @@ export const Settings = () => {
 
                     {/* Cấu hình lưu dữ liệu vào CRM */}
                     {headers.length > 0 && (
-                      <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Shield size={14} color="var(--color-primary)" /> Quy tắc nhập dữ liệu vào CRM
                         </h4>
@@ -1388,10 +1396,10 @@ export const Settings = () => {
                         </div>
 
                         {/* Table View */}
-                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: '#fff' }}>
+                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
                           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                             <thead>
-                              <tr style={{ background: '#f8fafc' }}>
+                              <tr style={{ background: 'var(--color-bg)' }}>
                                 <th style={{ ...thStyle, width: '40px', textAlign: 'center' }}>
                                   <input
                                     type="checkbox"
@@ -1437,7 +1445,7 @@ export const Settings = () => {
                                   const isSelected = selectedLogs.includes(item.log_id);
 
                                   return (
-                                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s', backgroundColor: isSelected ? '#f8fafc' : 'transparent' }}>
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background-color 0.15s', backgroundColor: isSelected ? 'var(--color-bg)' : 'transparent' }}>
                                       <td style={{ padding: '10px 16px', textAlign: 'center' }}>
                                         <input
                                           type="checkbox"
@@ -1744,7 +1752,7 @@ function doPost(e) {
                 <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
                   <label className="form-label">Link Webhook khai báo trên Zalo Bot Platform:</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <code style={{ flex: 1, background: '#f8fafc', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: '#0068ff', border: '1px solid #bfdbfe' }}>
+                    <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
                       https://open.domation.net/sale_data/zalo_webhook.php
                     </code>
                   </div>
@@ -2353,9 +2361,9 @@ function doPost(e) {
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              background: '#fee2e2',
-                              color: '#ef4444',
-                              border: '1px solid #fca5a5',
+                              background: 'var(--color-danger-light)',
+                              color: 'var(--color-danger)',
+                              border: '1px solid var(--color-danger-light)',
                               padding: '2px 8px',
                               borderRadius: '20px',
                               fontSize: '0.75rem',
@@ -2595,9 +2603,9 @@ function doPost(e) {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  background: '#f1f5f9',
-                                  color: '#334155',
-                                  border: '1px solid #cbd5e1',
+                                  background: 'var(--color-bg)',
+                                  color: 'var(--color-text-light)',
+                                  border: '1px solid var(--color-border)',
                                   padding: '2px 8px',
                                   borderRadius: '20px',
                                   fontSize: '0.75rem',
@@ -2891,14 +2899,14 @@ function doPost(e) {
         width="750px"
       >
         {localRows.length > 0 && (
-          <div style={{ marginTop: '1rem', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
-            <div style={{ background: '#f8fafc', padding: '10px 16px', fontSize: '0.8rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+          <div style={{ marginTop: '1rem', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-surface)' }}>
+            <div style={{ background: 'var(--color-bg)', padding: '10px 16px', fontSize: '0.8rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
               Xem trước 5 dòng dữ liệu đầu tiên:
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Khách hàng</th>
                     <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Liên hệ</th>
                     <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Ngày</th>
@@ -2925,7 +2933,7 @@ function doPost(e) {
                     const saleSubText = matchedSale ? matchedSale.email : (salepersonVal.includes('@') ? salepersonVal : '');
 
                     return (
-                      <tr key={idx} style={{ borderBottom: idx < Math.min(localRows.length, 5) - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                      <tr key={idx} style={{ borderBottom: idx < Math.min(localRows.length, 5) - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
                         <td style={{ padding: '10px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Avatar name={name || 'Không có tên'} size={32} />

@@ -601,7 +601,7 @@ export const Consultants = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     
                     {/* Avatar Upload */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                       <div style={{ position: 'relative' }}>
                         <Avatar src={formData.avatar} name={formData.name || 'Sale'} size={64} />
                         {isUploadingAvatar && (
@@ -620,7 +620,7 @@ export const Consultants = () => {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             className="btn outline sm"
-                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'var(--color-surface)' }}
                             disabled={isUploadingAvatar}
                           >
                             Tải ảnh lên
@@ -630,7 +630,7 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => setFormData({ ...formData, avatar: '' })}
                               className="btn outline sm"
-                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: 'var(--color-surface)' }}
                             >
                               Xóa ảnh
                             </button>
@@ -710,7 +710,7 @@ export const Consultants = () => {
                     </div>
 
                     {formData.status === 'leave' && (
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb', padding: '0.75rem', borderRadius: 12, border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid #fde68a', animation: 'slideUp 0.15s ease-out' }}>
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'var(--color-warning-light)', padding: '0.75rem', borderRadius: 12, border: '1px solid var(--color-border)', animation: 'slideUp 0.15s ease-out' }}>
                         <div>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Từ ngày</label>
                           <input 
@@ -735,7 +735,7 @@ export const Consultants = () => {
                     )}
 
                     {editingUser && (
-                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
+                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           <Send size={14} color="var(--color-primary)" /> Tương tác nhanh với Sale
                         </label>
@@ -745,7 +745,7 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
                               className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: '#0068ff', color: '#0068ff', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
                               onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
                               onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             >
@@ -757,7 +757,7 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => confirmUnlinkZalo(editingUser.id)}
                               className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
                               onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
                               onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             >
@@ -882,14 +882,14 @@ export const Consultants = () => {
                                       type="time"
                                       value={dayConfig.start}
                                       onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: theme === 'dark' ? 'var(--color-surface)' : 'white', color: theme === 'dark' ? 'var(--color-text)' : 'inherit' }}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                                     />
                                     <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>-</span>
                                     <input 
                                       type="time"
                                       value={dayConfig.end}
                                       onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: theme === 'dark' ? 'var(--color-surface)' : 'white', color: theme === 'dark' ? 'var(--color-text)' : 'inherit' }}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                                     />
                                   </div>
                                 )}
@@ -904,7 +904,7 @@ export const Consultants = () => {
                       </p>
                     </div>
 
-                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(0, 104, 255, 0.04)', borderRadius: 12, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.15)' : '1px solid rgba(0, 104, 255, 0.08)' }}>
+                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
                         <MessageCircle size={14} /> Zalo Chat ID (Tự động cấp)
                       </label>
@@ -926,7 +926,7 @@ export const Consultants = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                 <button type="button" className="btn outline" onClick={() => setModalOpen(false)}>Hủy bỏ</button>
                 <button type="submit" className="btn primary" disabled={isSaving}>
                   {isSaving ? 'Đang lưu...' : (editingUser ? 'Cập nhật' : 'Thêm mới')}
@@ -1130,26 +1130,26 @@ export const Consultants = () => {
                   </div>
 
                   {/* Row 1: Daily trend bar chart (Full Width) */}
-                  <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', width: '100%' }}>
+                  <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', width: '100%' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
                     {statsData.by_date && statsData.by_date.length > 0 ? (
-                      <div style={{ height: 180, width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                            <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
-                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                       <div style={{ height: 180, width: '100%' }}>
+                         <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
+                             <defs>
+                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
+                                 <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                               </linearGradient>
+                             </defs>
+                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                             <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                             <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                             <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
+                             <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công" />
+                           </BarChart>
+                         </ResponsiveContainer>
+                       </div>
                     ) : (
                       <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                         Không có dữ liệu phân bổ theo ngày
@@ -1160,7 +1160,7 @@ export const Consultants = () => {
                   {/* Row 2: Status Ratio (Donut) & Rounds Breakdown */}
                   <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Donut chart for status ratio */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
                       {(() => {
                         const statusChartData = [
@@ -1187,7 +1187,7 @@ export const Consultants = () => {
                                       <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                   </Pie>
-                                  <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
+                                  <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
                                 </PieChart>
                               </ResponsiveContainer>
                             </div>
@@ -1211,7 +1211,7 @@ export const Consultants = () => {
                     </div>
 
                     {/* Rounds breakdown chart */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Phân bổ theo Vòng (Round)</h4>
                       {statsData.rounds.length > 0 ? (
                         <div style={{ height: 160, width: '100%' }}>
@@ -1220,7 +1220,7 @@ export const Consultants = () => {
                               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                              <Tooltip contentStyle={{ fontSize: '0.75rem', borderRadius: 8 }} />
+                              <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
                               <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name="Thành công" />
                               <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name="Nhắc lại" />
                               <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name="Lỗi" />
@@ -1238,7 +1238,7 @@ export const Consultants = () => {
                   {/* Row 3: Marketing Sources & Tickets Reports */}
                   <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Source breakdown list */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
                       {statsData.by_source && statsData.by_source.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
@@ -1252,7 +1252,7 @@ export const Consultants = () => {
                                   <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{src.source}</span>
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} data ({sourcePercent}%)</span>
                                 </div>
-                                <div style={{ width: '100%', height: 4, background: theme === 'dark' ? 'var(--color-bg)' : '#f1f5f9', borderRadius: 2 }}>
+                                <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
                                   <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
                                 </div>
                               </div>
@@ -1267,11 +1267,11 @@ export const Consultants = () => {
                     </div>
 
                     {/* Tickets Reports statistics */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
                       {statsData.tickets ? (
                         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
-                          <div style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px', borderRadius: 8, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '6px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
                             <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>
                           </div>
@@ -1300,7 +1300,7 @@ export const Consultants = () => {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+            <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
               <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>Đóng</button>
             </div>
           </div>

@@ -738,15 +738,15 @@ export const RuleSettings = () => {
                           {i === 0 ? (
                             <div style={{ background: '#f3e8ff', color: '#7c3aed', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
                           ) : (
-                            <div style={{ background: '#f1f5f9', color: '#64748b', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
+                            <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
                           )}
                           {!isLast && (
-                            <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: '#e2e8f0', zIndex: 1 }} />
+                            <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
                           )}
                         </div>
 
                         <div style={{ flex: 1 }}>
-                          <div style={{ background: '#f8fafc', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                          <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={getFieldOptions()}
                               value={c.col}
@@ -760,7 +760,7 @@ export const RuleSettings = () => {
                           </div>
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ background: '#f8fafc', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                          <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={opOptions}
                               value={c.op}
@@ -777,7 +777,7 @@ export const RuleSettings = () => {
                             {c.op.startsWith('date_') ? (
                               <input
                                 type="date"
-                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                 value={c.val}
                                 onChange={e => {
                                   const newB = [...branches];
@@ -800,7 +800,7 @@ export const RuleSettings = () => {
                               />
                             ) : (
                               <input
-                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                 placeholder="Nhập giá trị..."
                                 value={c.val}
                                 onChange={e => {
@@ -886,12 +886,12 @@ export const RuleSettings = () => {
                     </div>
 
                     {branch.inject?.enabled && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
                         {branch.inject.fields.map((f: any, fi: number) => {
                           const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
                           return (
                             <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                              <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                                 <CustomSelect
                                   options={[
                                     { value: 'source', label: 'Nguồn Khách (Source)' },
@@ -920,7 +920,7 @@ export const RuleSettings = () => {
                               {isCustomMode && (
                                 <div style={{ flex: 1, minWidth: 120 }}>
                                   <input
-                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                     placeholder="Tên trường custom (vd: utm_source)..."
                                     value={f.col}
                                     onChange={e => {
@@ -934,7 +934,7 @@ export const RuleSettings = () => {
 
                               <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
                                 <input
-                                  style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none' }}
+                                  style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                   placeholder="Giá trị muốn gán tự động..."
                                   value={f.val}
                                   onChange={e => {
@@ -974,7 +974,7 @@ export const RuleSettings = () => {
             <button
               type="button"
               onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
-              style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
             >
               <Plus size={18} /> Thêm Nhánh Mới
             </button>
@@ -988,7 +988,7 @@ export const RuleSettings = () => {
               placeholder="Chọn vòng phân bổ..."
             />
           </div>
-          <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+          <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
             <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>Hủy bỏ</button>
             <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
               {isSaving ? 'Đang lưu...' : (editingRule ? 'Cập nhật' : 'Thêm mới')}
@@ -1040,7 +1040,7 @@ export const RuleSettings = () => {
 
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
             {/* Cột trái: Nhập thông tin (Form) */}
-            <div style={{ flex: '1 1 450px', background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ flex: '1 1 450px', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Server size={16} color="var(--color-primary)" /> Thông tin Lead Giả lập
               </h4>
@@ -1226,35 +1226,35 @@ export const RuleSettings = () => {
             </div>
 
             {/* Cột phải: Kết quả Trace */}
-            <div style={{ flex: '1.2 1 500px', display: 'flex', flexDirection: 'column', minHeight: '500px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ flex: '1.2 1 500px', display: 'flex', flexDirection: 'column', minHeight: '500px', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--color-bg)', padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase' }}>
                   Kết quả phân tích đường đi
                 </h4>
               </div>
 
-              <div className="no-scrollbar" style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#fff' }}>
+              <div className="no-scrollbar" style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'var(--color-surface)' }}>
                 {simulateLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: '#64748b' }}>
-                    <div style={{ width: 40, height: 40, border: '4px solid #f1f5f9', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: 'var(--color-text-muted)' }}>
+                    <div style={{ width: 40, height: 40, border: '4px solid var(--color-border-light)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                     <span style={{ fontSize: '0.875rem' }}>Đang chạy phân tích quy tắc hệ thống...</span>
                   </div>
                 ) : !simulateResult ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, border: '2px dashed #e2e8f0', borderRadius: '8px', padding: '3rem 1.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, border: '2px dashed var(--color-border)', borderRadius: '8px', padding: '3rem 1.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1rem' }}>
                       <Play size={24} fill="currentColor" style={{ marginLeft: 3 }} />
                     </div>
-                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Chưa chạy thử nghiệm</h5>
-                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', maxWidth: 350, margin: 0 }}>Vui lòng điền thông tin lead giả lập ở cột bên trái và bấm nút "Bắt đầu Mô phỏng".</p>
+                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: 4 }}>Chưa chạy thử nghiệm</h5>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', maxWidth: 350, margin: 0 }}>Vui lòng điền thông tin lead giả lập ở cột bên trái và bấm nút "Bắt đầu Mô phỏng".</p>
                   </div>
                 ) : (
                   <>
                     {/* Hộp đích đến */}
                     <div style={{
                       background: (simulateResult.is_fallback_admin || simulateResult.is_fallback)
-                        ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
-                        : (simulateResult.consultant ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'),
-                      border: '1px solid ' + ((simulateResult.is_fallback_admin || simulateResult.is_fallback) ? '#fbbf24' : (simulateResult.consultant ? '#34d399' : '#f87171')),
+                        ? 'var(--color-warning-light)'
+                        : (simulateResult.consultant ? 'var(--color-success-light)' : 'var(--color-danger-light)'),
+                      border: '1px solid ' + ((simulateResult.is_fallback_admin || simulateResult.is_fallback) ? 'var(--color-warning)' : (simulateResult.consultant ? 'var(--color-success)' : 'var(--color-danger)')),
                       borderRadius: '10px',
                       padding: '0.75rem 1rem',
                       display: 'flex',
@@ -1266,8 +1266,8 @@ export const RuleSettings = () => {
                           <Avatar name={simulateResult.consultant.name} size={36} />
                         ) : (
                           <div style={{
-                            background: '#fff',
-                            color: '#ef4444',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-danger)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                             width: 36, height: 36,
@@ -1280,7 +1280,7 @@ export const RuleSettings = () => {
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                          <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
                             {simulateResult.consultant ? simulateResult.consultant.name : 'Không tìm thấy người nhận'}
                           </h4>
                           <span style={{
@@ -1348,13 +1348,13 @@ export const RuleSettings = () => {
 
                     {/* Injected Fields */}
                     {simulateResult.injected_fields && Object.keys(simulateResult.injected_fields).length > 0 && (
-                      <div style={{ padding: '0.75rem 1rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '10px' }}>
-                        <h5 style={{ fontSize: '0.8rem', fontWeight: 700, margin: '0 0 6px', color: '#5b21b6', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Zap size={14} color="#7c3aed" /> Ghi đè thuộc tính (Inject Data):
+                      <div style={{ padding: '0.75rem 1rem', background: 'var(--color-primary-light)', border: '1px solid var(--color-border)', borderRadius: '10px' }}>
+                        <h5 style={{ fontSize: '0.8rem', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Zap size={14} color="var(--color-primary)" /> Ghi đè thuộc tính (Inject Data):
                         </h5>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {Object.entries(simulateResult.injected_fields).map(([key, val]: any) => (
-                            <span key={key} style={{ fontSize: '0.75rem', background: '#fff', border: '1px solid #c084fc', padding: '2px 8px', borderRadius: '6px', color: '#7c3aed' }}>
+                            <span key={key} style={{ fontSize: '0.75rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--color-primary)' }}>
                               <strong>{key}</strong> -&gt; "{val}"
                             </span>
                           ))}
@@ -1364,7 +1364,7 @@ export const RuleSettings = () => {
 
                     {/* Danh sách Trace Logs */}
                     <div>
-                      <h5 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569', margin: '0 0 10px', textTransform: 'uppercase' }}>
+                      <h5 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-light)', margin: '0 0 10px', textTransform: 'uppercase' }}>
                         Chi tiết quy trình quét quy tắc (Trace Logs)
                       </h5>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1373,25 +1373,25 @@ export const RuleSettings = () => {
                           const isSkipped = t.status === 'skipped';
                           return (
                             <div key={idx} style={{
-                              border: '1px solid ' + (isMatched ? '#a7f3d0' : (isSkipped ? '#e2e8f0' : '#fecaca')),
+                              border: '1px solid ' + (isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-border)' : 'var(--color-danger)')),
                               borderRadius: '8px',
                               overflow: 'hidden'
                             }}>
                               {/* Header của Rule Trace */}
                               <div style={{
-                                background: isMatched ? '#f0fdf4' : (isSkipped ? '#f8fafc' : '#fdf2f2'),
+                                background: isMatched ? 'var(--color-success-light)' : (isSkipped ? 'var(--color-bg)' : 'var(--color-danger-light)'),
                                 padding: '8px 12px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                borderBottom: '1px solid ' + (isMatched ? '#a7f3d0' : (isSkipped ? '#e2e8f0' : '#fecaca'))
+                                borderBottom: '1px solid ' + (isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-border)' : 'var(--color-danger)'))
                               }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <div style={{
                                     width: 8, height: 8, borderRadius: '50%',
-                                    background: isMatched ? '#10b981' : (isSkipped ? '#94a3b8' : '#ef4444')
+                                    background: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-muted)' : 'var(--color-danger)')
                                   }} />
-                                  <span style={{ fontSize: '0.825rem', fontWeight: 700, color: isMatched ? '#065f46' : (isSkipped ? '#475569' : '#991b1b') }}>
+                                  <span style={{ fontSize: '0.825rem', fontWeight: 700, color: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-light)' : 'var(--color-danger)') }}>
                                     {t.description}
                                   </span>
                                 </div>
@@ -1400,8 +1400,8 @@ export const RuleSettings = () => {
                                   fontWeight: 700,
                                   padding: '2px 6px',
                                   borderRadius: '4px',
-                                  background: isMatched ? '#d1fae5' : (isSkipped ? '#e2e8f0' : '#fee2e2'),
-                                  color: isMatched ? '#065f46' : (isSkipped ? '#475569' : '#991b1b'),
+                                  background: isMatched ? 'var(--color-success-light)' : (isSkipped ? 'var(--color-border-light)' : 'var(--color-danger-light)'),
+                                  color: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-light)' : 'var(--color-danger)'),
                                   textTransform: 'uppercase'
                                 }}>
                                   {isMatched ? 'Khớp' : (isSkipped ? 'Bỏ qua' : 'Lỗi')}
@@ -1409,7 +1409,7 @@ export const RuleSettings = () => {
                               </div>
 
                               {/* Chi tiết điều kiện kiểm tra */}
-                              <div style={{ padding: '8px 12px', background: '#fff', fontSize: '0.775rem', color: '#64748b' }}>
+                              <div style={{ padding: '8px 12px', background: 'var(--color-surface)', fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
                                 {isSkipped ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontStyle: 'italic' }}>
                                     <AlertCircle size={14} /> {t.reason}
@@ -1419,7 +1419,7 @@ export const RuleSettings = () => {
                                     {t.conditions && t.conditions.map((c: any, ci: number) => (
                                       <div key={ci} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                          <span style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, color: '#334155' }}>
+                                          <span style={{ background: 'var(--color-bg)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, color: 'var(--color-text-light)' }}>
                                             {c.col}
                                           </span>
                                           <span style={{ fontStyle: 'italic', fontSize: '0.725rem' }}>
@@ -1431,7 +1431,7 @@ export const RuleSettings = () => {
                                             </span>
                                           )}
                                         </div>
-                                        <span style={{ fontWeight: 700, color: c.matched ? '#10b981' : '#ef4444' }}>
+                                        <span style={{ fontWeight: 700, color: c.matched ? 'var(--color-success)' : 'var(--color-danger)' }}>
                                           {c.matched ? 'Đạt' : 'Không đạt'}
                                         </span>
                                       </div>

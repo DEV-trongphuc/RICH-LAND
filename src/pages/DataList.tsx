@@ -440,19 +440,19 @@ export const DataList = () => {
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'error' && reportStatus === 'approved') {
-      return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Ticket</span>;
+      return <span className="badge warning">Ticket</span>;
     }
     switch (status) {
-      case 'assigned': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>;
-      case 'compensation': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e0e7ff', color: '#4f46e5' }}>Data Bù</span>;
-      case 'pending_work_hours': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#ffedd5', color: '#ea580c' }}>Chờ giờ làm</span>;
-      case 'error': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Ticket</span>;
-      case 'pending': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>;
-      case 'reminder': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fce7f3', color: '#db2777' }}>Nhắc lại</span>;
-      case 'duplicate': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>;
-      case 'rule_6_month': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>;
-      case 'silent': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569' }}>Chỉ đồng bộ</span>;
-      case 'blacklisted': return <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#fee2e2', color: '#ef4444' }}>Blacklist</span>;
+      case 'assigned': return <span className="badge success">Đã chia</span>;
+      case 'compensation': return <span className="badge purple">Data Bù</span>;
+      case 'pending_work_hours': return <span className="badge warm">Chờ giờ làm</span>;
+      case 'error': return <span className="badge danger">Ticket</span>;
+      case 'pending': return <span className="badge warning">Chờ chia</span>;
+      case 'reminder': return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.12)', color: '#ec4899' }}>Nhắc lại</span>;
+      case 'duplicate': return <span className="badge danger">Trùng lặp</span>;
+      case 'rule_6_month': return <span className="badge cold">Quy định 6 tháng</span>;
+      case 'silent': return <span className="badge cold">Chỉ đồng bộ</span>;
+      case 'blacklisted': return <span className="badge danger">Blacklist</span>;
       default: return null;
     }
   };

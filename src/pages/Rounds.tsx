@@ -385,7 +385,7 @@ export const Rounds = () => {
                         <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {r.round_name}
                           {r.is_fallback && (
-                            <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>
+                            <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                               Mặc định
                             </span>
                           )}
@@ -493,7 +493,7 @@ export const Rounds = () => {
                   <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {r.round_name}
                     {r.is_fallback && (
-                      <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>
+                      <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                         Mặc định
                       </span>
                     )}
@@ -654,7 +654,7 @@ export const Rounds = () => {
                           <div
                             className="form-input"
                             onClick={() => setShowStartSaleDropdown(!showStartSaleDropdown)}
-                            style={{ padding: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc' }}
+                            style={{ padding: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)' }}
                           >
                             {formData.starting_consultant_id ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -744,7 +744,7 @@ export const Rounds = () => {
                       <div style={{ position: 'relative' }}>
                         <input
                           className="form-input"
-                          style={{ paddingLeft: '2.5rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1' }}
+                          style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
                           placeholder="Tìm kiếm và chọn Tư vấn viên..."
                           value={searchUser}
                           onChange={e => setSearchUser(e.target.value)}
@@ -803,7 +803,7 @@ export const Rounds = () => {
                           return (
                             <div key={user.id} style={{
                               display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
-                              background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', borderRadius: 10,
+                              background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10,
                               transition: 'all 0.2s'
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -812,7 +812,7 @@ export const Rounds = () => {
                                   <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
                                     {user.name}
                                     {editingRound?.compensations?.[user.id] > 0 && (
-                                      <span style={{ marginLeft: 8, padding: '2px 6px', background: 'var(--color-danger)', color: 'white', fontSize: '0.65rem', borderRadius: 10, fontWeight: 700 }}>
+                                      <span className="badge danger" style={{ marginLeft: 8, fontSize: '0.65rem', padding: '2px 6px' }}>
                                         Nợ bù: {editingRound.compensations[user.id]}
                                       </span>
                                     )}
@@ -868,7 +868,7 @@ export const Rounds = () => {
                   </div>
                 </div>
 
-                <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
+                <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
                   <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>Hủy bỏ</button>
                   <button type="submit" className="btn primary" disabled={isSaving}>
                     {isSaving ? 'Đang lưu...' : (editingRound ? 'Cập nhật' : 'Thêm mới')}
@@ -880,7 +880,7 @@ export const Rounds = () => {
                 {loadingReports ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu báo cáo...</div>
                 ) : reports.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderRadius: 12 }}>
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
                     <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
                     <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Chưa có báo cáo lỗi nào</p>
                     <p style={{ fontSize: '0.875rem' }}>Các BÁO CÁO DATA của vòng này sẽ xuất hiện tại đây.</p>
@@ -896,9 +896,9 @@ export const Rounds = () => {
                           justifyContent: 'space-between',
                           padding: '0.625rem 1rem',
                           border: '1px solid',
-                          borderColor: r.status === 'pending' ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : '#fbbf24') : (theme === 'dark' ? 'var(--color-border)' : '#e2e8f0'),
+                          borderColor: r.status === 'pending' ? 'var(--color-warning)' : 'var(--color-border)',
                           borderRadius: '8px',
-                          background: r.status === 'pending' ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb') : (theme === 'dark' ? 'var(--color-bg)' : '#f8fafc'),
+                          background: r.status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-bg)',
                           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
                           gap: '1rem',
                           flexWrap: 'wrap'
@@ -991,14 +991,14 @@ export const Rounds = () => {
             style={{ width: '90%', maxWidth: '550px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-2xl)', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)', maxHeight: '90vh', overflow: 'hidden', boxShadow: 'var(--shadow-xl)' }}
           >
             {/* Modal Header */}
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg)' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Zap size={20} color="var(--color-primary)" /> Quản lý Bù Data
                 </h2>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Vòng: <strong>{compRound.round_name}</strong></div>
               </div>
-              <button onClick={() => setCompModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setCompModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <X size={20} />
               </button>
             </div>
@@ -1014,7 +1014,7 @@ export const Rounds = () => {
                   const currentComp = compData[id] || 0;
                   
                   return (
-                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: currentComp > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb') : (theme === 'dark' ? 'var(--color-bg)' : '#f8fafc'), border: `1px solid ${currentComp > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.2)' : '#fde68a') : (theme === 'dark' ? 'var(--color-border)' : '#e2e8f0')}`, borderRadius: 12, transition: 'all 0.2s' }}>
+                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: currentComp > 0 ? 'var(--color-warning-light)' : 'var(--color-bg)', border: `1px solid ${currentComp > 0 ? 'var(--color-warning)' : 'var(--color-border)'}`, borderRadius: 12, transition: 'all 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Avatar src={user.avatar} name={user.name} size={36} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                         <div>
@@ -1026,7 +1026,7 @@ export const Rounds = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <button 
                           onClick={() => setCompData({ ...compData, [id]: Math.max(0, currentComp - 1) })}
-                          style={{ width: 28, height: 28, borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1', background: theme === 'dark' ? 'var(--color-surface)' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: theme === 'dark' ? 'var(--color-text)' : 'var(--color-text-muted)' }}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
                         >
                           -
                         </button>
@@ -1035,7 +1035,7 @@ export const Rounds = () => {
                         </div>
                         <button 
                           onClick={() => setCompData({ ...compData, [id]: currentComp + 1 })}
-                          style={{ width: 28, height: 28, borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1', background: theme === 'dark' ? 'var(--color-surface)' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: theme === 'dark' ? 'var(--color-text)' : 'var(--color-text-muted)' }}
+                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
                         >
                           +
                         </button>

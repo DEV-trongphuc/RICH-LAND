@@ -281,7 +281,7 @@ export const ProfileModal = () => {
                   value={profileData.email}
                   disabled
                   placeholder="Email đăng nhập..."
-                  style={{ paddingLeft: 42, cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' }}
+                  style={{ paddingLeft: 42, cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)', color: 'var(--color-text-muted)' }}
                 />
               </div>
             </div>

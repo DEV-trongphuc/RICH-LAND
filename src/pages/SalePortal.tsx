@@ -396,8 +396,8 @@ export const SalePortal = () => {
 
                 {googleError && (
                   <div style={{
-                    padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fee2e2',
-                    color: '#ef4444', borderRadius: '12px', fontSize: '0.825rem', fontWeight: 500,
+                    padding: '0.75rem 1rem', background: 'var(--color-danger-light)', border: '1px solid var(--color-danger-light)',
+                    color: 'var(--color-danger)', borderRadius: '12px', fontSize: '0.825rem', fontWeight: 500,
                     display: 'flex', alignItems: 'center', gap: '6px', width: '100%', textAlign: 'left'
                   }}>
                     <AlertCircle size={16} style={{ flexShrink: 0 }} />
@@ -425,7 +425,7 @@ export const SalePortal = () => {
 
   // Active Sale Portal View
   return (
-    <div style={{ height: '100vh', width: '100vw', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top Header Navigation */}
       <header className="portal-header" style={{
         background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
@@ -490,14 +490,14 @@ export const SalePortal = () => {
           padding: '1rem 1.5rem'
         }}>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Tổng quan hiệu suất</h2>
-            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0' }}>Thống kê & phân tích dựa trên bộ lọc được chọn.</p>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>Tổng quan hiệu suất</h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>Thống kê & phân tích dựa trên bộ lọc được chọn.</p>
           </div>
 
           <div className="portal-filters-list" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Round Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>VÒNG:</span>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>VÒNG:</span>
               <CustomSelect
                 options={[
                   { value: '', label: 'Tất cả vòng' },
@@ -512,7 +512,7 @@ export const SalePortal = () => {
             {/* Sale Filter (Only for non-sale roles) */}
             {user?.role !== 'sale' && data.consultants && (
               <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>TƯ VẤN VIÊN:</span>
+                <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TƯ VẤN VIÊN:</span>
                 <CustomSelect
                   options={[
                     { value: '', label: 'Tất cả TVV' },
@@ -529,7 +529,7 @@ export const SalePortal = () => {
 
             {/* Date Mode Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>THỜI GIAN:</span>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>THỜI GIAN:</span>
               <CustomSelect
                 options={[
                   { value: 'all', label: 'Tất cả thời gian' },
@@ -601,45 +601,45 @@ export const SalePortal = () => {
         }}>
           {/* Card 1: Data received */}
           <div className="card" style={{
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>DATA KHÁCH HÀNG</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>DATA KHÁCH HÀNG</span>
               <div style={{ color: '#7c3aed', background: 'rgba(124,58,237,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <FileText size={18} />
               </div>
             </div>
-            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
               {data.stats.total_received}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng data được bàn giao</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tổng data được bàn giao</span>
           </div>
 
           {/* Card 2: Tickets Total */}
           <div className="card" style={{
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>BÁO CÁO TỔNG CỘNG</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>BÁO CÁO TỔNG CỘNG</span>
               <div style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <AlertCircle size={18} />
               </div>
             </div>
-            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#0f172a' }}>
+            <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
               {data.stats.tickets_total}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tổng số ticket đã gửi đi</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tổng số ticket đã gửi đi</span>
           </div>
 
           {/* Card 3: Pending */}
           <div className="card" style={{
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TICKET CHỜ DUYỆT</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TICKET CHỜ DUYỆT</span>
               <div style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <Clock size={18} />
               </div>
@@ -647,16 +647,16 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#f59e0b' }}>
               {data.stats.tickets_pending}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Đang chờ Admin xử lý</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Đang chờ Admin xử lý</span>
           </div>
 
           {/* Card 4: Approved */}
           <div className="card" style={{
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>ĐÃ DUYỆT BÙ</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>ĐÃ DUYỆT BÙ</span>
               <div style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <CheckCircle2 size={18} />
               </div>
@@ -664,16 +664,16 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#10b981' }}>
               {data.stats.tickets_approved}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket hợp lệ & đã được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ticket hợp lệ & đã được bù</span>
           </div>
 
           {/* Card 5: Rejected */}
           <div className="card" style={{
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TỪ CHỐI BÙ</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TỪ CHỐI BÙ</span>
               <div style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <XCircle size={18} />
               </div>
@@ -681,7 +681,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#ef4444' }}>
               {data.stats.tickets_rejected}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Ticket bị từ chối / Không được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ticket bị từ chối / Không được bù</span>
           </div>
         </section>
 
@@ -691,24 +691,24 @@ export const SalePortal = () => {
           gap: '1.5rem', marginBottom: '2rem'
         }}>
           {/* Chart Left: Hourly Flow */}
-          <div className="card" style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem' }}>
+          <div className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
               <Clock3 size={18} color="#7c3aed" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
                 LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ
               </h3>
             </div>
             <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={hourlyChartData} margin={{ left: -20, right: 5, top: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={35} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={35} />
                   <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div style={{ background: 'white', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{label}</div>
+                        <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.8rem' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{label}</div>
                           <div style={{ color: '#7c3aed', marginTop: 2 }}>Số lượng data: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
                         </div>
                       );
@@ -722,10 +722,10 @@ export const SalePortal = () => {
           </div>
 
           {/* Chart Right: Rounds Ratio */}
-          <div className="card" style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <div className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
               <GitBranch size={18} color="#4f46e5" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
                 TỶ LỆ PHÂN BỔ THEO VÒNG (ROUND)
               </h3>
             </div>
@@ -742,12 +742,12 @@ export const SalePortal = () => {
                   return (
                     <div key={idx}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}>
-                        <span style={{ fontWeight: 700, color: '#334155' }}>{r.round_name}</span>
-                        <span style={{ color: '#64748b' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>{r.round_name}</span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>
                           <strong>{r.count} data</strong> ({percentage}%)
                         </span>
                       </div>
-                      <div style={{ width: '100%', height: 8, background: '#f1f5f9', borderRadius: 999 }}>
+                      <div style={{ width: '100%', height: 8, background: 'var(--color-border-light)', borderRadius: 999 }}>
                         <div style={{
                           height: '100%', width: `${percentage}%`, background: themeColor,
                           borderRadius: 999, transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -767,7 +767,7 @@ export const SalePortal = () => {
 
         {/* Search controls panel */}
         <section className="mobile-stack" style={{
-          background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
           padding: '1.25rem', marginBottom: '1.5rem', display: 'flex',
           alignItems: 'center', gap: '1rem'
         }}>
@@ -782,16 +782,16 @@ export const SalePortal = () => {
               onKeyDown={handleSearchKeyPress}
               style={{
                 width: '100%', padding: '8px 12px 8px 40px', borderRadius: '10px',
-                border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none',
-                background: '#f8fafc', transition: 'all 0.2s'
+                border: '1px solid var(--color-border)', fontSize: '0.875rem', outline: 'none',
+                background: 'var(--color-bg)', transition: 'all 0.2s', color: 'var(--color-text)'
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#7c3aed';
-                e.currentTarget.style.background = '#fff';
+                e.currentTarget.style.background = 'var(--color-surface)';
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.background = '#f8fafc';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'var(--color-bg)';
               }}
             />
           </div>
@@ -813,12 +813,12 @@ export const SalePortal = () => {
         </section>
 
         {/* Detailed Data List Table */}
-        <section className="card" style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
-          <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+        <section className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
               DANH SÁCH DỮ LIỆU ĐƯỢC PHÂN BỔ
             </h3>
-            <span style={{ fontSize: '0.8rem', color: '#64748b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '20px', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'var(--color-border-light)', padding: '4px 10px', borderRadius: '20px', fontWeight: 600 }}>
               Đang hiển thị {data.leads.length} dòng
             </span>
           </div>
@@ -829,17 +829,17 @@ export const SalePortal = () => {
             ) : data.leads.length > 0 ? (
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>KHÁCH HÀNG</th>
-                    <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>LIÊN HỆ</th>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>KHÁCH HÀNG</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>LIÊN HỆ</th>
                     {user?.role === 'sale' ? (
-                      <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>VÒNG</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>VÒNG</th>
                     ) : (
-                      <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>PHÂN BỔ CHO</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>PHÂN BỔ CHO</th>
                     )}
-                    <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>NGUỒN / PHÂN LOẠI</th>
-                    <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>THỜI GIAN NHẬN</th>
-                    <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700, textAlign: 'center' }}>TICKET</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>NGUỒN / PHÂN LOẠI</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>THỜI GIAN NHẬN</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>TICKET</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -851,13 +851,13 @@ export const SalePortal = () => {
                         setDetailModalOpen(true);
                       }}
                       style={{
-                        borderBottom: '1px solid #f1f5f9',
-                        background: index % 2 === 0 ? 'white' : '#fafafa',
+                        borderBottom: '1px solid var(--color-border-light)',
+                        background: index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)',
                         transition: 'background 0.2s',
                         cursor: 'pointer'
                       }}
-                      onMouseOver={(e) => (e.currentTarget.style.background = '#f1f5f9')}
-                      onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'white' : '#fafafa')}
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-primary-light)')}
+                      onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)')}
                     >
                       {/* KHÁCH HÀNG */}
                       <td style={{ padding: '1rem 1.25rem' }}>
@@ -968,7 +968,7 @@ export const SalePortal = () => {
                           )}
                           {lead.report_status === 'approved' && (
                             <div
-                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#d1fae5', color: '#065f46' }}
+                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-success-light)', color: 'var(--color-success)' }}
                               title="Ticket đã duyệt bù (Bấm để xem chi tiết)"
                             >
                               <CheckCircle2 size={16} />
@@ -976,9 +976,9 @@ export const SalePortal = () => {
                           )}
                           {lead.report_status === 'rejected' && (
                             <div
-                              style={{
-                                display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fee2e2', color: '#991b1b'
-                              }}
+                                style={{
+                                  display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-danger-light)', color: 'var(--color-danger)'
+                                }}
                               title={`Ticket từ chối bù: ${lead.report_reject_reason || 'Không cung cấp'} (Bấm để xem chi tiết)`}
                             >
                               <XCircle size={16} />
@@ -991,14 +991,14 @@ export const SalePortal = () => {
                                 handleOpenReportModal(lead);
                               }}
                               style={{
-                                background: '#fee2e2', color: '#ef4444', border: 'none',
+                                background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none',
                                 borderRadius: '50%', width: '32px', height: '32px',
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer', transition: 'all 0.2s'
                               }}
                               title="Gửi báo cáo lỗi data"
-                              onMouseOver={(e) => (e.currentTarget.style.background = '#fecaca')}
-                              onMouseOut={(e) => (e.currentTarget.style.background = '#fee2e2')}
+                              onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-danger)', e.currentTarget.style.color = '#ffffff')}
+                              onMouseOut={(e) => (e.currentTarget.style.background = 'var(--color-danger-light)', e.currentTarget.style.color = 'var(--color-danger)')}
                             >
                               <AlertCircle size={16} />
                             </button>
@@ -1027,7 +1027,7 @@ export const SalePortal = () => {
           title="BÁO CÁO LỖI DỮ LIỆU"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+            <div style={{ background: 'var(--color-bg)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
               <div style={{ marginBottom: '6px' }}>
                 <strong>Tên Khách hàng:</strong> {selectedLead.lead_name}
               </div>
@@ -1040,7 +1040,7 @@ export const SalePortal = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
                 Lý do báo lỗi (Chọn mẫu có sẵn)
               </label>
               <select
@@ -1048,8 +1048,8 @@ export const SalePortal = () => {
                 onChange={(e) => setReportReasonType(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', borderRadius: '10px',
-                  border: '1px solid #e2e8f0', fontSize: '0.875rem', background: 'white',
-                  outline: 'none', cursor: 'pointer'
+                  border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)',
+                  color: 'var(--color-text)', outline: 'none', cursor: 'pointer'
                 }}
               >
                 <option value="Số điện thoại không đúng / Thuê bao">Số điện thoại không đúng / Thuê bao</option>
@@ -1061,7 +1061,7 @@ export const SalePortal = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
                 Mô tả chi tiết lỗi (Không bắt buộc)
               </label>
               <textarea
@@ -1070,8 +1070,8 @@ export const SalePortal = () => {
                 onChange={(e) => setReportDetails(e.target.value)}
                 style={{
                   width: '100%', height: 100, padding: '10px 12px', borderRadius: '10px',
-                  border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none',
-                  resize: 'none', fontFamily: 'inherit'
+                  border: '1px solid var(--color-border)', fontSize: '0.875rem', outline: 'none',
+                  resize: 'none', fontFamily: 'inherit', color: 'var(--color-text)', background: 'var(--color-surface)'
                 }}
               />
             </div>
@@ -1080,7 +1080,7 @@ export const SalePortal = () => {
               <button
                 onClick={() => setReportModalOpen(false)}
                 style={{
-                  background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px',
+                  background: 'var(--color-border-light)', color: 'var(--color-text-light)', border: 'none', borderRadius: '8px',
                   padding: '10px 20px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
                 }}
               >
@@ -1113,31 +1113,31 @@ export const SalePortal = () => {
           <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', fontSize: '0.9rem', minHeight: '380px' }}>
             {/* Cột trái: Thông tin khách hàng & Ghi chú */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Họ và tên:</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Họ và tên:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Số điện thoại:</span>
-                <span style={{ fontWeight: 700, color: '#d97706' }}>{activeDetailLead.phone}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Số điện thoại:</span>
+                <span style={{ fontWeight: 700, color: 'var(--score-warm)' }}>{activeDetailLead.phone}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Email:</span>
-                <span style={{ color: '#0f172a' }}>{activeDetailLead.lead_email || '—'}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Email:</span>
+                <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.lead_email || '—'}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Vòng chia:</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Vòng chia:</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.round_name || 'Mặc định'}</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.round_name || 'Mặc định'}</span>
                   {activeDetailLead.status === 'compensation' && (
                     <span style={{
                       padding: '2px 8px',
                       borderRadius: '4px',
-                      background: '#d1fae5',
-                      color: '#065f46',
+                      background: 'var(--color-success-light)',
+                      color: 'var(--color-success)',
                       fontSize: '0.725rem',
                       fontWeight: 700,
                       marginTop: '2px'
@@ -1149,37 +1149,37 @@ export const SalePortal = () => {
               </div>
 
               {user?.role !== 'sale' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, color: '#64748b' }}>Tư vấn viên:</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Tư vấn viên:</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Avatar src={activeDetailLead.sale_avatar} name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
-                    <span style={{ color: '#0f172a', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
+                    <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
                   </div>
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Nguồn khách:</span>
-                <span style={{ color: '#0f172a' }}>{activeDetailLead.source || 'N/A'}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Nguồn khách:</span>
+                <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.source || 'N/A'}</span>
               </div>
 
               {activeDetailLead.type && (
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                  <span style={{ fontWeight: 700, color: '#64748b' }}>Phân loại:</span>
-                  <span style={{ color: '#0f172a' }}>{activeDetailLead.type}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Phân loại:</span>
+                  <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.type}</span>
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b' }}>Nhận lúc:</span>
-                <span style={{ color: '#334155' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Nhận lúc:</span>
+                <span style={{ color: 'var(--color-text-light)' }}>
                   {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '4px' }}>
-                <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
-                <span style={{ color: '#0f172a', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--color-bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border)', marginTop: '4px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
+                <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
                   {activeDetailLead.note
                     ? activeDetailLead.note
                         .replace(/\\n/g, '\n')
@@ -1193,8 +1193,8 @@ export const SalePortal = () => {
 
               {activeDetailLead.report_status && (
                 <div style={{
-                  background: activeDetailLead.report_status === 'approved' ? '#d1fae5' : activeDetailLead.report_status === 'pending' ? '#fef3c7' : '#fee2e2',
-                  color: activeDetailLead.report_status === 'approved' ? '#065f46' : activeDetailLead.report_status === 'pending' ? '#9a3412' : '#991b1b',
+                  background: activeDetailLead.report_status === 'approved' ? 'var(--color-success-light)' : activeDetailLead.report_status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
+                  color: activeDetailLead.report_status === 'approved' ? 'var(--color-success)' : activeDetailLead.report_status === 'pending' ? 'var(--color-warning)' : 'var(--color-danger)',
                   padding: '12px', borderRadius: '10px', border: '1px solid currentColor', marginTop: '4px'
                 }}>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 4 }}>
@@ -1212,8 +1212,8 @@ export const SalePortal = () => {
             </div>
 
             {/* Cột phải: Lịch sử bàn giao & Nhắc lại */}
-            <div className="portal-detail-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
-              <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
+            <div className="portal-detail-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid var(--color-border)', paddingLeft: '1.5rem' }}>
+              <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
               
               {loadingTimeline ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1231,21 +1231,21 @@ export const SalePortal = () => {
 
                     return (
                       <div key={idx} className="timeline-item" style={{ marginBottom: '1.25rem' }}>
-                        <div className="timeline-icon" style={{ backgroundColor: dotColor, left: '-1.85rem', width: '1rem', height: '1rem', border: '3px solid white', boxShadow: '0 0 0 1px #e2e8f0' }} />
-                        <div className="timeline-content" style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <div className="timeline-icon" style={{ backgroundColor: dotColor, left: '-1.85rem', width: '1rem', height: '1rem', border: '3px solid var(--color-surface)', boxShadow: '0 0 0 1px var(--color-border)' }} />
+                        <div className="timeline-content" style={{ background: 'var(--color-bg)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.85rem' }}>
                               {item.status} {item.round_name ? `(${item.round_name})` : ''}
                             </span>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                               {new Date(item.received_at).toLocaleString('vi-VN')}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
                             <strong>Nhận bởi:</strong> {item.consultant_name || 'Chưa rõ'}
                           </div>
                           {item.message && (
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
                               &ldquo;{item.message}&rdquo;
                             </div>
                           )}
@@ -1262,11 +1262,11 @@ export const SalePortal = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
             <button
               onClick={() => setDetailModalOpen(false)}
               style={{
-                background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px',
+                background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '8px',
                 padding: '8px 24px', fontWeight: 700, cursor: 'pointer'
               }}
             >

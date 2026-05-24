@@ -341,8 +341,8 @@ export const Dashboard = () => {
                   <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div style={{ background: 'white', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
-                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{label}</div>
+                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
                           <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Lưu lượng Data: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
                         </div>
                       );
@@ -399,9 +399,9 @@ export const Dashboard = () => {
                               case 'assigned':
                                 return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: roundName || 'Đã chia' };
                               case 'compensation':
-                                return { bg: '#e0e7ff', color: '#4f46e5', text: 'Data Bù' };
+                                return { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', text: 'Data Bù' };
                               case 'pending_work_hours':
-                                return { bg: '#ffedd5', color: '#ea580c', text: 'Chờ giờ làm' };
+                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Chờ giờ làm' };
                               case 'duplicate':
                                 return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Trùng lặp' };
                               case 'pending':
@@ -409,7 +409,7 @@ export const Dashboard = () => {
                               case 'error':
                                 return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Ticket' };
                               case 'silent':
-                                return { bg: '#e2e8f0', color: '#475569', text: 'Chỉ đồng bộ' };
+                                return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: 'Chỉ đồng bộ' };
                               default:
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
                             }
@@ -535,8 +535,8 @@ export const Dashboard = () => {
                       ))}
                     </Pie>
                     <Tooltip 
-                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      itemStyle={{ color: '#1e293b', fontWeight: 600 }}
+                      contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -611,8 +611,8 @@ export const Dashboard = () => {
                   />
                   <Tooltip 
                     cursor={{ fill: 'rgba(239, 68, 68, 0.04)' }}
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ color: '#ef4444', fontWeight: 600 }}
+                    contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ color: 'var(--color-danger)', fontWeight: 600 }}
                   />
                   <Bar dataKey="errors" fill="url(#errorGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi" />
                 </BarChart>

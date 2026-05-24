@@ -504,6 +504,33 @@ const CalendarPromoModal = ({ onClose }: CalendarPromoModalProps) => {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-5px) rotate(3deg); }
         }
+
+        @media (max-width: 480px) {
+          .promo-modal-container {
+            max-width: calc(100vw - 1.5rem) !important;
+          }
+          .promo-body {
+            padding: 1.25rem 1rem 1.5rem 1rem !important;
+            gap: 1rem !important;
+          }
+          .promo-title {
+            font-size: 1.2rem !important;
+          }
+          .promo-subtitle {
+            font-size: 0.78rem !important;
+            padding: 0 !important;
+          }
+          .promo-feature-card {
+            padding: 0.65rem 0.75rem !important;
+            border-radius: 12px !important;
+          }
+          .promo-card-title {
+            font-size: 0.8rem !important;
+          }
+          .promo-card-text {
+            font-size: 0.75rem !important;
+          }
+        }
       `}</style>
     </div>
   );

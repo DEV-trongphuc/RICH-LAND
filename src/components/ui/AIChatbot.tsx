@@ -311,7 +311,7 @@ export const AIChatbot: React.FC = () => {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+    <div className={`chatbot-parent ${isOpen ? 'is-open' : 'is-closed'}`} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
       {/* CSS Styles injection */}
       <style>{`
         :root {
@@ -476,6 +476,29 @@ export const AIChatbot: React.FC = () => {
         }
         
         @media (max-width: 768px) {
+          .chatbot-parent.is-open {
+            left: 16px !important;
+            right: 16px !important;
+            bottom: 16px !important;
+            width: auto !important;
+            height: auto !important;
+            transform: none !important;
+          }
+          .chatbot-parent.is-closed {
+            left: auto !important;
+            right: 16px !important;
+            bottom: 16px !important;
+            width: 64px !important;
+            height: 64px !important;
+          }
+          .chatbot-window {
+            width: auto !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: calc(100vh - 80px) !important;
+            max-height: 80vh !important;
+            transform-origin: bottom center !important;
+          }
           .chatbot-sidebar {
             display: none !important;
           }
@@ -550,6 +573,7 @@ export const AIChatbot: React.FC = () => {
 
       {/* Chat Window */}
       <div
+        className="chatbot-window"
         style={{
           position: 'absolute',
           bottom: 0,
