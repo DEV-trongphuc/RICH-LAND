@@ -1001,7 +1001,7 @@ export const Consultants = () => {
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
+            <div className="stats-header-container" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                 <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
                 <div>
@@ -1013,7 +1013,7 @@ export const Consultants = () => {
               </div>
 
               {/* Timeframe Filter Dropdown in Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', marginRight: '1rem', flexWrap: 'nowrap' }}>
+              <div className="stats-header-filters">
                 <Calendar size={18} color="var(--color-text-light)" style={{ display: 'flex', alignItems: 'center' }} />
                 <div style={{ position: 'relative', zIndex: 100 }}>
                   <CustomSelect
@@ -1034,7 +1034,7 @@ export const Consultants = () => {
                 </div>
 
                 {statsDateMode === 'custom' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', animation: 'slideUp 0.15s ease-out', flexShrink: 0 }}>
+                  <div className="stats-custom-dates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', animation: 'slideUp 0.15s ease-out', flexShrink: 0 }}>
                     <input 
                       type="date" 
                       className="form-input" 
@@ -1057,6 +1057,7 @@ export const Consultants = () => {
               <button 
                 type="button" 
                 onClick={() => setStatsModalOpen(false)} 
+                className="stats-header-close"
                 style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} 
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1092,7 +1093,7 @@ export const Consultants = () => {
                   `}</style>
                   
                   {/* KPI Cards Row (4 Columns) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
                       <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thành công</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
@@ -1157,7 +1158,7 @@ export const Consultants = () => {
                   </div>
 
                   {/* Row 2: Status Ratio (Donut) & Rounds Breakdown */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Donut chart for status ratio */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
@@ -1235,7 +1236,7 @@ export const Consultants = () => {
                   </div>
 
                   {/* Row 3: Marketing Sources & Tickets Reports */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Source breakdown list */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
@@ -1269,7 +1270,7 @@ export const Consultants = () => {
                     <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
                       {statsData.tickets ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
                           <div style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px', borderRadius: 8, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                             <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>

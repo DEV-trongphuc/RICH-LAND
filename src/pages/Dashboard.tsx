@@ -201,8 +201,8 @@ export const Dashboard = () => {
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Tổng quan Phân bổ Data</h1>
           <p className="page-subtitle">Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <div style={{ position: 'relative', zIndex: 100 }}>
+        <div className="mobile-stack mobile-w-full" style={{ display: 'flex', gap: '12px' }}>
+          <div className="mobile-w-full" style={{ position: 'relative', zIndex: 100 }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -217,7 +217,7 @@ export const Dashboard = () => {
             />
           </div>
           <button
-            className="btn outline"
+            className="btn outline mobile-w-full"
             onClick={() => fetchDashboard()}
             disabled={loading}
           >

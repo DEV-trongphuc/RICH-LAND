@@ -197,7 +197,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--color-border)' }}>
-            <ArrowRight size={24} strokeWidth={1.5} />
+            <ArrowRight className="mobile-rotate-90" size={24} strokeWidth={1.5} style={{ transition: 'transform 0.2s' }} />
           </div>
 
           <div style={{ flex: '0 0 250px' }}>
@@ -1055,7 +1055,7 @@ export const RuleSettings = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Số điện thoại</label>
                   <input
@@ -1076,7 +1076,7 @@ export const RuleSettings = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Nguồn (Source)</label>
                   <input
@@ -1109,11 +1109,13 @@ export const RuleSettings = () => {
 
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
                 <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#475569' }}>Cấu hình Kết nối & Loại nguồn nhận</h5>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: simulateConnectionType === 'manual' ? '1fr' : '1fr 1fr', 
-                  gap: '1rem' 
-                }}>
+                <div 
+                  className={simulateConnectionType === 'manual' ? '' : 'responsive-grid-1-1'}
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: simulateConnectionType === 'manual' ? '1fr' : '1fr 1fr', 
+                    gap: '1rem' 
+                  }}>
                   {simulateConnectionType !== 'manual' && (
                     <div className="form-group">
                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Nguồn tích hợp</label>

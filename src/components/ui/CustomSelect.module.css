@@ -190,3 +190,18 @@
 .list::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
+
+@media (max-width: 768px) {
+  .wrapper {
+    width: 100% !important;
+  }
+  .dropdown {
+    min-width: unset !important;
+    max-width: 92vw !important;
+  }
+  .optionMainLabel {
+    white-space: normal !important;
+    word-break: break-word;
+  }
+}
+

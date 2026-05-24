@@ -328,7 +328,7 @@ export const FairShareAudit = () => {
       </div>
 
       {/* Intro explain card styled identically to RuleSettings */}
-      <div style={{
+      <div className="hide-on-mobile" style={{
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem'

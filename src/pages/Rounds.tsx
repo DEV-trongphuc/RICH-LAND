@@ -337,12 +337,14 @@ export const Rounds = () => {
           {[1, 2, 3].map(i => <RoundCardSkeleton key={i} />)}
         </div>
       ) : (
-        <div style={{
-          display: viewMode === 'grid' ? 'grid' : 'flex',
-          flexDirection: viewMode === 'list' ? 'column' : 'row',
-          gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(400px, 1fr))' : 'none',
-          gap: '1.25rem'
-        }}>
+        <div
+          className={viewMode === 'grid' ? 'responsive-grid-auto-400' : ''}
+          style={{
+            display: viewMode === 'grid' ? 'grid' : 'flex',
+            flexDirection: viewMode === 'list' ? 'column' : 'row',
+            gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(400px, 1fr))' : 'none',
+            gap: '1.25rem'
+          }}>
           {rounds.length === 0 ? (
             <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', gridColumn: '1 / -1' }}>
               <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
@@ -479,7 +481,7 @@ export const Rounds = () => {
                 </div>
               </div>
             ) : (
-              <div key={r.id} className="card hover-lift" style={{
+              <div key={r.id} className="card hover-lift responsive-flex-row responsive-height-auto" style={{
                 display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.5rem',
                 borderLeft: `4px solid ${color}`
               }}>
@@ -608,10 +610,10 @@ export const Rounds = () => {
 
             {activeTab === 'config' ? (
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
-                <div className="responsive-grid-1-1" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
+                <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                  <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
                     <div className="form-group">
                       <label className="form-label">Tên Vòng <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <input
@@ -793,7 +795,7 @@ export const Rounds = () => {
 
                     {/* Selected Consultants List Block */}
                     {formData.selected_users.length > 0 && (
-                      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }} className="custom-scrollbar">
+                      <div className="custom-scrollbar modal-form-selected-list" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Tư vấn viên đã chọn ({formData.selected_users.length}):</div>
                         {formData.selected_users.map(userId => {
                           const user = consultants.find(c => Number(c.id) === userId);

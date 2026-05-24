@@ -108,7 +108,71 @@
     background: var(--color-border);
     border-radius: 4px;
   }
+
+  /* --- NEW MOBILE AUDIT FIXES --- */
+  .modal-form-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 140px) !important;
+  }
+  
+  .modal-form-col, .modal-form-selected-list {
+    overflow-y: visible !important;
+    max-height: none !important;
+    min-height: auto !important;
+  }
+  
+  .mobile-rotate-90 {
+    transform: rotate(90deg) !important;
+  }
+  
+  .mapping-btn-container {
+    width: 100% !important;
+  }
+  
+  .mapping-btn-container button {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+  
+  .stats-header-container {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+    position: relative;
+    padding-right: 3rem !important;
+  }
+  
+  .stats-header-filters {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100%;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    z-index: 100;
+  }
+  
+  .stats-header-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+  }
+  
+  .stats-custom-dates {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+  
+  .stats-custom-dates input {
+    flex: 1 !important;
+    width: auto !important;
+  }
+  
+  .mobile-ml-0 {
+    margin-left: 0 !important;
+  }
 }
+
 
 .mobile-only { display: none; }
 
@@ -2002,6 +2066,12 @@ th.col-check {
   .portal-charts-grid .card {
     padding: 0.75rem !important;
     border-radius: 12px !important;
+  }
+  .portal-detail-right {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid var(--color-border-light) !important;
+    padding-top: 1.5rem !important;
   }
 }
 

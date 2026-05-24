@@ -766,7 +766,7 @@ export const SalePortal = () => {
         </section>
 
         {/* Search controls panel */}
-        <section style={{
+        <section className="mobile-stack" style={{
           background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
           padding: '1.25rem', marginBottom: '1.5rem', display: 'flex',
           alignItems: 'center', gap: '1rem'
@@ -798,6 +798,7 @@ export const SalePortal = () => {
 
           <button
             onClick={handleApplyFilters}
+            className="mobile-w-full"
             style={{
               background: '#4f46e5', color: 'white', border: 'none',
               borderRadius: '10px', padding: '9px 18px', fontSize: '0.85rem', fontWeight: 700,
@@ -822,11 +823,11 @@ export const SalePortal = () => {
             </span>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-wrap responsive-table-wrap" style={{ overflowX: 'auto' }}>
             {loading ? (
               <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <th style={{ padding: '1rem 1.25rem', color: '#475569', fontWeight: 700 }}>KHÁCH HÀNG</th>
@@ -1109,7 +1110,7 @@ export const SalePortal = () => {
           title="CHI TIẾT THÔNG TIN KHÁCH HÀNG"
           width="900px"
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', fontSize: '0.9rem', minHeight: '380px' }}>
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', fontSize: '0.9rem', minHeight: '380px' }}>
             {/* Cột trái: Thông tin khách hàng & Ghi chú */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
@@ -1211,7 +1212,7 @@ export const SalePortal = () => {
             </div>
 
             {/* Cột phải: Lịch sử bàn giao & Nhắc lại */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+            <div className="portal-detail-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
               <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
               
               {loadingTimeline ? (

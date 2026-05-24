@@ -562,7 +562,7 @@ export const Tickets = () => {
       </div>
 
       {/* ── Filter bar: Sale + Date ── */}
-      <div className={!showMobileFilters ? 'hide-on-mobile' : ''} style={{
+      <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{
         display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
         padding: '14px 18px',
         background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
@@ -579,7 +579,7 @@ export const Tickets = () => {
         <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
 
         {/* Sale filter */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <CustomSelect
             options={[
               { value: '', label: 'Tất cả Sale', icon: <Users size={16} /> },
@@ -601,7 +601,7 @@ export const Tickets = () => {
         </div>
 
         {/* Date from */}
-        <div className="mobile-flex-wrap mobile-flex-1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="responsive-filter-item mobile-flex-wrap mobile-flex-1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className="mobile-flex-1" style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: 130 }}>
             <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateFrom ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
             <input
@@ -672,7 +672,7 @@ export const Tickets = () => {
           </button>
         )}
 
-        <div style={{
+        <div className="mobile-ml-0" style={{
           marginLeft: 'auto',
           display: 'flex',
           alignItems: 'center',
@@ -757,7 +757,7 @@ export const Tickets = () => {
           </div>
         ) : (
           <div className="table-wrap">
-            <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thông tin Lead</th>

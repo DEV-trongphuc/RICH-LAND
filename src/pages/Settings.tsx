@@ -719,40 +719,40 @@ export const Settings = () => {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+      <div className="mobile-filter-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
         <button
           onClick={() => setActiveTab('processing')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <SettingsIcon size={18} /> Cấu hình Xử lý
         </button>
         <button
           onClick={() => setActiveTab('mail')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <Mail size={18} /> Cấu hình Email
         </button>
         <button
           onClick={() => setActiveTab('zalo')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <MessageCircle size={18} /> Cấu hình Zalo Bot
         </button>
         <button
           onClick={() => setActiveTab('report')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'report' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'report' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <BarChart2 size={18} /> Báo cáo
         </button>
         <button
           onClick={() => setActiveTab('duplicate_check')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'duplicate_check' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'duplicate_check' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <FileSpreadsheet size={18} /> Ánh xạ dữ liệu cũ
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'ai' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'ai' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
           <Zap size={18} /> Cấu hình Trợ lý AI
         </button>

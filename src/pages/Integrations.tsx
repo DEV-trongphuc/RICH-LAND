@@ -1023,7 +1023,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                         onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
                       />
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    <div className="mapping-btn-container" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                       <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
                         {isSavingMapping ? 'Đang lưu...' : (editingMappingId ? 'Cập nhật' : <><Plus size={16} /> Thêm</>)}
                       </button>
@@ -1043,8 +1043,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                   </div>
 
                   {/* Mappings Table BELOW */}
-                  <div className="table-wrap" style={{ marginBottom: '1rem' }}>
-                    <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <div className="responsive-table-wrap" style={{ marginBottom: '1rem' }}>
+                    <table style={{ tableLayout: 'fixed', width: '100%', minWidth: 650 }}>
                       <colgroup>
                         <col style={{ width: '45%' }} />
                         <col style={{ width: '25%' }} />

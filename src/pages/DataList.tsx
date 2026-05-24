@@ -813,7 +813,7 @@ export const DataList = () => {
       {viewMode === 'calendar' ? (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
           {/* Calendar Header / Control */}
-          <div style={{
+          <div className="mobile-stack" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -823,9 +823,10 @@ export const DataList = () => {
             borderRadius: '12px',
             marginBottom: '1rem',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
-            flexShrink: 0
+            flexShrink: 0,
+            gap: '1rem'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '2px', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -899,37 +900,39 @@ export const DataList = () => {
           </div>
 
           {/* Calendar Body */}
-          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
-            {/* Calendar Grid Header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-              background: 'var(--color-bg)',
-              borderBottom: '1px solid var(--color-border)',
-              padding: '8px 0',
-              flexShrink: 0
-            }}>
-              {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(wd => (
-                <div key={wd} style={{ padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: wd === 'CN' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                  {wd}
-                </div>
-              ))}
-            </div>
+          <div className="responsive-table-wrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minWidth: 700 }}>
+              {/* Calendar Grid Header */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                background: 'var(--color-bg)',
+                borderBottom: '1px solid var(--color-border)',
+                padding: '8px 0',
+                flexShrink: 0
+              }}>
+                {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(wd => (
+                  <div key={wd} style={{ padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: wd === 'CN' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                    {wd}
+                  </div>
+                ))}
+              </div>
 
-            {/* Calendar Days */}
-            <div style={{
-              flex: 1,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-              gridAutoRows: 'minmax(110px, 1fr)',
-              overflowY: 'auto'
-            }} className="custom-scrollbar">
-              {calendarLoading ? (
-                <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-                  <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu lịch biểu...</span>
-                </div>
-              ) : days}
+              {/* Calendar Days */}
+              <div style={{
+                flex: 1,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                gridAutoRows: 'minmax(110px, 1fr)',
+                overflowY: 'auto'
+              }} className="custom-scrollbar">
+                {calendarLoading ? (
+                  <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
+                    <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu lịch biểu...</span>
+                  </div>
+                ) : days}
+              </div>
             </div>
           </div>
         </div>
@@ -2192,15 +2195,16 @@ export const DataList = () => {
         }
         
         /* Premium Table Styles for Day Details Modal */
-        .premium-table-container {
+         .premium-table-container {
           border: 1px solid var(--color-border);
           border-radius: 12px;
-          overflow: hidden;
+          overflow-x: auto;
           background: var(--color-surface);
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.015);
         }
         .premium-table {
           width: 100%;
+          min-width: 600px;
           border-collapse: collapse;
           text-align: left;
         }

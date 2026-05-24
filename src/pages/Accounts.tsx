@@ -308,7 +308,7 @@ export const Accounts = () => {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
+      <div className="mobile-filter-tabs" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
         <button 
           onClick={() => setActiveTab('accounts')}
           style={{
@@ -323,7 +323,8 @@ export const Accounts = () => {
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            flexShrink: 0
           }}
         >
           <UserCog size={16} /> Danh sách Tài khoản
@@ -342,20 +343,21 @@ export const Accounts = () => {
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: 8
+            gap: 8,
+            flexShrink: 0
           }}
         >
           <History size={16} /> Nhật ký hoạt động Admin
         </button>
       </div>
-
+ 
       {activeTab === 'accounts' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
           {loading ? (
             <TableSkeleton cols={6} rows={5} />
           ) : (
-            <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-wrap responsive-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
@@ -500,8 +502,8 @@ export const Accounts = () => {
             <TableSkeleton cols={5} rows={8} />
           ) : (
             <>
-              <div className="table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-wrap responsive-table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
+              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Thời gian</th>
