@@ -1302,6 +1302,7 @@ switch ($action) {
                 l.name as lead_name, 
                 l.phone, 
                 c.name as sale_name, 
+                c.avatar as sale_avatar, 
                 r.reason, 
                 r.status, 
                 r.created_at
@@ -1319,6 +1320,7 @@ switch ($action) {
                     'lead_name' => $row['lead_name'] ?: 'Ẩn danh',
                     'phone' => $row['phone'] ?: '-',
                     'sale_name' => $row['sale_name'] ?: '-',
+                    'sale_avatar' => $row['sale_avatar'],
                     'reason' => $row['reason'],
                     'status' => $row['status'],
                     'created_at' => $row['created_at']
@@ -4139,17 +4141,21 @@ switch ($action) {
                     return ['error' => 'Không được phép truy vấn các khóa bảo mật (API keys, passwords, secrets) trong cài đặt hệ thống'];
                 }
 
+                // Strip trailing semicolon from clean SQL
+                $cleanSql = rtrim($cleanSql, ';');
+                $cleanSql = trim($cleanSql);
+
                 // Restrict limit to max 100 rows
                 if (preg_match('/limit\s+(\d+)(?:\s*,\s*(\d+))?/i', $cleanSql, $matches)) {
                     $limitVal = isset($matches[2]) ? (int)$matches[2] : (int)$matches[1];
                     if ($limitVal > 100) {
-                        $sql = preg_replace('/limit\s+(\d+)(?:\s*,\s*(\d+))?/i', 'LIMIT 100', $sql);
+                        $cleanSql = preg_replace('/limit\s+(\d+)(?:\s*,\s*(\d+))?/i', 'LIMIT 100', $cleanSql);
                     }
                 } else {
-                    $sql .= " LIMIT 100";
+                    $cleanSql .= " LIMIT 100";
                 }
 
-                $result = $conn->query($sql);
+                $result = $conn->query($cleanSql);
                 if (!$result) {
                     return ['error' => 'Lỗi thực thi SQL: ' . $conn->error];
                 }
@@ -4198,8 +4204,12 @@ switch ($action) {
                 "11. mail_queue: Hàng đợi gửi email thông báo (id, to_email, cc_email, subject, body_html, status, attempts, last_error, created_at, sent_at)\n" .
                 "12. sheet_sync_records: Lưu trữ row_hash đã đồng bộ từ Google Sheets để check trùng (connection_id, row_hash, synced_at)\n" .
                 "13. system_settings: Cấu hình hệ thống chung (setting_key, setting_value)\n\n" .
+                "QUY TẮC TRA CỨU TƯ VẤN VIÊN (SALE / TVV):\n" .
+                "- Khi người dùng hỏi về một người cụ thể (ví dụ: 'Đan', 'Uyên', '1002'), bạn KHÔNG ĐƯỢC HỎI LẠI để bắt họ cung cấp thêm thông tin tên/ID. Hãy CHỦ ĐỘNG dùng SQL tìm kiếm tư vấn viên đó trong bảng `consultants` bằng tên riêng (ví dụ: `name LIKE '%Đan%'`) hoặc so khớp ID nếu người dùng cung cấp ID (ví dụ: `id = 1002`).\n" .
+                "- Sau khi tìm được ID tư vấn viên, hãy tiếp tục dùng ID đó để truy vấn phân phối số lượng lead hoặc ticket lỗi của ngày hôm nay (`DATE(received_at) = CURDATE()`) hoặc bất kỳ thông tin nào họ yêu cầu.\n\n" .
                 "LƯU Ý KHI VIẾT TRUY VẤN SQL:\n" .
                 "- Luôn viết truy vấn SELECT hợp lệ cho MariaDB.\n" .
+                "- Khi người dùng hỏi về số lượng data \"được chia\", \"đã chia\", hoặc \"nhận được\" (ví dụ: 'hôm nay chia bao nhiêu data', 'tuần này được bao nhiêu data'), bạn chỉ được đếm các dòng trong bảng `distribution_logs` có trạng thái đã chia thành công, cụ thể là: `status IN ('assigned', 'compensation')`. Tuyệt đối không đếm các trạng thái bị chặn/lỗi như 'duplicate', 'blacklisted', 'error', 'pending_work_hours', 'no_consultant'.\n" .
                 "- Sử dụng các phép JOIN để kết nối các bảng (ví dụ: JOIN consultants c ON dl.assigned_to = c.id để lấy tên của Sale thay vì chỉ hiển thị ID).\n" .
                 "- Tránh trả về dữ liệu quá dài. Hãy sử dụng COUNT, SUM, GROUP BY, ORDER BY, LIMIT để thu gọn dữ liệu trước khi trả về.\n" .
                 "- Luôn xử lý khoảng thời gian dựa trên các hàm ngày tháng của SQL (ví dụ: `received_at >= CURDATE()` hoặc `received_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`).\n" .

@@ -528,6 +528,16 @@ const CalendarPromoController = () => {
 };
 
 export default function App() {
+  useEffect(() => {
+    const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
+    if (localTheme) {
+      document.documentElement.setAttribute('data-theme', localTheme);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

@@ -83,6 +83,19 @@ const getDeduplicatedNotes = (notes: string[]): string => {
 };
 
 export const QuickAddLeadModal = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
   const [manualData, setManualData] = useState({ name: '', phone: '', email: '', source: '', type: '', note: '' });
@@ -1023,15 +1036,15 @@ export const QuickAddLeadModal = () => {
       title="Thêm Data Thủ Công"
       width="650px"
     >
-      <div style={{ padding: '0 0 1.25rem 0', background: 'white' }}>
+      <div style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
         {/* Dán nhanh thông tin */}
         <div style={{
           marginBottom: '1.25rem',
           padding: '12px 14px',
-          background: 'linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%)',
+          background: theme === 'dark' ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%)',
           borderRadius: '12px',
-          border: '1px dashed #c084fc',
-          boxShadow: '0 2px 8px rgba(192, 132, 252, 0.08)'
+          border: theme === 'dark' ? '1px dashed rgba(168, 85, 247, 0.4)' : '1px dashed #c084fc',
+          boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
         }}>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
             AI TRÍCH XUẤT TỰ ĐỘNG
@@ -1043,13 +1056,14 @@ export const QuickAddLeadModal = () => {
               resize: 'none',
               fontSize: '0.8125rem',
               lineHeight: 1.4,
-              background: 'white',
-              border: '1px solid #ddd6fe',
+              background: theme === 'dark' ? 'var(--color-bg)' : 'white',
+              border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe',
               borderRadius: '8px',
               padding: '8px 10px',
               width: '100%',
               outline: 'none',
-              transition: 'border-color 0.2s'
+              transition: 'border-color 0.2s',
+              color: theme === 'dark' ? 'var(--color-text)' : 'inherit'
             }}
             placeholder="Ví dụ: Trần Văn Hiền - 0364200518 - tìm hiểu liên thông - Chưa hỏi được gì - FB_Ads"
             value={quickInput}
@@ -1093,8 +1107,8 @@ export const QuickAddLeadModal = () => {
                       left: 0,
                       right: 0,
                       zIndex: 1000,
-                      background: 'white',
-                      border: '1px solid #e2e8f0',
+                      background: theme === 'dark' ? 'var(--color-surface)' : 'white',
+                      border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
                       borderRadius: '8px',
                       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                       maxHeight: '180px',
@@ -1110,16 +1124,16 @@ export const QuickAddLeadModal = () => {
                           padding: '8px 12px',
                           fontSize: '0.8125rem',
                           cursor: 'pointer',
-                          color: '#1e293b',
+                          color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
                           transition: 'background-color 0.2s',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f5f3ff';
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#f5f3ff';
                           e.currentTarget.style.color = '#7c3aed';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = '#1e293b';
+                          e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
                         }}
                       >
                         {src}
@@ -1140,7 +1154,7 @@ export const QuickAddLeadModal = () => {
           </div>
         </div>
 
-        <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12, border: '1px solid #e2e8f0', marginTop: '1.5rem' }}>
+        <div style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: '1.5rem' }}>
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview (Tự động dự báo)
           </h4>
@@ -1157,14 +1171,14 @@ export const QuickAddLeadModal = () => {
                 <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   Sẽ rơi vào Vòng: <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || 'Vòng ' + previewCons.round_id}</strong>
                   {previewCons.is_fallback && (
-                    <span style={{ marginLeft: 8, fontSize: '0.75rem', background: '#fee2e2', color: '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+                    <span style={{ marginLeft: 8, fontSize: '0.75rem', background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2', color: theme === 'dark' ? '#f87171' : '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
                       Vòng mặc định (Fallback)
                     </span>
                   )}
                 </div>
               </div>
 
-              <div style={{ background: 'white', padding: '12px', borderRadius: 12, border: '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: theme === 'dark' ? 'var(--color-surface)' : 'white', padding: '12px', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Dòng 1: Sale dự kiến nhận */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1180,13 +1194,13 @@ export const QuickAddLeadModal = () => {
                       type="button"
                       onClick={() => setShowOverrideSelector(true)}
                       style={{
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
+                        background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc',
+                        border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1',
                         borderRadius: '6px',
                         padding: '4px 8px',
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        color: '#64748b',
+                        color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -1195,14 +1209,14 @@ export const QuickAddLeadModal = () => {
                         outline: 'none'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f1f5f9';
-                        e.currentTarget.style.borderColor = '#94a3b8';
-                        e.currentTarget.style.color = '#334155';
+                        e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : '#f1f5f9';
+                        e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-text-muted)' : '#94a3b8';
+                        e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#334155';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#f8fafc';
-                        e.currentTarget.style.borderColor = '#cbd5e1';
-                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f8fafc';
+                        e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-border)' : '#cbd5e1';
+                        e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text-muted)' : '#64748b';
                       }}
                     >
                       Chỉ định Sale khác
@@ -1212,7 +1226,7 @@ export const QuickAddLeadModal = () => {
 
                 {(showOverrideSelector || !!overrideConsId) && (
                   <>
-                    <hr style={{ border: 0, borderTop: '1px dashed #e2e8f0', margin: 0 }} />
+                    <hr style={{ border: 0, borderTop: '1px dashed var(--color-border)', margin: 0 }} />
                     {/* Dòng 2: Chỉ định Sale nhận (Override) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {(() => {
@@ -1250,10 +1264,10 @@ export const QuickAddLeadModal = () => {
               </div>
 
               {overrideConsId && overrideConsId !== String(previewCons.consultant?.consultant_id) && previewCons.consultant && (
-                <div style={{ marginTop: 12, padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: 8 }}>
+                <div style={{ marginTop: 12, padding: '12px 16px', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fefce8', border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef08a', borderRadius: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '0.8125rem', color: '#854d0e', fontWeight: 600 }}>
-                      Trả lại data cho <strong style={{ color: '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
+                    <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? '#fbbf24' : '#854d0e', fontWeight: 600 }}>
+                      Trả lại data cho <strong style={{ color: theme === 'dark' ? '#f59e0b' : '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
                     </div>
                     <div
                       className={`custom-toggle ${compensateSkipped ? 'active' : ''}`}
@@ -1266,7 +1280,7 @@ export const QuickAddLeadModal = () => {
           )}
         </div>
       </div>
-      <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>
+      <div style={{ padding: '1rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>
         <button className="btn outline" onClick={() => setIsOpen(false)}>Hủy</button>
         <button className="btn primary" onClick={handleManualSubmit} disabled={isSubmittingManual || (!manualData.phone && !manualData.email)} style={{ background: 'var(--color-primary)' }}>
           {isSubmittingManual ? 'Đang lưu...' : 'Lưu & Giao Data'}

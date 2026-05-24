@@ -10,6 +10,19 @@ import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
 
 export const Accounts = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -651,9 +664,9 @@ export const Accounts = () => {
                             flexDirection: 'column', 
                             gap: '6px', 
                             padding: '8px 12px', 
-                            background: '#f8fafc', 
+                            background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', 
                             borderRadius: '8px', 
-                            border: '1px solid var(--color-border-light)',
+                            border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
                             maxWidth: '450px',
                             minWidth: '240px',
                             fontSize: '0.8rem' 
@@ -684,7 +697,7 @@ export const Accounts = () => {
                           </div>
                         );
                       } catch {
-                        return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: '#f8fafc', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
+                        return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px 10px', borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
                       }
                     };
 
@@ -963,7 +976,7 @@ export const Accounts = () => {
               )}
             </div>
 
-            <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
+            <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
               <button type="button" className="btn outline" style={{ flex: 1 }} onClick={() => setShowReplacementModal(false)}>Hủy bỏ</button>
               <button
                 type="button"

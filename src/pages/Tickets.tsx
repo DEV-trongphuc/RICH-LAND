@@ -125,6 +125,19 @@ const parseBlacklistNote = (note: string) => {
 };
 
 export const Tickets = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
@@ -967,7 +980,7 @@ export const Tickets = () => {
         width="850px"
       >
         {selectedLead && (
-          <div style={{ padding: '1.5rem', background: 'white' }}>
+          <div style={{ padding: '1.5rem', background: 'transparent' }}>
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
               {/* Cột Trái: Chi Tiết */}
               <div>
@@ -1017,13 +1030,13 @@ export const Tickets = () => {
                 </div>
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Phone</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                     </div>
                   </div>
-                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
@@ -1032,11 +1045,11 @@ export const Tickets = () => {
                 </div>
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
                   </div>
-                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 12 }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
                     <div>
                       {selectedLead.status === 'assigned' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>}
@@ -1059,42 +1072,42 @@ export const Tickets = () => {
                     <>
                       {/* Clean Note Card */}
                       <div style={{ 
-                        background: 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)', 
-                        border: '1px solid #fef3c7',
+                        background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)', 
+                        border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef3c7',
                         padding: '1.25rem', 
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
-                        boxShadow: '0 4px 15px rgba(245, 158, 11, 0.03)'
+                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.03)'
                       }}
                       className="premium-alert-card"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{
-                            background: '#fef3c7',
+                            background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
                             padding: '8px',
                             borderRadius: '10px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#d97706'
+                            color: theme === 'dark' ? '#f59e0b' : '#d97706'
                           }}>
                             <Tag size={18} strokeWidth={2.5} />
                           </div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: '#78350f' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: '#b45309', marginRight: '6px' }}>Loại Data:</span>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>Loại Data:</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
                           </div>
                           
-                          <div style={{ borderTop: '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
-                            <div style={{ fontSize: '0.875rem', color: '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                              {cleanNote ? cleanNote : <em style={{ color: '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
+                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
+                            <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
+                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
                             </div>
                           </div>
                         </div>
@@ -1107,29 +1120,55 @@ export const Tickets = () => {
                             const isApproved = err.includes('DUYỆT');
                             
                             // Rich harmonious color palettes
-                            const colors = isApproved ? {
-                              gradient: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                              border: '1px solid #a7f3d0',
-                              glow: '0 4px 15px rgba(16, 185, 129, 0.04)',
-                              accent: '#10b981',
-                              title: '#065f46',
-                              text: '#047857',
-                              badgeBg: '#d1fae5',
-                              badgeText: '#065f46',
-                              badgeBorder: '1px solid #a7f3d0',
-                              iconBg: '#d1fae5',
-                            } : {
-                              gradient: 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
-                              border: '1px solid #fecaca',
-                              glow: '0 4px 15px rgba(244, 63, 94, 0.04)',
-                              accent: '#f43f5e',
-                              title: '#9f1239',
-                              text: '#be123c',
-                              badgeBg: '#ffe4e6',
-                              badgeText: '#9f1239',
-                              badgeBorder: '1px solid #fca5a5',
-                              iconBg: '#ffe4e6',
-                            };
+                            const colors = isApproved ? (
+                              theme === 'dark' ? {
+                                gradient: 'rgba(16, 185, 129, 0.08)',
+                                border: '1px solid rgba(16, 185, 129, 0.15)',
+                                glow: 'none',
+                                accent: '#34d399',
+                                title: '#34d399',
+                                text: '#e2e8f0',
+                                badgeBg: 'rgba(16, 185, 129, 0.15)',
+                                badgeText: '#34d399',
+                                badgeBorder: '1px solid rgba(16, 185, 129, 0.2)',
+                                iconBg: 'rgba(16, 185, 129, 0.15)',
+                              } : {
+                                gradient: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                                border: '1px solid #a7f3d0',
+                                glow: '0 4px 15px rgba(16, 185, 129, 0.04)',
+                                accent: '#10b981',
+                                title: '#065f46',
+                                text: '#047857',
+                                badgeBg: '#d1fae5',
+                                badgeText: '#065f46',
+                                badgeBorder: '1px solid #a7f3d0',
+                                iconBg: '#d1fae5',
+                              }
+                            ) : (
+                              theme === 'dark' ? {
+                                gradient: 'rgba(239, 68, 68, 0.08)',
+                                border: '1px solid rgba(239, 68, 68, 0.15)',
+                                glow: 'none',
+                                accent: '#f87171',
+                                title: '#f87171',
+                                text: '#e2e8f0',
+                                badgeBg: 'rgba(239, 68, 68, 0.15)',
+                                badgeText: '#f87171',
+                                badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',
+                                iconBg: 'rgba(239, 68, 68, 0.15)',
+                              } : {
+                                gradient: 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
+                                border: '1px solid #fecaca',
+                                glow: '0 4px 15px rgba(244, 63, 94, 0.04)',
+                                accent: '#f43f5e',
+                                title: '#9f1239',
+                                text: '#be123c',
+                                badgeBg: '#ffe4e6',
+                                badgeText: '#9f1239',
+                                badgeBorder: '1px solid #fca5a5',
+                                iconBg: '#ffe4e6',
+                              }
+                            );
 
                             const IconComponent = isApproved ? CheckCircle2 : XCircle;
 
@@ -1218,19 +1257,19 @@ export const Tickets = () => {
 
                                 {/* Content block */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, lineHeight: 1.5 }}>
+                                  <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? 'var(--color-text)' : '#1e293b', fontWeight: 500, lineHeight: 1.5 }}>
                                     Lỗi: <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
                                   </div>
                                   {actionReason && (
                                     <div style={{ 
                                       fontSize: '0.85rem', 
-                                      color: '#475569', 
+                                      color: theme === 'dark' ? 'var(--color-text-muted)' : '#475569', 
                                       fontWeight: 400, 
                                       lineHeight: 1.5,
-                                      background: 'rgba(255, 255, 255, 0.4)',
+                                      background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
                                       padding: '8px 12px',
                                       borderRadius: '8px',
-                                      border: '1px dashed rgba(0, 0, 0, 0.05)',
+                                      border: theme === 'dark' ? '1px dashed var(--color-border)' : '1px dashed rgba(0, 0, 0, 0.05)',
                                       marginTop: 2
                                     }}>
                                       <strong>Lý do từ chối / Duyệt:</strong> {actionReason.trim()}
@@ -1245,17 +1284,17 @@ export const Tickets = () => {
                                   gap: '12px', 
                                   paddingTop: '0.75rem', 
                                   marginTop: '0.25rem',
-                                  borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
+                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)', 
                                   flexWrap: 'wrap'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Avatar name={displayAdmin} size={16} />
-                                    <span>Xử lý bởi: <strong style={{ color: '#334155' }}>{displayAdmin}</strong></span>
+                                    <span>Xử lý bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
                                   </div>
-                                  <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: '#334155' }}>{displayTime}</strong></span>
+                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayTime}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1269,7 +1308,18 @@ export const Tickets = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                           {blacklistNotes.map((note, index) => {
                             const parsed = parseBlacklistNote(note);
-                            const blacklistColors = {
+                            const blacklistColors = theme === 'dark' ? {
+                              gradient: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid rgba(239, 68, 68, 0.15)',
+                              glow: 'none',
+                              accent: '#f87171',
+                              title: '#f87171',
+                              text: '#e2e8f0',
+                              badgeBg: 'rgba(239, 68, 68, 0.15)',
+                              badgeText: '#f87171',
+                              badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',
+                              iconBg: 'rgba(239, 68, 68, 0.15)',
+                            } : {
                               gradient: 'linear-gradient(135deg, #fff1f2 0%, #fff5f5 100%)',
                               border: '1px solid #fecaca',
                               glow: '0 4px 15px rgba(244, 63, 94, 0.04)',
@@ -1296,7 +1346,7 @@ export const Tickets = () => {
                               }}
                               className="premium-alert-card"
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{
                                       background: blacklistColors.iconBg,
@@ -1332,13 +1382,13 @@ export const Tickets = () => {
                                   {parsed.reason && (
                                     <div style={{ 
                                       fontSize: '0.875rem', 
-                                      color: '#1e293b', 
+                                      color: theme === 'dark' ? 'var(--color-text)' : '#1e293b', 
                                       fontWeight: 500, 
                                       lineHeight: 1.5,
-                                      background: 'rgba(255, 255, 255, 0.4)',
+                                      background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
                                       padding: '8px 12px',
                                       borderRadius: '8px',
-                                      border: '1px dashed rgba(0, 0, 0, 0.05)'
+                                      border: theme === 'dark' ? '1px dashed var(--color-border)' : '1px dashed rgba(0, 0, 0, 0.05)'
                                     }}>
                                       <strong>Lý do chặn:</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
                                     </div>
@@ -1351,17 +1401,17 @@ export const Tickets = () => {
                                   gap: '12px', 
                                   paddingTop: '0.75rem', 
                                   marginTop: '0.25rem',
-                                  borderTop: '1px solid rgba(0, 0, 0, 0.04)', 
+                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)', 
                                   flexWrap: 'wrap'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Avatar name={parsed.admin} size={16} />
-                                    <span>Chặn bởi: <strong style={{ color: '#334155' }}>{parsed.admin}</strong></span>
+                                    <span>Chặn bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
                                   </div>
-                                  <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: '#334155' }}>{parsed.time}</strong></span>
+                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1400,14 +1450,14 @@ export const Tickets = () => {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, border: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                     Chưa có thông tin phân bổ cho Khách hàng này.
                   </div>
                 )}
 
                 {/* Giao lại Tư vấn viên */}
                 {user?.role === 'admin' && (
-                  <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên
                     </h4>

@@ -1,10 +1,37 @@
-import { Menu, Search, Command, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, Search, Command, Activity, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui/Avatar';
 
 export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () => void; onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   const { user } = useAuth();
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  // Listen to system changes if theme is not set
+  useEffect(() => {
+    const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
+    if (localTheme) {
+      setTheme(localTheme);
+      document.documentElement.setAttribute('data-theme', localTheme);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = prefersDark ? 'dark' : 'light';
+      setTheme(initialTheme);
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('domation_theme', nextTheme);
+    window.dispatchEvent(new Event('theme-change'));
+  };
 
   const getRoleLabel = (role?: string) => {
     switch (role) {
@@ -131,6 +158,36 @@ export const Header = ({ onMenuClick, onActivityFeedClick }: { onMenuClick: () =
             boxShadow: '0 0 0 2px var(--color-surface)',
             animation: 'pulse 2s infinite'
           }} />
+        </button>
+
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-light)',
+            borderRadius: 8,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+          title={theme === 'light' ? "Chuyển sang giao diện tối" : "Chuyển sang giao diện sáng"}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--color-bg)';
+            e.currentTarget.style.color = 'var(--color-primary)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = 'var(--color-text-light)';
+          }}
+        >
+          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
         </button>
 
         <div 

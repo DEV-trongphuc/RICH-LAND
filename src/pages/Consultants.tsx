@@ -55,6 +55,19 @@ const formatScheduleTooltip = (schedule: any): string => {
 };
 
 export const Consultants = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -588,7 +601,7 @@ export const Consultants = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     
                     {/* Avatar Upload */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                       <div style={{ position: 'relative' }}>
                         <Avatar src={formData.avatar} name={formData.name || 'Sale'} size={64} />
                         {isUploadingAvatar && (
@@ -607,7 +620,7 @@ export const Consultants = () => {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             className="btn outline sm"
-                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white' }}
+                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             disabled={isUploadingAvatar}
                           >
                             Tải ảnh lên
@@ -617,7 +630,7 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => setFormData({ ...formData, avatar: '' })}
                               className="btn outline sm"
-                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: 'white' }}
+                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             >
                               Xóa ảnh
                             </button>
@@ -667,7 +680,7 @@ export const Consultants = () => {
                           type="button" 
                           onClick={() => setFormData({ ...formData, status: 'active' })}
                           style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'active' ? 'white' : 'transparent',
+                            background: formData.status === 'active' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
@@ -677,7 +690,7 @@ export const Consultants = () => {
                           type="button" 
                           onClick={() => setFormData({ ...formData, status: 'leave' })}
                           style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'leave' ? 'white' : 'transparent',
+                            background: formData.status === 'leave' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
@@ -687,7 +700,7 @@ export const Consultants = () => {
                           type="button" 
                           onClick={() => setFormData({ ...formData, status: 'inactive' })}
                           style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'inactive' ? 'white' : 'transparent',
+                            background: formData.status === 'inactive' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
@@ -697,7 +710,7 @@ export const Consultants = () => {
                     </div>
 
                     {formData.status === 'leave' && (
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: '#fffbeb', padding: '0.75rem', borderRadius: 12, border: '1px solid #fde68a', animation: 'slideUp 0.15s ease-out' }}>
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb', padding: '0.75rem', borderRadius: 12, border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid #fde68a', animation: 'slideUp 0.15s ease-out' }}>
                         <div>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Từ ngày</label>
                           <input 
@@ -722,7 +735,7 @@ export const Consultants = () => {
                     )}
 
                     {editingUser && (
-                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
+                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           <Send size={14} color="var(--color-primary)" /> Tương tác nhanh với Sale
                         </label>
@@ -732,9 +745,9 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
                               className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: '#0068ff', color: '#0068ff', background: 'white' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#e5f0ff' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'white' }}
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: '#0068ff', color: '#0068ff', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             >
                               <MessageCircle size={14} /> Nhắn tin nhanh
                             </button>
@@ -744,9 +757,9 @@ export const Consultants = () => {
                               type="button"
                               onClick={() => confirmUnlinkZalo(editingUser.id)}
                               className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'white' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-warning-light)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'white' }}
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
                             >
                               <Link2Off size={14} /> Hủy liên kết Zalo
                             </button>
@@ -769,7 +782,7 @@ export const Consultants = () => {
                           type="button" 
                           onClick={() => setScheduleMode('daily')}
                           style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: scheduleMode === 'daily' ? 'white' : 'transparent',
+                            background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                             boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
@@ -784,7 +797,7 @@ export const Consultants = () => {
                             }
                           }}
                           style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: scheduleMode === 'custom' ? 'white' : 'transparent',
+                            background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                             boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
@@ -847,7 +860,7 @@ export const Consultants = () => {
                             const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
                             
                             return (
-                              <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+                              <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                                 <div style={{ width: '60px', fontWeight: 600, fontSize: '0.75rem' }}>
                                   {dayLabel}
                                 </div>
@@ -869,14 +882,14 @@ export const Consultants = () => {
                                       type="time"
                                       value={dayConfig.start}
                                       onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: theme === 'dark' ? 'var(--color-surface)' : 'white', color: theme === 'dark' ? 'var(--color-text)' : 'inherit' }}
                                     />
                                     <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>-</span>
                                     <input 
                                       type="time"
                                       value={dayConfig.end}
                                       onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)' }}
+                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: theme === 'dark' ? 'var(--color-surface)' : 'white', color: theme === 'dark' ? 'var(--color-text)' : 'inherit' }}
                                     />
                                   </div>
                                 )}
@@ -891,8 +904,8 @@ export const Consultants = () => {
                       </p>
                     </div>
 
-                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'rgba(0, 104, 255, 0.04)', borderRadius: 12, border: '1px solid rgba(0, 104, 255, 0.08)' }}>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0068ff', fontSize: '0.8125rem' }}>
+                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(0, 104, 255, 0.04)', borderRadius: 12, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.15)' : '1px solid rgba(0, 104, 255, 0.08)' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
                         <MessageCircle size={14} /> Zalo Chat ID (Tự động cấp)
                       </label>
                       <input 
@@ -913,7 +926,7 @@ export const Consultants = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                 <button type="button" className="btn outline" onClick={() => setModalOpen(false)}>Hủy bỏ</button>
                 <button type="submit" className="btn primary" disabled={isSaving}>
                   {isSaving ? 'Đang lưu...' : (editingUser ? 'Cập nhật' : 'Thêm mới')}
@@ -961,7 +974,7 @@ export const Consultants = () => {
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]</p>
                 </div>
               </div>
-              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'var(--color-bg)', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                 <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>Hủy</button>
                 <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
                   {isSendingMsg ? 'Đang gửi...' : 'Gửi tin nhắn'}
@@ -1116,7 +1129,7 @@ export const Consultants = () => {
                   </div>
 
                   {/* Row 1: Daily trend bar chart (Full Width) */}
-                  <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)', width: '100%' }}>
+                  <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', width: '100%' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
                     {statsData.by_date && statsData.by_date.length > 0 ? (
                       <div style={{ height: 180, width: '100%' }}>
@@ -1146,7 +1159,7 @@ export const Consultants = () => {
                   {/* Row 2: Status Ratio (Donut) & Rounds Breakdown */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Donut chart for status ratio */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
                       {(() => {
                         const statusChartData = [
@@ -1197,7 +1210,7 @@ export const Consultants = () => {
                     </div>
 
                     {/* Rounds breakdown chart */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Phân bổ theo Vòng (Round)</h4>
                       {statsData.rounds.length > 0 ? (
                         <div style={{ height: 160, width: '100%' }}>
@@ -1224,7 +1237,7 @@ export const Consultants = () => {
                   {/* Row 3: Marketing Sources & Tickets Reports */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Source breakdown list */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
                       {statsData.by_source && statsData.by_source.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
@@ -1238,7 +1251,7 @@ export const Consultants = () => {
                                   <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{src.source}</span>
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} data ({sourcePercent}%)</span>
                                 </div>
-                                <div style={{ width: '100%', height: 4, background: '#f1f5f9', borderRadius: 2 }}>
+                                <div style={{ width: '100%', height: 4, background: theme === 'dark' ? 'var(--color-bg)' : '#f1f5f9', borderRadius: 2 }}>
                                   <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
                                 </div>
                               </div>
@@ -1253,11 +1266,11 @@ export const Consultants = () => {
                     </div>
 
                     {/* Tickets Reports statistics */}
-                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'white', border: '1px solid var(--color-border-light)' }}>
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : 'white', border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
                       {statsData.tickets ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
-                          <div style={{ background: '#f8fafc', padding: '6px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
+                          <div style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px', borderRadius: 8, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                             <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>
                           </div>
@@ -1286,7 +1299,7 @@ export const Consultants = () => {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '1rem 1.25rem', background: '#f8fafc', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+            <div style={{ padding: '1rem 1.25rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
               <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>Đóng</button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, Database, Sparkles, LayoutGrid } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface Message {
@@ -12,6 +12,7 @@ interface Message {
 export const AIChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -27,6 +28,15 @@ export const AIChatbot: React.FC = () => {
 
   const botAvatarUrl = "https://crm-domation.vercel.app/LOGO.jpg";
 
+  // Sidebar stats card config
+  const statsConfig = [
+    { key: 'total_today', label: 'Tổng tiếp nhận', color: '#6366f1', prompt: 'Hôm nay hệ thống nhận bao nhiêu data?' },
+    { key: 'distributed_today', label: 'Đã bàn giao', color: '#10b981', prompt: 'Hôm nay đã chia bao nhiêu data cho Sale?' },
+    { key: 'duplicates', label: 'Trùng lặp', color: '#f59e0b', prompt: 'Có bao nhiêu data trùng lặp hôm nay?' },
+    { key: 'blacklists', label: 'Chặn Blacklist', color: '#6b7280', prompt: 'Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?' },
+    { key: 'errors', label: 'Lỗi / Ticket', color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
+  ];
+
   // Suggested prompts
   const quickPrompts = [
     { label: '📊 Thống kê data hôm nay', text: 'Hôm nay hệ thống chia bao nhiêu data?' },
@@ -34,6 +44,20 @@ export const AIChatbot: React.FC = () => {
     { label: '🛡️ Quản lý Blacklist', text: 'Làm sao để cấu hình Blacklist?' },
     { label: '🎫 Ticket báo lỗi đền bù', text: 'Quy trình xử lý Ticket lỗi thế nào?' }
   ];
+
+  // Responsive sidebar toggle
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setShowSidebar(false);
+      } else {
+        setShowSidebar(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch stats when chat opens
   useEffect(() => {
@@ -290,20 +314,93 @@ export const AIChatbot: React.FC = () => {
     <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
       {/* CSS Styles injection */}
       <style>{`
+        :root {
+          --chatbot-window-bg: rgba(255, 255, 255, 0.75);
+          --chatbot-window-border: rgba(255, 255, 255, 0.6);
+          --chatbot-sidebar-bg: rgba(248, 250, 252, 0.35);
+          --chatbot-sidebar-border: rgba(0, 0, 0, 0.05);
+          --chatbot-bubble-bot-bg: rgba(79, 70, 229, 0.04);
+          --chatbot-bubble-bot-border: rgba(79, 70, 229, 0.08);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          --chatbot-text: #0f172a;
+          --chatbot-text-muted: #64748b;
+          --chatbot-card-bg: rgba(255, 255, 255, 0.85);
+          --chatbot-card-hover-bg: #ffffff;
+          --chatbot-card-border: rgba(0, 0, 0, 0.04);
+          --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+          --chatbot-input-bg: rgba(248, 250, 252, 0.7);
+        }
+        [data-theme="dark"] {
+          --chatbot-window-bg: rgba(26, 26, 36, 0.75);
+          --chatbot-window-border: rgba(255, 255, 255, 0.08);
+          --chatbot-sidebar-bg: rgba(15, 15, 20, 0.4);
+          --chatbot-sidebar-border: rgba(255, 255, 255, 0.06);
+          --chatbot-bubble-bot-bg: rgba(255, 255, 255, 0.03);
+          --chatbot-bubble-bot-border: rgba(255, 255, 255, 0.06);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          --chatbot-text: #f1f5f9;
+          --chatbot-text-muted: #94a3b8;
+          --chatbot-card-bg: rgba(37, 37, 53, 0.6);
+          --chatbot-card-hover-bg: rgba(37, 37, 53, 0.8);
+          --chatbot-card-border: rgba(255, 255, 255, 0.04);
+          --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          --chatbot-input-bg: rgba(15, 15, 20, 0.5);
+        }
+        
         .pulse-chatbot {
-          animation: pulse-ring-chatbot 2s infinite;
+          animation: pulse-ring-chatbot 2.5s infinite;
         }
         @keyframes pulse-ring-chatbot {
           0% {
-            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.03);
           }
           70% {
-            box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            box-shadow: 0 0 0 15px rgba(79, 70, 229, 0);
           }
           100% {
-            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+            transform: scale(1);
           }
         }
+        
+        .message-appear {
+          animation: slide-up-fade 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          opacity: 0;
+        }
+        @keyframes slide-up-fade {
+          0% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.97);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        
+        .chatbot-stats-card {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: stats-card-fade 0.4s ease-out forwards;
+          opacity: 0;
+        }
+        @keyframes stats-card-fade {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .chatbot-stats-card:hover {
+          transform: translateY(-2px) scale(1.02);
+          background: var(--chatbot-card-hover-bg) !important;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
+          border-color: rgba(79, 70, 229, 0.15) !important;
+        }
+        .chatbot-stats-card:active {
+          transform: translateY(0) scale(0.98);
+        }
+        
         .dot-typing {
           display: inline-flex;
           align-items: center;
@@ -329,24 +426,78 @@ export const AIChatbot: React.FC = () => {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
+        .quick-prompt-chip {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .quick-prompt-chip:hover {
+          border-color: var(--color-primary) !important;
+          color: white !important;
+          background: var(--color-primary) !important;
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-primary) !important;
+        }
+        .quick-prompt-chip:active {
+          transform: translateY(0);
+        }
+        
+        .chatbot-input-field {
+          transition: all 0.25s ease;
+        }
+        .chatbot-input-field:focus {
+          border-color: var(--color-primary) !important;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+          background: var(--color-surface) !important;
+        }
+        .chatbot-send-button {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .chatbot-send-button:not([disabled]):hover {
+          transform: scale(1.1) rotate(-5deg);
+          box-shadow: var(--shadow-primary);
+        }
+        .chatbot-send-button:not([disabled]):active {
+          transform: scale(0.95);
+        }
+        
+        /* Premium custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(79, 70, 229, 0.15);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(79, 70, 229, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+          .chatbot-sidebar {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* Floating Chat Bubble */}
       <button
         onClick={() => setIsOpen(true)}
         style={{
-          width: 54,
-          height: 54,
+          width: 64,
+          height: 64,
           borderRadius: '50%',
           background: 'white',
           padding: 0,
           cursor: 'pointer',
           border: 'none',
-          boxShadow: '0 4px 18px rgba(99, 102, 241, 0.3)',
+          boxShadow: '0 10px 30px rgba(79, 70, 229, 0.3)',
           opacity: isOpen ? 0 : 1,
           transform: buttonTransform,
           pointerEvents: isOpen ? 'none' : 'auto',
-          transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',
+          transition: 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',
           outline: 'none',
           position: 'absolute',
           bottom: 0,
@@ -364,12 +515,12 @@ export const AIChatbot: React.FC = () => {
             e.currentTarget.style.display = 'none';
             const parent = e.currentTarget.parentElement;
             if (parent) {
-              parent.style.background = 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))';
+              parent.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
               if (!parent.querySelector('.btn-fallback-icon')) {
                 const fallback = document.createElement('span');
                 fallback.className = 'btn-fallback-icon';
                 fallback.innerHTML = '🤖';
-                fallback.style.fontSize = '24px';
+                fallback.style.fontSize = '26px';
                 parent.appendChild(fallback);
               }
             }
@@ -379,7 +530,7 @@ export const AIChatbot: React.FC = () => {
             height: '100%',
             borderRadius: '50%',
             objectFit: 'cover',
-            border: '2.5px solid var(--color-primary)',
+            border: '3px solid #4f46e5',
             background: 'white',
             display: 'block'
           }}
@@ -403,217 +554,367 @@ export const AIChatbot: React.FC = () => {
           position: 'absolute',
           bottom: 0,
           right: 0,
-          width: 'min(440px, 90vw)',
-          height: 'min(520px, 80vh)',
-          borderRadius: '16px',
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(20px) saturate(190%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(190%)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.12)',
+          width: showSidebar ? 'min(820px, 94vw)' : 'min(540px, 92vw)',
+          height: 'min(720px, 85vh)',
+          borderRadius: '24px',
+          background: 'var(--chatbot-window-bg)',
+          backdropFilter: 'blur(30px) saturate(210%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(210%)',
+          border: '1px solid var(--chatbot-window-border)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
           display: 'flex',
-          flexDirection: 'column',
           overflow: 'hidden',
           opacity: isOpen ? 1 : 0,
           transform: isOpen ? 'scale(1) translate3d(0, 0, 0)' : 'scale(0.3) translate3d(0, 40px, 0)',
           transformOrigin: 'bottom right',
           pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease',
-          willChange: 'transform, opacity'
+          transition: 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease, width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          willChange: 'transform, opacity, width'
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            padding: '12px 16px',
-            background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {renderBotAvatar(32, true)}
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>Trợ lý AI Domation</div>
-              <div style={{ fontSize: '0.6875rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                Đang trực tuyến
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
+        {/* Sidebar - Dashboard Stats */}
+        {showSidebar && (
+          <div
+            className="chatbot-sidebar"
             style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: 'none',
-              borderRadius: '50%',
-              width: 26,
-              height: 26,
+              width: 260,
+              background: 'var(--chatbot-sidebar-bg)',
+              borderRight: '1px solid var(--chatbot-sidebar-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}
+          >
+            {/* Sidebar Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--chatbot-sidebar-border)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              cursor: 'pointer',
-              outline: 'none',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-          >
-            <X size={14} />
-          </button>
-        </div>
+              gap: 8,
+              background: 'rgba(79, 70, 229, 0.02)'
+            }}>
+              <Database size={15} style={{ color: '#4f46e5' }} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--chatbot-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Số liệu hôm nay
+              </span>
+            </div>
 
-        {/* Messages Container */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
-          }}
-        >
-          {messages.map(msg => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                alignItems: 'flex-start',
-                gap: 8
-              }}
+            {/* Sidebar Content */}
+            <div 
+              style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                padding: '16px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 12 
+              }} 
+              className="custom-scrollbar"
             >
-              {msg.sender === 'bot' && renderBotAvatar(28, false)}
-              
-              <div
-                style={{
-                  maxWidth: '80%',
-                  padding: '10px 14px',
-                  borderRadius: msg.sender === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                  background: msg.sender === 'user' ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: msg.sender === 'user' ? 'white' : 'var(--color-text)',
-                  fontSize: '0.8125rem',
-                  lineHeight: '1.45',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                  border: msg.sender === 'user' ? 'none' : '1px solid var(--color-border-light)'
-                }}
-              >
-                {renderText(msg.text)}
+              {stats ? (
+                statsConfig.map((item, idx) => {
+                  const value = stats[item.key] !== undefined ? stats[item.key] : 0;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleSend(item.prompt)}
+                      style={{
+                        padding: '12px 14px',
+                        background: 'var(--chatbot-card-bg)',
+                        border: '1px solid var(--chatbot-card-border)',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        boxShadow: 'var(--chatbot-card-shadow)',
+                        animationDelay: `${idx * 0.05}s`
+                      }}
+                      className="chatbot-stats-card"
+                    >
+                      <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, display: 'inline-block' }} />
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--chatbot-text)', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                        {value}
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--chatbot-text-muted)' }}>data</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, opacity: 0.6 }}>
+                  <div className="dot-typing" style={{ color: 'var(--chatbot-text-muted)', fontSize: '0.8rem' }}>Đang tải số liệu</div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar Footer */}
+            <div style={{
+              padding: '12px 16px',
+              borderTop: '1px solid var(--chatbot-sidebar-border)',
+              fontSize: '0.6875rem',
+              color: 'var(--chatbot-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(79, 70, 229, 0.01)'
+            }}>
+              <Sparkles size={12} style={{ color: '#7c3aed' }} />
+              <span>Nhấp để hỏi AI tự động</span>
+            </div>
+          </div>
+        )}
+
+        {/* Main Chat Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          {/* Header */}
+          <div
+            style={{
+              padding: '14px 20px',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 15px rgba(79, 70, 229, 0.15)',
+              zIndex: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {renderBotAvatar(34, true)}
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Trợ lý AI Domation
+                  <Sparkles size={12} style={{ color: '#fcd34d' }} />
+                </div>
+                <div style={{ fontSize: '0.6875rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                  Đang trực tuyến
+                </div>
               </div>
             </div>
-          ))}
-          
-          {isTyping && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 36 }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>AI đang trả lời...</span>
-              <span className="dot-typing" />
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Quick suggestions */}
-        <div
-          style={{
-            padding: '6px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            borderTop: '1px solid var(--color-border-light)',
-            background: 'rgba(255,255,255,0.4)'
-          }}
-        >
-          <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Gợi ý hỏi nhanh:</div>
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
-            {quickPrompts.map((p, idx) => (
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Sidebar toggle button */}
               <button
-                key={idx}
-                onClick={() => handleSend(p.text)}
+                className="chatbot-sidebar-toggle-btn"
+                onClick={() => setShowSidebar(!showSidebar)}
                 style={{
-                  flexShrink: 0,
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: '20px',
-                  padding: '4px 10px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  color: 'var(--color-text-light)',
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 30,
+                  height: 30,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
                   cursor: 'pointer',
                   outline: 'none',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.color = 'var(--color-primary)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                  e.currentTarget.style.color = 'var(--color-text-light)';
-                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                title={showSidebar ? "Ẩn chỉ số" : "Hiện chỉ số"}
               >
-                {p.label}
+                <LayoutGrid size={14} />
               </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Input Bar */}
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            handleSend(inputValue);
-          }}
-          style={{
-            padding: '10px 12px 14px 12px',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            background: 'var(--color-surface)',
-            borderTop: '1px solid var(--color-border-light)'
-          }}
-        >
-          <input
-            type="text"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            placeholder="Nhập câu hỏi của bạn..."
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 30,
+                  height: 30,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages Container */}
+          <div
             style={{
               flex: 1,
-              padding: '8px 12px',
-              border: '1px solid var(--color-border)',
-              borderRadius: '20px',
-              fontSize: '0.8125rem',
-              outline: 'none',
-              background: 'var(--color-bg)',
-              color: 'var(--color-text)'
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim()}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              background: inputValue.trim() ? 'var(--color-primary)' : 'var(--color-border-light)',
-              color: inputValue.trim() ? 'white' : 'var(--color-text-muted)',
+              overflowY: 'auto',
+              padding: '20px',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: inputValue.trim() ? 'pointer' : 'default',
-              border: 'none',
-              outline: 'none',
-              transition: 'all 0.2s'
+              flexDirection: 'column',
+              gap: '16px',
+              background: 'transparent'
+            }}
+            className="custom-scrollbar"
+          >
+            {messages.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: 10
+                }}
+                className="message-appear"
+              >
+                {msg.sender === 'bot' && renderBotAvatar(30, false)}
+                
+                <div
+                  style={{
+                    maxWidth: '82%',
+                    padding: '12px 18px',
+                    borderRadius: msg.sender === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                    background: msg.sender === 'user' 
+                      ? 'var(--chatbot-bubble-user-bg)' 
+                      : 'var(--chatbot-bubble-bot-bg)',
+                    color: msg.sender === 'user' ? 'white' : 'var(--chatbot-text)',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.6',
+                    boxShadow: msg.sender === 'user' 
+                      ? '0 4px 15px rgba(124, 58, 237, 0.2)' 
+                      : '0 4px 15px rgba(0,0,0,0.02)',
+                    border: msg.sender === 'user' ? 'none' : '1px solid var(--chatbot-bubble-bot-border)'
+                  }}
+                >
+                  {renderText(msg.text)}
+                </div>
+              </div>
+            ))}
+            
+            {isTyping && (
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 10, 
+                  paddingLeft: 40,
+                  animation: 'slide-up-fade 0.3s ease forwards'
+                }}
+              >
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {renderBotAvatar(24, false)}
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: '12px 12px 12px 2px',
+                    background: 'var(--chatbot-bubble-bot-bg)',
+                    border: '1px solid var(--chatbot-bubble-bot-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">AI đang trả lời</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick suggestions */}
+          <div
+            style={{
+              padding: '10px 20px 12px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              borderTop: '1px solid var(--chatbot-window-border)',
+              background: 'rgba(124, 58, 237, 0.01)'
             }}
           >
-            <Send size={14} />
-          </button>
-        </form>
+            <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gợi ý hỏi nhanh:</div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
+              {quickPrompts.map((p, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSend(p.text)}
+                  style={{
+                    flexShrink: 0,
+                    background: 'var(--chatbot-card-bg)',
+                    border: '1px solid var(--chatbot-card-border)',
+                    borderRadius: '20px',
+                    padding: '6px 14px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: 'var(--chatbot-text)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: 'var(--chatbot-card-shadow)',
+                  }}
+                  className="quick-prompt-chip"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Input Bar */}
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleSend(inputValue);
+            }}
+            style={{
+              padding: '12px 20px 20px 20px',
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              background: 'var(--color-surface)',
+              borderTop: '1px solid var(--chatbot-window-border)'
+            }}
+          >
+            <input
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              placeholder="Nhập câu hỏi của bạn..."
+              className="chatbot-input-field"
+              style={{
+                flex: 1,
+                padding: '12px 18px',
+                border: '1px solid var(--chatbot-card-border)',
+                borderRadius: '24px',
+                fontSize: '0.875rem',
+                outline: 'none',
+                background: 'var(--chatbot-input-bg)',
+                color: 'var(--chatbot-text)'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="chatbot-send-button"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: inputValue.trim() ? 'var(--color-primary)' : 'var(--color-border-light)',
+                color: inputValue.trim() ? 'white' : 'var(--color-text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: inputValue.trim() ? 'pointer' : 'default',
+                border: 'none',
+                outline: 'none',
+                boxShadow: inputValue.trim() ? '0 4px 10px rgba(124, 58, 237, 0.15)' : 'none'
+              }}
+            >
+              <Send size={15} />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
