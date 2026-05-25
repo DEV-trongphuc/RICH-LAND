@@ -6042,6 +6042,7 @@ switch ($action) {
         unset($c);
 
         // Query ticket error counts (data_reports approved)
+        $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
         $dateConditionResolved = str_replace('received_at', 'resolved_at', $dateCondition);
         $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
                             FROM data_reports 
