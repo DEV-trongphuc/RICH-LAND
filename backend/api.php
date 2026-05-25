@@ -2154,14 +2154,10 @@ switch ($action) {
                 }
             }
 
-            // 3. Calculate Fairness Index for each round
+            // 3. Calculate Fairness Index & Total Leads for each round
             foreach ($roundIds as $rId) {
                 $activeCons = $roundActiveConsultants[$rId] ?? [];
                 $N = count($activeCons);
-                if ($N <= 1) {
-                    $data[$rId]['fairness_index'] = 100.0;
-                    continue;
-                }
 
                 $rawCounts = [];
                 $normalizedCounts = [];
@@ -2182,6 +2178,13 @@ switch ($action) {
                     $rawCounts[] = $assignedCount;
                     $normalizedCounts[] = $assignedCount * $ratio;
                     $totalLeads += $assignedCount;
+                }
+
+                $data[$rId]['total_leads'] = $totalLeads;
+
+                if ($N <= 1) {
+                    $data[$rId]['fairness_index'] = 100.0;
+                    continue;
                 }
 
                 $giniNormalized = 0;

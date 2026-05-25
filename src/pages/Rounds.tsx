@@ -494,44 +494,63 @@ export const Rounds = () => {
                   </div>
 
                   <div style={{ flex: 1, marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
-                        {t('{count} Thành viên').replace('{count}', String(consList.length))}
-                      </p>
-                      {consList.length > 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          {consList.slice(0, 4).map((c: string, i: number) => {
-                            const matchedCons = consultants.find(x => x.name === c);
-                            return (
-                              <Avatar
-                                key={i}
-                                src={matchedCons?.avatar}
-                                name={c}
-                                size={32}
-                                style={{
-                                  border: '2px solid var(--color-surface)',
-                                  marginLeft: i === 0 ? 0 : -8,
-                                  position: 'relative',
-                                  zIndex: 10 - i,
-                                  boxShadow: 'var(--shadow-sm)'
-                                }}
-                              />
-                            );
-                          })}
-                          {consList.length > 4 && (
-                            <div style={{
-                              width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)',
-                              color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
-                              marginLeft: -8, position: 'relative', zIndex: 5, boxShadow: 'var(--shadow-sm)'
-                            }}>
-                              +{consList.length - 4}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t("Chưa có")}</p>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
+                          {t('{count} Thành viên').replace('{count}', String(consList.length))}
+                        </p>
+                        {consList.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            {consList.slice(0, 4).map((c: string, i: number) => {
+                              const matchedCons = consultants.find(x => x.name === c);
+                              return (
+                                <Avatar
+                                  key={i}
+                                  src={matchedCons?.avatar}
+                                  name={c}
+                                  size={32}
+                                  style={{
+                                    border: '2px solid var(--color-surface)',
+                                    marginLeft: i === 0 ? 0 : -8,
+                                    position: 'relative',
+                                    zIndex: 10 - i,
+                                    boxShadow: 'var(--shadow-sm)'
+                                  }}
+                                />
+                              );
+                            })}
+                            {consList.length > 4 && (
+                              <div style={{
+                                width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)',
+                                color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
+                                marginLeft: -8, position: 'relative', zIndex: 5, boxShadow: 'var(--shadow-sm)'
+                              }}>
+                                +{consList.length - 4}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t("Chưa có")}</p>
+                        )}
+                      </div>
+
+                      {/* Total Leads count */}
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 600, 
+                        color: 'var(--color-text-light)',
+                        background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Tổng data:")}</span>
+                        <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{r.total_leads || 0}</span>
+                      </div>
                     </div>
 
                     {compensatedConsultant ? (
@@ -684,6 +703,24 @@ export const Rounds = () => {
                         +{consList.length - 4}
                       </div>
                     )}
+
+                    {/* Total Leads count */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 600, 
+                      color: 'var(--color-text-light)',
+                      background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border-light)',
+                      marginLeft: 'auto'
+                    }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Tổng data:")}</span>
+                      <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{r.total_leads || 0}</span>
+                    </div>
                   </div>
 
                   {compensatedConsultant ? (

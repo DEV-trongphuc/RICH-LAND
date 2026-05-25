@@ -1086,6 +1086,7 @@ export const en: Record<string, string> = {
   "đã bù": "compensated",
   "Quản lý Bù Data": "Manage Compensation",
   "Vòng:": "Round:",
+  "Tổng data:": "Total Leads:",
   "Danh sách Tư vấn viên trong vòng": "Consultants in Round",
   "Nhập lý do bù chủ động (tùy chọn)...": "Enter manual compensation reason (optional)...",
   "Cập nhật Bù Data": "Update Compensation Settings",
