@@ -4950,6 +4950,8 @@ switch ($action) {
             $role = $input['role'] ?? 'viewer';
             $email = trim($input['email'] ?? '');
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+            $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
+            if ($avatar === '') $avatar = null;
 
             if (empty($username) || empty($password) || empty($name)) {
                 echo json_encode(['success' => false, 'message' => 'Tên hiển thị, username và mật khẩu là bắt buộc']);
@@ -4968,8 +4970,8 @@ switch ($action) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $token = bin2hex(random_bytes(32));
 
-            $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?)");
-            $stmt->bind_param("sssssss", $username, $hash, $name, $role, $email, $token, $zalo_chat_id);
+            $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id, avatar) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)");
+            $stmt->bind_param("ssssssss", $username, $hash, $name, $role, $email, $token, $zalo_chat_id, $avatar);
 
             if ($stmt->execute()) {
                 $newId = $conn->insert_id;
@@ -4982,7 +4984,7 @@ switch ($action) {
 
                 require_once 'mailer.php';
                 sendAdminConfirmationEmail($email, $name, $confirmLink);
-                logAdminAction($conn, $decodedUser['id'], 'ADD_ACCOUNT', ['id' => $newId, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
+                logAdminAction($conn, $decodedUser['id'], 'ADD_ACCOUNT', ['id' => $newId, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email, 'avatar' => $avatar]);
 
                 echo json_encode(['success' => true, 'id' => $newId]);
             } else {
@@ -5007,6 +5009,8 @@ switch ($action) {
             $role = $input['role'] ?? 'viewer';
             $email = trim($input['email'] ?? '');
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
+            $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
+            if ($avatar === '') $avatar = null;
 
             // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
             if ($id !== 1) {
@@ -5026,15 +5030,15 @@ switch ($action) {
 
             if (!empty($password)) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
-                $stmt->bind_param("ssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $id);
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=? WHERE id=?");
+                $stmt->bind_param("sssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=? WHERE id=?");
-                $stmt->bind_param("sssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $id);
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=? WHERE id=?");
+                $stmt->bind_param("ssssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $id);
             }
 
             if ($stmt->execute()) {
-                logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email]);
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email, 'avatar' => $avatar]);
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại, username hoặc email có thể bị trùng']);

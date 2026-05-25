@@ -20,7 +20,7 @@ export const FairShareAudit = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('Tháng này');
   const [roundFilter, setRoundFilter] = useState('');
-  
+
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -44,7 +44,7 @@ export const FairShareAudit = () => {
       const url = `get_fair_share_stats&date=${encodeURIComponent(dateFilter)}&round_id=${roundFilter}`;
       const res = await fetchAPI(url);
       if (signal?.aborted) return;
-      
+
       if (res.success) {
         setData(res.data);
       } else {
@@ -69,7 +69,7 @@ export const FairShareAudit = () => {
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) return toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
     if (new Date(startDate) > new Date(endDate)) return toast.error("Từ ngày không được lớn hơn Đến ngày");
-    
+
     const label = `${startDate} đến ${endDate}`;
     setDateFilter(label);
     setShowDateModal(false);
@@ -202,23 +202,23 @@ export const FairShareAudit = () => {
   // Automated smart insights calculation based on Fairness Gini Index & Deviations
   const renderSmartInsights = () => {
     if (!data || !data.consultants || data.consultants.length === 0) return null;
-    
+
     const fairness = data.fairnessIndex || 0;
-    
+
     // If fairness is good (>= 75), do not render the insights box
     if (fairness >= 75) return null;
-    
+
     // Find highest surplus and highest deficit
     let maxSurplus = 0;
     let maxSurplusSale: any = null;
     let maxDeficit = 0;
     let maxDeficitSale: any = null;
-    
+
     data.consultants.forEach((c: any) => {
       const targetShare = data.mean * c.receive_ratio;
       const diff = c.assigned_count - targetShare;
       const diffPercent = targetShare > 0 ? (diff / targetShare) * 100 : 0;
-      
+
       if (diff > maxSurplus) {
         maxSurplus = diff;
         maxSurplusSale = { ...c, diff, diffPercent };
@@ -348,8 +348,8 @@ export const FairShareAudit = () => {
             Báo cáo Đối soát Công bằng hoạt động thế nào?
           </h4>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6 }}>
-            Hệ thống áp dụng công thức <strong>Hệ số bất bình đẳng Gini</strong> và <strong>Độ lệch chuẩn</strong> thực tế của lượng data bàn giao cho Sale. 
-            Chỉ số Công bằng được tính toán bằng cách chuẩn hóa lượng data nhận được chia cho Tỷ lệ (Receive Ratio) thiết lập của từng Sale. 
+            Hệ thống áp dụng công thức <strong>Hệ số bất bình đẳng Gini</strong> và <strong>Độ lệch chuẩn</strong> thực tế của lượng data bàn giao cho Sale.
+            Chỉ số Công bằng được tính toán bằng cách chuẩn hóa lượng data nhận được chia cho Tỷ lệ (Receive Ratio) thiết lập của từng Sale.
             Giúp bạn ngay lập tức phát hiện xem có sự bất bình đẳng ngoài ý muốn do lỗi phân phối hoặc Sale offline kéo dài hay không.
           </p>
         </div>
@@ -417,12 +417,12 @@ export const FairShareAudit = () => {
             {/* Total Audited Leads */}
             <div className="stat-card hover-lift" style={{ minHeight: '135px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="stat-label" style={{ fontWeight: 800 }}>TỔNG LEAD / TVV AUDIT</span>
+                <span className="stat-label" style={{ fontWeight: 800 }}>TỔNG LEAD / SALEPERSONS</span>
                 <Users size={18} color="#3b82f6" />
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em' }}>
-                  {data?.totalLeads || 0} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>/ {data?.totalConsultants || 0} Sale</span>
+                  {data?.totalLeads || 0} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>/ {data?.totalConsultants || 0} Saleperson</span>
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
                   Phạm vi kiểm toán gồm {data?.totalConsultants || 0} Tư vấn viên đang hoạt động với tổng số {data?.totalLeads || 0} lead thành công.
@@ -438,7 +438,7 @@ export const FairShareAudit = () => {
 
       {/* Main Charts area */}
       <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
-        
+
         {/* Data Source Balance Chart */}
         <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <div style={{ marginBottom: '1.25rem' }}>
@@ -580,7 +580,7 @@ export const FairShareAudit = () => {
                     deviationClass = 'deviation-deficit';
                     deviationLabel = `${diff.toFixed(1)} lead (${diffPercent.toFixed(0)}%)`;
                   }
-                  
+
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'all 0.25s ease' }} className="audit-table-row">
                       <td style={{ padding: '14px 18px' }}>
@@ -697,29 +697,29 @@ export const FairShareAudit = () => {
       </div>
 
       {/* Custom Date Modal (from Dashboard.tsx) */}
-      <CustomModal 
-        isOpen={showDateModal} 
-        onClose={() => setShowDateModal(false)} 
+      <CustomModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
         title="Tùy chỉnh thời gian"
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">Từ ngày</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
             />
           </div>
           <div>
             <label className="form-label">Đến ngày</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -730,9 +730,9 @@ export const FairShareAudit = () => {
       </CustomModal>
 
       {/* Info Terminology Modal */}
-      <CustomModal 
-        isOpen={showInfoModal} 
-        onClose={() => setShowInfoModal(false)} 
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
         title="Giải thích thuật ngữ & Công thức tính toán"
         width="550px"
         showCloseIcon={false}
@@ -743,7 +743,7 @@ export const FairShareAudit = () => {
               <Scale size={16} color="var(--color-primary)" /> Chỉ số công bằng (Fairness Index)
             </h4>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-              Được tính toán dựa trên <strong>Hệ số Gini (Gini Coefficient)</strong> đã được chuẩn hóa theo Tỷ lệ nhận lead (Receive Ratio) cài đặt của từng TVV. 
+              Được tính toán dựa trên <strong>Hệ số Gini (Gini Coefficient)</strong> đã được chuẩn hóa theo Tỷ lệ nhận lead (Receive Ratio) cài đặt của từng TVV.
               Công thức: <code>Fairness Index = (1 - Gini) * 100%</code>.
               Chỉ số đạt 100% tương đương với mức công bằng hoàn hảo (mọi Sale đều nhận được lượng lead tỷ lệ thuận tuyệt đối với cài đặt của họ).
             </p>
@@ -756,7 +756,7 @@ export const FairShareAudit = () => {
               <AlertTriangle size={16} color="#fbbf24" /> Độ lệch chuẩn (Standard Deviation - SD)
             </h4>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-              Biểu thị mức độ phân tán của số lượng lead được chia xung quanh giá trị trung bình. 
+              Biểu thị mức độ phân tán của số lượng lead được chia xung quanh giá trị trung bình.
               Nếu SD = 0, tất cả các Sale nhận được số lượng lead hoàn toàn bằng nhau. SD càng nhỏ, thuật toán chia lead càng ít xảy ra sai số.
             </p>
           </div>

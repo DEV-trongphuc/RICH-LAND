@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -34,27 +34,114 @@ export const Accounts = () => {
     name: '',
     email: '',
     zalo_chat_id: '',
-    role: 'viewer'
+    role: 'viewer',
+    avatar: ''
   });
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file hình ảnh hợp lệ.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Kích thước ảnh không được vượt quá 5MB.');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+
+      const res = await fetchAPI('upload_avatar', {
+        method: 'POST',
+        body: fd
+      });
+
+      if (res.success && res.url) {
+        setFormData(prev => ({ ...prev, avatar: res.url }));
+        toast.success('Tải ảnh đại diện lên thành công!');
+      } else {
+        toast.error(res.message || 'Lỗi khi tải ảnh lên');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi kết nối: ' + err.message);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [checkingDelete, setCheckingDelete] = useState(false);
   const [usageInfo, setUsageInfo] = useState<any>(null);
   const [replacementId, setReplacementId] = useState<number | null>(null);
   const [showReplacementModal, setShowReplacementModal] = useState(false);
 
-  const [unlinkId, setUnlinkId] = useState<number | null>(null);
-  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+  const [quickMsgText, setQuickMsgText] = useState('');
+  const [isSendingQuickMsg, setIsSendingQuickMsg] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
-  // Quick Message State
-  const [quickMessageOpen, setQuickMessageOpen] = useState(false);
-  const [quickMessageTarget, setQuickMessageTarget] = useState<any>(null);
-  const [quickMessageText, setQuickMessageText] = useState('');
-  const [isSendingMsg, setIsSendingMsg] = useState(false);
+  const handleSendQuickMsgInModal = async () => {
+    if (!quickMsgText.trim() || !editingAccount) return;
+    setIsSendingQuickMsg(true);
+    try {
+      const res = await fetchAPI('send_quick_zalo_message', {
+        method: 'POST',
+        body: JSON.stringify({ account_id: editingAccount.id, message: quickMsgText })
+      });
+      if (res.success) {
+        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
+        setQuickMsgText('');
+      } else {
+        toast.error(res.message || 'Lỗi khi gửi tin');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    } finally {
+      setIsSendingQuickMsg(false);
+    }
+  };
+
+  const handleUnlinkZaloInModal = async () => {
+    if (!editingAccount) return;
+    if (!window.confirm("Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?")) return;
+    setIsUnlinking(true);
+    try {
+      const json = await fetchAPI('unlink_zalo', {
+        method: 'POST',
+        body: JSON.stringify({ id: editingAccount.id, type: 'account' })
+      });
+      if (json.success) {
+        toast.success('Đã hủy liên kết Zalo thành công!');
+        setFormData(prev => ({ ...prev, zalo_chat_id: '' }));
+        setEditingAccount((prev: any) => ({ ...prev, zalo_chat_id: null }));
+        fetchAccounts();
+      } else {
+        toast.error(json.message || 'Lỗi khi hủy liên kết');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi: ' + e.message);
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  const handleDeleteClickInModal = () => {
+    if (!editingAccount) return;
+    const id = editingAccount.id;
+    setModalOpen(false);
+    triggerDeleteFlow(id);
+  };
 
   const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
   const [logs, setLogs] = useState<any[]>([]);
@@ -95,13 +182,15 @@ export const Accounts = () => {
 
   const openAddModal = () => {
     setEditingAccount(null);
-    setFormData({ username: '', password: '', name: '', email: '', zalo_chat_id: '', role: 'viewer' });
+    setFormData({ username: '', password: '', name: '', email: '', zalo_chat_id: '', role: 'viewer', avatar: '' });
+    setQuickMsgText('');
     setModalOpen(true);
   };
 
   const openEditModal = (acc: any) => {
     setEditingAccount(acc);
-    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', zalo_chat_id: acc.zalo_chat_id || '', role: acc.role });
+    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', zalo_chat_id: acc.zalo_chat_id || '', role: acc.role, avatar: acc.avatar || '' });
+    setQuickMsgText('');
     setModalOpen(true);
   };
 
@@ -141,7 +230,6 @@ export const Accounts = () => {
 
   const triggerDeleteFlow = async (id: number) => {
     setDeleteId(id);
-    setCheckingDelete(true);
     try {
       const json = await fetchAPI(`check_delete_account&id=${id}`);
       if (json.success) {
@@ -158,7 +246,6 @@ export const Accounts = () => {
     } catch (e: any) {
       toast.error('Lỗi kiểm tra: ' + e.message);
     }
-    setCheckingDelete(false);
   };
 
   const handleDelete = async () => {
@@ -236,52 +323,7 @@ export const Accounts = () => {
     setZaloRemindingId(null);
   };
 
-  const confirmUnlinkZalo = (id: number) => {
-    setUnlinkId(id);
-    setUnlinkConfirmOpen(true);
-  };
 
-  const handleUnlinkZalo = async () => {
-    if (!unlinkId) return;
-    try {
-      const json = await fetchAPI('unlink_zalo', {
-        method: 'POST',
-        body: JSON.stringify({ id: unlinkId, type: 'account' })
-      });
-      if (json.success) {
-        toast.success('Đã hủy liên kết Zalo thành công!');
-        fetchAccounts();
-      } else {
-        toast.error(json.message || 'Lỗi khi hủy liên kết');
-      }
-    } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
-    }
-    setUnlinkConfirmOpen(false);
-    setUnlinkId(null);
-  };
-
-  const handleSendQuickMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickMessageText.trim() || !quickMessageTarget) return;
-    setIsSendingMsg(true);
-    try {
-      const res = await fetchAPI('send_quick_zalo_message', {
-        method: 'POST',
-        body: JSON.stringify({ account_id: quickMessageTarget.id, message: quickMessageText })
-      });
-      if (res.success) {
-        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
-        setQuickMessageOpen(false);
-        setQuickMessageText('');
-      } else {
-        toast.error(res.message || 'Lỗi khi gửi tin');
-      }
-    } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
-    }
-    setIsSendingMsg(false);
-  };
 
   const getRoleBadge = (role: string) => {
     if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
@@ -370,7 +412,7 @@ export const Accounts = () => {
                 </thead>
                 <tbody>
                   {accounts.map(acc => (
-                    <tr key={acc.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
+                    <tr key={acc.id} onClick={() => openEditModal(acc)} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }} className="table-row-hover">
                       <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <Avatar src={acc.avatar} name={acc.name} size={36} />
@@ -394,7 +436,7 @@ export const Accounts = () => {
                         </div>
                         {acc.email && Number(acc.is_confirmed) === 0 && (
                           <div style={{ marginTop: 6, paddingLeft: 20 }}>
-                            <button onClick={() => handleResendConfirm(acc.id)} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
+                            <button onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
                               <Send size={12} style={{ marginRight: 4 }} /> Gửi lại link
                             </button>
                           </div>
@@ -426,7 +468,7 @@ export const Accounts = () => {
                                   <Check size={12} /> Đã nhắc
                                 </span>
                               ) : (
-                                <button onClick={() => handleResendZaloVerify(acc.id)} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
+                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
                                   {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? 'Đang gửi...' : 'Nhắc'}
                                 </button>
                               )
@@ -449,30 +491,9 @@ export const Accounts = () => {
                       </td>
                       <td data-label="Thao tác" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
-                          {acc.zalo_chat_id && (
-                            <>
-                              <button onClick={() => { setQuickMessageTarget({ id: acc.id, name: acc.name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Admin">
-                                <Bell size={14} />
-                              </button>
-                              <button onClick={() => confirmUnlinkZalo(acc.id)} className="btn ghost" style={{ padding: 8, color: 'var(--color-warning)' }} title="Hủy liên kết Zalo">
-                                <Link2Off size={16} />
-                              </button>
-                            </>
-                          )}
-                          <button onClick={() => openEditModal(acc)} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
+                          <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
                             <Edit3 size={16} />
                           </button>
-                          {Number(acc.id) !== 1 && (
-                            <button
-                              onClick={() => triggerDeleteFlow(acc.id)}
-                              disabled={checkingDelete && deleteId === acc.id}
-                              className="btn ghost"
-                              style={{ padding: 8, color: 'var(--color-danger)' }}
-                              title="Xóa"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -812,87 +833,282 @@ export const Accounts = () => {
         </div>
       )}
 
-      <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? "Sửa Tài khoản" : "Thêm Tài khoản Mới"}>
+      <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? "Sửa Tài khoản" : "Thêm Tài khoản Mới"} width="680px">
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="form-group">
-            <label className="form-label">Tên hiển thị <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input
-              className="form-input"
-              placeholder="VD: Nguyễn Văn A"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(dùng nội bộ)</span></label>
-            <input
-              className="form-input"
-              placeholder="VD: admin_nhansu"
-              value={formData.username}
-              onChange={e => setFormData({ ...formData, username: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">
-              Email đăng nhập {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
-              {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
-            </label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="VD: ten@company.com"
-              value={formData.email}
-              onChange={e => setFormData({ ...formData, email: e.target.value })}
-              required={Number(editingAccount?.id) !== 1}
-              autoComplete="email"
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(tùy chọn)</span></label>
-            <input
-              className="form-input"
-              placeholder="VD: 43521235123551"
-              value={formData.zalo_chat_id}
-              onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
-            />
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-              Dùng để nhận thông báo khẩn qua Zalo Bot thay vì nhận Email.
+          {/* Avatar Upload Area */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1.25rem', 
+            padding: '1rem', 
+            background: 'var(--color-bg)', 
+            borderRadius: '12px', 
+            border: '1px solid var(--color-border)',
+            marginBottom: '0.25rem'
+          }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Avatar src={formData.avatar} name={formData.name || 'User'} size={64} />
+              {isUploadingAvatar && (
+                <div style={{ 
+                  position: 'absolute', 
+                  inset: 0, 
+                  background: 'rgba(0,0,0,0.5)', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: 600
+                }}>
+                  Tải...
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                Ảnh đại diện
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn outline sm"
+                  style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white', borderRadius: '6px' }}
+                  disabled={isUploadingAvatar}
+                >
+                  <Camera size={12} style={{ marginRight: 4 }} /> Chọn ảnh
+                </button>
+                {formData.avatar && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, avatar: '' })}
+                    className="btn outline sm"
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      padding: '4px 8px', 
+                      height: 'auto', 
+                      color: 'var(--color-danger)', 
+                      borderColor: 'rgba(239, 68, 68, 0.2)', 
+                      background: 'white',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    Xóa ảnh
+                  </button>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                Chấp nhận tệp ảnh JPG, PNG, WEBP (tối đa 5MB)
+              </span>
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">{editingAccount ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
-            <div style={{ position: 'relative' }}>
-              <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--color-text-muted)' }} />
-              <input 
-                type="password"
-                className="form-input" 
-                style={{ paddingLeft: 36 }}
-                placeholder={editingAccount ? "Nhập để đổi mật khẩu mới" : "Tối thiểu 6 ký tự"} 
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                required={!editingAccount}
+
+          {/* Form Fields Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1rem'
+          }}>
+            <div className="form-group">
+              <label className="form-label">Tên hiển thị <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <input
+                className="form-input"
+                placeholder="VD: Nguyễn Văn A"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(dùng nội bộ)</span></label>
+              <input
+                className="form-input"
+                placeholder="VD: admin_nhansu"
+                value={formData.username}
+                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">
+                Email đăng nhập {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
+                {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
+              </label>
+              <input
+                type="email"
+                className="form-input"
+                placeholder="VD: ten@company.com"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                required={Number(editingAccount?.id) !== 1}
+                autoComplete="email"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(tùy chọn)</span></label>
+              <input
+                className="form-input"
+                placeholder="VD: 43521235123551"
+                value={formData.zalo_chat_id}
+                onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{editingAccount ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
+              <div style={{ position: 'relative' }}>
+                <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--color-text-muted)' }} />
+                <input 
+                  type="password"
+                  className="form-input" 
+                  style={{ paddingLeft: 36 }}
+                  placeholder={editingAccount ? "Nhập để đổi mật khẩu mới" : "Tối thiểu 6 ký tự"} 
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  required={!editingAccount}
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Phân quyền <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <CustomSelect 
+                options={[
+                  { value: 'admin', label: 'Admin (Toàn quyền)' },
+                  { value: 'assistant', label: 'Assistant (Trợ lý / Phân bổ Data)' },
+                  { value: 'viewer', label: 'Viewer (Chỉ xem Data)' }
+                ]}
+                value={formData.role}
+                onChange={val => setFormData({ ...formData, role: val.toString() })}
+                width="100%"
+                direction="up"
               />
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Phân quyền <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <CustomSelect 
-              options={[
-                { value: 'admin', label: 'Admin (Toàn quyền)' },
-                { value: 'assistant', label: 'Assistant (Trợ lý / Phân bổ Data)' },
-                { value: 'viewer', label: 'Viewer (Chỉ xem Data)' }
-              ]}
-              value={formData.role}
-              onChange={val => setFormData({ ...formData, role: val.toString() })}
-              width="100%"
-              direction="up"
-            />
+
+          {editingAccount && editingAccount.zalo_chat_id && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+              border: '1px solid rgba(59, 130, 246, 0.15)',
+              borderRadius: '8px',
+              marginTop: '0.5rem'
+            }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MessageCircle size={14} fill="#3b82f6" color="white" /> Tính năng Zalo Bot
+              </span>
+              
+              {/* Quick Message Input & Button */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: '0.75rem', padding: '6px 10px', height: 'auto', flex: 1 }}
+                  placeholder="Nhập tin nhắn gửi nhanh..."
+                  value={quickMsgText}
+                  onChange={e => setQuickMsgText(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendQuickMsgInModal}
+                  disabled={isSendingQuickMsg || !quickMsgText.trim()}
+                  className="btn primary sm"
+                  style={{ fontSize: '0.75rem', padding: '6px 12px', height: 'auto', borderRadius: '6px' }}
+                >
+                  {isSendingQuickMsg ? <RefreshCw size={12} className="spin" /> : <Send size={12} />}
+                </button>
+              </div>
+
+              {/* Unlink Zalo Button */}
+              <button
+                type="button"
+                onClick={handleUnlinkZaloInModal}
+                disabled={isUnlinking}
+                className="btn outline sm"
+                style={{ 
+                  fontSize: '0.75rem', 
+                  padding: '4px 8px', 
+                  height: 'auto', 
+                  color: 'var(--color-warning)', 
+                  borderColor: 'rgba(245, 158, 11, 0.3)',
+                  alignSelf: 'flex-start',
+                  background: 'white',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                {isUnlinking ? <RefreshCw size={12} className="spin" /> : <Link2Off size={14} />} Hủy liên kết Zalo
+              </button>
+            </div>
+          )}
+
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            💡 <strong>Lưu ý:</strong> Zalo Chat ID dùng để nhận thông báo khẩn qua Zalo Bot thay vì nhận Email.
           </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1 }}>Hủy</button>
-            <button type="submit" className="btn primary" disabled={isSaving} style={{ flex: 1 }}>
+
+          {editingAccount && Number(editingAccount.id) !== 1 && (
+            <div style={{
+              marginTop: '0.25rem',
+              padding: '1rem',
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px dashed rgba(239, 68, 68, 0.2)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-danger)' }}>Vùng nguy hiểm</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Xóa vĩnh viễn tài khoản quản trị này khỏi hệ thống.</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeleteClickInModal}
+                className="btn outline sm"
+                style={{
+                  color: 'var(--color-danger)',
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                  background: 'white',
+                  fontSize: '0.75rem',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  flexShrink: 0
+                }}
+              >
+                <Trash2 size={14} /> Xóa tài khoản
+              </button>
+            </div>
+          )}
+
+          <div style={{
+            position: 'sticky',
+            bottom: '-1.5rem',
+            background: 'var(--color-surface)',
+            padding: '1rem 0 1.5rem',
+            marginTop: '1rem',
+            display: 'flex',
+            gap: '1rem',
+            borderTop: '1px solid var(--color-border)',
+            zIndex: 10
+          }}>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1, borderRadius: '8px' }}>Hủy</button>
+            <button type="submit" className="btn primary" disabled={isSaving} style={{ flex: 1, borderRadius: '8px' }}>
               {isSaving ? 'Đang lưu...' : 'Lưu Tài khoản'}
             </button>
           </div>
@@ -908,14 +1124,7 @@ export const Accounts = () => {
         confirmText="Xóa vĩnh viễn" 
       />
 
-      <ConfirmModal 
-        isOpen={unlinkConfirmOpen} 
-        onClose={() => setUnlinkConfirmOpen(false)} 
-        onConfirm={handleUnlinkZalo} 
-        title="Hủy liên kết Zalo Bot" 
-        message="Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không? Hệ thống sẽ ngừng gửi mọi thông báo qua Zalo cho tài khoản này ngay lập tức." 
-        confirmText="Hủy liên kết" 
-      />
+
 
       {showReplacementModal && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setShowReplacementModal(false)}>
@@ -994,32 +1203,7 @@ export const Accounts = () => {
         </div>,
         document.body
       )}
-      {/* Quick Message Modal */}
-      <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`Nhắn tin cho ${quickMessageTarget?.name || 'Tài khoản'}`}>
-        <form onSubmit={handleSendQuickMessage}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ BAN QUẢN TRỊ ]</p>
-            <div className="form-group">
-              <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <textarea
-                className="form-input"
-                placeholder="Nhập nội dung cần thông báo..."
-                value={quickMessageText}
-                onChange={e => setQuickMessageText(e.target.value)}
-                required
-                autoFocus
-                style={{ minHeight: 100, resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>Hủy</button>
-              <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
-                {isSendingMsg ? 'Đang gửi...' : 'Gửi tin nhắn'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </CustomModal>
+
     </div>
   );
 };
