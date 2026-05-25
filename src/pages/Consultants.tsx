@@ -1114,7 +1114,7 @@ export const Consultants = () => {
                           ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100) 
                           : 0}%
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả sale</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả saleperson</div>
                     </div>
                   </div>
 

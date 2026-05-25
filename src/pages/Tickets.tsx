@@ -492,7 +492,7 @@ export const Tickets = () => {
   ];
 
   const saleOptions = [
-    { value: 'all', label: 'Tất cả Sales', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: 'Tất cả Salepersons', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...allConsultants.map(c => ({
       value: Number(c.id),
       label: c.name,
@@ -698,7 +698,7 @@ export const Tickets = () => {
         <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <CustomSelect
             options={[
-              { value: '', label: 'Tất cả Sale', icon: <Users size={16} /> },
+              { value: '', label: 'Tất cả Saleperson', icon: <Users size={16} /> },
               ...consultantOptions.map(name => {
                 const matched = allConsultants.find(c => c.name === name);
                 return {
@@ -1967,7 +1967,7 @@ export const Tickets = () => {
                       : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
 
                     const targetSales = rule.sales.includes('all')
-                      ? 'Tất cả Sales'
+                      ? 'Tất cả Salepersons'
                       : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
 
                     const targetConns = (rule.connections || []).includes('all') || !rule.connections

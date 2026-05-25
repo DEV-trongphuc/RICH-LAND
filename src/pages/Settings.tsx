@@ -392,7 +392,7 @@ export const Settings = () => {
   ];
 
   const saleOptions = [
-    { value: 'all', label: 'Tất cả Sales', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: 'Tất cả Salepersons', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...consultants.map(c => ({
       value: Number(c.id),
       label: c.name,
@@ -2128,7 +2128,7 @@ function doPost(e) {
                               : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
 
                             const targetSales = rule.sales.includes('all')
-                              ? 'Tất cả Sales'
+                              ? 'Tất cả Salepersons'
                               : consultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
 
                             const targetConns = (rule.connections || []).includes('all') || !rule.connections

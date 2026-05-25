@@ -187,6 +187,11 @@ if (!in_array($action, $publicActions)) {
         echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
         exit();
     }
+
+    // Ghi nhận thời gian hoạt động cuối cùng (last active time)
+    if ($decodedUser && isset($decodedUser['id'])) {
+        $conn->query("UPDATE accounts SET last_login = NOW() WHERE id = " . (int)$decodedUser['id']);
+    }
 } else {
     $decodedUser = null; // Public actions have no user context
 }
@@ -415,8 +420,6 @@ switch ($action) {
                     $upd->close();
                 }
 
-                logAdminAction($conn, $user['id'], 'LOGIN', ['message' => 'User logged in successfully']);
-
                 $payload = [
                     'id' => $user['id'],
                     'username' => $user['username'],
@@ -500,6 +503,14 @@ switch ($action) {
                 $stmtConfirm->bind_param("i", $user['id']);
                 $stmtConfirm->execute();
                 $stmtConfirm->close();
+            }
+
+            // Update last_login
+            $upd = $conn->prepare("UPDATE accounts SET last_login = NOW() WHERE id = ?");
+            if ($upd) {
+                $upd->bind_param("i", $user['id']);
+                $upd->execute();
+                $upd->close();
             }
 
             $payload = [
@@ -4620,6 +4631,7 @@ switch ($action) {
                     LEFT JOIN leads l ON dl.lead_id = l.id
                     LEFT JOIN consultants c ON dl.assigned_to = c.id
                     LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+                    WHERE dl.status != 'silent'
                     ORDER BY dl.id DESC LIMIT 40";
         $resDist = $conn->query($sqlDist);
         if ($resDist) {
@@ -4782,7 +4794,7 @@ switch ($action) {
                     case 'APPROVE_REPORT':
                         $leadId = $detailsObj['lead_id'] ?? 0;
                         $title = "Duyệt báo cáo lỗi";
-                        $description = "Admin duyệt báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
+                        $description = "Admin <strong>$adminNameEscaped</strong> duyệt báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
                         $tag = "Duyệt ticket";
                         $tagColor = "success";
                         break;
@@ -4790,8 +4802,48 @@ switch ($action) {
                     case 'REJECT_REPORT':
                         $leadId = $detailsObj['lead_id'] ?? 0;
                         $title = "Từ chối báo cáo lỗi";
-                        $description = "Admin từ chối báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
+                        $description = "Admin <strong>$adminNameEscaped</strong> từ chối báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
                         $tag = "Từ chối ticket";
+                        $tagColor = "danger";
+                        break;
+                    case 'AUTO_APPROVE_REPORT':
+                        $leadId = $detailsObj['lead_id'] ?? 0;
+                        $title = "Tự động duyệt báo cáo lỗi";
+                        $description = "Hệ thống tự động duyệt báo cáo lỗi cho lead ID <strong>#$leadId</strong>.";
+                        $tag = "Tự động duyệt";
+                        $tagColor = "success";
+                        break;
+                    case 'REASSIGN_LEAD':
+                        $leadId = $detailsObj['lead_id'] ?? 0;
+                        $title = "Giao lại lead";
+                        $description = "Admin <strong>$adminNameEscaped</strong> giao lại lead ID <strong>#$leadId</strong>.";
+                        $tag = "Giao lại";
+                        $tagColor = "info";
+                        break;
+                    case 'FORCE_SYNC':
+                        $title = "Ép buộc đồng bộ";
+                        $description = "Admin <strong>$adminNameEscaped</strong> kích hoạt ép buộc đồng bộ dữ liệu.";
+                        $tag = "Đồng bộ";
+                        $tagColor = "info";
+                        break;
+                    case 'ADD_CONSULTANT':
+                        $name = $detailsObj['name'] ?? '';
+                        $title = "Thêm TVV";
+                        $description = "Admin <strong>$adminNameEscaped</strong> thêm Tư vấn viên <strong>" . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "</strong>.";
+                        $tag = "Nhân sự";
+                        $tagColor = "success";
+                        break;
+                    case 'EDIT_CONSULTANT':
+                        $name = $detailsObj['name'] ?? '';
+                        $title = "Sửa TVV";
+                        $description = "Admin <strong>$adminNameEscaped</strong> sửa thông tin Tư vấn viên <strong>" . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "</strong>.";
+                        $tag = "Nhân sự";
+                        $tagColor = "info";
+                        break;
+                    case 'DELETE_CONSULTANT':
+                        $title = "Xóa TVV";
+                        $description = "Admin <strong>$adminNameEscaped</strong> xóa nhân sự Tư vấn viên.";
+                        $tag = "Nhân sự";
                         $tagColor = "danger";
                         break;
                     default:
@@ -5545,12 +5597,34 @@ switch ($action) {
             $prevAutoBlacklistCnt = (int) $row['cnt'];
         }
 
-        $ticketErrors = $statsRes['errors'] - $distributionBlacklisted;
-        $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
-        $statsRes['errors'] += $autoBlacklistCnt;
+        // ticket_count counts ALL tickets created in the date range (for Chatbot card)
+        $todayTickets = 0;
+        $ticketRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE $dateConditionCreated");
+        if ($ticketRes && $row = $ticketRes->fetch_assoc()) {
+            $todayTickets = (int) $row['cnt'];
+        }
 
-        $prevTicketErrors = $prevStatsRes['errors'] - $prevDistributionBlacklisted;
-        $prevStatsRes['errors'] += $prevAutoBlacklistCnt;
+        // ticket_errors counts only APPROVED tickets in the date range resolved_at (for Dashboard card details)
+        $ticketErrors = 0;
+        $dateConditionResolved = str_replace('received_at', 'resolved_at', $dateCondition);
+        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $dateConditionResolved");
+        if ($tktErrRes && $row = $tktErrRes->fetch_assoc()) {
+            $ticketErrors = (int) $row['cnt'];
+        }
+
+        $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
+        $statsRes['errors'] = $ticketErrors + $blacklistCnt;
+
+        // Previous period calculations for change percentage
+        $prevTicketErrors = 0;
+        $prevDateConditionResolved = str_replace('received_at', 'resolved_at', $prevDateCondition);
+        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $prevDateConditionResolved");
+        if ($prevTktErrRes && $row = $prevTktErrRes->fetch_assoc()) {
+            $prevTicketErrors = (int) $row['cnt'];
+        }
+
+        $prevBlacklistCnt = $prevDistributionBlacklisted + $prevAutoBlacklistCnt;
+        $prevStatsRes['errors'] = $prevTicketErrors + $prevBlacklistCnt;
 
         $calcChange = function ($current, $prev) {
             $current = (int) $current;
@@ -5728,11 +5802,12 @@ switch ($action) {
             }
         }
 
-        // Query Error Stats by Consultant
-        $errorSql = "SELECT c.name, COUNT(dl.id) as count 
-                     FROM distribution_logs dl 
-                     JOIN consultants c ON dl.assigned_to = c.id
-                     WHERE $dateCondition AND dl.status = 'error'
+        // Query Error Stats by Consultant (Approved tickets)
+        $dateConditionResolved = str_replace('received_at', 'dr.resolved_at', $dateCondition);
+        $errorSql = "SELECT c.name, COUNT(dr.id) as count 
+                     FROM data_reports dr 
+                     JOIN consultants c ON dr.consultant_id = c.id
+                     WHERE dr.status = 'approved' AND $dateConditionResolved
                      GROUP BY c.id ORDER BY count DESC";
         $errorResRaw = $conn->query($errorSql);
         $errorStats = [];
@@ -5755,6 +5830,7 @@ switch ($action) {
                 'duplicates' => (int) $statsRes['duplicates'],
                 'errors' => (int) $statsRes['errors'],
                 'ticket_errors' => (int) $ticketErrors,
+                'ticket_count' => $todayTickets,
                 'blacklists' => (int) $blacklistCnt,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
@@ -5966,10 +6042,10 @@ switch ($action) {
         unset($c);
 
         // Query ticket error counts (data_reports approved)
-        $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
+        $dateConditionResolved = str_replace('received_at', 'resolved_at', $dateCondition);
         $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
                             FROM data_reports 
-                            WHERE status = 'approved' AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                            WHERE status = 'approved' AND $dateConditionResolved" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
                             GROUP BY consultant_id";
         $tktRes = $conn->query($ticketCountsSql);
         if ($tktRes) {

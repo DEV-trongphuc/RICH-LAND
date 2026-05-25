@@ -34,7 +34,7 @@ export const AIChatbot: React.FC = () => {
     { key: 'distributed_today', label: 'Đã bàn giao', color: '#10b981', prompt: 'Hôm nay đã chia bao nhiêu data cho Sale?' },
     { key: 'duplicates', label: 'Trùng lặp', color: '#f59e0b', prompt: 'Có bao nhiêu data trùng lặp hôm nay?' },
     { key: 'blacklists', label: 'Chặn Blacklist', color: '#6b7280', prompt: 'Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?' },
-    { key: 'errors', label: 'Lỗi / Ticket', color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
+    { key: 'ticket_count', label: 'Lỗi / Ticket', color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
   ];
 
   // Suggested prompts
@@ -61,7 +61,7 @@ export const AIChatbot: React.FC = () => {
 
   // Fetch stats when chat opens
   useEffect(() => {
-    if (isOpen && !stats) {
+    if (isOpen) {
       fetchAPI('get_dashboard_stats')
         .then(res => {
           if (res.success && res.data) {
@@ -70,7 +70,7 @@ export const AIChatbot: React.FC = () => {
         })
         .catch(err => console.error('Lỗi tải stats cho chatbot:', err));
     }
-  }, [isOpen, stats]);
+  }, [isOpen]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -149,7 +149,7 @@ export const AIChatbot: React.FC = () => {
                  `* 👤 **Đã bàn giao**: **${currentStats.distributed_today}** data\n` +
                  `* 👥 **Trùng lặp (không chia)**: **${currentStats.duplicates}** data\n` +
                  `* 🚫 **Chặn Blacklist**: **${currentStats.blacklists}** data\n` +
-                 `* ⚠️ **Data lỗi / Ticket**: **${currentStats.errors}** data\n\n` +
+                 `* ⚠️ **Data lỗi / Ticket**: **${currentStats.ticket_count}** data\n\n` +
                  `*Hiệu số tăng trưởng hoặc chi tiết cụ thể bạn có thể xem trực tiếp ở trang chủ (Dashboard).*`;
         } else {
           return `Tôi đang tải số liệu thống kê từ hệ thống. Bạn vui lòng đợi một chút hoặc thử lại nhé!`;

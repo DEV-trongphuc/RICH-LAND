@@ -5,8 +5,8 @@ import { fetchPublicAPI } from '../utils/api';
 
 const REPORT_REASONS = [
   'Sai số điện thoại / Số ảo',
-  'Trùng của tôi (Trùng Sale)',
-  'Trùng của người khác (Sale khác đã chăm)',
+  'Trùng của tôi (Trùng Saleperson)',
+  'Trùng của người khác (Saleperson khác đã chăm)',
   'Spam ảo / Junk lead',
   'Khác (Vui lòng ghi rõ ở phần ghi chú)'
 ];
@@ -190,7 +190,7 @@ export const ReportData = () => {
                         {initials(context.consultant_name)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Sale phụ trách</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Saleperson phụ trách</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#15803d' }}>{context.consultant_name}</div>
                       </div>
                     </div>
