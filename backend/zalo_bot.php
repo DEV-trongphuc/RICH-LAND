@@ -442,16 +442,13 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
  */
 function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel = '') {
     $stmtData = $conn->prepare("
-        SELECT c.name, 
-               SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'error') THEN 1 ELSE 0 END) as normal_total,
-               SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_total
+        SELECT c.id, c.name, dl.status, COUNT(*) as cnt
             FROM distribution_logs dl 
             JOIN consultants c ON dl.assigned_to = c.id 
             WHERE dl.received_at >= ?
               AND dl.received_at <= ?
-              AND dl.status IN ('assigned', 'compensation', 'error', 'reminder')
-            GROUP BY c.id
-            ORDER BY normal_total DESC, reminder_total DESC
+              AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder')
+            GROUP BY c.id, dl.status
     ");
     if (!$stmtData) {
         return "⚠️ Lỗi hệ thống: Không thể chuẩn bị câu lệnh truy vấn dữ liệu.";
@@ -461,25 +458,62 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     $stmtData->execute();
     $resData = $stmtData->get_result();
     
-    $saleStats = "";
-    $totalData = 0;
-    $totalReminder = 0;
+    $saleData = [];
     if ($resData) {
         while ($row = $resData->fetch_assoc()) {
-            $normalTotal = (int)$row['normal_total'];
-            $reminderTotal = (int)$row['reminder_total'];
-            
-            if ($reminderTotal > 0) {
-                $total = $normalTotal + $reminderTotal;
-                $saleStats .= "  👤 " . $row['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
-            } else {
-                $saleStats .= "  👤 " . $row['name'] . ": " . $normalTotal . " data\n";
+            $cId = (int)$row['id'];
+            if (!isset($saleData[$cId])) {
+                $saleData[$cId] = [
+                    'name' => $row['name'],
+                    'assigned' => 0,
+                    'compensation' => 0,
+                    'rule_6_month' => 0,
+                    'pending_work_hours' => 0,
+                    'error' => 0,
+                    'reminder' => 0
+                ];
             }
-            $totalData += $normalTotal;
-            $totalReminder += $reminderTotal;
+            $status = $row['status'];
+            $saleData[$cId][$status] = (int)$row['cnt'];
         }
     }
     $stmtData->close();
+
+    $saleList = [];
+    foreach ($saleData as $cId => $stats) {
+        $normalTotal = $stats['assigned'] + $stats['compensation'] + $stats['rule_6_month'] + $stats['pending_work_hours'] + max(0, $stats['error'] - $stats['compensation']);
+        $reminderTotal = $stats['reminder'];
+        $saleList[] = [
+            'name' => $stats['name'],
+            'normal_total' => $normalTotal,
+            'reminder_total' => $reminderTotal
+        ];
+    }
+
+    // Sort descending by normal_total, then reminder_total
+    usort($saleList, function($a, $b) {
+        if ($b['normal_total'] !== $a['normal_total']) {
+            return $b['normal_total'] <=> $a['normal_total'];
+        }
+        return $b['reminder_total'] <=> $a['reminder_total'];
+    });
+    
+    $saleStats = "";
+    $totalData = 0;
+    $totalReminder = 0;
+    foreach ($saleList as $saleItem) {
+        $normalTotal = $saleItem['normal_total'];
+        $reminderTotal = $saleItem['reminder_total'];
+        
+        if ($reminderTotal > 0) {
+            $total = $normalTotal + $reminderTotal;
+            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
+        } else {
+            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
+        }
+        $totalData += $normalTotal;
+        $totalReminder += $reminderTotal;
+    }
     
     if (empty($saleStats)) {
         $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";

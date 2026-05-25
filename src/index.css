@@ -331,29 +331,38 @@
 }
 
 [data-theme="dark"] {
-  --color-bg: #0a0e1a;
-  --color-surface: #121826;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-light: rgba(255, 255, 255, 0.03);
-  --color-text: #cbd5e1;
-  --color-text-light: #9ca3af;
-  --color-text-muted: #8e9cb2;
-  --sidebar-bg: #090c15;
-  --color-primary: #818cf8;
-  --color-primary-hover: #6366f1;
-  --color-primary-light: rgba(129, 140, 248, 0.08);
+  /* Brand & Layout Backgrounds */
+  --color-bg: #090d16;             /* Deeper pitch-dark space color */
+  --color-surface: #111827;        /* Crisp slate gray, clearly standing out from bg */
+  --sidebar-bg: #080c14;           /* Slightly darker than main bg for clean separation */
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-active: rgba(99, 102, 241, 0.85); /* Premium indigo theme active */
 
-  /* Optimized semantic contrast for dark theme */
-  --color-success: #34d399;
-  --color-success-light: rgba(52, 211, 153, 0.15);
-  --color-warning: #fbbf24;
-  --color-warning-light: rgba(251, 191, 36, 0.15);
-  --color-danger: #f87171;
-  --color-danger-light: rgba(248, 113, 113, 0.15);
-  --color-info: #60a5fa;
-  --color-info-light: rgba(96, 165, 250, 0.15);
+  /* High Contrast Borders */
+  --color-border: rgba(255, 255, 255, 0.10);       /* Enhanced border contrast */
+  --color-border-light: rgba(255, 255, 255, 0.05); /* Finer divider border */
 
-  /* Optimized lead score colors for dark theme */
+  /* Optimized Typography Contrast (Satisfies WCAG AAA/AA specs) */
+  --color-text: #f9fafb;           /* Pure crisp slate-white for maximum legibility */
+  --color-text-light: #d1d5db;     /* High contrast body text */
+  --color-text-muted: #9ca3af;     /* Highly legible Slate 400 for subtext and captions */
+
+  /* Rich Color Accent */
+  --color-primary: #6366f1;        /* Brilliant indigo-500 accent color */
+  --color-primary-hover: #4f46e5;  /* Deep indigo-600 */
+  --color-primary-light: rgba(99, 102, 241, 0.14); /* Visually strong active hover highlight */
+
+  /* Optimized Semantic Badges/Alerts Contrast */
+  --color-success: #10b981;        /* True emerald green */
+  --color-success-light: rgba(16, 185, 129, 0.12);
+  --color-warning: #f59e0b;        /* Pure warning amber */
+  --color-warning-light: rgba(245, 158, 11, 0.12);
+  --color-danger: #ef4444;         /* Rich red danger */
+  --color-danger-light: rgba(239, 68, 68, 0.12);
+  --color-info: #3b82f6;           /* Ocean blue info */
+  --color-info-light: rgba(59, 130, 246, 0.12);
+
+  /* Temperature Score colors optimized for dark theme reading */
   --score-hot: #f87171;
   --score-warm: #fb923c;
   --score-neutral: #fbbf24;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -118,7 +118,7 @@ export const Dashboard = () => {
     },
     {
       id: 'distributed',
-      statusValue: 'assigned',
+      statusValue: 'assigned,compensation,rule_6_month,pending_work_hours',
       label: 'ĐÃ CHIA VÒNG THÀNH CÔNG',
       value: stats?.distributed_today?.toLocaleString() || '0',
       icon: UserPlus,
@@ -253,6 +253,11 @@ export const Dashboard = () => {
                   {card.change || '+0%'}
                   <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>{getComparisonLabel(dateFilter)}</span>
                 </div>
+                {card.id === 'distributed' && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
+                    Đã chia: {stats?.distributed_assigned || 0} | Bù: {stats?.distributed_compensation || 0}
+                  </div>
+                )}
                 {card.id === 'errors' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
                     {stats?.ticket_errors || 0} ticket / {stats?.blacklists || 0} blacklist
@@ -580,7 +585,7 @@ export const Dashboard = () => {
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-              <AlertTriangle size={18} color="#ef4444" /> Thống kê lỗi Ticket / TVV
+              <CheckCircle size={18} color="#10b981" /> Thống kê lỗi Ticket (Được duyệt)
             </h3>
           </div>
           <div style={{ flex: 1, minHeight: 260 }}>
@@ -588,9 +593,9 @@ export const Dashboard = () => {
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={stats.errorStats} margin={{ top: 15, right: 10, left: -10, bottom: 5 }}>
                   <defs>
-                    <linearGradient id="errorGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f87171" stopOpacity={1} />
-                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.8} />
+                    <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.8} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
@@ -611,15 +616,15 @@ export const Dashboard = () => {
                     tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} 
                   />
                   <Tooltip 
-                    cursor={{ fill: 'rgba(239, 68, 68, 0.04)' }}
+                    cursor={{ fill: 'rgba(16, 185, 129, 0.04)' }}
                     contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ color: 'var(--color-danger)', fontWeight: 600 }}
+                    itemStyle={{ color: 'var(--color-success)', fontWeight: 600 }}
                   />
-                  <Bar dataKey="errors" fill="url(#errorGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi" />
+                  <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi được duyệt" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào báo lỗi</div>
+              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào có lỗi được duyệt</div>
             )}
           </div>
         </div>

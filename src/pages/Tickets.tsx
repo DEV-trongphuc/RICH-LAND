@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Calendar, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2 } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -144,9 +144,12 @@ export const Tickets = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
-  const dateFrom = searchParams.get('dateFrom') || '';
-  const dateTo = searchParams.get('dateTo') || '';
+  const dateFilter = searchParams.get('date') || 'Tháng này';
   const currentPage = Number(searchParams.get('page') || '1');
+
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,6 +207,40 @@ export const Tickets = () => {
     }, { replace: true });
   };
 
+  const dateOptions = [
+    { value: 'all', label: 'Tất cả thời gian' },
+    { value: 'Hôm nay', label: 'Hôm nay' },
+    { value: 'Hôm qua', label: 'Hôm qua' },
+    { value: 'Tuần này', label: 'Tuần này' },
+    { value: 'Tuần trước', label: 'Tuần trước' },
+    { value: 'Tuần trước nữa', label: 'Tuần trước nữa' },
+    { value: '7 ngày qua', label: '7 ngày qua' },
+    { value: '30 ngày qua', label: '30 ngày qua' },
+    { value: 'Tháng này', label: 'Tháng này' },
+    { value: 'Tháng trước', label: 'Tháng trước' }
+  ];
+
+  const defaultFilters = ['all', 'Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
+  if (!defaultFilters.includes(dateFilter)) {
+    dateOptions.push({ value: dateFilter, label: dateFilter });
+  }
+
+  dateOptions.push({ value: 'Tùy chỉnh', label: 'Tùy chỉnh...' });
+
+  const handleCustomDateSubmit = () => {
+    if (!startDate || !endDate) {
+      toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
+      return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      toast.error("Từ ngày không được lớn hơn Đến ngày");
+      return;
+    }
+    const label = `${startDate} đến ${endDate}`;
+    updateParams('date', label);
+    setShowDateModal(false);
+  };
+
   const fetchReports = async () => {
     setLoading(true);
     try {
@@ -212,8 +249,7 @@ export const Tickets = () => {
       queryParams.set('pageSize', String(ITEMS_PER_PAGE));
       if (activeFilter !== 'all') queryParams.set('status', activeFilter);
       if (saleFilter) queryParams.set('consultant', saleFilter);
-      if (dateFrom) queryParams.set('dateFrom', dateFrom);
-      if (dateTo) queryParams.set('dateTo', dateTo);
+      if (dateFilter) queryParams.set('date', dateFilter);
 
       const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
       if (res.success) {
@@ -499,7 +535,7 @@ export const Tickets = () => {
   const filteredReports = reports;
 
   const pendingCount = stats.pending;
-  const hasActiveFilters = saleFilter || dateFrom || dateTo;
+  const hasActiveFilters = saleFilter || (dateFilter !== 'Tháng này' && dateFilter !== 'all' && dateFilter !== '');
 
   const FILTER_TABS = [
     { key: 'pending', label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },
@@ -680,53 +716,20 @@ export const Tickets = () => {
           />
         </div>
 
-        {/* Date from */}
-        <div className="responsive-filter-item mobile-flex-wrap mobile-flex-1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="mobile-flex-1" style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: 130 }}>
-            <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateFrom ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => updateParams('dateFrom', e.target.value)}
-              className="mobile-w-full"
-              style={{
-                fontSize: '0.8rem', padding: '7px 10px 7px 28px',
-                borderRadius: 10,
-                border: '1.5px solid',
-                borderColor: dateFrom ? '#7c3aed' : 'rgba(124,58,237,0.2)',
-                background: dateFrom ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
-                color: dateFrom ? '#5b21b6' : '#64748b',
-                outline: 'none',
-                fontWeight: dateFrom ? 700 : 400,
-                boxShadow: dateFrom ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
-                transition: 'all 0.2s',
-                cursor: 'pointer',
-              }}
-            />
-          </div>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>→</span>
-          <div className="mobile-flex-1" style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: 130 }}>
-            <Calendar size={13} style={{ position: 'absolute', left: 9, color: dateTo ? '#7c3aed' : '#94a3b8', zIndex: 1, pointerEvents: 'none' }} />
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => updateParams('dateTo', e.target.value)}
-              className="mobile-w-full"
-              style={{
-                fontSize: '0.8rem', padding: '7px 10px 7px 28px',
-                borderRadius: 10,
-                border: '1.5px solid',
-                borderColor: dateTo ? '#7c3aed' : 'rgba(124,58,237,0.2)',
-                background: dateTo ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.7)',
-                color: dateTo ? '#5b21b6' : '#64748b',
-                outline: 'none',
-                fontWeight: dateTo ? 700 : 400,
-                boxShadow: dateTo ? '0 0 0 3px rgba(124,58,237,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
-                transition: 'all 0.2s',
-                cursor: 'pointer',
-              }}
-            />
-          </div>
+        {/* Date Filter */}
+        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
+          <CustomSelect
+            options={dateOptions}
+            value={dateFilter}
+            onChange={val => {
+              if (val === 'Tùy chỉnh') {
+                setShowDateModal(true);
+                return;
+              }
+              updateParams('date', val.toString());
+            }}
+            width="100%"
+          />
         </div>
 
         {/* Clear filters */}
@@ -734,8 +737,7 @@ export const Tickets = () => {
           <button onClick={() => {
             setSearchParams(prev => {
               prev.delete('consultant');
-              prev.delete('dateFrom');
-              prev.delete('dateTo');
+              prev.delete('date');
               prev.delete('page');
               return prev;
             }, { replace: true });
@@ -1026,6 +1028,39 @@ export const Tickets = () => {
         )}
       </div>
       <TicketSettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+
+      {/* Custom Date Picker Modal */}
+      <CustomModal 
+        isOpen={showDateModal} 
+        onClose={() => setShowDateModal(false)} 
+        title="Tùy chỉnh thời gian"
+        width="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+          <div>
+            <label className="form-label">Từ ngày</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={startDate} 
+              onChange={e => setStartDate(e.target.value)} 
+            />
+          </div>
+          <div>
+            <label className="form-label">Đến ngày</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={endDate} 
+              onChange={e => setEndDate(e.target.value)} 
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setShowDateModal(false)}>Hủy</button>
+            <button className="btn primary" onClick={handleCustomDateSubmit}>Áp dụng</button>
+          </div>
+        </div>
+      </CustomModal>
 
       {/* Reject Modal */}
       <CustomModal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="Từ chối Báo cáo Lỗi">

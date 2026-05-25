@@ -3264,8 +3264,7 @@ switch ($action) {
         $round_id = isset($_GET['round_id']) ? (int)$_GET['round_id'] : 0;
         $status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
         $consultant = isset($_GET['consultant']) ? trim($_GET['consultant']) : '';
-        $dateFrom = isset($_GET['dateFrom']) ? trim($_GET['dateFrom']) : '';
-        $dateTo = isset($_GET['dateTo']) ? trim($_GET['dateTo']) : '';
+        $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
         
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 50;
@@ -3288,15 +3287,38 @@ switch ($action) {
             $params[] = $consultant;
             $types .= "s";
         }
-        if ($dateFrom !== '') {
-            $conds[] = "r.created_at >= ?";
-            $params[] = $dateFrom . " 00:00:00";
-            $types .= "s";
+        
+        // Parse date condition using the same logic (against r.created_at)
+        $dateCondition = "r.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND r.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        
+        if ($date === 'all' || $date === '') {
+            $dateCondition = "1=1";
+        } else if ($date === 'Hôm nay') {
+            $dateCondition = "r.created_at >= CURDATE() AND r.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        } else if ($date === 'Hôm qua') {
+            $dateCondition = "r.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND r.created_at < CURDATE()";
+        } else if ($date === 'Tuần này') {
+            $dateCondition = "r.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND r.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === 'Tuần trước') {
+            $dateCondition = "r.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND r.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } else if ($date === 'Tuần trước nữa') {
+            $dateCondition = "r.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND r.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } else if ($date === '7 ngày qua') {
+            $dateCondition = "r.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } else if ($date === '30 ngày qua') {
+            $dateCondition = "r.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } else if ($date === 'Tháng này') {
+            $dateCondition = "r.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND r.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } else if ($date === 'Tháng trước') {
+            $dateCondition = "r.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND r.created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+            $start = $conn->real_escape_string($matches[1]);
+            $end = $conn->real_escape_string($matches[2]);
+            $dateCondition = "r.created_at >= '$start 00:00:00' AND r.created_at <= '$end 23:59:59'";
         }
-        if ($dateTo !== '') {
-            $conds[] = "r.created_at <= ?";
-            $params[] = $dateTo . " 23:59:59";
-            $types .= "s";
+
+        if ($dateCondition !== "1=1") {
+            $conds[] = $dateCondition;
         }
 
         // Stats Condition
@@ -5434,6 +5456,17 @@ switch ($action) {
         // Query current period stats using GROUP BY for index optimization
         $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
         $statsResRaw = $conn->query($statsSql);
+        $statusCounts = [
+            'assigned' => 0,
+            'compensation' => 0,
+            'rule_6_month' => 0,
+            'pending_work_hours' => 0,
+            'error' => 0,
+            'duplicate' => 0,
+            'reminder' => 0,
+            'no_consultant' => 0,
+            'blacklisted' => 0
+        ];
         $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         $distributionBlacklisted = 0;
         if ($statsResRaw) {
@@ -5441,22 +5474,37 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
                 $statsRes['total'] += $cnt;
-                if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours')
-                    $statsRes['distributed'] += $cnt;
-                else if ($status === 'duplicate' || $status === 'reminder')
+                if (array_key_exists($status, $statusCounts)) {
+                    $statusCounts[$status] = $cnt;
+                }
+                if ($status === 'duplicate' || $status === 'reminder') {
                     $statsRes['duplicates'] += $cnt;
-                else if ($status === 'error' || $status === 'no_consultant')
+                } else if ($status === 'error' || $status === 'no_consultant') {
                     $statsRes['errors'] += $cnt;
-                else if ($status === 'blacklisted') {
+                } else if ($status === 'blacklisted') {
                     $statsRes['errors'] += $cnt;
                     $distributionBlacklisted += $cnt;
                 }
             }
         }
+        $assigned_total = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
+        $compensation_total = $statusCounts['compensation'];
+        $statsRes['distributed'] = $assigned_total + $compensation_total;
 
         // Query previous period stats for % change
         $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition AND status != 'silent' GROUP BY status";
         $prevStatsResRaw = $conn->query($prevStatsSql);
+        $prevStatusCounts = [
+            'assigned' => 0,
+            'compensation' => 0,
+            'rule_6_month' => 0,
+            'pending_work_hours' => 0,
+            'error' => 0,
+            'duplicate' => 0,
+            'reminder' => 0,
+            'no_consultant' => 0,
+            'blacklisted' => 0
+        ];
         $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         $prevDistributionBlacklisted = 0;
         if ($prevStatsResRaw) {
@@ -5464,18 +5512,22 @@ switch ($action) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
                 $prevStatsRes['total'] += $cnt;
-                if ($status === 'assigned' || $status === 'compensation' || $status === 'rule_6_month' || $status === 'pending_work_hours')
-                    $prevStatsRes['distributed'] += $cnt;
-                else if ($status === 'duplicate' || $status === 'reminder')
+                if (array_key_exists($status, $prevStatusCounts)) {
+                    $prevStatusCounts[$status] = $cnt;
+                }
+                if ($status === 'duplicate' || $status === 'reminder') {
                     $prevStatsRes['duplicates'] += $cnt;
-                else if ($status === 'error' || $status === 'no_consultant')
+                } else if ($status === 'error' || $status === 'no_consultant') {
                     $prevStatsRes['errors'] += $cnt;
-                else if ($status === 'blacklisted') {
+                } else if ($status === 'blacklisted') {
                     $prevStatsRes['errors'] += $cnt;
                     $prevDistributionBlacklisted += $cnt;
                 }
             }
         }
+        $prev_assigned_total = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + max(0, $prevStatusCounts['error'] - $prevStatusCounts['compensation']);
+        $prev_compensation_total = $prevStatusCounts['compensation'];
+        $prevStatsRes['distributed'] = $prev_assigned_total + $prev_compensation_total;
 
         // Query active blacklist counts from admin_logs (excluding manual ones that are already in distribution_logs as status='blacklisted' to avoid double-counting)
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
@@ -5539,22 +5591,59 @@ switch ($action) {
         }
 
         // Query Top Consultants
-        $topConsultantsSql = "SELECT c.name, c.avatar, COUNT(dl.id) as data_count 
+        $topConsultantsSql = "SELECT c.id, c.name, c.avatar, dl.status, COUNT(dl.id) as cnt 
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month') 
-                              GROUP BY c.id ORDER BY data_count DESC";
+                              WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                              GROUP BY c.id, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
+        $consultantStats = [];
+        if ($topConsultantsRes) {
+            while ($row = $topConsultantsRes->fetch_assoc()) {
+                $cId = (int)$row['id'];
+                if (!isset($consultantStats[$cId])) {
+                    $consultantStats[$cId] = [
+                        'name' => $row['name'],
+                        'avatar' => $row['avatar'],
+                        'assigned' => 0,
+                        'compensation' => 0,
+                        'rule_6_month' => 0,
+                        'pending_work_hours' => 0,
+                        'error' => 0
+                    ];
+                }
+                $status = $row['status'];
+                if (isset($consultantStats[$cId][$status])) {
+                    $consultantStats[$cId][$status] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        $topConsultantsList = [];
+        foreach ($consultantStats as $cId => $cStats) {
+            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + max(0, $cStats['error'] - $cStats['compensation']);
+            $topConsultantsList[] = [
+                'name' => $cStats['name'],
+                'avatar' => $cStats['avatar'],
+                'data' => $data_count
+            ];
+        }
+
+        // Sort descending by data
+        usort($topConsultantsList, function($a, $b) {
+            return $b['data'] <=> $a['data'];
+        });
+
         $topConsultants = [];
         $totalAssignedForTop = max(1, (int) $statsRes['distributed']);
         $colors = ['#7c3aed', '#3b82f6', '#f59e0b', '#10b981'];
         $i = 0;
-        while ($row = $topConsultantsRes->fetch_assoc()) {
-            $percent = round(($row['data_count'] / $totalAssignedForTop) * 100, 1);
+        foreach ($topConsultantsList as $row) {
+            $percent = round(($row['data'] / $totalAssignedForTop) * 100, 1);
             $topConsultants[] = [
                 'name' => $row['name'],
                 'avatar' => $row['avatar'],
-                'data' => (int) $row['data_count'],
+                'data' => (int) $row['data'],
                 'percent' => $percent,
                 'color' => $colors[$i % 4]
             ];
@@ -5562,20 +5651,55 @@ switch ($action) {
         }
 
         // Query Round Ratio
-        $roundRatioSql = "SELECT dr.round_name, COUNT(dl.id) as count 
+        $roundRatioSql = "SELECT dr.id, dr.round_name, dl.status, COUNT(dl.id) as cnt 
                           FROM distribution_logs dl 
                           JOIN distribution_rounds dr ON dl.round_id = dr.id 
-                          WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month') 
-                          GROUP BY dr.id ORDER BY count DESC";
+                          WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                          GROUP BY dr.id, dl.status";
         $roundRatioRes = $conn->query($roundRatioSql);
+        $roundStats = [];
+        if ($roundRatioRes) {
+            while ($row = $roundRatioRes->fetch_assoc()) {
+                $rId = (int)$row['id'];
+                if (!isset($roundStats[$rId])) {
+                    $roundStats[$rId] = [
+                        'round_name' => $row['round_name'],
+                        'assigned' => 0,
+                        'compensation' => 0,
+                        'rule_6_month' => 0,
+                        'pending_work_hours' => 0,
+                        'error' => 0
+                    ];
+                }
+                $status = $row['status'];
+                if (isset($roundStats[$rId][$status])) {
+                    $roundStats[$rId][$status] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        $roundRatioList = [];
+        foreach ($roundStats as $rId => $rStats) {
+            $count = $rStats['assigned'] + $rStats['compensation'] + $rStats['rule_6_month'] + $rStats['pending_work_hours'] + max(0, $rStats['error'] - $rStats['compensation']);
+            $roundRatioList[] = [
+                'round' => $rStats['round_name'],
+                'count' => $count
+            ];
+        }
+
+        // Sort descending by count
+        usort($roundRatioList, function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
         $roundRatio = [];
         $totalDistributed = max(1, (int) $statsRes['distributed']);
         $roundColors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
         $j = 0;
-        while ($row = $roundRatioRes->fetch_assoc()) {
+        foreach ($roundRatioList as $row) {
             $percent = round(($row['count'] / $totalDistributed) * 100, 1);
             $roundRatio[] = [
-                'round' => $row['round_name'],
+                'round' => $row['round'],
                 'count' => (int) $row['count'],
                 'percent' => $percent,
                 'color' => $roundColors[$j % 5]
@@ -5626,6 +5750,8 @@ switch ($action) {
             'data' => [
                 'total_today' => (int) $statsRes['total'],
                 'distributed_today' => (int) $statsRes['distributed'],
+                'distributed_assigned' => (int) $assigned_total,
+                'distributed_compensation' => (int) $compensation_total,
                 'duplicates' => (int) $statsRes['duplicates'],
                 'errors' => (int) $statsRes['errors'],
                 'ticket_errors' => (int) $ticketErrors,
@@ -5731,40 +5857,113 @@ switch ($action) {
             $sources = ['FB Ads', 'Google Ads', 'TikTok Ads', 'Google Sheet'];
         }
 
-        // Query lead assignment counts
-        $leadCountsSql = "SELECT assigned_to, COUNT(*) as cnt 
+        // Query lead assignment counts grouped by status
+        $leadCountsSql = "SELECT assigned_to, status, COUNT(*) as cnt 
                           FROM distribution_logs 
                           WHERE $dateCondition $roundCondition 
                             AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
-                          GROUP BY assigned_to";
+                          GROUP BY assigned_to, status";
         $countsRes = $conn->query($leadCountsSql);
+        $consultantStatusCounts = [];
         if ($countsRes) {
             while ($row = $countsRes->fetch_assoc()) {
                 $cId = (int)$row['assigned_to'];
-                if (isset($consultants[$cId])) {
-                    $consultants[$cId]['assigned_count'] = (int)$row['cnt'];
+                $status = $row['status'];
+                $cnt = (int)$row['cnt'];
+                if (!isset($consultantStatusCounts[$cId])) {
+                    $consultantStatusCounts[$cId] = [
+                        'assigned' => 0,
+                        'compensation' => 0,
+                        'rule_6_month' => 0,
+                        'pending_work_hours' => 0,
+                        'error' => 0
+                    ];
+                }
+                if (array_key_exists($status, $consultantStatusCounts[$cId])) {
+                    $consultantStatusCounts[$cId][$status] = $cnt;
                 }
             }
         }
+        foreach ($consultants as $cId => &$c) {
+            if (isset($consultantStatusCounts[$cId])) {
+                $sc = $consultantStatusCounts[$cId];
+                $c['assigned_count'] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + max(0, $sc['error'] - $sc['compensation']);
+            }
+        }
+        unset($c);
 
-        // Query source breakdown per consultant
-        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(sc.sheet_name, l.source) as source, COUNT(*) as cnt 
+        // Query source breakdown per consultant grouped by status
+        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(sc.sheet_name, l.source) as source, dl.status, COUNT(*) as cnt 
                             FROM distribution_logs dl
                             JOIN leads l ON dl.lead_id = l.id
                             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                             WHERE $dateCondition $roundCondition 
                               AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
-                            GROUP BY dl.assigned_to, COALESCE(sc.sheet_name, l.source)";
+                            GROUP BY dl.assigned_to, COALESCE(sc.sheet_name, l.source), dl.status";
         $srcRes = $conn->query($sourceCountsSql);
+        $consultantSourceStatusCounts = [];
         if ($srcRes) {
             while ($row = $srcRes->fetch_assoc()) {
                 $cId = (int)$row['assigned_to'];
                 $sourceName = $row['source'] ?: 'Không xác định';
-                if (isset($consultants[$cId])) {
-                    $consultants[$cId]['sources'][$sourceName] = (int)$row['cnt'];
+                $status = $row['status'];
+                $cnt = (int)$row['cnt'];
+                
+                if (!isset($consultantSourceStatusCounts[$cId])) {
+                    $consultantSourceStatusCounts[$cId] = [];
+                }
+                if (!isset($consultantSourceStatusCounts[$cId][$sourceName])) {
+                    $consultantSourceStatusCounts[$cId][$sourceName] = [
+                        'assigned' => 0,
+                        'compensation' => 0,
+                        'rule_6_month' => 0,
+                        'pending_work_hours' => 0,
+                        'error' => 0
+                    ];
+                }
+                if (array_key_exists($status, $consultantSourceStatusCounts[$cId][$sourceName])) {
+                    $consultantSourceStatusCounts[$cId][$sourceName][$status] = $cnt;
                 }
             }
         }
+        foreach ($consultants as $cId => &$c) {
+            if (isset($consultantSourceStatusCounts[$cId])) {
+                $sCounts = $consultantSourceStatusCounts[$cId];
+                
+                // Calculate total errors and compensations for this consultant across all sources
+                $totalErrors = 0;
+                $totalCompensations = 0;
+                foreach ($sCounts as $src => $sc) {
+                    $totalErrors += $sc['error'];
+                    $totalCompensations += $sc['compensation'];
+                }
+                
+                $deduction = min($totalErrors, $totalCompensations);
+                
+                // Distribute deduction across sources
+                $adjustedErrors = [];
+                foreach ($sCounts as $src => $sc) {
+                    $adjustedErrors[$src] = $sc['error'];
+                }
+                
+                if ($deduction > 0) {
+                    foreach ($sCounts as $src => $sc) {
+                        if ($adjustedErrors[$src] > 0) {
+                            $d = min($deduction, $adjustedErrors[$src]);
+                            $adjustedErrors[$src] -= $d;
+                            $deduction -= $d;
+                            if ($deduction <= 0) break;
+                        }
+                    }
+                }
+                
+                // Now calculate the adjusted counts for each source
+                foreach ($sCounts as $src => $sc) {
+                    $c['sources'][$src] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + $adjustedErrors[$src];
+                }
+            }
+        }
+        unset($c);
 
         // Query ticket error counts (data_reports approved)
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
