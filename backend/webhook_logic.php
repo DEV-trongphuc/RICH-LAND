@@ -115,6 +115,8 @@ function normalizeDate($dateRaw) {
 
 function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = false, $name = '', $source = '', $type = '', $note = '') {
     static $exclusions = null;
+    static $blacklistContacts = null;
+    static $blacklistKeys = null;
     if ($exclusions === null) {
         $exclusions = ['keys' => '', 'contacts' => ''];
         $res = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_exclusion_keys', 'global_exclusion_contacts')");
@@ -124,14 +126,15 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                 if ($row['setting_key'] === 'global_exclusion_contacts') $exclusions['contacts'] = $row['setting_value'];
             }
         }
+        $blacklistContacts = !empty($exclusions['contacts']) ? array_map('trim', explode(',', strtolower($exclusions['contacts']))) : [];
+        $blacklistKeys = !empty($exclusions['keys']) ? array_map('trim', explode(',', mb_strtolower($exclusions['keys'], 'UTF-8'))) : [];
     }
 
     $matched = false;
     $reason = '';
 
     // 1. Check contacts (email / phone)
-    if (!empty($exclusions['contacts'])) {
-        $blacklistContacts = array_map('trim', explode(',', strtolower($exclusions['contacts'])));
+    if (!empty($blacklistContacts)) {
         $p = strtolower(normalizePhone($phone));
         $e = strtolower(trim($email));
         foreach ($blacklistContacts as $contact) {
@@ -157,8 +160,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
     }
 
     // 2. Check keys in payload (Scan ONLY values, not JSON keys/headers)
-    if (!$matched && !empty($exclusions['keys'])) {
-        $blacklistKeys = array_map('trim', explode(',', mb_strtolower($exclusions['keys'], 'UTF-8')));
+    if (!$matched && !empty($blacklistKeys)) {
         $scanData = $data;
         unset($scanData['_meta']); // Do not scan internal metadata
         

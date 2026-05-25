@@ -41,12 +41,14 @@ if (!function_exists('get_system_setting')) {
 
 if (!function_exists('pruneAdminLogs')) {
     function pruneAdminLogs($conn) {
-        // Cắt giảm admin_logs tối đa 1000 bản ghi
+        // [TỐI ƯU PRODUCTION] Đã tắt dọn dẹp admin_logs tự động để tránh nghẽn khi scale lớn
+        /*
         $conn->query("DELETE FROM admin_logs WHERE id < (
             SELECT MIN(id) FROM (
                 SELECT id FROM admin_logs ORDER BY id DESC LIMIT 1000
             ) tmp
         )");
+        */
         
         // [TỐI ƯU PRODUCTION] Không tự động dọn dẹp distribution_logs để giữ số liệu báo cáo lịch sử đầy đủ
         /*
@@ -217,6 +219,12 @@ if ($runMigration) {
     $chkIdxLeadTime = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_created_at'");
     if ($chkIdxLeadTime && $chkIdxLeadTime->num_rows === 0) {
         $conn->query("ALTER TABLE leads ADD INDEX `idx_created_at` (`created_at`)");
+    }
+
+    // leads name index
+    $chkIdxName = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_name'");
+    if ($chkIdxName && $chkIdxName->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD INDEX `idx_name` (`name`)");
     }
 
     // Auto-migrate: ensure connection_id column exists in leads
