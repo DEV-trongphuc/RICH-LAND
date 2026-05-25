@@ -1241,8 +1241,11 @@ export const SalePortal = () => {
                               {new Date(item.received_at).toLocaleString('vi-VN')}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
-                            <strong>Nhận bởi:</strong> {item.consultant_name || 'Chưa rõ'}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <Avatar src={item.consultant_avatar} name={item.consultant_name} size={16} />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
+                              <strong>Nhận bởi:</strong> {item.consultant_name || 'Chưa rõ'}
+                            </span>
                           </div>
                           {item.message && (
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px', fontStyle: 'italic' }}>

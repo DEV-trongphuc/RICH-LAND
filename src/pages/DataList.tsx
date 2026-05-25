@@ -1230,11 +1230,6 @@ export const DataList = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
                     <div>
                       {getStatusBadge(selectedLead.status, selectedLead.report_status)}
-                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
-                        <div style={{ fontSize: '0.72rem', color: '#db2777', fontWeight: 600, marginTop: 6 }}>
-                          🔄 Hoạt động gần nhất: {new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1638,10 +1633,8 @@ export const DataList = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
                             <Clock size={12} /> Thời gian nhắc lại từ:
                           </div>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {typeof selectedLead.last_activity_at === 'string'
-                              ? new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')
-                              : '-'}
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f59e0b' }}>
+                            {selectedLead.last_activity_at}
                           </div>
                         </div>
                       )}

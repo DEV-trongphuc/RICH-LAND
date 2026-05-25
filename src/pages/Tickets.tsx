@@ -1291,11 +1291,6 @@ export const Tickets = () => {
                       {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>}
                       {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Chỉ đồng bộ</span>}
                       {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Blacklist</span>}
-                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
-                        <div style={{ fontSize: '0.72rem', color: '#db2777', fontWeight: 600, marginTop: 6 }}>
-                          🔄 Hoạt động gần nhất: {new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1304,52 +1299,9 @@ export const Tickets = () => {
                   const { cleanNote, errorNotes, blacklistNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
-                      {/* Clean Note Card */}
-                      <div style={{ 
-                        background: 'var(--color-warning-light)', 
-                        border: '1px solid var(--color-warning-light)',
-                        padding: '1.25rem', 
-                        borderRadius: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.75rem',
-                        boxShadow: 'none'
-                      }}
-                      className="premium-alert-card"
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{
-                            background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
-                            padding: '8px',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: theme === 'dark' ? '#f59e0b' : '#d97706'
-                          }}>
-                            <Tag size={18} strokeWidth={2.5} />
-                          </div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>Loại Data:</span>
-                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
-                          </div>
-                          
-                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
-                            <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Error Notes (Approved / Rejected) */}
                       {errorNotes.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                           {errorNotes.map((err, index) => {
                             const isApproved = err.includes('DUYỆT');
                             
@@ -1548,6 +1500,49 @@ export const Tickets = () => {
                         </div>
                       )}
 
+                      {/* Clean Note Card */}
+                      <div style={{ 
+                        background: 'var(--color-warning-light)', 
+                        border: '1px solid var(--color-warning-light)',
+                        padding: '1.25rem', 
+                        borderRadius: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: 'none'
+                      }}
+                      className="premium-alert-card"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+                            padding: '8px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: theme === 'dark' ? '#f59e0b' : '#d97706'
+                          }}>
+                            <Tag size={18} strokeWidth={2.5} />
+                          </div>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>Loại Data:</span>
+                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                          </div>
+                          
+                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
+                            <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
+                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Blacklist Notes */}
                       {blacklistNotes && blacklistNotes.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
@@ -1699,10 +1694,8 @@ export const Tickets = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
                             <Clock size={12} /> Thời gian nhắc lại từ:
                           </div>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {typeof selectedLead.last_activity_at === 'string'
-                              ? new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')
-                              : '-'}
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f59e0b' }}>
+                            {selectedLead.last_activity_at}
                           </div>
                         </div>
                       )}

@@ -1056,7 +1056,7 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
 
     $limit = $excludeLatestIfReminder ? 6 : 5;
     $stmt = $conn->prepare("
-        SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, dr.round_name 
+        SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, c.avatar as consultant_avatar, dr.round_name 
         FROM distribution_logs dl 
         LEFT JOIN consultants c ON dl.assigned_to = c.id 
         LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
@@ -1140,6 +1140,7 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
                 'status' => $statusText,
                 'message' => $msg,
                 'consultant_name' => $row['consultant_name'],
+                'consultant_avatar' => $row['consultant_avatar'],
                 'round_name' => $row['round_name']
             ];
         }
