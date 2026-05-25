@@ -409,8 +409,10 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
     return sendZaloMessage($botToken, $adminChatId, $text);
 }
 
-function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount) {
+function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '') {
     global $conn;
+    if (empty($time)) $time = date('H:i:s d/m/Y');
+
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
     if (!$botToken) return false;
@@ -426,15 +428,43 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $stmtC->close();
     if (!$chatId) return false;
 
-    $msg = "🎁 [ THÔNG BÁO BÙ DATA ] 🎁\n"
+    $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
+
+    $msg = "🎁 [ THÔNG BÁO BÙ DATA CHỦ ĐỘNG ] 🎁\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Xin chào $consultantName,\n\n"
-        . "Quản trị viên vừa cập nhật bù thêm $amount data cho bạn tại vòng: $roundName.\n\n"
-        . "💡 Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n"
+        . "Admin $adminName vừa thực hiện bù chủ động thêm $amount data cho bạn tại vòng: $roundName.\n\n"
+        . "  • Thời gian: $time\n"
+        . $reasonStr
+        . "\n💡 Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n"
         . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $msg);
+}
+
+function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '') {
+    global $conn;
+    if (empty($time)) $time = date('H:i:s d/m/Y');
+
+    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+    if (!$botToken || empty($adminChatId)) return false;
+
+    $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
+
+    $msg = "🔔 [ BÁO CÁO BÙ DATA CHỦ ĐỘNG ] 🔔\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
+        . "Xin chào Quản trị viên $adminName,\n\n"
+        . "Quản trị viên $operatorName vừa thực hiện bù chủ động data cho Sale:\n"
+        . "  • Sale nhận: $consultantName\n"
+        . "  • Số lượng: $amount data\n"
+        . "  • Vòng: $roundName\n"
+        . "  • Thời gian: $time\n"
+        . $reasonStr
+        . "\n━━━━━━━━━━━━━━━━━━━━━";
+
+    return sendZaloMessage($botToken, $adminChatId, $msg);
 }
 
 /**

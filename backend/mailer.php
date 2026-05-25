@@ -985,21 +985,25 @@ function sendDailyReportEmailToAdmins(
     sendEmailNotification($adminEmail, $subject, 'Báo Cáo Hàng Ngày', $content, '');
 }
 
-function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $roundName, $amount) {
+function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '') {
     if (empty($consultantEmail)) return;
+    if (empty($time)) $time = date('H:i:s d/m/Y');
 
-    $subject = "[Domation DATA] Thông báo Bù Data - Vòng: $roundName";
-    $title = "BẠN VỪA ĐƯỢC BÙ DATA";
+    $subject = "[Domation DATA] Thông báo Bù Data Chủ Động - Vòng: $roundName";
+    $title = "BẠN VỪA ĐƯỢC BÙ DATA CHỦ ĐỘNG";
+    
+    $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
     
     $content = '
         <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border-left: 4px solid #4f46e5; margin-bottom: 24px;">
-            <p style="margin: 0; font-size: 14px; color: #3730a3;"><strong>THÔNG BÁO TỪ QUẢN TRỊ VIÊN</strong></p>
+            <p style="margin: 0; font-size: 14px; color: #3730a3;"><strong>THÔNG BÁO TỪ HỆ THỐNG</strong></p>
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
                 Xin chào <strong>' . htmlspecialchars($consultantName) . '</strong>,
             </p>
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
-                Quản trị viên vừa cập nhật bù thêm <strong>' . (int)$amount . ' data</strong> cho bạn tại vòng: <strong>' . htmlspecialchars($roundName) . '</strong>.
+                Admin <strong>' . htmlspecialchars($adminName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int)$amount . ' data</strong> cho bạn tại vòng: <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
             </p>
+            ' . $reasonStr . '
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
                 Khi hệ thống nhận được khách hàng mới thỏa mãn điều kiện của vòng này, data sẽ được ưu tiên phân bổ thêm cho bạn để bù lại số lượng trên.
             </p>
@@ -1007,6 +1011,31 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
     ';
 
     sendEmailNotification($consultantEmail, $subject, $title, $content, '');
+}
+
+function sendActiveCompensationEmailToAdmins($adminEmail, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '') {
+    if (empty($adminEmail)) return;
+    if (empty($time)) $time = date('H:i:s d/m/Y');
+
+    $subject = "[Domation DATA] Báo cáo Bù Data Chủ Động — $consultantName";
+    $title = "BÁO CÁO BÙ DATA CHỦ ĐỘNG";
+    
+    $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
+    
+    $content = '
+        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #64748b; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 14px; color: #475569;"><strong>BÁO CÁO HỆ THỐNG</strong></p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #0f172a;">
+                Xin chào <strong>' . htmlspecialchars($adminName) . '</strong>,
+            </p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #334155;">
+                Quản trị viên <strong>' . htmlspecialchars($operatorName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int)$amount . ' data</strong> cho tư vấn viên <strong>' . htmlspecialchars($consultantName) . '</strong> tại vòng <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
+            </p>
+            ' . $reasonStr . '
+        </div>
+    ';
+
+    sendEmailNotification($adminEmail, $subject, $title, $content, '');
 }
 
 function sendWeeklyReportEmailToSale(

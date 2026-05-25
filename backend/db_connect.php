@@ -68,7 +68,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 116) {
+        if ($dbVer >= 117) {
             $runMigration = false;
         }
     }
@@ -89,7 +89,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 116) {
+                    if ($dbVer >= 117) {
                         $runMigration = false;
                     }
                 }
@@ -476,9 +476,23 @@ if ($runMigration) {
     $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhập dữ liệu cũ (Silent)', '')) WHERE note LIKE '%Nhập dữ liệu cũ (Silent)%'");
     $conn->query("UPDATE leads SET note = TRIM(BOTH '\n' FROM REPLACE(note, 'Nhập dữ liệu cũ', '')) WHERE note LIKE '%Nhập dữ liệu cũ%'");
 
+    // Auto-migrate: ensure active_compensation_logs table exists
+    $conn->query("CREATE TABLE IF NOT EXISTS active_compensation_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        round_id INT NOT NULL,
+        consultant_id INT NOT NULL,
+        admin_id INT NOT NULL,
+        amount INT NOT NULL,
+        reason VARCHAR(255) NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (round_id) REFERENCES distribution_rounds(id) ON DELETE CASCADE,
+        FOREIGN KEY (consultant_id) REFERENCES consultants(id) ON DELETE CASCADE,
+        FOREIGN KEY (admin_id) REFERENCES accounts(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '116') ON DUPLICATE KEY UPDATE setting_value = '116'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '117') ON DUPLICATE KEY UPDATE setting_value = '117'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
