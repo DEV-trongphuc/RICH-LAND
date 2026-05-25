@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers,
-  RotateCcw, Settings, Copy
+  RotateCcw, Settings, Copy, ChevronDown, ChevronUp
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -39,6 +39,33 @@ export const FairShareAudit = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [compensationDetails, setCompensationDetails] = useState<any>(null);
+
+  // State to track expanded sections in the Details modal
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    ticket: true,
+    blacklist: false,
+    reassign: false,
+    active: false
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Reset expanded sections when details modal is opened
+  useEffect(() => {
+    if (showDetailsModal) {
+      setExpandedSections({
+        ticket: true,
+        blacklist: false,
+        reassign: false,
+        active: false
+      });
+    }
+  }, [showDetailsModal]);
 
   // Simulation State
   const [isSimulating, setIsSimulating] = useState(false);
@@ -1625,18 +1652,37 @@ export const FairShareAudit = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* Tickets Approved */}
                 <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div 
+                    onClick={() => toggleSection('ticket')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
                         <CheckCircle size={14} />
                       </span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do duyệt ticket lỗi")}</span>
                     </div>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.ticket} {t("lead")}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.ticket} {t("lead")}</span>
+                      {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
+                        expandedSections.ticket ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      )}
+                    </div>
                   </div>
 
-                  {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
-                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                  {expandedSections.ticket && compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
+                    <div style={{ 
+                      borderTop: '1px dashed var(--color-border-light)', 
+                      marginTop: '4px', 
+                      paddingTop: '8px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      paddingLeft: '32px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      paddingRight: '4px'
+                    }}>
                       {compensationDetails.breakdown.ticket_details.map((tkt: any, idx: number) => {
                         const dateStr = new Date(tkt.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                         return (
@@ -1659,18 +1705,37 @@ export const FairShareAudit = () => {
 
                 {/* Blacklist block */}
                 <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div 
+                    onClick={() => toggleSection('blacklist')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
                         <AlertTriangle size={14} />
                       </span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do blacklist chặn")}</span>
                     </div>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.blacklist} {t("lead")}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.blacklist} {t("lead")}</span>
+                      {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
+                        expandedSections.blacklist ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      )}
+                    </div>
                   </div>
 
-                  {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
-                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                  {expandedSections.blacklist && compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
+                    <div style={{ 
+                      borderTop: '1px dashed var(--color-border-light)', 
+                      marginTop: '4px', 
+                      paddingTop: '8px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      paddingLeft: '32px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      paddingRight: '4px'
+                    }}>
                       {compensationDetails.breakdown.blacklist_details.map((bl: any, idx: number) => {
                         const dateStr = new Date(bl.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                         return (
@@ -1693,18 +1758,37 @@ export const FairShareAudit = () => {
 
                 {/* Reassignments */}
                 <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div 
+                    onClick={() => toggleSection('reassign')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
                         <Layers size={14} />
                       </span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do thu hồi / chuyển lead")}</span>
                     </div>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.reassign} {t("lead")}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.reassign} {t("lead")}</span>
+                      {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
+                        expandedSections.reassign ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      )}
+                    </div>
                   </div>
 
-                  {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
-                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                  {expandedSections.reassign && compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
+                    <div style={{ 
+                      borderTop: '1px dashed var(--color-border-light)', 
+                      marginTop: '4px', 
+                      paddingTop: '8px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      paddingLeft: '32px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      paddingRight: '4px'
+                    }}>
                       {compensationDetails.breakdown.reassign_details.map((re: any, idx: number) => {
                         const dateStr = new Date(re.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                         return (
@@ -1727,19 +1811,38 @@ export const FairShareAudit = () => {
 
                 {/* Manual/Active Compensations */}
                 <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div 
+                    onClick={() => toggleSection('active')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
                         <RotateCcw size={14} />
                       </span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động ")}</span>
                     </div>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.active_total} {t("lead")}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.active_total} {t("lead")}</span>
+                      {compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
+                        expandedSections.active ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      )}
+                    </div>
                   </div>
 
                   {/* Active details reasons sub-list */}
-                  {compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
-                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                  {expandedSections.active && compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
+                    <div style={{ 
+                      borderTop: '1px dashed var(--color-border-light)', 
+                      marginTop: '4px', 
+                      paddingTop: '8px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px', 
+                      paddingLeft: '32px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      paddingRight: '4px'
+                    }}>
                       {compensationDetails.breakdown.active_details.map((act: any, idx: number) => {
                         const dateStr = new Date(act.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                         return (
