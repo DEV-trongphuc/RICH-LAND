@@ -326,7 +326,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
               alignItems: 'center',
               gap: '4px',
               background: 'var(--color-bg)',
-              border: '1px solid var(--color-border)',
+              border: `1px solid ${isLangOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
               borderRadius: '6px',
               padding: '3px 6px',
               cursor: 'pointer',
@@ -336,15 +336,14 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
               transition: 'all 0.2s',
               height: 30,
               outline: 'none',
+              boxShadow: 'none',
             }}
             title={t('Chọn ngôn ngữ')}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = 'var(--color-primary)';
             }}
             onMouseLeave={e => {
-              if (!isLangOpen) {
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-              }
+              e.currentTarget.style.borderColor = isLangOpen ? 'var(--color-primary)' : 'var(--color-border)';
             }}
           >
             <img 
