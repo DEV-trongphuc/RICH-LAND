@@ -10,7 +10,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, LabelList
 } from 'recharts';
 
 interface User {
@@ -81,7 +81,7 @@ export const Consultants = () => {
 
   const [unlinkId, setUnlinkId] = useState<number | null>(null);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
-  
+
   // Quick message state
   const [quickMessageOpen, setQuickMessageOpen] = useState(false);
   const [quickMessageTarget, setQuickMessageTarget] = useState<any>(null);
@@ -96,7 +96,7 @@ export const Consultants = () => {
   const [statsDateMode, setStatsDateMode] = useState<string>('this_month');
   const [statsStartDate, setStatsStartDate] = useState<string>('');
   const [statsEndDate, setStatsEndDate] = useState<string>('');
-  
+
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [formData, setFormData] = useState<{
     name: string;
@@ -155,12 +155,12 @@ export const Consultants = () => {
   const openAddModal = () => {
     setEditingUser(null);
     setScheduleMode('daily');
-    setFormData({ 
-      name: '', 
-      email: '', 
-      status: 'active', 
-      leave_start: '', 
-      leave_end: '', 
+    setFormData({
+      name: '',
+      email: '',
+      status: 'active',
+      leave_start: '',
+      leave_end: '',
       zalo_chat_id: '',
       work_start_time: '00:00',
       work_end_time: '23:59',
@@ -174,11 +174,11 @@ export const Consultants = () => {
     setEditingUser(user);
     const hasCustomSchedule = !!user.work_schedule;
     setScheduleMode(hasCustomSchedule ? 'custom' : 'daily');
-    setFormData({ 
-      name: user.name, 
-      email: user.email, 
+    setFormData({
+      name: user.name,
+      email: user.email,
       status: user.status,
-      leave_start: user.leave_start || '', 
+      leave_start: user.leave_start || '',
       leave_end: user.leave_end || '',
       zalo_chat_id: user.zalo_chat_id || '',
       work_start_time: user.work_start_time || '00:00',
@@ -197,8 +197,8 @@ export const Consultants = () => {
     setIsSaving(true);
     try {
       const action = editingUser ? 'edit_consultant' : 'add_consultant';
-      const payload = { 
-        ...formData, 
+      const payload = {
+        ...formData,
         id: editingUser?.id,
         work_schedule: scheduleMode === 'custom' ? formData.work_schedule : null
       };
@@ -206,7 +206,7 @@ export const Consultants = () => {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      
+
       if (json.success) {
         toast.success(editingUser ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
         fetchUsers();
@@ -367,8 +367,8 @@ export const Consultants = () => {
     }
   }, [statsModalOpen, statsConsultant, statsDateMode, statsStartDate, statsEndDate]);
 
-  const activeCount   = users.filter(u => u.status === 'active').length;
-  const leaveCount    = users.filter(u => u.status === 'leave').length;
+  const activeCount = users.filter(u => u.status === 'active').length;
+  const leaveCount = users.filter(u => u.status === 'leave').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
 
   return (
@@ -431,14 +431,14 @@ export const Consultants = () => {
                       </div>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Tư vấn viên</h3>
                       <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thêm tư vấn viên đầu tiên để bắt đầu chia số tự động.</p>
-                      <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Tư vấn viên</button>
+                      <button className="btn primary" onClick={openAddModal}><Plus size={18} /> Thêm Tư vấn viên</button>
                     </div>
                   </td>
                 </tr>
               ) : users.map((u) => {
                 return (
-                  <tr 
-                    key={u.id} 
+                  <tr
+                    key={u.id}
                     className="group table-row-hover"
                     style={{ cursor: 'pointer' }}
                     onClick={() => openEditModal(u)}
@@ -448,7 +448,7 @@ export const Consultants = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Avatar src={u.avatar} name={u.name} size={32} />
                         <div>
-                          <div 
+                          <div
                             style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
                             onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
                             onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
@@ -459,17 +459,17 @@ export const Consultants = () => {
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
                             {u.work_schedule ? (
-                              <span 
-                                style={{ 
-                                  fontSize: '0.75rem', 
-                                  color: '#0ea5e9', 
-                                  fontWeight: 600, 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center', 
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: '#0ea5e9',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
                                   gap: 4,
                                   cursor: 'help',
                                   borderBottom: '1px dotted #0ea5e9'
-                                }} 
+                                }}
                                 title={formatScheduleTooltip(u.work_schedule)}
                               >
                                 <Clock size={12} /> Lịch tuần
@@ -493,9 +493,9 @@ export const Consultants = () => {
                     <td>
                       {u.zalo_chat_id ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ 
-                            display: 'inline-flex', alignItems: 'center', gap: 6, 
-                            padding: '4px 10px', borderRadius: 20, 
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 10px', borderRadius: 20,
                             background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
                           }}>
                             <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
@@ -503,9 +503,9 @@ export const Consultants = () => {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ 
-                            display: 'inline-flex', alignItems: 'center', gap: 6, 
-                            padding: '4px 10px', borderRadius: 20, 
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 10px', borderRadius: 20,
                             background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
                           }}>
                             Chưa liên kết
@@ -549,16 +549,16 @@ export const Consultants = () => {
                     </td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
-                        <button 
-                          onClick={() => { 
-                            setStatsConsultant(u); 
+                        <button
+                          onClick={() => {
+                            setStatsConsultant(u);
                             setStatsDateMode('this_month');
                             setStatsStartDate('');
                             setStatsEndDate('');
-                            setStatsModalOpen(true); 
-                          }} 
-                          className="btn ghost sm" 
-                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }} 
+                            setStatsModalOpen(true);
+                          }}
+                          className="btn ghost sm"
+                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
                           title="Thống kê hiệu suất"
                         >
                           <BarChart2 size={14} />
@@ -579,9 +579,9 @@ export const Consultants = () => {
       {/* MODAL */}
       {modalOpen && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setModalOpen(false)}>
-          <div 
+          <div
             className="card"
-            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} 
+            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -592,14 +592,14 @@ export const Consultants = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
               <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                  
+
                   {/* Cột 1: Thông tin cá nhân & Trạng thái */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    
+
                     {/* Avatar Upload */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                       <div style={{ position: 'relative' }}>
@@ -610,7 +610,7 @@ export const Consultants = () => {
                           </div>
                         )}
                       </div>
-                      
+
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           Ảnh đại diện TVV
@@ -650,23 +650,23 @@ export const Consultants = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14}/> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input 
-                        className="form-input" 
-                        placeholder="VD: Nguyễn Văn A" 
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} /> Họ và Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input
+                        className="form-input"
+                        placeholder="VD: Nguyễn Văn A"
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
                         required
                         autoFocus
                       />
                     </div>
-                    
+
                     <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14}/> Email <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input 
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14} /> Email <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input
                         type="email"
-                        className="form-input" 
-                        placeholder="VD: email@domain.com" 
+                        className="form-input"
+                        placeholder="VD: email@domain.com"
                         value={formData.email}
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
                         required
@@ -674,32 +674,35 @@ export const Consultants = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14}/> Trạng thái</label>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> Trạng thái</label>
                       <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setFormData({ ...formData, status: 'active' })}
-                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
                             background: formData.status === 'active' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
                         >Đang nhận Data</button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setFormData({ ...formData, status: 'leave' })}
-                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
                             background: formData.status === 'leave' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
                         >Nghỉ phép</button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setFormData({ ...formData, status: 'inactive' })}
-                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
                             background: formData.status === 'inactive' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
                             boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
@@ -713,9 +716,9 @@ export const Consultants = () => {
                       <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'var(--color-warning-light)', padding: '0.75rem', borderRadius: 12, border: '1px solid var(--color-border)', animation: 'slideUp 0.15s ease-out' }}>
                         <div>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Từ ngày</label>
-                          <input 
-                            type="date" 
-                            className="form-input" 
+                          <input
+                            type="date"
+                            className="form-input"
                             style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
                             value={formData.leave_start}
                             onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
@@ -723,9 +726,9 @@ export const Consultants = () => {
                         </div>
                         <div>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>Đến ngày</label>
-                          <input 
-                            type="date" 
-                            className="form-input" 
+                          <input
+                            type="date"
+                            className="form-input"
                             style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
                             value={formData.leave_end}
                             onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
@@ -775,28 +778,30 @@ export const Consultants = () => {
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} /> Giờ làm việc của Sale
                       </label>
-                      
+
                       {/* Segmented Control for Schedule Mode */}
                       <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem' }}>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setScheduleMode('daily')}
-                          style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                          style={{
+                            flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
                             background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                             boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
                         >Cố định hàng ngày</button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => {
                             setScheduleMode('custom');
                             if (!formData.work_schedule) {
                               setFormData(prev => ({ ...prev, work_schedule: DEFAULT_SCHEDULE }));
                             }
                           }}
-                          style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                          style={{
+                            flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
                             background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                             color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                             boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
@@ -808,10 +813,10 @@ export const Consultants = () => {
                       {scheduleMode === 'daily' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               id="work_24h"
-                              checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)} 
+                              checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)}
                               onChange={e => {
                                 if (e.target.checked) {
                                   setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59', work_schedule: null });
@@ -825,14 +830,14 @@ export const Consultants = () => {
                               Hoạt động 24/24 (Mặc định)
                             </label>
                           </div>
-                          
+
                           {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
                               <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Từ</label>
-                                <input 
-                                  type="time" 
-                                  className="form-input" 
+                                <input
+                                  type="time"
+                                  className="form-input"
                                   style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
                                   value={formData.work_start_time}
                                   onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
@@ -841,9 +846,9 @@ export const Consultants = () => {
                               <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
                               <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Đến</label>
-                                <input 
-                                  type="time" 
-                                  className="form-input" 
+                                <input
+                                  type="time"
+                                  className="form-input"
                                   style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
                                   value={formData.work_end_time}
                                   onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
@@ -858,15 +863,15 @@ export const Consultants = () => {
                           {Object.entries(dayNames).map(([dayKey, dayLabel]) => {
                             const schedule = formData.work_schedule || DEFAULT_SCHEDULE;
                             const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
-                            
+
                             return (
                               <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
                                 <div style={{ width: '60px', fontWeight: 600, fontSize: '0.75rem' }}>
                                   {dayLabel}
                                 </div>
-                                
+
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <ToggleSwitch 
+                                  <ToggleSwitch
                                     checked={dayConfig.active}
                                     onChange={checked => handleDayChange(dayKey, 'active', checked)}
                                     small
@@ -875,17 +880,17 @@ export const Consultants = () => {
                                     {dayConfig.active ? 'Bật' : 'Nghỉ'}
                                   </span>
                                 </div>
-                                
+
                                 {dayConfig.active && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', animation: 'slideUp 0.1s ease-out' }}>
-                                    <input 
+                                    <input
                                       type="time"
                                       value={dayConfig.start}
                                       onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
                                       style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                                     />
                                     <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>-</span>
-                                    <input 
+                                    <input
                                       type="time"
                                       value={dayConfig.end}
                                       onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
@@ -908,9 +913,9 @@ export const Consultants = () => {
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
                         <MessageCircle size={14} /> Zalo Chat ID (Tự động cấp)
                       </label>
-                      <input 
-                        className="form-input" 
-                        placeholder="Sale nhắn mã ID cho Zalo Bot để lấy..." 
+                      <input
+                        className="form-input"
+                        placeholder="Sale nhắn mã ID cho Zalo Bot để lấy..."
                         value={formData.zalo_chat_id}
                         onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
                         style={{ fontSize: '0.8125rem', padding: '6px 10px' }}
@@ -962,9 +967,9 @@ export const Consultants = () => {
               <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
                 <div className="form-group">
                   <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <textarea 
-                    className="form-input" 
-                    placeholder="Nhập nội dung cần thông báo cho Sale..." 
+                  <textarea
+                    className="form-input"
+                    placeholder="Nhập nội dung cần thông báo cho Sale..."
                     value={quickMessageText}
                     onChange={e => setQuickMessageText(e.target.value)}
                     required
@@ -988,16 +993,16 @@ export const Consultants = () => {
       {/* Statistics Modal */}
       {statsModalOpen && statsConsultant && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)}>
-          <div 
-            className="card" 
-            style={{ 
-              width: '100%', 
-              maxWidth: 900, 
-              maxHeight: '92vh', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              animation: 'slideUp 0.2s ease-out' 
-            }} 
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideUp 0.2s ease-out'
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -1018,7 +1023,7 @@ export const Consultants = () => {
                 <div style={{ position: 'relative', zIndex: 100 }}>
                   <CustomSelect
                     options={[
-                      { value: 'this_month', label: 'Tháng này (Mặc định)' },
+                      { value: 'this_month', label: 'Tháng này' },
                       { value: 'today', label: 'Hôm nay' },
                       { value: 'yesterday', label: 'Hôm qua' },
                       { value: '7_days', label: '7 ngày qua' },
@@ -1035,17 +1040,17 @@ export const Consultants = () => {
 
                 {statsDateMode === 'custom' && (
                   <div className="stats-custom-dates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', animation: 'slideUp 0.15s ease-out', flexShrink: 0 }}>
-                    <input 
-                      type="date" 
-                      className="form-input" 
+                    <input
+                      type="date"
+                      className="form-input"
                       style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
                       value={statsStartDate}
                       onChange={e => setStatsStartDate(e.target.value)}
                     />
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>đến</span>
-                    <input 
-                      type="date" 
-                      className="form-input" 
+                    <input
+                      type="date"
+                      className="form-input"
                       style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
                       value={statsEndDate}
                       onChange={e => setStatsEndDate(e.target.value)}
@@ -1080,7 +1085,7 @@ export const Consultants = () => {
                       100% { transform: translateX(330%); }
                     }
                   `}</style>
-                  
+
                   {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
@@ -1090,7 +1095,7 @@ export const Consultants = () => {
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Data đã bàn giao</div>
                     </div>
-                    
+
                     <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
                       <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nhắc lại</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 4 }}>
@@ -1110,8 +1115,8 @@ export const Consultants = () => {
                     <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
                       <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
-                        {statsData.summary.system_total_successful > 0 
-                          ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100) 
+                        {statsData.summary.system_total_successful > 0
+                          ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100)
                           : 0}%
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả saleperson</div>
@@ -1122,23 +1127,25 @@ export const Consultants = () => {
                   <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', width: '100%' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
                     {statsData.by_date && statsData.by_date.length > 0 ? (
-                       <div style={{ height: 180, width: '100%' }}>
-                         <ResponsiveContainer width="100%" height="100%">
-                           <BarChart data={statsData.by_date} margin={{ left: -20, right: 5, top: 10, bottom: 0 }}>
-                             <defs>
-                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                 <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                 <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
-                               </linearGradient>
-                             </defs>
-                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                             <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                             <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                             <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                             <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công" />
-                           </BarChart>
-                         </ResponsiveContainer>
-                       </div>
+                      <div style={{ height: 180, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={statsData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[0, (max: number) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                            <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
+                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công">
+                              <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     ) : (
                       <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                         Không có dữ liệu phân bổ theo ngày
@@ -1232,7 +1239,7 @@ export const Consultants = () => {
                       {statsData.by_source && statsData.by_source.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
                           {statsData.by_source.map((src: any, idx: number) => {
-                            const sourcePercent = statsData.summary.successful > 0 
+                            const sourcePercent = statsData.summary.successful > 0
                               ? Math.round((src.count / statsData.summary.successful) * 100)
                               : 0;
                             return (
@@ -1297,22 +1304,22 @@ export const Consultants = () => {
         document.body
       )}
 
-      <ConfirmModal 
-        isOpen={confirmDeleteOpen} 
-        onClose={() => setConfirmDeleteOpen(false)} 
-        onConfirm={handleDelete} 
-        title="Cảnh báo Xóa Tư vấn viên" 
-        message="Bạn có chắc chắn muốn xóa tư vấn viên này không? CHÚ Ý: Nếu TVV này đã từng nhận Data, việc xóa sẽ làm hỏng báo cáo thống kê. Thay vào đó, bạn nên chuyển trạng thái của TVV sang 'Ngừng hoạt động' hoặc 'Nghỉ phép'." 
-        confirmText="Xóa vĩnh viễn" 
+      <ConfirmModal
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title="Cảnh báo Xóa Tư vấn viên"
+        message="Bạn có chắc chắn muốn xóa tư vấn viên này không? CHÚ Ý: Nếu TVV này đã từng nhận Data, việc xóa sẽ làm hỏng báo cáo thống kê. Thay vào đó, bạn nên chuyển trạng thái của TVV sang 'Ngừng hoạt động' hoặc 'Nghỉ phép'."
+        confirmText="Xóa vĩnh viễn"
       />
 
-      <ConfirmModal 
-        isOpen={unlinkConfirmOpen} 
-        onClose={() => setUnlinkConfirmOpen(false)} 
-        onConfirm={handleUnlinkZalo} 
-        title="Hủy liên kết Zalo Bot" 
-        message="Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không? Hệ thống sẽ ngừng gửi data và mọi thông báo qua Zalo cho tài khoản này ngay lập tức." 
-        confirmText="Hủy liên kết" 
+      <ConfirmModal
+        isOpen={unlinkConfirmOpen}
+        onClose={() => setUnlinkConfirmOpen(false)}
+        onConfirm={handleUnlinkZalo}
+        title="Hủy liên kết Zalo Bot"
+        message="Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không? Hệ thống sẽ ngừng gửi data và mọi thông báo qua Zalo cho tài khoản này ngay lập tức."
+        confirmText="Hủy liên kết"
       />
     </div>
   );

@@ -18,11 +18,11 @@ export const MOCK_DB = {
       { time: '20:00', volume: 20 },
     ],
     topConsultants: [
-      { name: 'Nguyễn Văn A', data: 450, percent: 85, color: '#3b82f6' },
-      { name: 'Trần Thị B', data: 380, percent: 70, color: '#10b981' },
-      { name: 'Lê Hoàng C', data: 310, percent: 60, color: '#f59e0b' },
-      { name: 'Hoàng Tú E', data: 220, percent: 45, color: '#8b5cf6' },
-      { name: 'Phạm Minh D', data: 150, percent: 30, color: '#ef4444' }
+      { id: 1, name: 'Nguyễn Văn A', email: 'haidang@domation.net', data: 450, percent: 85, color: '#3b82f6' },
+      { id: 2, name: 'Trần Thị B', email: 'thanhthao@domation.net', data: 380, percent: 70, color: '#10b981' },
+      { id: 3, name: 'Lê Hoàng C', email: 'vietdung@domation.net', data: 310, percent: 60, color: '#f59e0b' },
+      { id: 4, name: 'Hoàng Tú E', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#8b5cf6' },
+      { id: 5, name: 'Phạm Minh D', email: 'ngocmai@domation.net', data: 150, percent: 30, color: '#ef4444' }
     ],
     roundRatio: [
       { round: 'Vòng A - Facebook Ads', count: 850, percent: 55, color: '#3b82f6' },

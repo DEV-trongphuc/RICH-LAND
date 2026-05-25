@@ -5665,7 +5665,7 @@ switch ($action) {
         }
 
         // Query Top Consultants
-        $topConsultantsSql = "SELECT c.id, c.name, c.avatar, dl.status, COUNT(dl.id) as cnt 
+        $topConsultantsSql = "SELECT c.id, c.name, c.email, c.avatar, dl.status, COUNT(dl.id) as cnt 
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
                               WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
@@ -5677,7 +5677,9 @@ switch ($action) {
                 $cId = (int)$row['id'];
                 if (!isset($consultantStats[$cId])) {
                     $consultantStats[$cId] = [
+                        'id' => $cId,
                         'name' => $row['name'],
+                        'email' => $row['email'],
                         'avatar' => $row['avatar'],
                         'assigned' => 0,
                         'compensation' => 0,
@@ -5697,7 +5699,9 @@ switch ($action) {
         foreach ($consultantStats as $cId => $cStats) {
             $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + max(0, $cStats['error'] - $cStats['compensation']);
             $topConsultantsList[] = [
+                'id' => $cStats['id'],
                 'name' => $cStats['name'],
+                'email' => $cStats['email'],
                 'avatar' => $cStats['avatar'],
                 'data' => $data_count
             ];
@@ -5715,7 +5719,9 @@ switch ($action) {
         foreach ($topConsultantsList as $row) {
             $percent = round(($row['data'] / $totalAssignedForTop) * 100, 1);
             $topConsultants[] = [
+                'id' => $row['id'],
                 'name' => $row['name'],
+                'email' => $row['email'],
                 'avatar' => $row['avatar'],
                 'data' => (int) $row['data'],
                 'percent' => $percent,

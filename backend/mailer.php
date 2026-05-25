@@ -300,6 +300,113 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
 }
 
 
+/**
+ * formatCustomTemplateToTable
+ * Helper function to parse custom template string to HTML table
+ */
+function formatCustomTemplateToTable($renderedTemplate)
+{
+    $normalized = str_replace(["\r\n", "\r"], "\n", $renderedTemplate);
+    $lines = explode("\n", $normalized);
+    $rowsHtml = '';
+    
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '') {
+            $rowsHtml .= '<tr><td colspan="2" style="height: 6px; line-height: 6px; font-size: 1px;">&nbsp;</td></tr>';
+            continue;
+        }
+        
+        // Clean leading bullet points: "-", "*", "•", "–", "+", etc. and leading spaces
+        $cleanLine = preg_replace('/^[\s\-\*\•\–\+\x{2022}\x{2013}]+/u', '', $trimmed);
+        $cleanLine = trim($cleanLine);
+        
+        // Clean trailing <br /> or <br> tags at the end of the line
+        $cleanLine = preg_replace('/<br\s*\/?>\s*$/i', '', $cleanLine);
+        $cleanLine = trim($cleanLine);
+        
+        if (empty($cleanLine)) {
+            continue;
+        }
+        
+        // Find if there is a colon
+        $colonPos = strpos($cleanLine, ':');
+        if ($colonPos !== false) {
+            $key = trim(substr($cleanLine, 0, $colonPos));
+            $val = trim(substr($cleanLine, $colonPos + 1));
+            
+            if ($val === '') {
+                // If it is a redundant header like "Thông tin Khách hàng", skip it to avoid duplicate header in mail layout
+                $lowerKey = rtrim(mb_strtolower($key, 'UTF-8'), ':.');
+                if ($lowerKey === 'thông tin khách hàng' || $lowerKey === 'thông tin chi tiết khách hàng' || $lowerKey === 'thông tin chi tiết' || $lowerKey === 'thông tin liên hệ') {
+                    continue;
+                }
+                
+                // Treated as subheader
+                $rowsHtml .= '
+                <tr>
+                    <td colspan="2" style="padding: 10px 0 6px; font-weight: bold; color: #0f172a; font-size: 15px; border-bottom: 1px solid #e2e8f0;">' . $key . '</td>
+                </tr>';
+            } else {
+                // Key-value pair
+                $lowerKey = mb_strtolower($key, 'UTF-8');
+                $valStyle = 'padding: 6px 0; font-weight: 500; color: #0f172a; vertical-align: top;';
+                $formattedVal = $val;
+                
+                // Bold name
+                if (
+                    strpos($lowerKey, 'họ tên') !== false || 
+                    strpos($lowerKey, 'họ và tên') !== false || 
+                    strpos($lowerKey, 'tên kh') !== false || 
+                    $lowerKey === 'tên' || 
+                    $lowerKey === 'name'
+                ) {
+                    $valStyle = 'padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;';
+                }
+                
+                // Color phone numbers
+                if (
+                    strpos($lowerKey, 'điện thoại') !== false || 
+                    strpos($lowerKey, 'sđt') !== false || 
+                    strpos($lowerKey, 'phone') !== false
+                ) {
+                    $valStyle = 'padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;';
+                }
+                
+                // Color email and make it a mailto link
+                $cleanEmail = strip_tags($val);
+                if (
+                    strpos($lowerKey, 'email') !== false ||
+                    filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)
+                ) {
+                    $valStyle = 'padding: 6px 0; font-weight: 500; vertical-align: top;';
+                    $formattedVal = '<a href="mailto:' . $cleanEmail . '" style="color: #3b82f6; text-decoration: underline;">' . $val . '</a>';
+                }
+                
+                $rowsHtml .= '
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">' . $key . ':</td>
+                    <td style="' . $valStyle . '">' . $formattedVal . '</td>
+                </tr>';
+            }
+        } else {
+            // No colon, output as a full width row
+            // If it is a redundant header like "Thông tin Khách hàng", skip it to avoid duplicate header in mail layout
+            $lowerLine = rtrim(mb_strtolower($cleanLine, 'UTF-8'), ':.');
+            if ($lowerLine === 'thông tin khách hàng' || $lowerLine === 'thông tin chi tiết khách hàng' || $lowerLine === 'thông tin chi tiết' || $lowerLine === 'thông tin liên hệ') {
+                continue;
+            }
+            
+            $rowsHtml .= '
+            <tr>
+                <td colspan="2" style="padding: 6px 0; color: #0f172a; font-size: 14px; line-height: 1.5; vertical-align: top;">' . $cleanLine . '</td>
+            </tr>';
+        }
+    }
+    
+    return '<table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">' . $rowsHtml . '</table>';
+}
+
 function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $leadId = 0, $consultantId = 0, $roundId = 0)
 {
     global $conn;
@@ -368,6 +475,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             '{source}' => htmlspecialchars($leadSource),
             '{type}' => htmlspecialchars($type),
             '{assigned_to}' => htmlspecialchars($consultantName),
+            '{round}' => htmlspecialchars($roundName),
+            '{round_name}' => htmlspecialchars($roundName),
         ];
 
         $actualNote = '';
@@ -417,7 +526,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         // Remove empty placeholders
         $renderedTemplate = preg_replace('/\{[a-zA-Z0-9_-]+\}/', '', $renderedTemplate);
 
-        $detailBlock = '<div style="font-size: 15px; line-height: 1.6; color: #334155;">' . nl2br($renderedTemplate) . '</div>';
+        $detailBlock = formatCustomTemplateToTable($renderedTemplate);
     } else {
         // Fallback to table representation (original default)
         $actualNote = '';
@@ -427,8 +536,11 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             foreach ($lines as $line) {
                 $line = trim($line);
                 if (empty($line)) continue;
-                // Matches [Custom Key]: Value
-                if (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches)) {
+                // Matches [Custom Key]: Value or Custom Key: Value
+                if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                    && strlen(trim($matches[1])) <= 40
+                    && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
+                ) {
                     $cKey = htmlspecialchars(trim($matches[1]));
                     $cVal = htmlspecialchars(trim($matches[2]));
                     $customFieldsHtml .= '
@@ -468,6 +580,12 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Loại Data:</td>
                     <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . nl2br(htmlspecialchars($type)) . '</td>
+                </tr>
+                ' : '') . '
+                ' . (!empty($roundName) ? '
+                <tr>
+                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Vòng:</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($roundName) . '</td>
                 </tr>
                 ' : '') . '
                 ' . (!empty($actualNote) ? '

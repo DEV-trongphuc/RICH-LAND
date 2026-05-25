@@ -908,12 +908,12 @@ export const DataList = () => {
 
           {/* Calendar Body */}
           <div className="responsive-table-wrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minWidth: 700 }}>
+            <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minWidth: 700, overflow: 'hidden' }}>
               {/* Calendar Grid Header */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                background: 'var(--color-bg)',
+                background: 'var(--color-border-light)',
                 borderBottom: '1px solid var(--color-border)',
                 padding: '8px 0',
                 flexShrink: 0

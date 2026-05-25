@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
-  PieChart, Pie, Cell, BarChart
+  PieChart, Pie, Cell, BarChart, LabelList
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -31,6 +32,15 @@ export const Dashboard = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Consultant stats state for details modal
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [statsConsultant, setStatsConsultant] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsData, setStatsData] = useState<any>(null);
+  const [statsDateMode, setStatsDateMode] = useState<string>('this_month');
+  const [statsStartDate, setStatsStartDate] = useState<string>('');
+  const [statsEndDate, setStatsEndDate] = useState<string>('');
 
   const getComparisonLabel = (filter: string) => {
     switch (filter) {
@@ -69,13 +79,13 @@ export const Dashboard = () => {
         fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}`),
         fetchAPI('get_logs&exclude_status=silent')
       ]);
-      
+
       // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
       if (signal?.aborted) return;
-      
+
       if (statsJson.success) setStats(statsJson.data);
       else console.error('Lỗi tải thống kê:', statsJson.message);
-      
+
       if (logsJson.success) {
         const nonSilentLogs = logsJson.data.filter((log: any) => log.status !== 'silent');
         setRecentLogs(nonSilentLogs.slice(0, 5));
@@ -104,6 +114,33 @@ export const Dashboard = () => {
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [dateFilter, chartMode]);
+
+  const fetchConsultantStats = async (consId: number, mode: string, start?: string, end?: string) => {
+    setStatsLoading(true);
+    try {
+      let query = `get_consultant_stats&consultant_id=${consId}&date_mode=${mode}`;
+      if (mode === 'custom' && start && end) {
+        query += `&start_date=${start}&end_date=${end}`;
+      }
+      const json = await fetchAPI(query);
+      if (json.success) {
+        setStatsData(json);
+      } else {
+        toast.error(json.message || 'Lỗi khi tải báo cáo thống kê');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi kết nối: ' + e.message);
+    }
+    setStatsLoading(false);
+  };
+
+  useEffect(() => {
+    if (statsModalOpen && statsConsultant) {
+      if (statsDateMode !== 'custom' || (statsStartDate && statsEndDate)) {
+        fetchConsultantStats(statsConsultant.id, statsDateMode, statsStartDate, statsEndDate);
+      }
+    }
+  }, [statsModalOpen, statsConsultant, statsDateMode, statsStartDate, statsEndDate]);
 
   const kpiCards = [
     {
@@ -171,11 +208,11 @@ export const Dashboard = () => {
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) return toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
     if (new Date(startDate) > new Date(endDate)) return toast.error("Từ ngày không được lớn hơn Đến ngày");
-    
+
     // BUG-HIGH-1 fix: api.php expects format 'YYYY-MM-DD đến YYYY-MM-DD'
     // startDate/endDate from <input type="date"> are already in YYYY-MM-DD format
     const label = `${startDate} đến ${endDate}`;
-    
+
     setDateFilter(label);
     setShowDateModal(false);
   };
@@ -192,6 +229,12 @@ export const Dashboard = () => {
         @keyframes loadingBar {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(330%); }
+        }
+        .top-consultant-item {
+          cursor: pointer;
+        }
+        .top-consultant-item:hover .consultant-name {
+          color: var(--color-primary);
         }
       `}</style>
 
@@ -340,10 +383,10 @@ export const Dashboard = () => {
             </div>
             {stats?.chartData && stats.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={stats.chartData} margin={{ left: -20, right: 5, top: 10 }}>
+                <ComposedChart data={stats.chartData} margin={{ left: -10, right: 5, top: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                   <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
                   <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
@@ -355,7 +398,9 @@ export const Dashboard = () => {
                     }
                     return null;
                   }} />
-                  <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20} />
+                  <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20}>
+                    <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                  </Bar>
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
@@ -368,7 +413,7 @@ export const Dashboard = () => {
           <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Lịch sử giao Data gần đây</h3>
-              <span 
+              <span
                 style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer' }}
                 onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
               >Xem tất cả</span>
@@ -459,202 +504,212 @@ export const Dashboard = () => {
         </div>
 
       ) : (
-      <>
-      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-        {/* Top Consultants */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-              <Users size={18} color="var(--color-primary)" /> Top Tư vấn viên nhận Data
-            </h3>
-          </div>
-          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-            {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, i: number) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, alignItems: 'center' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
-                    <Avatar src={c.avatar} name={c.name} size={24} />
-                    <span>{c.name}</span>
-                  </span>
-                  <span style={{ color: 'var(--color-text)' }}>{c.data} lead</span>
-                </div>
-                <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 24 }}>
-                  <div style={{ width: `${c.percent}%`, height: '100%', background: c.color, borderRadius: 4 }} />
-                </div>
+        <>
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            {/* Top Consultants */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <Users size={18} color="var(--color-primary)" /> Top Tư vấn viên nhận Data
+                </h3>
               </div>
-            )) : (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
-            )}
-          </div>
-        </div>
-
-        {/* Round Assignment Ratio */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-              <GitBranch size={18} color="#3b82f6" /> Tỷ lệ theo Vòng Phân Bổ
-            </h3>
-          </div>
-          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-            {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.map((r: any, i: number) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{r.round}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% tổng data</div>
-                </div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{r.count}</div>
-              </div>
-            )) : (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* NEW ROW: Source Stats & Error Stats */}
-      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-        {/* Source Pie Chart */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-              <GitBranch size={18} color="#8b5cf6" /> Tỷ lệ Nguồn Data
-            </h3>
-          </div>
-          <div style={{ flex: 1, minHeight: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            {stats?.sourceStats && stats.sourceStats.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie
-                      data={stats.sourceStats}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {stats.sourceStats.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                
-                {/* Custom Legend - Chấm tròn, xếp hàng ngay ngắn */}
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
-                  gap: '6px 12px', 
-                  width: '100%', 
-                  marginTop: '12px',
-                  padding: '0 12px',
-                  fontSize: '0.75rem',
-                  color: 'var(--color-text-light)'
-                }}>
-                  {stats.sourceStats.map((entry: any, index: number) => (
-                    <div 
-                      key={index} 
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }} 
-                      title={`${entry.name}: ${entry.value}`}
-                    >
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {entry.name}
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+                {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, i: number) => (
+                  <div
+                    key={i}
+                    className="top-consultant-item"
+                    style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                    onClick={() => {
+                      setStatsConsultant(c);
+                      setStatsModalOpen(true);
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
+                        <Avatar src={c.avatar} name={c.name} size={24} />
+                        <span className="consultant-name" style={{ transition: 'color 0.2s ease' }}>{c.name}</span>
                       </span>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
-                        {entry.value} data
-                      </span>
+                      <span style={{ color: 'var(--color-text)' }}>{c.data} lead</span>
                     </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
-            )}
-          </div>
-        </div>
+                    <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 24 }}>
+                      <div style={{ width: `${c.percent}%`, height: '100%', background: c.color, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                )}
+              </div>
+            </div>
 
-        {/* Error Tickets by TVV (Vertical Column Chart) */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-              <CheckCircle size={18} color="#10b981" /> Thống kê lỗi Ticket (Được duyệt)
-            </h3>
+            {/* Round Assignment Ratio */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <GitBranch size={18} color="#3b82f6" /> Tỷ lệ theo Vòng Phân Bổ
+                </h3>
+              </div>
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+                {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.map((r: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{r.round}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% tổng data</div>
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{r.count}</div>
+                  </div>
+                )) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                )}
+              </div>
+            </div>
           </div>
-          <div style={{ flex: 1, minHeight: 260 }}>
-            {stats?.errorStats && stats.errorStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stats.errorStats} margin={{ top: 15, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.8} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 500 }}
-                    interval={0}
-                    angle={-12}
-                    textAnchor="end"
-                    height={40}
-                  />
-                  <YAxis 
-                    allowDecimals={false} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} 
-                  />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(16, 185, 129, 0.04)' }}
-                    contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ color: 'var(--color-success)', fontWeight: 600 }}
-                  />
-                  <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi được duyệt" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào có lỗi được duyệt</div>
-            )}
+
+          {/* NEW ROW: Source Stats & Error Stats */}
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            {/* Source Pie Chart */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <GitBranch size={18} color="#8b5cf6" /> Tỷ lệ Nguồn Data
+                </h3>
+              </div>
+              <div style={{ flex: 1, minHeight: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                {stats?.sourceStats && stats.sourceStats.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={stats.sourceStats}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {stats.sourceStats.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* Custom Legend - Chấm tròn, xếp hàng ngay ngắn */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                      gap: '6px 12px',
+                      width: '100%',
+                      marginTop: '12px',
+                      padding: '0 12px',
+                      fontSize: '0.75rem',
+                      color: 'var(--color-text-light)'
+                    }}>
+                      {stats.sourceStats.map((entry: any, index: number) => (
+                        <div
+                          key={index}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
+                          title={`${entry.name}: ${entry.value}`}
+                        >
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                            {entry.name}
+                          </span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
+                            {entry.value} data
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                )}
+              </div>
+            </div>
+
+            {/* Error Tickets by TVV (Vertical Column Chart) */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <CheckCircle size={18} color="#10b981" /> Thống kê lỗi Ticket (Được duyệt)
+                </h3>
+              </div>
+              <div style={{ flex: 1, minHeight: 260 }}>
+                {stats?.errorStats && stats.errorStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={stats.errorStats} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity={0.8} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 500 }}
+                        interval={0}
+                        angle={-12}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(16, 185, 129, 0.04)' }}
+                        contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        itemStyle={{ color: 'var(--color-success)', fontWeight: 600 }}
+                      />
+                      <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi được duyệt">
+                        <LabelList dataKey="errors" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào có lỗi được duyệt</div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      </>
+        </>
       )}{/* end stats ternary */}
       {/* Date Picker Modal */}
-      <CustomModal 
-        isOpen={showDateModal} 
-        onClose={() => setShowDateModal(false)} 
+      <CustomModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
         title="Tùy chỉnh thời gian"
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">Từ ngày</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
             />
           </div>
           <div>
             <label className="form-label">Đến ngày</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -663,6 +718,314 @@ export const Dashboard = () => {
           </div>
         </div>
       </CustomModal>
+
+      {/* Statistics Modal */}
+      {statsModalOpen && statsConsultant && typeof document !== 'undefined' && createPortal(
+        <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)}>
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideUp 0.2s ease-out'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="stats-header-container" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>Báo cáo hiệu suất TVV</h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • {statsConsultant.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Timeframe Filter Dropdown in Header */}
+              <div className="stats-header-filters">
+                <Calendar size={18} color="var(--color-text-light)" style={{ display: 'flex', alignItems: 'center' }} />
+                <div style={{ position: 'relative', zIndex: 100 }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'this_month', label: 'Tháng này' },
+                      { value: 'today', label: 'Hôm nay' },
+                      { value: 'yesterday', label: 'Hôm qua' },
+                      { value: '7_days', label: '7 ngày qua' },
+                      { value: '30_days', label: '30 ngày qua' },
+                      { value: 'last_month', label: 'Tháng trước' },
+                      { value: 'all', label: 'Tất cả thời gian' },
+                      { value: 'custom', label: 'Tự chọn ngày...' }
+                    ]}
+                    value={statsDateMode}
+                    onChange={val => setStatsDateMode(String(val))}
+                    width={180}
+                  />
+                </div>
+
+                {statsDateMode === 'custom' && (
+                  <div className="stats-custom-dates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', animation: 'slideUp 0.15s ease-out', flexShrink: 0 }}>
+                    <input
+                      type="date"
+                      className="form-input"
+                      style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
+                      value={statsStartDate}
+                      onChange={e => setStatsStartDate(e.target.value)}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>đến</span>
+                    <input
+                      type="date"
+                      className="form-input"
+                      style={{ padding: '4px 10px', fontSize: '0.8125rem', height: 32, width: 130 }}
+                      value={statsEndDate}
+                      onChange={e => setStatsEndDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+              {statsLoading && !statsData ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
+                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Đang tải báo cáo...</span>
+                </div>
+              ) : !statsData ? (
+                <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>
+                  Không có dữ liệu thống kê.
+                </div>
+              ) : (
+                <>
+                  {/* Subtle Loading overlay if reloading in background */}
+                  {statsLoading && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 10, overflow: 'hidden' }}>
+                      <div style={{ width: '30%', height: '100%', background: 'var(--color-primary)', borderRadius: 'inherit', animation: 'loadingBar 1.5s infinite ease-in-out' }} />
+                    </div>
+                  )}
+
+                  {/* KPI Cards Row (4 Columns) */}
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                    <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thành công</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
+                        {statsData.summary.successful}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Data đã bàn giao</div>
+                    </div>
+
+                    <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nhắc lại</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 4 }}>
+                        {statsData.summary.reminder || 0}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Yêu cầu gọi lại</div>
+                    </div>
+
+                    <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lỗi</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
+                        {statsData.summary.error || 0}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Trùng lặp / Lỗi chia</div>
+                    </div>
+
+                    <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
+                        {statsData.summary.system_total_successful > 0
+                          ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100)
+                          : 0}%
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả saleperson</div>
+                    </div>
+                  </div>
+
+                  {/* Row 1: Daily trend bar chart (Full Width) */}
+                  <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', width: '100%' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
+                    {statsData.by_date && statsData.by_date.length > 0 ? (
+                      <div style={{ height: 180, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={statsData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[0, (max: number) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                            <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
+                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công">
+                              <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                        Không có dữ liệu phân bổ theo ngày
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Row 2: Status Ratio (Donut) & Rounds Breakdown */}
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    {/* Donut chart for status ratio */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
+                      {(() => {
+                        const statusChartData = [
+                          { name: 'Thành công', value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: 'Nhắc lại', value: statsData.summary.reminder, color: '#f59e0b' },
+                          { name: 'Lỗi', value: statsData.summary.error, color: '#ef4444' }
+                        ].filter(item => item.value > 0);
+
+                        return statsData.summary.total > 0 && statusChartData.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', justifyContent: 'center' }}>
+                            <div style={{ width: 140, height: 140, flexShrink: 0 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={statusChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={35}
+                                    outerRadius={55}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                  >
+                                    {statusChartData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.75rem' }}>
+                              {statusChartData.map((item, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                                    {item.name}: <strong style={{ fontSize: '0.8125rem' }}>{item.value}</strong> ({Math.round(item.value / statsData.summary.total * 100)}%)
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
+                            Không có dữ liệu lưu lượng
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Rounds breakdown chart */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Phân bổ theo Vòng (Round)</h4>
+                      {statsData.rounds.length > 0 ? (
+                        <div style={{ height: 160, width: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={statsData.rounds} layout="vertical" margin={{ left: -10, right: 10, top: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
+                              <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                              <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
+                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name="Thành công" />
+                              <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name="Nhắc lại" />
+                              <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name="Lỗi" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
+                          Không có dữ liệu chia số theo vòng
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Marketing Sources & Tickets Reports */}
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    {/* Source breakdown list */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
+                      {statsData.by_source && statsData.by_source.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
+                          {statsData.by_source.map((src: any, idx: number) => {
+                            const sourcePercent = statsData.summary.successful > 0
+                              ? Math.round((src.count / statsData.summary.successful) * 100)
+                              : 0;
+                            return (
+                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{src.source}</span>
+                                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} data ({sourcePercent}%)</span>
+                                </div>
+                                <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1.5rem 0' }}>
+                          Không có dữ liệu nguồn data
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tickets Reports statistics */}
+                    <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
+                      {statsData.tickets ? (
+                        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '6px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-success-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-success)', fontWeight: 700 }}>ĐÃ BÙ</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 2 }}>{statsData.tickets.approved}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-warning-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-warning)', fontWeight: 700 }}>ĐANG CHỜ</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 2 }}>{statsData.tickets.pending}</div>
+                          </div>
+                          <div style={{ background: 'var(--color-danger-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-danger)', fontWeight: 700 }}>TỪ CHỐI</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 2 }}>{statsData.tickets.rejected}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1rem 0' }}>
+                          Không có dữ liệu ticket
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+              <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>Đóng</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
