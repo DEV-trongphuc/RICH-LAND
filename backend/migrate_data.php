@@ -113,22 +113,20 @@ if ($danRes && $row = $danRes->fetch_assoc()) {
 }
 
 if ($danId > 0) {
-    $roundRes = $conn->query("SELECT id, round_name FROM distribution_rounds WHERE round_name LIKE '%form%' OR round_name LIKE '%Đặt lịch%' ORDER BY id ASC LIMIT 1");
-    $roundId = 1;
-    if ($roundRes && $row = $roundRes->fetch_assoc()) {
-        $roundId = $row['id'];
-        echo "Found round: {$row['round_name']} (ID: $roundId)\n";
-    }
+    // Clean up the previous incorrect active compensation log under admin 5
+    $conn->query("DELETE FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 5 AND DATE(created_at) = '2026-05-23'");
     
-    $checkRes = $conn->query("SELECT id FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 5 AND DATE(created_at) = '2026-05-23'");
-    if ($checkRes && $checkRes->num_rows > 0) {
-        echo "Active compensation log for Đan already exists.\n";
+    // Insert/Verify correct active compensation log under admin 3
+    $checkCorrect = $conn->query("SELECT id FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 3 AND DATE(created_at) = '2026-05-21'");
+    if ($checkCorrect && $checkCorrect->num_rows > 0) {
+        echo "Correct active compensation log for Đan by Turnio DEV (ID 3) already exists.\n";
     } else {
-        $stmt = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason, created_at) VALUES (?, ?, 5, 1, 'Bù chủ động (vòng form)', '2026-05-23 18:00:00')");
+        $roundId = 3; // Vòng hỗ trợ: Organic Search
+        $stmt = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason, created_at) VALUES (?, ?, 3, 1, 'Bù chủ động (vòng hỗ trợ)', '2026-05-21 23:16:11')");
         $stmt->bind_param("ii", $roundId, $danId);
         $stmt->execute();
         $stmt->close();
-        echo "Successfully inserted active compensation log for Đan (ID: $danId, Name: $danName) under round ID $roundId.\n";
+        echo "Successfully inserted correct active compensation log for Đan (ID: $danId, Name: $danName) by admin ID 3 under round ID $roundId.\n";
     }
 } else {
     echo "Error: Consultant with name containing 'Đan' not found.\n";
