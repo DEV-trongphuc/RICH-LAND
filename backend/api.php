@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_migration'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -6896,35 +6896,6 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
-    case 'debug_migration':
-        $leadId = 30151;
-        $resLead = $conn->query("SELECT * FROM leads WHERE id = $leadId");
-        $lead = $resLead->fetch_assoc();
-
-        $resLogs = $conn->query("SELECT * FROM distribution_logs WHERE lead_id = $leadId ORDER BY id DESC");
-        $logs = [];
-        while ($row = $resLogs->fetch_assoc()) {
-            $logs[] = $row;
-        }
-
-        // Test the subquery for last_activity_at
-        $resSub = $conn->query("SELECT dl.id, dl.received_at, 
-                                       (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
-                                FROM distribution_logs dl 
-                                WHERE dl.lead_id = $leadId 
-                                ORDER BY dl.id DESC");
-        $subqueryResults = [];
-        while ($row = $resSub->fetch_assoc()) {
-            $subqueryResults[] = $row;
-        }
-
-        echo json_encode([
-            'success' => true,
-            'lead' => $lead,
-            'logs' => $logs,
-            'subquery' => $subqueryResults
-        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        break;
 
     case 'block_lead':
         $input = json_decode(file_get_contents('php://input'), true);
