@@ -154,6 +154,7 @@ if (!in_array($action, $publicActions)) {
         'delete_consultant',
         'add_round',
         'edit_round',
+        'update_round_ratios',
         'delete_round',
         'add_rule',
         'edit_rule',
@@ -2286,6 +2287,42 @@ switch ($action) {
         }
         break;
 
+    case 'update_round_ratios':
+        $conn->begin_transaction();
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $roundId = (int) ($input['round_id'] ?? 0);
+            $ratios = $input['ratios'] ?? [];
+
+            if ($roundId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'ID Vòng không hợp lệ']);
+                break;
+            }
+
+            // Check if round exists
+            $chk = $conn->query("SELECT id FROM distribution_rounds WHERE id = $roundId");
+            if ($chk->num_rows === 0) {
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy vòng phân bổ']);
+                break;
+            }
+
+            $stmt = $conn->prepare("UPDATE round_consultants SET receive_ratio = ? WHERE round_id = ? AND consultant_id = ?");
+            foreach ($ratios as $cid => $ratio) {
+                $cIdInt = (int)$cid;
+                $ratioInt = max(0, (int)$ratio);
+                $stmt->bind_param("iii", $ratioInt, $roundId, $cIdInt);
+                $stmt->execute();
+            }
+            $stmt->close();
+
+            logAdminAction($conn, $decodedUser['id'], 'UPDATE_ROUND_RATIOS', ['round_id' => $roundId, 'ratios' => $ratios]);
+            $conn->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+        }
+        break;
 
     case 'update_compensations':
         $conn->begin_transaction();
@@ -6105,7 +6142,7 @@ switch ($action) {
         foreach ($consultants as $c) {
             $rawCounts[] = $c['assigned_count'];
             $ratio = max(1, $c['receive_ratio']);
-            $normalizedCounts[] = $c['assigned_count'] / $ratio;
+            $normalizedCounts[] = $c['assigned_count'] * $ratio;
             $totalLeads += $c['assigned_count'];
         }
 
@@ -7780,6 +7817,7 @@ switch ($action) {
             break;
         }
 
+        $inTransaction = false;
         try {
             // Check CRM duplicate (both phone & email)
             $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
@@ -7791,11 +7829,13 @@ switch ($action) {
             if (!$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
                 $assignedTo = $crmCheckResult['assignedTo'];
                 $conn->begin_transaction();
+                $inTransaction = true;
                 
                 // Update last interaction
                 $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, null, null, $name);
                 logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).');
                 $conn->commit();
+                $inTransaction = false;
 
                 $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
                 $stmtC->bind_param("i", $assignedTo);
@@ -7855,6 +7895,7 @@ switch ($action) {
                 echo json_encode(['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.']);
             } else {
                 $conn->begin_transaction();
+                $inTransaction = true;
                 
                 $consultantId = $override_consultant_id;
                 $isComp = false;
@@ -7885,6 +7926,7 @@ switch ($action) {
                     logDistribution($conn, $leadId, null, null, 'assigned', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name']);
 
                     $conn->commit();
+                    $inTransaction = false;
 
                     try {
                         require_once __DIR__ . '/mailer.php';
@@ -7971,6 +8013,7 @@ switch ($action) {
                     logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg);
 
                     $conn->commit();
+                    $inTransaction = false;
 
                     // Fire notification using Mailer and Zalo ONLY if within working hours
                     if (!$isOutsideWorkHours) {
@@ -8043,11 +8086,12 @@ switch ($action) {
                     // Insert unassigned
                     $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
                     $conn->commit();
+                    $inTransaction = false;
                     echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.']);
                 }
             }
         } catch (Exception $e) {
-            if ($conn->in_transaction()) {
+            if ($inTransaction) {
                 $conn->rollback();
             }
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
-  TrendingUp, Sparkles, CheckCircle, Layers, Ticket
+  TrendingUp, Sparkles, CheckCircle, Layers, Ticket,
+  RotateCcw, Settings, Copy
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,6 +26,188 @@ export const FairShareAudit = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyReportText, setCopyReportText] = useState('');
+
+  // Simulation State
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simConsultants, setSimConsultants] = useState<any[]>([]);
+
+  // Initialize/Sync simulation consultants state when actual data changes
+  useEffect(() => {
+    if (data?.consultants) {
+      setSimConsultants(data.consultants.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        avatar: c.avatar,
+        receive_ratio: c.receive_ratio,
+        assigned_count: c.assigned_count,
+        sources: { ...c.sources },
+        ticket_count: c.ticket_count,
+        total_ticket_count: c.total_ticket_count,
+        duplicate_count: c.duplicate_count,
+        round_id: c.round_id,
+        round_name: c.round_name,
+        // Simulation settings
+        simulatedRatio: c.receive_ratio,
+        simulatedOnShift: c.receive_ratio > 0
+      })));
+    } else {
+      setSimConsultants([]);
+    }
+  }, [data]);
+
+  const handleUpdateSimRatio = (id: number, ratio: number) => {
+    setSimConsultants(prev => prev.map(c => c.id === id ? { ...c, simulatedRatio: ratio } : c));
+  };
+
+  const handleToggleSimShift = (id: number) => {
+    setSimConsultants(prev => prev.map(c => c.id === id ? { ...c, simulatedOnShift: !c.simulatedOnShift } : c));
+  };
+
+  const handleResetSimulation = () => {
+    if (!data?.consultants) return;
+    setSimConsultants(data.consultants.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      avatar: c.avatar,
+      receive_ratio: c.receive_ratio,
+      assigned_count: c.assigned_count,
+      sources: { ...c.sources },
+      ticket_count: c.ticket_count,
+      total_ticket_count: c.total_ticket_count,
+      duplicate_count: c.duplicate_count,
+      round_id: c.round_id,
+      round_name: c.round_name,
+      simulatedRatio: c.receive_ratio,
+      simulatedOnShift: c.receive_ratio > 0
+    })));
+    toast.success("Đã đặt lại bộ giả lập về mặc định");
+  };
+
+  // Saving configuration has been disabled to keep it purely as a simulation
+
+  // Utility function for Largest Remainder Method (Hare-Niemeyer) distribution to get exact integers
+  const distributeProportionally = (total: number, weights: number[]): number[] => {
+    if (total <= 0 || weights.length === 0) return weights.map(() => 0);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    if (totalWeight === 0) return weights.map(() => 0);
+
+    const exactQuotas = weights.map(w => total * (w / totalWeight));
+    const floors = exactQuotas.map(q => Math.floor(q));
+    const remainders = exactQuotas.map((q, i) => q - floors[i]);
+    const sumFloors = floors.reduce((sum, f) => sum + f, 0);
+    const diff = total - sumFloors;
+
+    const indexedRemainders = remainders.map((r, i) => ({ index: i, remainder: r }));
+    indexedRemainders.sort((a, b) => b.remainder - a.remainder);
+
+    const extra = weights.map(() => 0);
+    for (let k = 0; k < diff; k++) {
+      if (k < indexedRemainders.length) {
+        extra[indexedRemainders[k].index] = 1;
+      }
+    }
+
+    return weights.map((_, i) => floors[i] + extra[i]);
+  };
+
+  // Memoized simulated data recalculation
+  const simulatedData = useMemo(() => {
+    if (!data || simConsultants.length === 0) return null;
+
+    const totalLeads = data.totalLeads;
+    const N = simConsultants.length;
+
+    const weights = simConsultants.map(c => c.simulatedOnShift ? (1.0 / Math.max(1, c.simulatedRatio)) : 0);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    let simulatedCounts: number[] = [];
+
+    if (totalWeight === 0) {
+      simulatedCounts = simConsultants.map(() => 0);
+    } else {
+      simulatedCounts = distributeProportionally(totalLeads, weights);
+    }
+
+    const rawCounts = simulatedCounts;
+    const normalizedCounts = simConsultants.map((c, i) => {
+      const ratio = Math.max(1, c.simulatedRatio);
+      return rawCounts[i] * ratio;
+    });
+
+    const sumSimulatedLeads = rawCounts.reduce((a, b) => a + b, 0);
+    const mean = N > 0 ? sumSimulatedLeads / N : 0;
+
+    let sumSqDiff = 0;
+    for (let i = 0; i < N; i++) {
+      sumSqDiff += Math.pow(rawCounts[i] - mean, 2);
+    }
+    const standardDeviation = N > 0 ? Math.sqrt(sumSqDiff / N) : 0;
+
+    let giniRaw = 0;
+    if (sumSimulatedLeads > 0 && N > 0) {
+      let doubleSumDiffRaw = 0;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          doubleSumDiffRaw += Math.abs(rawCounts[i] - rawCounts[j]);
+        }
+      }
+      giniRaw = doubleSumDiffRaw / (2 * N * sumSimulatedLeads);
+    }
+
+    let giniNormalized = 0;
+    const sumNorm = normalizedCounts.reduce((a, b) => a + b, 0);
+    if (sumNorm > 0 && N > 0) {
+      let doubleSumDiffNorm = 0;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          doubleSumDiffNorm += Math.abs(normalizedCounts[i] - normalizedCounts[j]);
+        }
+      }
+      giniNormalized = doubleSumDiffNorm / (2 * N * sumNorm);
+    }
+
+    const fairnessIndex = (1 - giniNormalized) * 100;
+
+    const consultants = simConsultants.map((c, i) => {
+      const simSources: any = {};
+      const actualCount = c.assigned_count;
+      const simCount = rawCounts[i];
+      
+      const sourceWeights = data.sources.map((src: string) => {
+        if (actualCount > 0) {
+          return c.sources[src] || 0;
+        } else {
+          return 1;
+        }
+      });
+      
+      const distributedSources = distributeProportionally(simCount, sourceWeights);
+      
+      data.sources.forEach((src: string, sIdx: number) => {
+        simSources[src] = distributedSources[sIdx];
+      });
+
+      return {
+        ...c,
+        assigned_count: simCount,
+        sources: simSources,
+      };
+    });
+
+    return {
+      totalLeads: Math.round(data.totalLeads),
+      totalConsultants: N,
+      mean: Math.round(mean * 100) / 100,
+      standardDeviation: Math.round(standardDeviation * 100) / 100,
+      giniRaw: Math.round(giniRaw * 10000) / 10000,
+      giniNormalized: Math.round(giniNormalized * 10000) / 10000,
+      fairnessIndex: Math.round(fairnessIndex * 10) / 10,
+      sources: data.sources,
+      consultants,
+    };
+  }, [data, simConsultants]);
 
   // Fetch Rounds for the dropdown filter
   const fetchRounds = async () => {
@@ -104,22 +287,125 @@ export const FairShareAudit = () => {
     ...rounds.map(r => ({ value: String(r.id), label: r.round_name }))
   ];
 
+  const activeData = isSimulating ? simulatedData : data;
+
+  // Calculate weights and total weight for activeData (used for exact target share calculation)
+  const activeWeights = useMemo(() => {
+    if (!activeData || !activeData.consultants) return { weights: [], totalWeight: 0 };
+    const weights = activeData.consultants.map((con: any) => {
+      const conRatio = isSimulating 
+        ? (simConsultants.find(sc => sc.id === con.id)?.simulatedRatio ?? con.receive_ratio)
+        : con.receive_ratio;
+      const conOnShift = isSimulating
+        ? (simConsultants.find(sc => sc.id === con.id)?.simulatedOnShift ?? (con.receive_ratio > 0))
+        : (con.receive_ratio > 0);
+      return conOnShift ? (1.0 / Math.max(1, conRatio)) : 0;
+    });
+    const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+    return { weights, totalWeight };
+  }, [activeData, isSimulating, simConsultants]);
+
+  const handleCopyReport = () => {
+    const targetData = isSimulating ? simulatedData : data;
+    if (!targetData || !targetData.consultants || targetData.consultants.length === 0) {
+      toast.error("Không có dữ liệu đối soát để sao chép!");
+      return;
+    }
+
+    const roundName = roundFilter 
+      ? (rounds.find(r => String(r.id) === roundFilter)?.round_name || 'Vòng cụ thể') 
+      : 'Tất cả các Vòng';
+
+    let text = `📊 BÁO CÁO ĐỐI SOÁT ĐỘ CÔNG BẰNG PHÂN PHỐI ${isSimulating ? '(GIẢ LẬP)' : '(THỰC TẾ)'}\n`;
+    text += `Round: ${roundName} | Thời gian: ${dateFilter}\n`;
+    text += `--------------------------------------------------\n`;
+    text += `📈 CHỈ SỐ HỆ THỐNG:\n`;
+    text += `- Chỉ số Công bằng (Fairness Index): ${targetData.fairnessIndex}%\n`;
+    text += `- Độ lệch chuẩn (SD): ±${targetData.standardDeviation} lead\n`;
+    text += `- Số lead trung bình: ${targetData.mean} lead / Sale\n`;
+    text += `- Tổng lead thành công: ${targetData.totalLeads} lead / ${targetData.totalConsultants} Saleperson\n\n`;
+
+    text += `👥 CHI TIẾT TỪNG TƯ VẤN VIÊN:\n`;
+    
+    targetData.consultants.forEach((c: any, index: number) => {
+      const currentRatio = isSimulating 
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedRatio ?? c.receive_ratio)
+        : c.receive_ratio;
+      const onShift = isSimulating 
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedOnShift ?? (c.receive_ratio > 0))
+        : (c.receive_ratio > 0);
+
+      const targetShare = activeWeights.totalWeight > 0 ? (targetData.totalLeads * activeWeights.weights[index] / activeWeights.totalWeight) : 0;
+      const diff = c.assigned_count - targetShare;
+      const diffPercent = targetShare > 0 ? (diff / targetShare) * 100 : 0;
+      const roundedDiff = Math.round(diff);
+
+      let devText = '';
+      if (!onShift) {
+        devText = '(Nghỉ ca)';
+      } else if (roundedDiff > 0) {
+        devText = `(Lệch thừa: +${roundedDiff} lead, +${diffPercent.toFixed(0)}%)`;
+      } else if (roundedDiff < 0) {
+        devText = `(Lệch thiếu: ${roundedDiff} lead, ${diffPercent.toFixed(0)}%)`;
+      } else {
+        devText = '(Cân bằng)';
+      }
+
+      text += `${index + 1}. ${c.name}: ${Math.round(c.assigned_count)} lead (Ratio: ${currentRatio}) - ${devText}\n`;
+    });
+
+    text += `--------------------------------------------------\n`;
+    text += `💡 KHUYẾN NGHỊ:\n`;
+    if (targetData.fairnessIndex >= 90) {
+      text += `- Phân phối cực kỳ công bằng. Cấu hình ratio đang hoạt động tối ưu.\n`;
+    } else if (targetData.fairnessIndex >= 75) {
+      text += `- Có sự chênh lệch nhẹ. Thường do tỷ lệ thiết lập hoặc Sale tạm vắng ca.\n`;
+    } else {
+      text += `- Độ lệch phân phối cao. Vui lòng rà soát lại ca trực và cấu hình ratio của từng Sale.\n`;
+    }
+
+    setCopyReportText(text);
+    setShowCopyModal(true);
+  };
+
+  const handleExecuteCopy = () => {
+    navigator.clipboard.writeText(copyReportText)
+      .then(() => {
+        toast.success("Đã sao chép báo cáo đối soát nhanh!");
+        setShowCopyModal(false);
+      })
+      .catch(err => {
+        console.error('Lỗi khi sao chép báo cáo:', err);
+        toast.error("Không thể tự động sao chép. Vui lòng thử lại.");
+      });
+  };
+
   // Formatting chart data for Data Source Balance
-  const sourceChartData = data?.consultants ? data.consultants.map((c: any) => {
+  const sourceChartData = activeData?.consultants ? activeData.consultants.map((c: any) => {
     const item: any = { name: c.name };
-    data.sources.forEach((src: string) => {
-      item[src] = c.sources[src] || 0;
+    activeData.sources.forEach((src: string) => {
+      item[src] = isSimulating ? Math.round(c.sources[src] || 0) : (c.sources[src] || 0);
     });
     return item;
   }) : [];
 
   // Formatting chart data for Lead Quality (Assigned vs Duplicate vs Faulty Approved)
-  const qualityChartData = data?.consultants ? data.consultants.map((c: any) => ({
+  const qualityChartData = activeData?.consultants ? activeData.consultants.map((c: any) => ({
     name: c.name,
-    'Data bàn giao': c.assigned_count,
+    'Data bàn giao': Math.round(c.assigned_count),
     'Ticket': c.total_ticket_count,
     'Duyệt Ticket': c.ticket_count
   })) : [];
+
+  // Comparison chart data for simulation
+  const simulationChartData = data?.consultants ? data.consultants.map((c: any) => {
+    const simC = simulatedData?.consultants?.find((sc: any) => sc.id === c.id);
+    return {
+      name: c.name,
+      'Thực tế': c.assigned_count,
+      'Giả lập': simC ? Math.round(simC.assigned_count) : 0
+    };
+  }) : [];
 
   const sourceColors = ['#6366f1', '#10b981', '#fbbf24', '#f43f5e', '#a855f7', '#06b6d4'];
 
@@ -143,8 +429,10 @@ export const FairShareAudit = () => {
           if (entry.value === 'Data bàn giao') color = 'var(--color-primary)';
           else if (entry.value === 'Ticket') color = '#fbbf24';
           else if (entry.value === 'Duyệt Ticket') color = '#10b981';
+          else if (entry.value === 'Thực tế') color = 'var(--color-text-muted)';
+          else if (entry.value === 'Giả lập') color = 'var(--color-primary)';
           else {
-            const sIdx = data?.sources?.indexOf(entry.value);
+            const sIdx = activeData?.sources?.indexOf(entry.value);
             if (sIdx !== undefined && sIdx !== -1) {
               color = sourceColors[sIdx % sourceColors.length];
             }
@@ -189,7 +477,7 @@ export const FairShareAudit = () => {
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || p.fill }} />
                   {p.name}
                 </span>
-                <span style={{ fontWeight: 800, color: 'white' }}>{p.value} lead</span>
+                <span style={{ fontWeight: 800, color: 'white' }}>{Math.round(p.value)} lead</span>
               </div>
             ))}
           </div>
@@ -203,19 +491,51 @@ export const FairShareAudit = () => {
   const renderSmartInsights = () => {
     if (!data || !data.consultants || data.consultants.length === 0) return null;
 
-    const fairness = data.fairnessIndex || 0;
+    const targetData = isSimulating ? simulatedData : data;
+    if (!targetData) return null;
 
-    // If fairness is good (>= 75), do not render the insights box
-    if (fairness >= 75) return null;
+    const fairness = targetData.fairnessIndex || 0;
 
-    // Find highest surplus and highest deficit
+    // If simulating and fairness is good, render a success feedback card
+    if (isSimulating && fairness >= 75) {
+      return (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.08) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderLeft: '4px solid #10b981',
+          borderRadius: '12px',
+          padding: '1.25rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start'
+        }}>
+          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: 8, borderRadius: '50%', color: '#10b981', flexShrink: 0 }}>
+            <CheckCircle size={18} />
+          </div>
+          <div>
+            <h4 style={{ fontWeight: 800, fontSize: '0.875rem', color: '#065f46', margin: 0, marginBottom: 4 }}>
+              Cấu Hình Giả Lập Đạt Độ Công Bằng Tốt ({fairness}%)
+            </h4>
+            <p style={{ fontSize: '0.8125rem', color: '#047857', margin: 0, lineHeight: 1.6 }}>
+              Với các thiết lập ratio và ca trực đang giả lập, hệ thống phân phối dự kiến sẽ rất cân bằng.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // If not simulating and fairness is good, do not render
+    if (!isSimulating && fairness >= 75) return null;
+
+    // Find highest surplus and highest deficit based on active simulation/actual data
     let maxSurplus = 0;
     let maxSurplusSale: any = null;
     let maxDeficit = 0;
     let maxDeficitSale: any = null;
 
-    data.consultants.forEach((c: any) => {
-      const targetShare = data.mean * c.receive_ratio;
+    targetData.consultants.forEach((c: any, index: number) => {
+      const targetShare = activeWeights.totalWeight > 0 ? (targetData.totalLeads * activeWeights.weights[index] / activeWeights.totalWeight) : 0;
       const diff = c.assigned_count - targetShare;
       const diffPercent = targetShare > 0 ? (diff / targetShare) * 100 : 0;
 
@@ -229,7 +549,10 @@ export const FairShareAudit = () => {
       }
     });
 
-    const title = `Khuyến Nghị Cần Điều Chỉnh: Phát hiện độ lệch phân phối cao (${fairness}%)`;
+    const title = isSimulating 
+      ? `Khuyến Nghị Cấu Hình Giả Lập: Độ lệch phân phối vẫn còn cao (${fairness}%)`
+      : `Khuyến Nghị Cần Điều Chỉnh: Phát hiện độ lệch phân phối cao thực tế (${fairness}%)`;
+      
     const bgColor = 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(239, 68, 68, 0.08) 100%)';
     const borderColor = 'rgba(239, 68, 68, 0.2)';
     const borderLeftColor = '#ef4444';
@@ -260,17 +583,17 @@ export const FairShareAudit = () => {
             <div>
               {maxSurplusSale && (
                 <span>
-                  • Tư vấn viên <strong>{maxSurplusSale.name}</strong> đang nhận vượt chỉ tiêu <strong>+{maxSurplusSale.diff.toFixed(1)} lead</strong> (+{maxSurplusSale.diffPercent.toFixed(0)}%).
+                  • Tư vấn viên <strong>{maxSurplusSale.name}</strong> dự kiến nhận vượt chỉ tiêu <strong>+{Math.round(maxSurplusSale.diff)} lead</strong> (+{maxSurplusSale.diffPercent.toFixed(0)}%).
                 </span>
               )}
               {maxDeficitSale && (
                 <span style={{ marginLeft: maxDeficitSale ? '12px' : 0 }}>
-                  • <strong>{maxDeficitSale.name}</strong> đang nhận thiếu chỉ tiêu <strong>{maxDeficitSale.diff.toFixed(1)} lead</strong> ({maxDeficitSale.diffPercent.toFixed(0)}%).
+                  • <strong>{maxDeficitSale.name}</strong> dự kiến nhận thiếu chỉ tiêu <strong>{Math.round(maxDeficitSale.diff)} lead</strong> ({maxDeficitSale.diffPercent.toFixed(0)}%).
                 </span>
               )}
             </div>
             <p style={{ margin: 0, opacity: 0.9 }}>
-              <strong>Gợi ý xử lý:</strong> Cân nhắc kiểm tra lại cấu hình lượt xoay ca trực trong mục <strong>Vòng phân bổ</strong>, trạng thái hoạt động trực tuyến (Zalo/Web) của các TVV trên, hoặc tạm thời giảm Tỷ lệ (Ratio) nhận của <strong>{maxSurplusSale?.name}</strong> xuống để hệ thống tự động bù số cho <strong>{maxDeficitSale?.name}</strong>.
+              <strong>Gợi ý xử lý:</strong> Cân nhắc điều chỉnh lại Ratio của <strong>{maxSurplusSale?.name}</strong> giảm xuống hoặc tăng của <strong>{maxDeficitSale?.name}</strong> lên thêm nữa để kéo lệch chuẩn về mức tối ưu.
             </p>
           </div>
         </div>
@@ -281,7 +604,7 @@ export const FairShareAudit = () => {
   return (
     <div style={{ animation: 'slideUp 0.3s ease-out', position: 'relative' }} className="fade-in-view">
       {/* Background loading bar */}
-      {loading && data && (
+      {loading && activeData && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 9999, overflow: 'hidden' }}>
           <div style={{ width: '30%', height: '100%', background: 'var(--color-primary)', borderRadius: 'inherit', animation: 'loadingBar 1.5s infinite ease-in-out' }} />
         </div>
@@ -304,7 +627,7 @@ export const FairShareAudit = () => {
               width="100%"
             />
           </div>
-          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 160 }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 150 }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -319,6 +642,37 @@ export const FairShareAudit = () => {
             />
           </div>
           <button
+            className={`btn ${isSimulating ? 'primary' : 'outline'}`}
+            onClick={() => {
+              if (!isSimulating && (!data?.consultants || data.consultants.length === 0)) {
+                toast.error("Không có dữ liệu tư vấn viên để chạy giả lập");
+                return;
+              }
+              setIsSimulating(!isSimulating);
+            }}
+            style={{
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: isSimulating ? 'var(--color-primary)' : 'transparent',
+              color: isSimulating ? 'white' : 'var(--color-primary)',
+              boxShadow: isSimulating ? 'var(--shadow-primary)' : 'none',
+            }}
+            title="Bật/Tắt Bộ giả lập phân bổ Live"
+          >
+            <Settings size={16} className={isSimulating ? 'spin' : ''} />
+            <span>{isSimulating ? 'Tắt Giả lập' : 'Giả Lập Live'}</span>
+          </button>
+          <button
+            className="btn outline"
+            onClick={handleCopyReport}
+            title="Sao chép nhanh báo cáo đối soát dạng văn bản"
+            style={{ width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <Copy size={16} />
+          </button>
+          <button
             className="btn outline"
             onClick={() => setShowInfoModal(true)}
             title="Giải thích chỉ số"
@@ -328,6 +682,85 @@ export const FairShareAudit = () => {
           </button>
         </div>
       </div>
+
+      {/* Live Simulation Control Panel */}
+      {isSimulating && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(124, 58, 237, 0.1) 100%)',
+          border: '1px solid var(--color-primary)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          boxShadow: 'var(--shadow-md)',
+          animation: 'slideDown 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ background: 'var(--color-primary)', color: 'white', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  BỘ GIẢ LẬP PHÂN BỔ LIVE <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'var(--color-success)', color: 'white', borderRadius: 4, fontWeight: 700, letterSpacing: '0.05em' }}>ACTIVE</span>
+                </h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                  Thay đổi tần suất nhận hoặc bật/tắt ca trực của từng Sale ở bảng chi tiết bên dưới để thấy các chỉ số tái tính toán ngay lập tức.
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                className="btn sm secondary"
+                onClick={handleResetSimulation}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, background: 'var(--color-surface)' }}
+              >
+                <RotateCcw size={13} />
+                Đặt lại giả lập
+              </button>
+
+              {/* Lưu cấu hình button removed to prevent saving simulation data to actual database */}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)', padding: '10px 12px', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--color-primary)' }}>
+            <Info size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-primary)' }} />
+            <div>
+              <span>Các thay đổi về Ratio nhận và ca trực ở đây chỉ phục vụ mục đích giả lập trực quan để đối soát độ lệch chuẩn & Gini, không ảnh hưởng đến cấu hình thực tế của hệ thống.</span>
+            </div>
+          </div>
+
+          {/* Quick Start Guide Section */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed rgba(99, 102, 241, 0.2)' }}>
+            <div>
+              <h5 style={{ fontWeight: 800, fontSize: '0.8125rem', color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', width: 18, height: 18, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>1</span>
+                HƯỚNG DẪN CÁCH GIẢ LẬP
+              </h5>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text)', lineHeight: 1.6 }}>
+                <li><strong>Bước A:</strong> Cuộn xuống <strong>Bảng Thống Kê Chi Tiết</strong> ở dưới cùng trang.</li>
+                <li><strong>Bước B:</strong> Click vào thẻ avatar/tên của Sale để giả định Sale đó <strong>Trực ca</strong> (chấm xanh) hoặc <strong>Nghỉ ca</strong> (chấm đỏ).</li>
+                <li><strong>Bước C:</strong> Kéo thanh trượt hoặc nhập số <strong>Ratio</strong> của từng Sale để thay đổi lượt nhận lead (Ratio càng lớn thì nhận càng ít lead).</li>
+                <li><strong>Kết quả:</strong> Các con số lead, biểu đồ và chỉ số công bằng phía trên sẽ tự động tính toán lại ngay lập tức.</li>
+              </ul>
+            </div>
+            <div>
+              <h5 style={{ fontWeight: 800, fontSize: '0.8125rem', color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', width: 18, height: 18, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>2</span>
+                NGUYÊN LÝ VÒNG CHIA (ROUND-ROBIN)
+              </h5>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text)', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 6px 0' }}>
+                  • <strong>Phân chia theo vòng:</strong> Hệ thống chia lead tuần tự từ TVV này sang TVV kia. "Ratio: X" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.
+                </p>
+                <p style={{ margin: 0 }}>
+                  • <strong>Trực ca & Thuần túy toán học:</strong> Chỉ TVV đang trực mới có mặt trong hàng đợi chia. Quá trình chia hoàn toàn deterministic (xác thực và có thể dự đoán), không có yếu tố ngẫu nhiên hay "may mắn".
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Intro explain card styled identically to RuleSettings */}
       <div className="hide-on-mobile" style={{
@@ -357,13 +790,13 @@ export const FairShareAudit = () => {
 
       {/* KPI Cards */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        {loading && !data ? (
+        {loading && !activeData ? (
           Array.from({ length: 4 }).map((_, i) => <KpiCardSkeleton key={i} />)
         ) : (
           <>
             {/* Fairness Index Card */}
             {(() => {
-              const level = getFairnessLevel(data?.fairnessIndex || 0);
+              const level = getFairnessLevel(activeData?.fairnessIndex || 0);
               return (
                 <div className="stat-card hover-lift" style={{ minHeight: '135px', display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${level.color}`, position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${level.color}10 0%, transparent 70%)` }} />
@@ -372,8 +805,21 @@ export const FairShareAudit = () => {
                     <Scale size={18} style={{ color: level.color }} />
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em' }}>{data?.fairnessIndex}%</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em', margin: 0 }}>{activeData?.fairnessIndex}%</span>
+                      {isSimulating && data && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          padding: '2px 8px',
+                          borderRadius: 20,
+                          background: activeData.fairnessIndex >= data.fairnessIndex ? 'var(--color-success-light)' : 'var(--color-danger-light)',
+                          color: activeData.fairnessIndex >= data.fairnessIndex ? 'var(--color-success)' : 'var(--color-danger)',
+                          fontWeight: 700,
+                          border: `1px solid ${activeData.fairnessIndex >= data.fairnessIndex ? 'var(--color-success)' : 'var(--color-danger)'}20`
+                        }}>
+                          {activeData.fairnessIndex >= data.fairnessIndex ? '+' : ''}{(activeData.fairnessIndex - data.fairnessIndex).toFixed(1)}% vs Thật
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 20, background: level.bg, color: level.color, fontWeight: 700, border: `1px solid ${level.color}20` }}>
                         {level.label}
                       </span>
@@ -393,7 +839,22 @@ export const FairShareAudit = () => {
                 <AlertTriangle size={18} color="#fbbf24" />
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em' }}>± {data?.standardDeviation || 0}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em', margin: 0 }}>± {activeData?.standardDeviation || 0}</span>
+                  {isSimulating && data && (
+                    <span style={{
+                      fontSize: '0.68rem',
+                      padding: '2px 8px',
+                      borderRadius: 20,
+                      background: activeData.standardDeviation <= data.standardDeviation ? 'var(--color-success-light)' : 'var(--color-danger-light)',
+                      color: activeData.standardDeviation <= data.standardDeviation ? 'var(--color-success)' : 'var(--color-danger)',
+                      fontWeight: 700,
+                      border: `1px solid ${activeData.standardDeviation <= data.standardDeviation ? 'var(--color-success)' : 'var(--color-danger)'}20`
+                    }}>
+                      {activeData.standardDeviation <= data.standardDeviation ? '' : '+'}{(activeData.standardDeviation - data.standardDeviation).toFixed(2)} vs Thật
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
                   Chỉ số đo lường mức độ phân tán của số lượng lead. SD càng nhỏ có nghĩa là lượng data được chia càng đồng đều giữa các Sale.
                 </div>
@@ -407,7 +868,22 @@ export const FairShareAudit = () => {
                 <TrendingUp size={18} color="var(--color-primary)" />
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em' }}>{data?.mean || 0}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em', margin: 0 }}>{activeData?.mean || 0}</span>
+                  {isSimulating && data && (
+                    <span style={{
+                      fontSize: '0.68rem',
+                      padding: '2px 8px',
+                      borderRadius: 20,
+                      background: 'var(--color-info-light)',
+                      color: 'var(--color-info)',
+                      fontWeight: 700,
+                      border: '1px solid var(--color-info)20'
+                    }}>
+                      {activeData.mean >= data.mean ? '+' : ''}{(activeData.mean - data.mean).toFixed(2)} vs Thật
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
                   Số lượng lead trung bình được nhận bởi một Tư vấn viên trong vòng và khoảng thời gian đã chọn.
                 </div>
@@ -421,11 +897,16 @@ export const FairShareAudit = () => {
                 <Users size={18} color="#3b82f6" />
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em' }}>
-                  {data?.totalLeads || 0} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>/ {data?.totalConsultants || 0} Saleperson</span>
+                <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '2rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{Math.round(activeData?.totalLeads || 0)} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>/ {activeData?.totalConsultants || 0} Saleperson</span></span>
+                  {isSimulating && (
+                    <span style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: 20, background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontWeight: 700, border: '1px solid var(--color-primary)20', letterSpacing: '0.05em' }}>
+                      GIẢ LẬP
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
-                  Phạm vi kiểm toán gồm {data?.totalConsultants || 0} Tư vấn viên đang hoạt động với tổng số {data?.totalLeads || 0} lead thành công.
+                  Phạm vi kiểm toán gồm {activeData?.totalConsultants || 0} Tư vấn viên đang hoạt động với tổng số {Math.round(activeData?.totalLeads || 0)} lead thành công.
                 </div>
               </div>
             </div>
@@ -448,7 +929,7 @@ export const FairShareAudit = () => {
             </p>
           </div>
           <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {loading && !data ? (
+            {loading && !activeData ? (
               <Skeleton width="100%" height={300} borderRadius={16} />
             ) : sourceChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
@@ -466,13 +947,13 @@ export const FairShareAudit = () => {
                   <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
                   <Legend content={renderCustomLegend} />
-                  {data?.sources && data.sources.map((src: string, index: number) => (
+                  {activeData?.sources && activeData.sources.map((src: string, index: number) => (
                     <Bar
                       key={src}
                       dataKey={src}
                       stackId="a"
                       fill={`url(#srcGrad-${index})`}
-                      radius={index === data.sources.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                      radius={index === activeData.sources.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                       barSize={32}
                     />
                   ))}
@@ -484,78 +965,149 @@ export const FairShareAudit = () => {
           </div>
         </div>
 
-        {/* Quality breakdown bar chart */}
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Chất Lượng Lead Nhận Được</h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-              Đối soát giữa tỷ lệ lead thật (bàn giao), lead bị trùng lặp, và số data báo lỗi đã được duyệt đền bù của từng Sale.
-            </p>
+        {/* Dynamic Simulation Chart / Lead Quality Chart */}
+        {isSimulating ? (
+          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} color="var(--color-primary)" /> So Sánh Lead Thực Tế vs. Giả Lập
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                So sánh trực quan sự phân bổ lại số lượng lead của từng Sale sau khi thay đổi thiết lập.
+              </p>
+            </div>
+            <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {simulationChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={simulationChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
+                    <defs>
+                      <linearGradient id="actualLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-text-muted)" stopOpacity={0.6} />
+                        <stop offset="100%" stopColor="var(--color-text-muted)" stopOpacity={0.3} />
+                      </linearGradient>
+                      <linearGradient id="simulatedLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
+                    <Legend content={renderCustomLegend} />
+                    <Bar dataKey="Thực tế" fill="url(#actualLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="Giả lập" fill="url(#simulatedLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu so sánh</div>
+              )}
+            </div>
           </div>
-          <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {loading && !data ? (
-              <Skeleton width="100%" height={300} borderRadius={16} />
-            ) : qualityChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={qualityChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
-                  <defs>
-                    <linearGradient id="assignedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
-                    </linearGradient>
-                    <linearGradient id="duplicateGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.65} />
-                    </linearGradient>
-                    <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="#059669" stopOpacity={0.65} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
-                  <Legend content={renderCustomLegend} />
-                  <Bar dataKey="Data bàn giao" fill="url(#assignedGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Ticket" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Duyệt Ticket" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu đối soát chất lượng</div>
-            )}
+        ) : (
+          /* Quality breakdown bar chart */
+          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Chất Lượng Lead Nhận Được</h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                Đối soát giữa tỷ lệ lead thật (bàn giao), lead bị trùng lặp, và số data báo lỗi đã được duyệt đền bù của từng Sale.
+              </p>
+            </div>
+            <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {loading && !data ? (
+                <Skeleton width="100%" height={300} borderRadius={16} />
+              ) : qualityChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={qualityChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
+                    <defs>
+                      <linearGradient id="assignedGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
+                      </linearGradient>
+                      <linearGradient id="duplicateGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.65} />
+                      </linearGradient>
+                      <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#059669" stopOpacity={0.65} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
+                    <Legend content={renderCustomLegend} />
+                    <Bar dataKey="Data bàn giao" fill="url(#assignedGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="Ticket" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="Duyệt Ticket" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu đối soát chất lượng</div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Detail Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '2rem', border: '1px solid var(--color-border)' }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '2rem', border: '1px solid var(--color-border)', position: 'relative' }}>
+        {isSimulating && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'var(--color-primary)', zIndex: 5, animation: 'pulse 2s infinite' }} />
+        )}
         <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Bảng Thống Kê Độ Lệch Chi Tiết</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              Bảng Thống Kê Độ Lệch Chi Tiết {isSimulating && <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderRadius: '6px', fontWeight: 800 }}>MÔ PHỎNG</span>}
+            </h3>
             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-              Chi tiết từng Sale trong vòng được audit: Tỷ lệ (Ratio) cài đặt, số lead nhận được, và đánh giá lệch so với trung bình hệ thống.
+              {isSimulating 
+                ? "Đang ở chế độ giả lập. Bật/tắt ca trực (checkbox) và điều chỉnh thanh trượt (slider) của từng Sale để xem kết quả."
+                : "Chi tiết từng Sale trong vòng được audit: Tỷ lệ (Ratio) cài đặt, số lead nhận được, và đánh giá lệch so với trung bình hệ thống."
+              }
             </p>
           </div>
           <span style={{ fontSize: '0.7rem', padding: '4px 10px', borderRadius: 8, background: 'var(--color-border-light)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text-light)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Layers size={12} /> Số Sale được đo lường: {data?.consultants?.length || 0}
+            <Layers size={12} /> Số Sale được đo lường: {activeData?.consultants?.length || 0}
           </span>
         </div>
 
         <div className="responsive-table-wrap">
-          {loading && !data ? (
+          {loading && !activeData ? (
             <div style={{ padding: '1.25rem' }}>
               <Skeleton width="100%" height={24} style={{ marginBottom: 12 }} />
               {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} width="100%" height={56} style={{ marginBottom: 8 }} />)}
             </div>
-          ) : data?.consultants && data.consultants.length > 0 ? (
+          ) : activeData?.consultants && activeData.consultants.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }} className="audit-premium-table">
               <thead>
                 <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>Tư vấn viên</th>
+                  <th style={{
+                    padding: '14px 18px',
+                    fontSize: '0.72rem',
+                    color: 'var(--color-text-light)',
+                    textTransform: 'uppercase',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    background: isSimulating ? 'rgba(99, 102, 241, 0.06)' : 'var(--color-border-light)'
+                  }}>
+                    {isSimulating ? "Trực ca / Tư vấn viên (Nhập)" : "Tư vấn viên"}
+                  </th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>Vòng chia</th>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Tỷ lệ (Ratio)</th>
+                  <th style={{
+                    padding: '14px 18px',
+                    fontSize: '0.72rem',
+                    color: 'var(--color-text-light)',
+                    textTransform: 'uppercase',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    textAlign: 'center',
+                    width: isSimulating ? '180px' : 'auto',
+                    background: isSimulating ? 'rgba(99, 102, 241, 0.06)' : 'var(--color-border-light)'
+                  }}>
+                    Ratio {isSimulating && "(Nhập)"}
+                  </th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Lead Nhận</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>Phân bổ theo Nguồn</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Ticket</th>
@@ -564,34 +1116,63 @@ export const FairShareAudit = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.consultants.map((c: any) => {
-                  // Calculate deviation from mean adjusted by ratio
-                  const targetShare = data.mean * c.receive_ratio;
+                {activeData.consultants.map((c: any, index: number) => {
+                  const baselineC = data?.consultants?.find((bc: any) => bc.id === c.id);
+                  const simC = simConsultants.find((sc: any) => sc.id === c.id) || c;
+
+                  // Calculate deviation from weight-based expected share
+                  const targetShare = activeWeights.totalWeight > 0 ? (activeData.totalLeads * activeWeights.weights[index] / activeWeights.totalWeight) : 0;
                   const diff = c.assigned_count - targetShare;
                   const diffPercent = targetShare > 0 ? (diff / targetShare) * 100 : 0;
 
                   // Styling based on deviation
                   let deviationClass = 'deviation-balanced';
                   let deviationLabel = 'Cân bằng';
-                  if (diff > 0) {
-                    deviationClass = 'deviation-surplus';
-                    deviationLabel = `+${diff.toFixed(1)} lead (+${diffPercent.toFixed(0)}%)`;
-                  } else if (diff < 0) {
-                    deviationClass = 'deviation-deficit';
-                    deviationLabel = `${diff.toFixed(1)} lead (${diffPercent.toFixed(0)}%)`;
+                  
+                  if (!isSimulating || simC.simulatedOnShift) {
+                    const roundedDiff = Math.round(diff);
+                    if (roundedDiff > 0) {
+                      deviationClass = 'deviation-surplus';
+                      deviationLabel = `+${roundedDiff} lead (+${diffPercent.toFixed(0)}%)`;
+                    } else if (roundedDiff < 0) {
+                      deviationClass = 'deviation-deficit';
+                      deviationLabel = `${roundedDiff} lead (${diffPercent.toFixed(0)}%)`;
+                    }
+                  } else {
+                    deviationLabel = 'Nghỉ ca';
                   }
 
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'all 0.25s ease' }} className="audit-table-row">
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ position: 'relative' }}>
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'all 0.25s ease', background: isSimulating ? 'rgba(99, 102, 241, 0.01)' : 'transparent' }} className="audit-table-row">
+                      <td style={{
+                        padding: '14px 18px',
+                        borderLeft: isSimulating ? '3px solid var(--color-primary)' : 'none',
+                        background: isSimulating ? 'rgba(99, 102, 241, 0.02)' : 'transparent'
+                      }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            cursor: isSimulating ? 'pointer' : 'default',
+                            userSelect: 'none'
+                          }}
+                          onClick={() => {
+                            if (isSimulating) {
+                              handleToggleSimShift(c.id);
+                            }
+                          }}
+                          title={isSimulating ? (simC.simulatedOnShift ? "Đang trực ca (Click để chuyển sang Nghỉ ca)" : "Nghỉ trực ca (Click để chuyển sang Trực ca)") : ""}
+                        >
+                          <div style={{ position: 'relative', opacity: (!isSimulating || simC.simulatedOnShift) ? 1 : 0.4 }}>
                             <Avatar src={c.avatar} name={c.name} size={36} />
-                            <span style={{ position: 'absolute', bottom: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: '#10b981', border: '2px solid var(--color-surface)', display: 'block' }} />
+                            <span style={{ position: 'absolute', bottom: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: (!isSimulating || simC.simulatedOnShift) ? '#10b981' : '#ef4444', border: '2px solid var(--color-surface)', display: 'block' }} />
                           </div>
-                          <div>
+                          <div style={{ opacity: (!isSimulating || simC.simulatedOnShift) ? 1 : 0.5 }}>
                             <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'block', fontSize: '0.875rem' }}>{c.name}</span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>ID: {c.id}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                              ID: {c.id} {isSimulating && !simC.simulatedOnShift && "(Nghỉ)"}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -600,19 +1181,82 @@ export const FairShareAudit = () => {
                           {c.round_name}
                         </span>
                       </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.06)', border: '1px dashed rgba(99, 102, 241, 0.3)', fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.8125rem' }}>
-                          x{c.receive_ratio}
-                        </span>
+                      <td style={{
+                        padding: '14px 18px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        background: isSimulating ? 'rgba(99, 102, 241, 0.04)' : 'transparent'
+                      }}>
+                        {isSimulating ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input
+                                type="range"
+                                min="1"
+                                max="10"
+                                step="1"
+                                value={simC.simulatedRatio}
+                                disabled={!simC.simulatedOnShift}
+                                onChange={(e) => handleUpdateSimRatio(c.id, parseInt(e.target.value))}
+                                style={{ width: '80px', accentColor: 'var(--color-primary)', cursor: simC.simulatedOnShift ? 'pointer' : 'not-allowed', opacity: simC.simulatedOnShift ? 1 : 0.3 }}
+                              />
+                              <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={simC.simulatedRatio}
+                                disabled={!simC.simulatedOnShift}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (!isNaN(val)) {
+                                    handleUpdateSimRatio(c.id, Math.min(10, Math.max(1, val)));
+                                  }
+                                }}
+                                style={{
+                                  width: '48px',
+                                  padding: '2px 4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800,
+                                  textAlign: 'center',
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: '6px',
+                                  background: 'var(--color-surface)',
+                                  color: 'var(--color-text)',
+                                  opacity: simC.simulatedOnShift ? 1 : 0.3
+                                }}
+                              />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: simC.simulatedOnShift ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                              Ratio: {simC.simulatedRatio} {baselineC && baselineC.receive_ratio !== simC.simulatedRatio && (
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                  (gốc: Ratio: {baselineC.receive_ratio})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: 20, background: 'rgba(99, 102, 241, 0.06)', border: '1px dashed rgba(99, 102, 241, 0.3)', fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.8125rem' }}>
+                            Ratio: {c.receive_ratio}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center', fontWeight: 900, fontSize: '1.05rem', color: 'var(--color-text)' }}>
-                        {c.assigned_count}
+                        {isSimulating && baselineC ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>{Math.round(c.assigned_count)}</span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                              (thực tế: {baselineC.assigned_count})
+                            </span>
+                          </div>
+                        ) : (
+                          c.assigned_count
+                        )}
                       </td>
                       <td style={{ padding: '14px 18px', width: '260px', verticalAlign: 'middle' }}>
                         {c.assigned_count > 0 ? (
                           <div className="source-bar-container" style={{ position: 'relative', width: '100%', padding: '6px 0' }}>
                             <div style={{ display: 'flex', width: '100%', height: '8px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'var(--color-border-light)' }}>
-                              {data.sources.map((src: string, sIdx: number) => {
+                              {activeData.sources.map((src: string, sIdx: number) => {
                                 const val = c.sources[src] || 0;
                                 if (val === 0) return null;
                                 const pct = (val / c.assigned_count) * 100;
@@ -635,7 +1279,7 @@ export const FairShareAudit = () => {
                                 Phân bổ nguồn ({c.name})
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                {data.sources.map((src: string, sIdx: number) => {
+                                {activeData.sources.map((src: string, sIdx: number) => {
                                   const val = c.sources[src] || 0;
                                   if (val === 0) return null;
                                   const pct = (val / c.assigned_count) * 100;
@@ -647,7 +1291,7 @@ export const FairShareAudit = () => {
                                         {src}
                                       </span>
                                       <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>
-                                        {val} <span style={{ fontWeight: 500, opacity: 0.7, fontSize: '0.65rem' }}>({pct.toFixed(0)}%)</span>
+                                        {Math.round(val * 10) / 10} <span style={{ fontWeight: 500, opacity: 0.7, fontSize: '0.65rem' }}>({pct.toFixed(0)}%)</span>
                                       </span>
                                     </div>
                                   );
@@ -725,6 +1369,41 @@ export const FairShareAudit = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button className="btn outline" onClick={() => setShowDateModal(false)}>Hủy</button>
             <button className="btn primary" onClick={handleCustomDateSubmit}>Áp dụng</button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Copy Report Preview Modal */}
+      <CustomModal
+        isOpen={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        title="Xem trước báo cáo đối soát nhanh"
+        width="550px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', margin: 0 }}>
+            Xem trước nội dung báo cáo. Bạn có thể sao chép văn bản này để gửi nhanh qua các nhóm chat.
+          </p>
+          <textarea
+            readOnly
+            value={copyReportText}
+            style={{
+              width: '100%',
+              height: '300px',
+              fontFamily: 'monospace',
+              fontSize: '0.75rem',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-border-light)',
+              color: 'var(--color-text)',
+              resize: 'none',
+              lineHeight: '1.5'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setShowCopyModal(false)}>Hủy</button>
+            <button className="btn primary" onClick={handleExecuteCopy}>Sao chép</button>
           </div>
         </div>
       </CustomModal>

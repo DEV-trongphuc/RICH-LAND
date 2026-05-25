@@ -165,6 +165,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
     case 'edit_account':
     case 'delete_account':
     case 'update_profile':
+    case 'update_round_ratios':
       return { success: true, message: 'Thao tác thành công (Demo Mode)' };
 
     default:
