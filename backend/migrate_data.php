@@ -1,8 +1,13 @@
 <?php
-header("Content-Type: text/plain; charset=utf-8");
-require_once __DIR__ . '/db_connect.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-echo "=== RUNNING DATA MIGRATION ===\n";
+header("Content-Type: text/plain; charset=utf-8");
+
+try {
+    require_once __DIR__ . '/db_connect.php';
+    echo "=== RUNNING DATA MIGRATION ===\n";
 
 // 1. Blacklist migration for Nhi (ID: 1003)
 // We look for BLOCK_LEAD_BLACKLIST admin_logs on 2026-05-23
@@ -122,5 +127,11 @@ if ($danId > 0) {
     echo "Error: Consultant with name containing 'Đan' not found.\n";
 }
 
+} catch (Throwable $e) {
+    echo "ERROR: " . $e->getMessage() . "\n";
+    echo "FILE: " . $e->getFile() . "\n";
+    echo "LINE: " . $e->getLine() . "\n";
+    echo "TRACE:\n" . $e->getTraceAsString() . "\n";
+}
 echo "=== MIGRATION COMPLETED ===\n";
 ?>

@@ -25,6 +25,7 @@ type Lead = {
   report_status?: string;
   resolved_by?: string | null;
   resolved_at?: string | null;
+  last_activity_at?: string | null;
 };
 
 const maskPhone = (phone: string) => {
@@ -887,7 +888,8 @@ export const Tickets = () => {
                         note: r.lead_note || '',
                         report_status: r.status,
                         resolved_by: r.resolved_by,
-                        resolved_at: r.resolved_at
+                        resolved_at: r.resolved_at,
+                        last_activity_at: r.last_activity_at
                       });
                     }}
                     style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
@@ -1289,6 +1291,11 @@ export const Tickets = () => {
                       {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>}
                       {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Chỉ đồng bộ</span>}
                       {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Blacklist</span>}
+                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
+                        <div style={{ fontSize: '0.72rem', color: '#db2777', fontWeight: 600, marginTop: 6 }}>
+                          🔄 Hoạt động gần nhất: {new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1682,9 +1689,23 @@ export const Tickets = () => {
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
                       </div>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Clock size={12} /> Thời gian nhận</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Clock size={12} /> Thời gian nhận
+                        </div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
                       </div>
+                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                            <Clock size={12} /> Thời gian nhắc lại từ:
+                          </div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {typeof selectedLead.last_activity_at === 'string'
+                              ? new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')
+                              : '-'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (

@@ -67,14 +67,17 @@ export const Rounds = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const startSaleDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'config' | 'reports'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'reports' | 'active_logs'>('config');
   const [reports, setReports] = useState<any[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
+  const [activeLogs, setActiveLogs] = useState<any[]>([]);
+  const [loadingActiveLogs, setLoadingActiveLogs] = useState(false);
 
   // Compensation Modal State
   const [compModalOpen, setCompModalOpen] = useState(false);
   const [compRound, setCompRound] = useState<any>(null);
   const [compData, setCompData] = useState<Record<number, number>>({});
+  const [compReasons, setCompReasons] = useState<Record<number, string>>({});
   const [isSavingComp, setIsSavingComp] = useState(false);
 
   useEffect(() => {
@@ -131,6 +134,7 @@ export const Rounds = () => {
   const openCompModal = (r: any) => {
     setCompRound(r);
     setCompData(r.compensations || {});
+    setCompReasons({});
     setCompModalOpen(true);
   };
 
@@ -140,7 +144,8 @@ export const Rounds = () => {
     try {
       const payload = {
         round_id: compRound.id,
-        compensations: compData
+        compensations: compData,
+        reasons: compReasons
       };
       const res = await fetchAPI('update_compensations', {
         method: 'POST',
@@ -180,6 +185,18 @@ export const Rounds = () => {
     });
     setModalOpen(true);
     fetchReports(r.id);
+    fetchActiveLogs(r.id);
+  };
+
+  const fetchActiveLogs = async (roundId: number) => {
+    setLoadingActiveLogs(true);
+    try {
+      const res = await fetchAPI(`get_active_compensation_logs&round_id=${roundId}`);
+      if (res.success) setActiveLogs(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingActiveLogs(false);
   };
 
   const fetchReports = async (roundId: number) => {
@@ -605,6 +622,9 @@ export const Rounds = () => {
                     <span style={{ background: 'var(--color-danger)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 10 }}>{reports.filter(r => r.status === 'pending').length}</span>
                   )}
                 </button>
+                <button type="button" onClick={() => setActiveTab('active_logs')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'active_logs' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'active_logs' ? 600 : 500, cursor: 'pointer' }}>
+                  Log bù chủ động
+                </button>
               </div>
             )}
 
@@ -875,7 +895,7 @@ export const Rounds = () => {
                   </button>
                 </div>
               </form>
-            ) : (
+            ) : activeTab === 'reports' ? (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
                 {loadingReports ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu báo cáo...</div>
@@ -955,25 +975,91 @@ export const Rounds = () => {
                                 </button>
                               </div>
                             ) : (
-                              <div style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                color: r.status === 'approved' ? (theme === 'dark' ? '#34d399' : '#10b981') : 'var(--color-text-muted)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: r.status === 'approved' ? (theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7') : (theme === 'dark' ? 'var(--color-bg)' : '#f1f5f9'),
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                border: r.status === 'approved' ? (theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #bbf7d0') : (theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1')
-                              }}>
-                                {r.status === 'approved' ? <><Check size={12} /> Đã duyệt đền bù</> : <><X size={12} /> Đã từ chối</>}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  color: r.status === 'approved' ? (theme === 'dark' ? '#34d399' : '#10b981') : 'var(--color-text-muted)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: r.status === 'approved' ? (theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7') : (theme === 'dark' ? 'var(--color-bg)' : '#f1f5f9'),
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  border: r.status === 'approved' ? (theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #bbf7d0') : (theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1')
+                                }}>
+                                  {r.status === 'approved' ? <><Check size={12} /> Đã duyệt đền bù</> : <><X size={12} /> Đã từ chối</>}
+                                </div>
+                                {r.resolved_by && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                    <Avatar src={r.resolved_by_avatar} name={r.resolved_by} size={16} />
+                                    <span>
+                                      {r.resolved_by} • {(() => {
+                                        const d = new Date(r.resolved_at);
+                                        const pad = (n: number) => n.toString().padStart(2, '0');
+                                        return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                                      })()}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                {loadingActiveLogs ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu log...</div>
+                ) : activeLogs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
+                    <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Chưa có log bù chủ động nào</p>
+                    <p style={{ fontSize: '0.875rem' }}>Lịch sử bù data thủ công của vòng này sẽ xuất hiện tại đây.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {activeLogs.map(log => (
+                      <div key={log.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.625rem 1rem',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        background: 'var(--color-bg)',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        gap: '1rem',
+                        flexWrap: 'wrap'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Avatar src={log.admin_avatar} name={log.admin_name} size={24} />
+                            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{log.admin_name}</span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                            đã bù <strong style={{ color: 'var(--color-primary)', fontSize: '1rem' }}>+{log.amount}</strong> data cho Sale
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Avatar src={log.consultant_avatar} name={log.consultant_name} size={24} />
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{log.consultant_name}</span>
+                          </div>
+                          {log.reason && (
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem', flex: 1, minWidth: 150 }}>
+                              <span style={{ fontWeight: 600 }}>Lý do:</span> {log.reason}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <Clock size={12} />
+                          <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1014,32 +1100,58 @@ export const Rounds = () => {
                   const currentComp = compData[id] || 0;
                   
                   return (
-                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: currentComp > 0 ? 'var(--color-warning-light)' : 'var(--color-bg)', border: `1px solid ${currentComp > 0 ? 'var(--color-warning)' : 'var(--color-border)'}`, borderRadius: 12, transition: 'all 0.2s' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Avatar src={user.avatar} name={user.name} size={36} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
-                        <div>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{user.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
+                    <div key={id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: currentComp > 0 ? 'var(--color-warning-light)' : 'var(--color-bg)', border: `1px solid ${currentComp > 0 ? 'var(--color-warning)' : 'var(--color-border)'}`, borderRadius: 12, transition: 'all 0.2s' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <Avatar src={user.avatar} name={user.name} size={36} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                          <div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{user.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button 
+                            type="button"
+                            onClick={() => setCompData({ ...compData, [id]: Math.max(0, currentComp - 1) })}
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                          >
+                            -
+                          </button>
+                          <div style={{ width: 40, textAlign: 'center', fontSize: '1rem', fontWeight: 800, color: currentComp > 0 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                            {currentComp}
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setCompData({ ...compData, [id]: currentComp + 1 })}
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                          >
+                            +
+                          </button>
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button 
-                          onClick={() => setCompData({ ...compData, [id]: Math.max(0, currentComp - 1) })}
-                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
-                        >
-                          -
-                        </button>
-                        <div style={{ width: 40, textAlign: 'center', fontSize: '1rem', fontWeight: 800, color: currentComp > 0 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                          {currentComp}
+                      {currentComp > (compRound.compensations?.[id] || 0) && (
+                        <div style={{ marginTop: '0.5rem', width: '100%', animation: 'slideUp 0.15s ease-out' }}>
+                          <input
+                            type="text"
+                            placeholder="Nhập lý do bù chủ động (tùy chọn)..."
+                            value={compReasons[id] || ''}
+                            onChange={(e) => setCompReasons({ ...compReasons, [id]: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              fontSize: '0.8125rem',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '8px',
+                              background: 'var(--color-bg)',
+                              color: 'var(--color-text)',
+                              outline: 'none',
+                              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                            }}
+                          />
                         </div>
-                        <button 
-                          onClick={() => setCompData({ ...compData, [id]: currentComp + 1 })}
-                          style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text-muted)' }}
-                        >
-                          +
-                        </button>
-                      </div>
+                      )}
                     </div>
                   );
                 }) : (

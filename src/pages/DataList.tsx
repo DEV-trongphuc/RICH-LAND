@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, Plus, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
@@ -23,6 +23,7 @@ type Lead = {
   report_status?: string;
   resolved_by?: string | null;
   resolved_at?: string | null;
+  last_activity_at?: string | null;
 };
 
 import { fetchAPI } from '../utils/api';
@@ -652,69 +653,98 @@ export const DataList = () => {
           <p className="page-subtitle">Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.</p>
         </div>
         <div className="data-list-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {/* View Mode Toggle Buttons */}
-          <div className="view-mode-toggle-container" style={{
+          <div style={{
             display: 'flex',
-            background: 'var(--color-bg)',
+            alignItems: 'center',
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: '10px',
-            padding: '3px',
-            marginRight: '0.5rem',
-            height: '38px',
-            alignItems: 'center'
+            padding: '3px 4px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            height: '38px'
           }}>
+            {/* View Mode Toggle Buttons */}
+            <div className="view-mode-toggle-container" style={{
+              display: 'flex',
+              background: 'transparent',
+              borderRadius: '8px',
+              padding: '0',
+              height: '32px',
+              alignItems: 'center'
+            }}>
+              <button
+                type="button"
+                className={`btn-toggle-view ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'list' ? 'white' : 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <LayoutList size={13} /> <span className="hide-on-mobile">Danh sách</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-toggle-view ${viewMode === 'calendar' ? 'active' : ''}`}
+                onClick={() => setViewMode('calendar')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'calendar' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'calendar' ? 'white' : 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <Calendar size={13} /> <span className="hide-on-mobile">Lịch biểu</span>
+              </button>
+            </div>
+
+            {/* Separator line */}
+            <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 6px' }} />
+
+            {/* Compact Export CSV Button */}
             <button
               type="button"
-              className={`btn-toggle-view ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
+              onClick={handleExportCSV}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
+                padding: '0 10px',
+                borderRadius: '6px',
                 border: 'none',
-                background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
-                color: viewMode === 'list' ? 'white' : 'var(--color-text-muted)',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
+                background: 'transparent',
+                color: 'var(--color-primary)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                height: '32px'
+                height: '28px'
               }}
+              className="btn-export-csv-compact"
             >
-              <LayoutList size={14} /> <span className="hide-on-mobile">Danh sách</span>
-            </button>
-            <button
-              type="button"
-              className={`btn-toggle-view ${viewMode === 'calendar' ? 'active' : ''}`}
-              onClick={() => setViewMode('calendar')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                background: viewMode === 'calendar' ? 'var(--color-primary)' : 'transparent',
-                color: viewMode === 'calendar' ? 'white' : 'var(--color-text-muted)',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '32px'
-              }}
-            >
-              <Calendar size={14} /> <span className="hide-on-mobile">Lịch biểu</span>
+              <Download size={13} /> <span>Xuất<span className="hide-on-mobile"> CSV</span></span>
             </button>
           </div>
-
-          <button className="btn outline" onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))} style={{ padding: '0 1.25rem', height: 38 }}>
-            <Plus size={16} /> <span>Thêm<span className="hide-on-mobile"> Data</span></span>
-          </button>
-          <button className="btn primary" onClick={handleExportCSV} style={{ padding: '0 1.25rem', height: 38 }}>
-            <Download size={16} /> <span>Xuất<span className="hide-on-mobile"> CSV</span></span>
-          </button>
         </div>
       </div>
 
@@ -1197,7 +1227,14 @@ export const DataList = () => {
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
-                    <div>{getStatusBadge(selectedLead.status, selectedLead.report_status)}</div>
+                    <div>
+                      {getStatusBadge(selectedLead.status, selectedLead.report_status)}
+                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
+                        <div style={{ fontSize: '0.72rem', color: '#db2777', fontWeight: 600, marginTop: 6 }}>
+                          🔄 Hoạt động gần nhất: {new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1590,9 +1627,23 @@ export const DataList = () => {
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
                       </div>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Clock size={12} /> Thời gian nhận</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Clock size={12} /> Thời gian nhận
+                        </div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
                       </div>
+                      {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                            <Clock size={12} /> Thời gian nhắc lại từ:
+                          </div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {typeof selectedLead.last_activity_at === 'string'
+                              ? new Date(selectedLead.last_activity_at.replace(/-/g, '/')).toLocaleString('vi-VN')
+                              : '-'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -2202,6 +2253,9 @@ export const DataList = () => {
           --color-calendar-weekend: #141b2d;
         }
         .spin { animation: spin 1s linear infinite; }
+        .btn-export-csv-compact:hover {
+          background-color: var(--color-primary-light) !important;
+        }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

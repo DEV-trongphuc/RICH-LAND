@@ -42,6 +42,19 @@ export const Dashboard = () => {
   const [statsStartDate, setStatsStartDate] = useState<string>('');
   const [statsEndDate, setStatsEndDate] = useState<string>('');
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
   const getComparisonLabel = (filter: string) => {
     switch (filter) {
       case 'Hôm nay':
@@ -528,6 +541,12 @@ export const Dashboard = () => {
                                 return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Ticket' };
                               case 'silent':
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: 'Chỉ đồng bộ' };
+                              case 'reminder':
+                                return {
+                                  bg: theme === 'dark' ? 'rgba(219, 39, 119, 0.15)' : '#fce7f3',
+                                  color: theme === 'dark' ? '#f472b6' : '#db2777',
+                                  text: 'Nhắc lại'
+                                };
                               default:
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
                             }

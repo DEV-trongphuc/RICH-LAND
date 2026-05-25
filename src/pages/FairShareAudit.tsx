@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
-  TrendingUp, Sparkles, CheckCircle, Layers, Ticket,
+  TrendingUp, Sparkles, CheckCircle, Layers,
   RotateCcw, Settings, Copy
 } from 'lucide-react';
 import {
@@ -29,9 +29,15 @@ export const FairShareAudit = () => {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyReportText, setCopyReportText] = useState('');
 
+  // Compensation Details Modal State
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [compensationDetails, setCompensationDetails] = useState<any>(null);
+
   // Simulation State
   const [isSimulating, setIsSimulating] = useState(false);
   const [simConsultants, setSimConsultants] = useState<any[]>([]);
+  const [simTotalLeads, setSimTotalLeads] = useState<number>(0);
 
   // Initialize/Sync simulation consultants state when actual data changes
   useEffect(() => {
@@ -46,14 +52,17 @@ export const FairShareAudit = () => {
         ticket_count: c.ticket_count,
         total_ticket_count: c.total_ticket_count,
         duplicate_count: c.duplicate_count,
+        compensation_count: c.compensation_count,
         round_id: c.round_id,
         round_name: c.round_name,
         // Simulation settings
         simulatedRatio: c.receive_ratio,
         simulatedOnShift: c.receive_ratio > 0
       })));
+      setSimTotalLeads(Math.round(data.totalLeads || 0));
     } else {
       setSimConsultants([]);
+      setSimTotalLeads(0);
     }
   }, [data]);
 
@@ -77,11 +86,13 @@ export const FairShareAudit = () => {
       ticket_count: c.ticket_count,
       total_ticket_count: c.total_ticket_count,
       duplicate_count: c.duplicate_count,
+      compensation_count: c.compensation_count,
       round_id: c.round_id,
       round_name: c.round_name,
       simulatedRatio: c.receive_ratio,
       simulatedOnShift: c.receive_ratio > 0
     })));
+    setSimTotalLeads(Math.round(data.totalLeads || 0));
     toast.success("Đã đặt lại bộ giả lập về mặc định");
   };
 
@@ -116,7 +127,7 @@ export const FairShareAudit = () => {
   const simulatedData = useMemo(() => {
     if (!data || simConsultants.length === 0) return null;
 
-    const totalLeads = data.totalLeads;
+    const totalLeads = simTotalLeads;
     const N = simConsultants.length;
 
     const weights = simConsultants.map(c => c.simulatedOnShift ? (1.0 / Math.max(1, c.simulatedRatio)) : 0);
@@ -197,7 +208,7 @@ export const FairShareAudit = () => {
     });
 
     return {
-      totalLeads: Math.round(data.totalLeads),
+      totalLeads: Math.round(totalLeads),
       totalConsultants: N,
       mean: Math.round(mean * 100) / 100,
       standardDeviation: Math.round(standardDeviation * 100) / 100,
@@ -207,7 +218,7 @@ export const FairShareAudit = () => {
       sources: data.sources,
       consultants,
     };
-  }, [data, simConsultants]);
+  }, [data, simConsultants, simTotalLeads]);
 
   // Fetch Rounds for the dropdown filter
   const fetchRounds = async () => {
@@ -378,6 +389,28 @@ export const FairShareAudit = () => {
         console.error('Lỗi khi sao chép báo cáo:', err);
         toast.error("Không thể tự động sao chép. Vui lòng thử lại.");
       });
+  };
+
+  const handleOpenDetailsModal = async (consultantId: number) => {
+    setShowDetailsModal(true);
+    setDetailsLoading(true);
+    setCompensationDetails(null);
+    try {
+      const url = `get_consultant_compensation_details&consultant_id=${consultantId}&date=${encodeURIComponent(dateFilter)}&round_id=${roundFilter}`;
+      const res = await fetchAPI(url);
+      if (res.success) {
+        setCompensationDetails(res.data);
+      } else {
+        toast.error(res.message || 'Lỗi khi tải chi tiết đối soát bù');
+        setShowDetailsModal(false);
+      }
+    } catch (e) {
+      console.error('Error fetching consultant compensation details:', e);
+      toast.error('Lỗi kết nối khi tải chi tiết đối soát bù');
+      setShowDetailsModal(false);
+    } finally {
+      setDetailsLoading(false);
+    }
   };
 
   // Formatting chart data for Data Source Balance
@@ -709,7 +742,66 @@ export const FairShareAudit = () => {
               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '2px 8px', height: '32px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>Tổng Lead:</span>
+                <button
+                  type="button"
+                  onClick={() => setSimTotalLeads(prev => Math.max(0, prev - 10))}
+                  style={{ border: 'none', background: 'transparent', padding: '0 4px', fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer' }}
+                  title="Giảm 10 lead"
+                >
+                  -10
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimTotalLeads(prev => Math.max(0, prev - 1))}
+                  style={{ border: 'none', background: 'transparent', padding: '0 4px', fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer' }}
+                  title="Giảm 1 lead"
+                >
+                  -1
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  value={simTotalLeads}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (!isNaN(val)) {
+                      setSimTotalLeads(Math.max(0, val));
+                    }
+                  }}
+                  style={{
+                    width: '60px',
+                    height: '24px',
+                    textAlign: 'center',
+                    fontWeight: 800,
+                    fontSize: '0.8125rem',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '4px',
+                    background: 'var(--color-bg)',
+                    color: 'var(--color-text)',
+                    padding: 0
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSimTotalLeads(prev => prev + 1)}
+                  style={{ border: 'none', background: 'transparent', padding: '0 4px', fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer' }}
+                  title="Tăng 1 lead"
+                >
+                  +1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimTotalLeads(prev => prev + 10)}
+                  style={{ border: 'none', background: 'transparent', padding: '0 4px', fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer' }}
+                  title="Tăng 10 lead"
+                >
+                  +10
+                </button>
+              </div>
+
               <button
                 className="btn sm secondary"
                 onClick={handleResetSimulation}
@@ -918,138 +1010,140 @@ export const FairShareAudit = () => {
       {!loading && data && renderSmartInsights()}
 
       {/* Main Charts area */}
-      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      {!isSimulating && (
+        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
 
-        {/* Data Source Balance Chart */}
-        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Phân Bổ Cân Bằng Theo Nguồn</h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-              Đảm bảo các Sale nhận số lượng lead chất lượng (FB Ads, Google) đồng đều, tránh dồn nguồn kém chất lượng cho một người.
-            </p>
-          </div>
-          <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {loading && !activeData ? (
-              <Skeleton width="100%" height={300} borderRadius={16} />
-            ) : sourceChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={sourceChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={5}>
-                  <defs>
-                    {sourceColors.map((color, idx) => (
-                      <linearGradient key={`grad-src-${idx}`} id={`srcGrad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity={0.95} />
-                        <stop offset="100%" stopColor={color} stopOpacity={0.7} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
-                  <Legend content={renderCustomLegend} />
-                  {activeData?.sources && activeData.sources.map((src: string, index: number) => (
-                    <Bar
-                      key={src}
-                      dataKey={src}
-                      stackId="a"
-                      fill={`url(#srcGrad-${index})`}
-                      radius={index === activeData.sources.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                      barSize={32}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu thống kê nguồn</div>
-            )}
-          </div>
-        </div>
-
-        {/* Dynamic Simulation Chart / Lead Quality Chart */}
-        {isSimulating ? (
+          {/* Data Source Balance Chart */}
           <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={16} color="var(--color-primary)" /> So Sánh Lead Thực Tế vs. Giả Lập
-              </h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Phân Bổ Cân Bằng Theo Nguồn</h3>
               <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-                So sánh trực quan sự phân bổ lại số lượng lead của từng Sale sau khi thay đổi thiết lập.
+                Đảm bảo các Sale nhận số lượng lead chất lượng (FB Ads, Google) đồng đều, tránh dồn nguồn kém chất lượng cho một người.
               </p>
             </div>
             <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {simulationChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={simulationChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
-                    <defs>
-                      <linearGradient id="actualLeadsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-text-muted)" stopOpacity={0.6} />
-                        <stop offset="100%" stopColor="var(--color-text-muted)" stopOpacity={0.3} />
-                      </linearGradient>
-                      <linearGradient id="simulatedLeadsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
-                    <Legend content={renderCustomLegend} />
-                    <Bar dataKey="Thực tế" fill="url(#actualLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="Giả lập" fill="url(#simulatedLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu so sánh</div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Quality breakdown bar chart */
-          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Chất Lượng Lead Nhận Được</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-                Đối soát giữa tỷ lệ lead thật (bàn giao), lead bị trùng lặp, và số data báo lỗi đã được duyệt đền bù của từng Sale.
-              </p>
-            </div>
-            <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {loading && !data ? (
+              {loading && !activeData ? (
                 <Skeleton width="100%" height={300} borderRadius={16} />
-              ) : qualityChartData.length > 0 ? (
+              ) : sourceChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={qualityChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
+                  <BarChart data={sourceChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={5}>
                     <defs>
-                      <linearGradient id="assignedGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
-                      </linearGradient>
-                      <linearGradient id="duplicateGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.65} />
-                      </linearGradient>
-                      <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#059669" stopOpacity={0.65} />
-                      </linearGradient>
+                      {sourceColors.map((color, idx) => (
+                        <linearGradient key={`grad-src-${idx}`} id={`srcGrad-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={color} stopOpacity={0.95} />
+                          <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                        </linearGradient>
+                      ))}
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
                     <Legend content={renderCustomLegend} />
-                    <Bar dataKey="Data bàn giao" fill="url(#assignedGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="Ticket" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                    <Bar dataKey="Duyệt Ticket" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    {activeData?.sources && activeData.sources.map((src: string, index: number) => (
+                      <Bar
+                        key={src}
+                        dataKey={src}
+                        stackId="a"
+                        fill={`url(#srcGrad-${index})`}
+                        radius={index === activeData.sources.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        barSize={32}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu đối soát chất lượng</div>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu thống kê nguồn</div>
               )}
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Dynamic Simulation Chart / Lead Quality Chart */}
+          {isSimulating ? (
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={16} color="var(--color-primary)" /> So Sánh Lead Thực Tế vs. Giả Lập
+                </h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                  So sánh trực quan sự phân bổ lại số lượng lead của từng Sale sau khi thay đổi thiết lập.
+                </p>
+              </div>
+              <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {simulationChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={simulationChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
+                      <defs>
+                        <linearGradient id="actualLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--color-text-muted)" stopOpacity={0.6} />
+                          <stop offset="100%" stopColor="var(--color-text-muted)" stopOpacity={0.3} />
+                        </linearGradient>
+                        <linearGradient id="simulatedLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
+                      <Legend content={renderCustomLegend} />
+                      <Bar dataKey="Thực tế" fill="url(#actualLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                      <Bar dataKey="Giả lập" fill="url(#simulatedLeadsGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu so sánh</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Quality breakdown bar chart */
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>Chất Lượng Lead Nhận Được</h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                  Đối soát giữa tỷ lệ lead thật (bàn giao), lead bị trùng lặp, và số data báo lỗi đã được duyệt đền bù của từng Sale.
+                </p>
+              </div>
+              <div style={{ flex: 1, minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {loading && !data ? (
+                  <Skeleton width="100%" height={300} borderRadius={16} />
+                ) : qualityChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={qualityChartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }} barGap={6}>
+                      <defs>
+                        <linearGradient id="assignedGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.65} />
+                        </linearGradient>
+                        <linearGradient id="duplicateGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.65} />
+                        </linearGradient>
+                        <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#059669" stopOpacity={0.65} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
+                      <Legend content={renderCustomLegend} />
+                      <Bar dataKey="Data bàn giao" fill="url(#assignedGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                      <Bar dataKey="Ticket" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                      <Bar dataKey="Duyệt Ticket" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu đối soát chất lượng</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Detail Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '2rem', border: '1px solid var(--color-border)', position: 'relative' }}>
@@ -1110,8 +1204,8 @@ export const FairShareAudit = () => {
                   </th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Lead Nhận</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>Phân bổ theo Nguồn</th>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Ticket</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Duyệt Ticket</th>
+                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Data bù</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'right' }}>Độ Lệch</th>
                 </tr>
               </thead>
@@ -1143,7 +1237,21 @@ export const FairShareAudit = () => {
                   }
 
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'all 0.25s ease', background: isSimulating ? 'rgba(99, 102, 241, 0.01)' : 'transparent' }} className="audit-table-row">
+                    <tr 
+                      key={c.id} 
+                      style={{ 
+                        borderBottom: '1px solid var(--color-border-light)', 
+                        transition: 'all 0.25s ease', 
+                        background: isSimulating ? 'rgba(99, 102, 241, 0.01)' : 'transparent',
+                        cursor: !isSimulating ? 'pointer' : 'default'
+                      }} 
+                      className="audit-table-row"
+                      onClick={() => {
+                        if (!isSimulating) {
+                          handleOpenDetailsModal(c.id);
+                        }
+                      }}
+                    >
                       <td style={{
                         padding: '14px 18px',
                         borderLeft: isSimulating ? '3px solid var(--color-primary)' : 'none',
@@ -1304,18 +1412,18 @@ export const FairShareAudit = () => {
                         )}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        {c.total_ticket_count > 0 ? (
-                          <span style={{ color: '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(245, 158, 11, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.15)' }}>
-                            <Ticket size={12} /> {c.total_ticket_count}
+                        {c.ticket_count > 0 ? (
+                          <span style={{ color: '#10b981', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                            <CheckCircle size={12} /> {c.ticket_count}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', opacity: 0.6 }}>-</span>
                         )}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        {c.ticket_count > 0 ? (
-                          <span style={{ color: '#10b981', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.15)' }}>
-                            <CheckCircle size={12} /> {c.ticket_count}
+                        {c.compensation_count > 0 ? (
+                          <span style={{ color: '#6366f1', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(99, 102, 241, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                            <RotateCcw size={12} /> {c.compensation_count}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', opacity: 0.6 }}>-</span>
@@ -1456,6 +1564,204 @@ export const FairShareAudit = () => {
             <button className="btn primary" onClick={() => setShowInfoModal(false)}>Đóng</button>
           </div>
         </div>
+      </CustomModal>
+
+      {/* Compensation Details Modal */}
+      <CustomModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        title="Đối Soát Chi Tiết Data Bù"
+        width="600px"
+      >
+        {detailsLoading ? (
+          <div style={{ padding: '2rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div className="spin" style={{ width: '32px', height: '32px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%' }} />
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>Đang tải dữ liệu đối soát...</span>
+          </div>
+        ) : compensationDetails ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            
+            {/* Consultant Profile Summary */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-border-light)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <Avatar src={compensationDetails.avatar} name={compensationDetails.name} size={48} />
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                  {compensationDetails.name}
+                </h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                  ID: {compensationDetails.consultant_id} • Thời gian: <span style={{ fontWeight: 600 }}>{dateFilter}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Core Stats Overview */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>Tổng Data Đã Chia</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
+              </div>
+              <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>Data Bù Đã Nhận</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981' }}>{compensationDetails.total_compensation_received}</span>
+              </div>
+            </div>
+
+            {/* Compensation Breakdown Header */}
+            <div>
+              <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0', borderBottom: '1px dashed var(--color-border)', paddingBottom: '6px' }}>
+                Thống Kê Chi Tiết Nguồn Bù
+              </h5>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Tickets Approved */}
+                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                        <CheckCircle size={14} />
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Bù do duyệt ticket lỗi</span>
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.ticket} lead</span>
+                  </div>
+                  
+                  {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
+                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                      {compensationDetails.breakdown.ticket_details.map((tkt: any, idx: number) => {
+                        const dateStr = new Date(tkt.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar src={tkt.admin_avatar} name={tkt.admin_name} size={16} />
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{tkt.admin_name}</span>
+                              <span style={{ color: 'var(--color-text-muted)' }}>({tkt.reason})</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 lead</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Blacklist block */}
+                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                        <AlertTriangle size={14} />
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Bù do blacklist chặn</span>
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.blacklist} lead</span>
+                  </div>
+                  
+                  {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
+                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                      {compensationDetails.breakdown.blacklist_details.map((bl: any, idx: number) => {
+                        const dateStr = new Date(bl.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar src={bl.admin_avatar} name={bl.admin_name} size={16} />
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{bl.admin_name}</span>
+                              <span style={{ color: 'var(--color-text-muted)' }}>({bl.reason})</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 lead</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Reassignments */}
+                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                        <Layers size={14} />
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Bù do thu hồi / chuyển lead</span>
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.reassign} lead</span>
+                  </div>
+                  
+                  {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
+                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                      {compensationDetails.breakdown.reassign_details.map((re: any, idx: number) => {
+                        const dateStr = new Date(re.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar src={re.admin_avatar} name={re.admin_name} size={16} />
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{re.admin_name}</span>
+                              <span style={{ color: 'var(--color-text-muted)' }}>({re.reason})</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 lead</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Manual/Active Compensations */}
+                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
+                        <RotateCcw size={14} />
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Bù chủ động (Cộng tay)</span>
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.active_total} lead</span>
+                  </div>
+
+                  {/* Active details reasons sub-list */}
+                  {compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
+                    <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
+                      {compensationDetails.breakdown.active_details.map((act: any, idx: number) => {
+                        const dateStr = new Date(act.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar src={act.admin_avatar} name={act.admin_name} size={16} />
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{act.admin_name}</span>
+                              <span style={{ color: 'var(--color-text-muted)' }}>({act.reason})</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+{act.count} lead</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button className="btn primary" onClick={() => setShowDetailsModal(false)}>Đóng</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-light)' }}>
+            Không tải được chi tiết đối soát.
+          </div>
+        )}
       </CustomModal>
 
       <style>{`
