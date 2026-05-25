@@ -86,8 +86,15 @@ if ($updatedBlacklist === 0) {
             'round_name' => 'Vòng chia'
         ];
         $detailsJson = json_encode($mockDetails, JSON_UNESCAPED_UNICODE);
-        $stmt = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, created_at) VALUES (0, 'BLOCK_LEAD_BLACKLIST', ?, '2026-05-23 17:20:59')");
-        $stmt->bind_param("s", $detailsJson);
+        
+        $adminId = 5; // Default fallback
+        $adminRes = $conn->query("SELECT id FROM accounts ORDER BY id ASC LIMIT 1");
+        if ($adminRes && $rowAdmin = $adminRes->fetch_assoc()) {
+            $adminId = (int)$rowAdmin['id'];
+        }
+
+        $stmt = $conn->prepare("INSERT INTO admin_logs (account_id, action, details, created_at) VALUES (?, 'BLOCK_LEAD_BLACKLIST', ?, '2026-05-23 17:20:59')");
+        $stmt->bind_param("is", $adminId, $detailsJson);
         $stmt->execute();
         $stmt->close();
         echo "Inserted mock BLOCK_LEAD_BLACKLIST log in admin_logs for Nhi.\n";
