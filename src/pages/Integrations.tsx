@@ -872,8 +872,8 @@ export const Integrations = () => {
                 {selected.spreadsheet_id && selected.sync_status !== 'error' && selected.sync_status !== 'syncing' && (
                   <div style={{
                     marginTop: '1rem',
-                    background: 'var(--color-success-light)',
-                    border: '1px solid var(--color-success)',
+                    background: 'rgba(21, 128, 61, 0.05)',
+                    border: '1px solid rgba(21, 128, 61, 0.22)',
                     borderRadius: 12,
                     padding: '1rem 1.25rem',
                     display: 'flex',
@@ -883,18 +883,32 @@ export const Integrations = () => {
                   }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: '50%',
-                      background: 'rgba(16, 185, 129, 0.15)',
+                      background: 'rgba(21, 128, 61, 0.12)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--color-success)'
+                      color: '#15803d'
                     }}>
                       <CheckCircle2 size={18} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-success)', margin: 0 }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#15803d', margin: 0 }}>
                         ĐỒNG BỘ HOẠT ĐỘNG BÌNH THƯỜNG
                       </h4>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-success)', opacity: 0.8, marginTop: 2 }}>
-                        Kết nối với ID <code>{selected.spreadsheet_id}</code> hoạt động ổn định và sẵn sàng đồng bộ
+                      <p style={{ fontSize: '0.75rem', color: '#166534', opacity: 0.9, marginTop: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                        Kết nối với ID 
+                        <code style={{
+                          fontFamily: 'monospace',
+                          background: 'rgba(21, 128, 61, 0.08)',
+                          color: '#15803d',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(21, 128, 61, 0.18)',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          wordBreak: 'break-all'
+                        }}>
+                          {selected.spreadsheet_id}
+                        </code> 
+                        hoạt động ổn định và sẵn sàng đồng bộ
                       </p>
                     </div>
                   </div>

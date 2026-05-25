@@ -844,7 +844,7 @@ export const Tickets = () => {
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tư vấn viên</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Vòng phân bổ</th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Lý do lỗi</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -875,7 +875,7 @@ export const Tickets = () => {
                   >
                     <td style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Avatar name={r.lead_name} size={36} color="#7c3aed" />
+                        <Avatar name={r.lead_name} size={36} />
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
@@ -936,7 +936,7 @@ export const Tickets = () => {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {r.status === 'pending' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {r.zalo_chat_id && (
@@ -958,7 +958,7 @@ export const Tickets = () => {
                               <Bell size={14} />
                             </button>
                           )}
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? '#10b981' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: 20 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? '#10b981' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {r.status === 'approved' ? <><CheckCircle size={14} /> Đã Đền Bù</> : 'Đã Từ chối'}
                           </div>
                         </div>

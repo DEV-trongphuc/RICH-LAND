@@ -5705,6 +5705,7 @@ switch ($action) {
                     'round_name' => $row['round_name'],
                     'assigned_count' => 0,
                     'ticket_count' => 0,
+                    'total_ticket_count' => 0,
                     'duplicate_count' => 0,
                     'sources' => []
                 ];
@@ -5777,6 +5778,21 @@ switch ($action) {
                 $cId = (int)$row['consultant_id'];
                 if (isset($consultants[$cId])) {
                     $consultants[$cId]['ticket_count'] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Query total ticket counts (all data_reports)
+        $totalTicketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
+                                 FROM data_reports 
+                                 WHERE $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                                 GROUP BY consultant_id";
+        $ttRes = $conn->query($totalTicketCountsSql);
+        if ($ttRes) {
+            while ($row = $ttRes->fetch_assoc()) {
+                $cId = (int)$row['consultant_id'];
+                if (isset($consultants[$cId])) {
+                    $consultants[$cId]['total_ticket_count'] = (int)$row['cnt'];
                 }
             }
         }

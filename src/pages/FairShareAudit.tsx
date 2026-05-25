@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
-  TrendingUp, Sparkles, CheckCircle, Layers
+  TrendingUp, Sparkles, CheckCircle, Layers, Ticket
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -117,8 +117,8 @@ export const FairShareAudit = () => {
   const qualityChartData = data?.consultants ? data.consultants.map((c: any) => ({
     name: c.name,
     'Data bàn giao': c.assigned_count,
-    'Trùng lặp': c.duplicate_count,
-    'Data lỗi (Duyệt)': c.ticket_count
+    'Ticket': c.total_ticket_count,
+    'Duyệt Ticket': c.ticket_count
   })) : [];
 
   const sourceColors = ['#6366f1', '#10b981', '#fbbf24', '#f43f5e', '#a855f7', '#06b6d4'];
@@ -141,8 +141,8 @@ export const FairShareAudit = () => {
         {payload.map((entry: any, index: number) => {
           let color = entry.color;
           if (entry.value === 'Data bàn giao') color = 'var(--color-primary)';
-          else if (entry.value === 'Trùng lặp') color = '#fbbf24';
-          else if (entry.value === 'Data lỗi (Duyệt)') color = '#f87171';
+          else if (entry.value === 'Ticket') color = '#fbbf24';
+          else if (entry.value === 'Duyệt Ticket') color = '#10b981';
           else {
             const sIdx = data?.sources?.indexOf(entry.value);
             if (sIdx !== undefined && sIdx !== -1) {
@@ -508,8 +508,8 @@ export const FairShareAudit = () => {
                       <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.65} />
                     </linearGradient>
                     <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f87171" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.65} />
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#059669" stopOpacity={0.65} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={true} vertical={false} />
@@ -518,8 +518,8 @@ export const FairShareAudit = () => {
                   <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'var(--color-border-light)', opacity: 0.3 }} />
                   <Legend content={renderCustomLegend} />
                   <Bar dataKey="Data bàn giao" fill="url(#assignedGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Trùng lặp" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Data lỗi (Duyệt)" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                  <Bar dataKey="Ticket" fill="url(#duplicateGrad)" radius={[4, 4, 0, 0]} barSize={16} />
+                  <Bar dataKey="Duyệt Ticket" fill="url(#ticketGrad)" radius={[4, 4, 0, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -558,8 +558,8 @@ export const FairShareAudit = () => {
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Tỷ lệ (Ratio)</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Lead Nhận</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>Phân bổ theo Nguồn</th>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Lỗi (Duyệt)</th>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Trùng Lặp</th>
+                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Ticket</th>
+                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>Duyệt Ticket</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'right' }}>Độ Lệch</th>
                 </tr>
               </thead>
@@ -660,18 +660,18 @@ export const FairShareAudit = () => {
                         )}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        {c.ticket_count > 0 ? (
-                          <span style={{ color: '#f43f5e', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(244, 63, 94, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(244, 63, 94, 0.15)' }}>
-                            <AlertTriangle size={12} /> {c.ticket_count}
+                        {c.total_ticket_count > 0 ? (
+                          <span style={{ color: '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(245, 158, 11, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.15)' }}>
+                            <Ticket size={12} /> {c.total_ticket_count}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', opacity: 0.6 }}>-</span>
                         )}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        {c.duplicate_count > 0 ? (
-                          <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.875rem', background: 'rgba(251, 191, 36, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(251, 191, 36, 0.15)' }}>
-                            {c.duplicate_count}
+                        {c.ticket_count > 0 ? (
+                          <span style={{ color: '#10b981', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                            <CheckCircle size={12} /> {c.ticket_count}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', opacity: 0.6 }}>-</span>
