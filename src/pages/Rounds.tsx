@@ -515,7 +515,8 @@ export const Rounds = () => {
                                     marginLeft: i === 0 ? 0 : -8,
                                     position: 'relative',
                                     zIndex: 10 - i,
-                                    display: 'inline-block'
+                                    display: 'inline-block',
+                                    borderRadius: '50%'
                                   }}
                                 >
                                   <Avatar
@@ -703,7 +704,8 @@ export const Rounds = () => {
                             marginLeft: i > 0 ? -12 : 0,
                             position: 'relative',
                             zIndex: 10 - i,
-                            display: 'inline-block'
+                            display: 'inline-block',
+                            borderRadius: '50%'
                           }}
                         >
                           <Avatar
