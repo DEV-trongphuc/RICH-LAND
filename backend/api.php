@@ -2114,13 +2114,90 @@ switch ($action) {
 
         if (!empty($roundIds)) {
             $idsStr = implode(',', $roundIds);
-            $ratioRes = $conn->query("SELECT round_id, consultant_id, receive_ratio, data_per_turn, compensation_count FROM round_consultants WHERE round_id IN ($idsStr)");
+            
+            // 1. Fetch ratios, compensations and group active consultants in each round
+            $ratioRes = $conn->query("SELECT rc.round_id, rc.consultant_id, rc.receive_ratio, rc.data_per_turn, rc.compensation_count, c.name 
+                                      FROM round_consultants rc
+                                      JOIN consultants c ON rc.consultant_id = c.id
+                                      WHERE rc.round_id IN ($idsStr) AND c.status = 'active'");
+            $roundActiveConsultants = [];
             while ($rr = $ratioRes->fetch_assoc()) {
                 $rId = $rr['round_id'];
                 $cId = $rr['consultant_id'];
                 $data[$rId]['ratios'][$cId] = (int) $rr['receive_ratio'];
                 $data[$rId]['data_per_turns'][$cId] = (int) ($rr['data_per_turn'] ?? 1);
                 $data[$rId]['compensations'][$cId] = (int) $rr['compensation_count'];
+                
+                $roundActiveConsultants[$rId][] = [
+                    'id' => $cId,
+                    'receive_ratio' => (int) $rr['receive_ratio']
+                ];
+            }
+
+            // 2. Fetch monthly stats to compute fairness index (Tháng này)
+            $counts = [];
+            $countsQuery = "SELECT assigned_to, round_id, status, COUNT(*) as cnt 
+                            FROM distribution_logs 
+                            WHERE round_id IN ($idsStr)
+                              AND received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') 
+                              AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+                              AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                            GROUP BY assigned_to, round_id, status";
+            $countsRes = $conn->query($countsQuery);
+            if ($countsRes) {
+                while ($row = $countsRes->fetch_assoc()) {
+                    $cId = (int)$row['assigned_to'];
+                    $rId = (int)$row['round_id'];
+                    $status = $row['status'];
+                    $cnt = (int)$row['cnt'];
+                    $counts[$rId][$cId][$status] = $cnt;
+                }
+            }
+
+            // 3. Calculate Fairness Index for each round
+            foreach ($roundIds as $rId) {
+                $activeCons = $roundActiveConsultants[$rId] ?? [];
+                $N = count($activeCons);
+                if ($N <= 1) {
+                    $data[$rId]['fairness_index'] = 100.0;
+                    continue;
+                }
+
+                $rawCounts = [];
+                $normalizedCounts = [];
+                $totalLeads = 0;
+
+                foreach ($activeCons as $c) {
+                    $cId = $c['id'];
+                    $ratio = max(1, $c['receive_ratio']);
+                    
+                    $sc = $counts[$rId][$cId] ?? [];
+                    $assigned = $sc['assigned'] ?? 0;
+                    $comp = $sc['compensation'] ?? 0;
+                    $rule6 = $sc['rule_6_month'] ?? 0;
+                    $pending = $sc['pending_work_hours'] ?? 0;
+                    $err = $sc['error'] ?? 0;
+
+                    $assignedCount = $assigned + $comp + $rule6 + $pending + max(0, $err - $comp);
+                    $rawCounts[] = $assignedCount;
+                    $normalizedCounts[] = $assignedCount * $ratio;
+                    $totalLeads += $assignedCount;
+                }
+
+                $giniNormalized = 0;
+                $sumNorm = array_sum($normalizedCounts);
+                if ($sumNorm > 0) {
+                    $doubleSumDiffNorm = 0;
+                    for ($i = 0; $i < $N; $i++) {
+                        for ($j = 0; $j < $N; $j++) {
+                            $doubleSumDiffNorm += abs($normalizedCounts[$i] - $normalizedCounts[$j]);
+                        }
+                    }
+                    $giniNormalized = $doubleSumDiffNorm / (2 * $N * $sumNorm);
+                }
+
+                $fairnessIndex = (1 - $giniNormalized) * 100;
+                $data[$rId]['fairness_index'] = round($fairnessIndex, 1);
             }
         }
 

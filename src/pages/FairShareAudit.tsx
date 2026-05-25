@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers,
@@ -18,11 +19,14 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export const FairShareAudit = () => {
   const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<any>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('Tháng này');
-  const [roundFilter, setRoundFilter] = useState('');
+  const [roundFilter, setRoundFilter] = useState(() => {
+    return searchParams.get('round_id') || '';
+  });
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -255,6 +259,13 @@ export const FairShareAudit = () => {
   useEffect(() => {
     fetchRounds();
   }, []);
+
+  useEffect(() => {
+    const roundIdParam = searchParams.get('round_id');
+    if (roundIdParam !== null) {
+      setRoundFilter(roundIdParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const abortController = new AbortController();

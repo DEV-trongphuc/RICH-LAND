@@ -97,6 +97,12 @@ export const Rounds = () => {
   const [compReasons, setCompReasons] = useState<Record<number, string>>({});
   const [isSavingComp, setIsSavingComp] = useState(false);
 
+  const getFairnessColor = (index: number) => {
+    if (index >= 90) return { color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)' };
+    if (index >= 75) return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)' };
+    return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' };
+  };
+
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -432,6 +438,59 @@ export const Rounds = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Fairness score badge */}
+                    {r.fairness_index !== undefined && (
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/fair-share?round_id=${r.id}`);
+                        }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          alignItems: 'flex-end',
+                          gap: 2 
+                        }}
+                        title={t("Click để xem chi tiết đối soát công bằng")}
+                      >
+                        <span style={{ 
+                          fontSize: '0.65rem', 
+                          fontWeight: 700, 
+                          color: 'var(--color-text-muted)', 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.05em' 
+                        }}>
+                          {t("Điểm đối soát")}
+                        </span>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4, 
+                          padding: '3px 8px', 
+                          borderRadius: 8, 
+                          background: getFairnessColor(r.fairness_index).bg,
+                          color: getFairnessColor(r.fairness_index).color,
+                          fontWeight: 700,
+                          fontSize: '0.8125rem',
+                          border: `1px solid ${getFairnessColor(r.fairness_index).color}25`,
+                          transition: 'all 0.2s ease-out'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        >
+                          <Scale size={12} />
+                          {r.fairness_index}%
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ flex: 1, marginBottom: '1rem' }}>
@@ -539,6 +598,61 @@ export const Rounds = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Fairness Score Badge for List View */}
+                {r.fairness_index !== undefined && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/fair-share?round_id=${r.id}`);
+                    }}
+                    style={{ 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      minWidth: 100,
+                      flexShrink: 0
+                    }}
+                    title={t("Click để xem chi tiết đối soát công bằng")}
+                  >
+                    <span style={{ 
+                      fontSize: '0.65rem', 
+                      fontWeight: 700, 
+                      color: 'var(--color-text-muted)', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.05em' 
+                    }}>
+                      {t("Đối soát")}
+                    </span>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 4, 
+                      padding: '3px 8px', 
+                      borderRadius: 8, 
+                      background: getFairnessColor(r.fairness_index).bg,
+                      color: getFairnessColor(r.fairness_index).color,
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      border: `1px solid ${getFairnessColor(r.fairness_index).color}25`,
+                      transition: 'all 0.2s ease-out'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    >
+                      <Scale size={11} />
+                      {r.fairness_index}%
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
