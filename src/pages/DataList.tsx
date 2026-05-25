@@ -176,7 +176,8 @@ export const DataList = () => {
           assigned_to_avatar: item.assigned_to_avatar,
           round_name: item.round_name || '-',
           created_at: item.created_at,
-          report_status: item.report_status
+          report_status: item.report_status,
+          last_activity_at: item.last_activity_at
         }));
         setLeads(mappedLeads);
         // BUG-04 fix: track truncation
