@@ -4,7 +4,8 @@ import { Layout } from './components/Layout/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Calendar, Sparkles, TrendingUp, AlertCircle, ListCollapse, ArrowRight } from 'lucide-react';
+import { Calendar, Sparkles, TrendingUp, AlertCircle, ListCollapse, ArrowRight, Keyboard } from 'lucide-react';
+import { CustomModal } from './components/ui/CustomModal';
 
 // Lazy load all pages for Code Splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -558,6 +559,232 @@ const CalendarPromoController = () => {
   );
 };
 
+const KeyboardShortcutsController = () => {
+  const { user, token } = useAuth();
+  const navigate = useNavigate();
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputActive = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.hasAttribute('contenteditable')
+      );
+
+      if (e.key === 'Escape') {
+        if (isInputActive) {
+          (activeEl as HTMLElement).blur();
+        } else {
+          setShowHelpModal(false);
+        }
+        return;
+      }
+
+      if (isInputActive) {
+        return;
+      }
+
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowHelpModal(prev => !prev);
+        return;
+      }
+
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const key = e.key.toLowerCase();
+
+        if (key === 'n') {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+          setShowHelpModal(false);
+          return;
+        }
+
+        if (key === 'h') {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('open-activity-feed'));
+          setShowHelpModal(false);
+          return;
+        }
+
+        const shortcuts: Record<string, string> = {
+          d: '/',
+          l: '/data',
+        };
+
+        if (user?.role === 'admin') {
+          shortcuts.s = '/fair-share';
+          shortcuts.r = '/rounds';
+          shortcuts.c = '/consultants';
+          shortcuts.t = '/tickets';
+          shortcuts.w = '/rules';
+          shortcuts.i = '/integrations';
+          shortcuts.o = '/settings';
+          shortcuts.a = '/accounts';
+        }
+
+        if (shortcuts[key] !== undefined) {
+          e.preventDefault();
+          navigate(shortcuts[key]);
+          setShowHelpModal(false);
+        }
+      }
+    };
+
+    const handleOpenHelp = () => {
+      setShowHelpModal(true);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-keyboard-shortcuts', handleOpenHelp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-keyboard-shortcuts', handleOpenHelp);
+    };
+  }, [user, navigate, token]);
+
+  if (!token) return null;
+
+  const isSystemAdmin = user?.role === 'admin';
+
+  return (
+    <>
+      <CustomModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        title="Bảng phím tắt điều hướng nhanh"
+        width="650px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
+            <Keyboard size={20} />
+            <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Mẹo: Nhấn Alt + [Chữ cái] để chuyển hướng nhanh toàn hệ thống</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isSystemAdmin ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+            {/* Column 1: Chung & Vận hành */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
+                  Chung & Vận hành
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text)' }}>Trang chủ Dashboard</span>
+                    <kbd className="shortcuts-kbd">Alt + D</kbd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text)' }}>Nhật ký Lead (Data)</span>
+                    <kbd className="shortcuts-kbd">Alt + L</kbd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text)' }}>Thêm Data (Lead) nhanh</span>
+                    <kbd className="shortcuts-kbd">Alt + N</kbd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text)' }}>Bản tin hoạt động hệ thống</span>
+                    <kbd className="shortcuts-kbd">Alt + H</kbd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text)' }}>Xem kịch bản trợ giúp này</span>
+                    <kbd className="shortcuts-kbd">?</kbd>
+                  </div>
+                </div>
+              </div>
+
+              {isSystemAdmin && (
+                <div>
+                  <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
+                    Chia số & Đối soát
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Vòng xoay chia số (Rounds)</span>
+                      <kbd className="shortcuts-kbd">Alt + R</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Quy tắc chia số (Rules)</span>
+                      <kbd className="shortcuts-kbd">Alt + W</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Đối soát Công bằng (Fair Share)</span>
+                      <kbd className="shortcuts-kbd">Alt + S</kbd>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Column 2: Nhân sự & Quản trị */}
+            {isSystemAdmin && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
+                    Nhân sự & Tickets
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Quản lý Tư vấn viên (Sale)</span>
+                      <kbd className="shortcuts-kbd">Alt + C</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Quản lý Tickets báo lỗi</span>
+                      <kbd className="shortcuts-kbd">Alt + T</kbd>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
+                    Cấu hình & Quản trị
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Tích hợp API & Google Sheets</span>
+                      <kbd className="shortcuts-kbd">Alt + I</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Cài đặt Hệ thống</span>
+                      <kbd className="shortcuts-kbd">Alt + O</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>Tài khoản phân quyền</span>
+                      <kbd className="shortcuts-kbd">Alt + A</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button className="btn primary" onClick={() => setShowHelpModal(false)}>Đóng</button>
+          </div>
+        </div>
+      </CustomModal>
+
+      <style>{`
+        .shortcuts-kbd {
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-bottom: 2px solid var(--color-border);
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 0.75rem;
+          font-family: monospace;
+          font-weight: 800;
+          color: var(--color-primary);
+          box-shadow: var(--shadow-xs);
+          user-select: none;
+        }
+      `}</style>
+    </>
+  );
+};
+
 export default function App() {
   useEffect(() => {
     const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
@@ -599,6 +826,7 @@ export default function App() {
               </Route>
             </Routes>
             <CalendarPromoController />
+            <KeyboardShortcutsController />
           </Suspense>
         </Router>
       </AuthProvider>

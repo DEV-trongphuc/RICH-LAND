@@ -68,6 +68,16 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   }, [isActivityFeedOpen]);
 
   useEffect(() => {
+    const handleOpenFeed = () => {
+      setIsActivityFeedOpen(true);
+    };
+    window.addEventListener('open-activity-feed', handleOpenFeed);
+    return () => {
+      window.removeEventListener('open-activity-feed', handleOpenFeed);
+    };
+  }, []);
+
+  useEffect(() => {
     if (user?.role === 'admin') {
       fetchAPI('get_reports')
         .then(res => {
@@ -131,10 +141,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
         <Header 
-          onMenuClick={() => {
-            if (window.innerWidth <= 1024) setIsMobileSidebarOpen(true);
-            else setIsSidebarCollapsed(!isSidebarCollapsed);
-          }} 
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}
         />
 
