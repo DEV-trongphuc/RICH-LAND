@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Key, Scale } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -23,6 +23,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const [pendingTickets, setPendingTickets] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -214,7 +215,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   to={href}
                   end={end}
                   title={isCollapsed ? t(name) : undefined}
-                  onClick={() => {
+                  onClick={(e) => {
+                    if (location.pathname === href) {
+                      e.preventDefault();
+                      return;
+                    }
                     if (onMobileClose) onMobileClose();
                   }}
                   style={({ isActive }) => ({
