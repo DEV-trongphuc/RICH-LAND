@@ -191,7 +191,7 @@ export const FairShareAudit = () => {
       const simSources: any = {};
       const actualCount = c.assigned_count;
       const simCount = rawCounts[i];
-      
+
       const sourceWeights = data.sources.map((src: string) => {
         if (actualCount > 0) {
           return c.sources[src] || 0;
@@ -199,9 +199,9 @@ export const FairShareAudit = () => {
           return 1;
         }
       });
-      
+
       const distributedSources = distributeProportionally(simCount, sourceWeights);
-      
+
       data.sources.forEach((src: string, sIdx: number) => {
         simSources[src] = distributedSources[sIdx];
       });
@@ -317,7 +317,7 @@ export const FairShareAudit = () => {
   const activeWeights = useMemo(() => {
     if (!activeData || !activeData.consultants) return { weights: [], totalWeight: 0 };
     const weights = activeData.consultants.map((con: any) => {
-      const conRatio = isSimulating 
+      const conRatio = isSimulating
         ? (simConsultants.find(sc => sc.id === con.id)?.simulatedRatio ?? con.receive_ratio)
         : con.receive_ratio;
       const conOnShift = isSimulating
@@ -336,8 +336,8 @@ export const FairShareAudit = () => {
       return;
     }
 
-    const roundName = roundFilter 
-      ? (rounds.find(r => String(r.id) === roundFilter)?.round_name || t('Vòng cụ thể')) 
+    const roundName = roundFilter
+      ? (rounds.find(r => String(r.id) === roundFilter)?.round_name || t('Vòng cụ thể'))
       : t('Tất cả các Vòng');
 
     let text = `📊 ${t('BÁO CÁO ĐỐI SOÁT ĐỘ CÔNG BẰNG PHÂN PHỐI')} ${isSimulating ? t('(GIẢ LẬP)') : t('(THỰC TẾ)')}\n`;
@@ -350,12 +350,12 @@ export const FairShareAudit = () => {
     text += `- ${t('Tổng lead thành công')}: ${targetData.totalLeads} ${t('lead')} / ${targetData.totalConsultants} ${t('Saleperson')}\n\n`;
 
     text += `👥 ${t('CHI TIẾT TỪNG TƯ VẤN VIÊN')}:\n`;
-    
+
     targetData.consultants.forEach((c: any, index: number) => {
-      const currentRatio = isSimulating 
+      const currentRatio = isSimulating
         ? (simConsultants.find(sc => sc.id === c.id)?.simulatedRatio ?? c.receive_ratio)
         : c.receive_ratio;
-      const onShift = isSimulating 
+      const onShift = isSimulating
         ? (simConsultants.find(sc => sc.id === c.id)?.simulatedOnShift ?? (c.receive_ratio > 0))
         : (c.receive_ratio > 0);
 
@@ -595,10 +595,10 @@ export const FairShareAudit = () => {
       }
     });
 
-    const title = isSimulating 
+    const title = isSimulating
       ? t("Khuyến Nghị Cấu Hình Giả Lập: Độ lệch phân phối vẫn còn cao ({fairness}%)").replace('{fairness}', String(fairness))
       : t("Khuyến Nghị Cần Điều Chỉnh: Phát hiện độ lệch phân phối cao thực tế ({fairness}%)").replace('{fairness}', String(fairness));
-      
+
     const bgColor = 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(239, 68, 68, 0.08) 100%)';
     const borderColor = 'rgba(239, 68, 68, 0.2)';
     const borderLeftColor = '#ef4444';
@@ -666,24 +666,24 @@ export const FairShareAudit = () => {
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 180 }}>
             <CustomSelect
-               options={roundOptions}
-               value={roundFilter}
-               onChange={(val) => setRoundFilter(String(val))}
-               width="100%"
+              options={roundOptions}
+              value={roundFilter}
+              onChange={(val) => setRoundFilter(String(val))}
+              width="100%"
             />
           </div>
           <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 150 }}>
             <CustomSelect
-               options={dateOptions}
-               value={dateFilter}
-               onChange={(val) => {
-                 if (val === 'Tùy chỉnh') {
-                   setShowDateModal(true);
-                   return;
-                 }
-                 setDateFilter(String(val));
-               }}
-               width="100%"
+              options={dateOptions}
+              value={dateFilter}
+              onChange={(val) => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                setDateFilter(String(val));
+              }}
+              width="100%"
             />
           </div>
           <button
@@ -753,7 +753,7 @@ export const FairShareAudit = () => {
                 </p>
               </div>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '2px 8px', height: '32px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t("Tổng Lead:")}</span>
@@ -1166,7 +1166,7 @@ export const FairShareAudit = () => {
               {t("Bảng Thống Kê Độ Lệch Chi Tiết")} {isSimulating && <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderRadius: '6px', fontWeight: 800 }}>{t("MÔ PHỎNG")}</span>}
             </h3>
             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-              {isSimulating 
+              {isSimulating
                 ? t("Đang ở chế độ giả lập. Bật/tắt ca trực (checkbox) và điều chỉnh thanh trượt (slider) của từng Sale để xem kết quả.")
                 : t("Chi tiết từng Sale trong vòng được audit: Tỷ lệ (Ratio) cài đặt, số lead nhận được, và đánh giá lệch so với trung bình hệ thống.")
               }
@@ -1232,7 +1232,7 @@ export const FairShareAudit = () => {
                   // Styling based on deviation
                   let deviationClass = 'deviation-balanced';
                   let deviationLabel = t('Cân bằng');
-                  
+
                   if (!isSimulating || simC.simulatedOnShift) {
                     const roundedDiff = Math.round(diff);
                     if (roundedDiff > 0) {
@@ -1247,14 +1247,14 @@ export const FairShareAudit = () => {
                   }
 
                   return (
-                    <tr 
-                      key={c.id} 
-                      style={{ 
-                        borderBottom: '1px solid var(--color-border-light)', 
-                        transition: 'all 0.25s ease', 
+                    <tr
+                      key={c.id}
+                      style={{
+                        borderBottom: '1px solid var(--color-border-light)',
+                        transition: 'all 0.25s ease',
                         background: isSimulating ? 'rgba(99, 102, 241, 0.01)' : 'transparent',
                         cursor: !isSimulating ? 'pointer' : 'default'
-                      }} 
+                      }}
                       className="audit-table-row"
                       onClick={() => {
                         if (!isSimulating) {
@@ -1590,7 +1590,7 @@ export const FairShareAudit = () => {
           </div>
         ) : compensationDetails ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-            
+
             {/* Consultant Profile Summary */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-border-light)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
               <Avatar src={compensationDetails.avatar} name={compensationDetails.name} size={48} />
@@ -1621,7 +1621,7 @@ export const FairShareAudit = () => {
               <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0', borderBottom: '1px dashed var(--color-border)', paddingBottom: '6px' }}>
                 {t("Thống Kê Chi Tiết Nguồn Bù")}
               </h5>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* Tickets Approved */}
                 <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1634,7 +1634,7 @@ export const FairShareAudit = () => {
                     </div>
                     <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.ticket} {t("lead")}</span>
                   </div>
-                  
+
                   {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
                     <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
                       {compensationDetails.breakdown.ticket_details.map((tkt: any, idx: number) => {
@@ -1668,7 +1668,7 @@ export const FairShareAudit = () => {
                     </div>
                     <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.blacklist} {t("lead")}</span>
                   </div>
-                  
+
                   {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
                     <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
                       {compensationDetails.breakdown.blacklist_details.map((bl: any, idx: number) => {
@@ -1702,7 +1702,7 @@ export const FairShareAudit = () => {
                     </div>
                     <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.reassign} {t("lead")}</span>
                   </div>
-                  
+
                   {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
                     <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: '4px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '32px' }}>
                       {compensationDetails.breakdown.reassign_details.map((re: any, idx: number) => {
@@ -1732,7 +1732,7 @@ export const FairShareAudit = () => {
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
                         <RotateCcw size={14} />
                       </span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động (Cộng tay)")}</span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động ")}</span>
                     </div>
                     <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginLeft: 'auto' }}>+{compensationDetails.breakdown.active_total} {t("lead")}</span>
                   </div>
