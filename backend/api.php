@@ -172,6 +172,7 @@ if (!in_array($action, $publicActions)) {
         'approve_report',
         'reject_report',
         'get_reports',
+        'get_active_compensation_logs',
         'reassign_lead',
         'force_sync',
         'get_ticket_settings',
@@ -181,7 +182,8 @@ if (!in_array($action, $publicActions)) {
         'block_lead',
         'get_zalo_send_logs',
         'ai_chat',
-        'get_fair_share_stats'
+        'get_fair_share_stats',
+        'get_consultant_compensation_details'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -1152,7 +1154,8 @@ switch ($action) {
                 dl.received_at as created_at,
                 r.status as report_status,
                 r.resolved_by,
-                r.resolved_at
+                r.resolved_at,
+                (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
@@ -2325,11 +2328,24 @@ switch ($action) {
         break;
 
     case 'update_compensations':
+        $adminName = 'Quản trị viên';
+        if (isset($decodedUser['id'])) {
+            $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+            $admQuery->bind_param("i", $decodedUser['id']);
+            $admQuery->execute();
+            $admRes = $admQuery->get_result()->fetch_assoc();
+            if ($admRes && !empty($admRes['name'])) {
+                $adminName = $admRes['name'];
+            }
+            $admQuery->close();
+        }
+
         $conn->begin_transaction();
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $roundId = (int) ($input['round_id'] ?? 0);
             $compensations = $input['compensations'] ?? [];
+            $reasons = $input['reasons'] ?? [];
 
             $notificationQueue = [];
 
@@ -2367,12 +2383,24 @@ switch ($action) {
                         $stmtComp->execute();
 
                         if ($delta > 0) {
+                            $reasonText = isset($reasons[$cid]) ? trim($reasons[$cid]) : '';
+                            
+                            // Ghi log vào active_compensation_logs
+                            $logStmt = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) VALUES (?, ?, ?, ?, ?)");
+                            $adminIdInt = (int)$decodedUser['id'];
+                            $logStmt->bind_param("iiiis", $roundId, $c, $adminIdInt, $delta, $reasonText);
+                            $logStmt->execute();
+                            $logStmt->close();
+
                             $notificationQueue[] = [
                                 'consultant_id' => $c,
                                 'email' => $fRow['email'],
                                 'name' => $fRow['name'],
                                 'round_name' => $roundName,
-                                'delta' => $delta
+                                'delta' => $delta,
+                                'admin_name' => $adminName,
+                                'reason' => $reasonText,
+                                'time' => date('H:i:s d/m/Y')
                             ];
                         }
                     } else {
@@ -2395,19 +2423,77 @@ switch ($action) {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
 
+                // Lấy danh sách Ticket Admins nhận thông báo
+                $adminEmails = getTicketNotifyAdmins($conn);
+
                 foreach ($notificationQueue as $notify) {
                     try {
                         if (!empty($notify['email'])) {
-                            sendCompensationAddedEmailToSale($notify['email'], $notify['name'], $notify['round_name'], $notify['delta']);
+                            sendCompensationAddedEmailToSale(
+                                $notify['email'],
+                                $notify['name'],
+                                $notify['round_name'],
+                                $notify['delta'],
+                                $notify['admin_name'],
+                                $notify['reason'],
+                                $notify['time']
+                            );
                         }
                     } catch (Exception $mailEx) {
                         error_log("Error sending compensation email to sale " . $notify['consultant_id'] . ": " . $mailEx->getMessage());
                     }
 
                     try {
-                        sendCompensationAddedZaloMessageToSale($notify['consultant_id'], $notify['name'], $notify['round_name'], $notify['delta']);
+                        sendCompensationAddedZaloMessageToSale(
+                            $notify['consultant_id'],
+                            $notify['name'],
+                            $notify['round_name'],
+                            $notify['delta'],
+                            $notify['admin_name'],
+                            $notify['reason'],
+                            $notify['time']
+                        );
                     } catch (Exception $zaloEx) {
                         error_log("Error sending compensation Zalo to sale " . $notify['consultant_id'] . ": " . $zaloEx->getMessage());
+                    }
+
+                    // Báo cáo cho các admin thông báo
+                    if (!empty($adminEmails)) {
+                        foreach ($adminEmails as $adm) {
+                            try {
+                                if (!empty($adm['email'])) {
+                                    sendActiveCompensationEmailToAdmins(
+                                        $adm['email'],
+                                        $adm['name'],
+                                        $notify['name'],
+                                        $notify['round_name'],
+                                        $notify['delta'],
+                                        $notify['admin_name'],
+                                        $notify['reason'],
+                                        $notify['time']
+                                    );
+                                }
+                            } catch (Exception $mailEx2) {
+                                error_log("Error sending active compensation report email to admin " . $adm['id'] . ": " . $mailEx2->getMessage());
+                            }
+
+                            try {
+                                if (!empty($adm['zalo_chat_id'])) {
+                                    sendCompensationAddedZaloMessageToAdmin(
+                                        $adm['zalo_chat_id'],
+                                        $adm['name'],
+                                        $notify['name'],
+                                        $notify['round_name'],
+                                        $notify['delta'],
+                                        $notify['admin_name'],
+                                        $notify['reason'],
+                                        $notify['time']
+                                    );
+                                }
+                            } catch (Exception $zaloEx2) {
+                                error_log("Error sending active compensation report Zalo to admin " . $adm['id'] . ": " . $zaloEx2->getMessage());
+                            }
+                        }
                     }
                 }
             } catch (Exception $notifyEx) {
@@ -3444,6 +3530,7 @@ switch ($action) {
                    (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
                    (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
                    (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at,
+                   (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = r.lead_id AND id < (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1)) as last_activity_at,
                    (SELECT a.avatar FROM accounts a WHERE a.name = r.resolved_by LIMIT 1) as resolved_by_avatar
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
@@ -3496,7 +3583,34 @@ switch ($action) {
         ]);
         break;
 
-        case 'approve_report':
+    case 'get_active_compensation_logs':
+        $round_id = isset($_GET['round_id']) ? (int)$_GET['round_id'] : 0;
+        if ($round_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID Vòng không hợp lệ']);
+            break;
+        }
+        $stmt = $conn->prepare("
+            SELECT acl.*, c.name as consultant_name, c.avatar as consultant_avatar, a.name as admin_name, a.avatar as admin_avatar
+            FROM active_compensation_logs acl
+            JOIN consultants c ON acl.consultant_id = c.id
+            JOIN accounts a ON acl.admin_id = a.id
+            WHERE acl.round_id = ?
+            ORDER BY acl.created_at DESC
+        ");
+        $stmt->bind_param("i", $round_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        $stmt->close();
+        echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'approve_report':
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
         $approval_reason = trim($input['approval_reason'] ?? '');
@@ -5956,6 +6070,7 @@ switch ($action) {
                     'ticket_count' => 0,
                     'total_ticket_count' => 0,
                     'duplicate_count' => 0,
+                    'compensation_count' => 0,
                     'sources' => []
                 ];
             }
@@ -6011,6 +6126,7 @@ switch ($action) {
             if (isset($consultantStatusCounts[$cId])) {
                 $sc = $consultantStatusCounts[$cId];
                 $c['assigned_count'] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + max(0, $sc['error'] - $sc['compensation']);
+                $c['compensation_count'] = $sc['compensation'];
             }
         }
         unset($c);
@@ -6203,6 +6319,263 @@ switch ($action) {
                 'fairnessIndex' => round($fairnessIndex, 1),
                 'sources' => $sources,
                 'consultants' => array_values($consultants)
+            ]
+        ]);
+        break;
+
+    case 'get_consultant_compensation_details':
+        $consultantId = isset($_GET['consultant_id']) ? (int)$_GET['consultant_id'] : 0;
+        $date = $_GET['date'] ?? 'Tuần này';
+        $roundId = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int)$_GET['round_id'] : 0;
+
+        if (!$consultantId) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID Tư vấn viên']);
+            break;
+        }
+
+        // Fetch consultant info
+        $cName = '';
+        $cAvatar = '';
+        $stmtC = $conn->prepare("SELECT name, avatar FROM consultants WHERE id = ?");
+        if ($stmtC) {
+            $stmtC->bind_param("i", $consultantId);
+            $stmtC->execute();
+            $resC = $stmtC->get_result();
+            if ($rowC = $resC->fetch_assoc()) {
+                $cName = $rowC['name'];
+                $cAvatar = $rowC['avatar'];
+            }
+            $stmtC->close();
+        }
+
+        // 1. Re-use date parsing logic
+        $startDate = null;
+        $endDate = null;
+        if ($date === 'Hôm nay') {
+            $startDate = date('Y-m-d 00:00:00');
+            $endDate = date('Y-m-d 23:59:59');
+        } else if ($date === 'Hôm qua') {
+            $startDate = date('Y-m-d 00:00:00', strtotime('-1 day'));
+            $endDate = date('Y-m-d 23:59:59', strtotime('-1 day'));
+        } else if ($date === 'Tuần này') {
+            $weekday = date('N') - 1; // 0 for Monday, 6 for Sunday
+            $startDate = date('Y-m-d 00:00:00', strtotime("-$weekday days"));
+            $endDate = date('Y-m-d 23:59:59', strtotime('+' . (6 - $weekday) . ' days'));
+        } else if ($date === 'Tuần trước') {
+            $weekday = date('N') - 1;
+            $startDate = date('Y-m-d 00:00:00', strtotime("-" . ($weekday + 7) . " days"));
+            $endDate = date('Y-m-d 23:59:59', strtotime("-" . ($weekday + 1) . " days"));
+        } else if ($date === 'Tuần trước nữa') {
+            $weekday = date('N') - 1;
+            $startDate = date('Y-m-d 00:00:00', strtotime("-" . ($weekday + 14) . " days"));
+            $endDate = date('Y-m-d 23:59:59', strtotime("-" . ($weekday + 8) . " days"));
+        } else if ($date === '7 ngày qua') {
+            $startDate = date('Y-m-d 00:00:00', strtotime('-7 days'));
+            $endDate = date('Y-m-d 23:59:59');
+        } else if ($date === '30 ngày qua') {
+            $startDate = date('Y-m-d 00:00:00', strtotime('-30 days'));
+            $endDate = date('Y-m-d 23:59:59');
+        } else if ($date === 'Tháng này') {
+            $startDate = date('Y-m-01 00:00:00');
+            $endDate = date('Y-m-t 23:59:59');
+        } else if ($date === 'Tháng trước') {
+            $startDate = date('Y-m-01 00:00:00', strtotime('-1 month'));
+            $endDate = date('Y-m-t 23:59:59', strtotime('-1 month'));
+        } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+            $startDate = $matches[1] . ' 00:00:00';
+            $endDate = $matches[2] . ' 23:59:59';
+        } else {
+            $startDate = date('Y-m-01 00:00:00'); // default fallback: tháng này
+            $endDate = date('Y-m-t 23:59:59');
+        }
+
+        // 2. Query total leads divided (total_assigned) in timeframe & round
+        $roundCondition = "";
+        if ($roundId > 0) {
+            $roundCondition = " AND round_id = $roundId";
+        }
+        $assignedSql = "SELECT status, COUNT(*) as cnt 
+                        FROM distribution_logs 
+                        WHERE assigned_to = ? 
+                          AND received_at BETWEEN ? AND ? 
+                          $roundCondition
+                          AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
+                        GROUP BY status";
+        
+        $totalAssigned = 0;
+        $totalCompensationReceived = 0;
+        $statusCounts = [
+            'assigned' => 0,
+            'compensation' => 0,
+            'rule_6_month' => 0,
+            'pending_work_hours' => 0,
+            'error' => 0
+        ];
+
+        $stmtA = $conn->prepare($assignedSql);
+        if ($stmtA) {
+            $stmtA->bind_param("iss", $consultantId, $startDate, $endDate);
+            $stmtA->execute();
+            $resA = $stmtA->get_result();
+            while ($row = $resA->fetch_assoc()) {
+                $statusCounts[$row['status']] = (int)$row['cnt'];
+            }
+            $stmtA->close();
+        }
+        
+        $totalAssigned = $statusCounts['assigned'] + $statusCounts['compensation'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
+        $totalCompensationReceived = $statusCounts['compensation'];
+
+        // 3. Query Ticket Approved Compensations (Approved reports resolved in range)
+        $ticketCompCount = 0;
+        $ticketDetails = [];
+        $ticketSql = "SELECT dr.resolved_at, dr.resolved_by, dr.approval_reason, 
+                             (SELECT a.avatar FROM accounts a WHERE a.name = dr.resolved_by LIMIT 1) as resolved_by_avatar
+                      FROM data_reports dr
+                      WHERE dr.consultant_id = ? 
+                        AND dr.status = 'approved' 
+                        " . ($roundId > 0 ? " AND dr.round_id = $roundId" : "") . "
+                      ORDER BY dr.resolved_at DESC";
+        $stmtT = $conn->prepare($ticketSql);
+        if ($stmtT) {
+            $stmtT->bind_param("i", $consultantId);
+            $stmtT->execute();
+            $resT = $stmtT->get_result();
+            while ($rowT = $resT->fetch_assoc()) {
+                $ticketCompCount++;
+                $ticketDetails[] = [
+                    'admin_name' => $rowT['resolved_by'] ?: 'Hệ thống',
+                    'admin_avatar' => $rowT['resolved_by_avatar'],
+                    'created_at' => $rowT['resolved_at'],
+                    'reason' => trim($rowT['approval_reason']) !== '' ? trim($rowT['approval_reason']) : 'Duyệt ticket lỗi'
+                ];
+            }
+            $stmtT->close();
+        }
+
+        // 4. Query Blacklist Compensations from admin_logs
+        $blacklistCompCount = 0;
+        $blacklistDetails = [];
+        $blacklistSql = "SELECT al.created_at, al.details, a.name as admin_name, a.avatar as admin_avatar
+                         FROM admin_logs al 
+                         LEFT JOIN accounts a ON al.account_id = a.id
+                         JOIN distribution_logs dl ON (
+                             (JSON_VALID(al.details) AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.log_id')) = dl.id)
+                             OR (NOT JSON_VALID(al.details) AND (al.details LIKE CONCAT('%\"log_id\":', dl.id, '%') OR al.details LIKE CONCAT('%\"log_id\":\"', dl.id, '\"%')))
+                         )
+                         WHERE al.action = 'BLOCK_LEAD_BLACKLIST' 
+                           AND dl.assigned_to = ? 
+                           " . ($roundId > 0 ? " AND dl.round_id = $roundId" : "") . "
+                           AND (
+                               (JSON_VALID(al.details) AND (JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.compensate_sale')) = 'true' OR JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.compensate_sale')) = '1'))
+                               OR al.details LIKE '%\"compensate_sale\":true%' 
+                               OR al.details LIKE '%\"compensate_sale\":1%'
+                           )
+                         ORDER BY al.created_at DESC";
+        $stmtB = $conn->prepare($blacklistSql);
+        if ($stmtB) {
+            $stmtB->bind_param("i", $consultantId);
+            $stmtB->execute();
+            $resB = $stmtB->get_result();
+            while ($rowB = $resB->fetch_assoc()) {
+                $blacklistCompCount++;
+                $det = json_decode($rowB['details'], true);
+                $reason = isset($det['reason']) && trim($det['reason']) !== '' ? trim($det['reason']) : 'Chặn blacklist';
+                $blacklistDetails[] = [
+                    'admin_name' => $rowB['admin_name'] ?: 'Hệ thống',
+                    'admin_avatar' => $rowB['admin_avatar'] ?: '',
+                    'created_at' => $rowB['created_at'],
+                    'reason' => $reason
+                ];
+            }
+            $stmtB->close();
+        }
+
+        // 5. Query Reassignment Compensations from admin_logs (REASSIGN_LEAD where old sale compensated)
+        $reassignCompCount = 0;
+        $reassignDetails = [];
+        $reassignSql = "SELECT al.created_at, al.details, a.name as admin_name, a.avatar as admin_avatar
+                        FROM admin_logs al 
+                        LEFT JOIN accounts a ON al.account_id = a.id
+                        JOIN distribution_logs dl ON (
+                            (JSON_VALID(al.details) AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.log_id')) = dl.id)
+                            OR (NOT JSON_VALID(al.details) AND (al.details LIKE CONCAT('%\"log_id\":', dl.id, '%') OR al.details LIKE CONCAT('%\"log_id\":\"', dl.id, '\"%')))
+                        )
+                        WHERE al.action = 'REASSIGN_LEAD' 
+                          AND dl.assigned_to = ? 
+                          " . ($roundId > 0 ? " AND dl.round_id = $roundId" : "") . "
+                          AND (
+                              (JSON_VALID(al.details) AND (JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.compensate_old_sale')) = 'true' OR JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.compensate_old_sale')) = '1'))
+                              OR al.details LIKE '%\"compensate_old_sale\":true%' 
+                              OR al.details LIKE '%\"compensate_old_sale\":1%'
+                          )
+                        ORDER BY al.created_at DESC";
+        $stmtR = $conn->prepare($reassignSql);
+        if ($stmtR) {
+            $stmtR->bind_param("i", $consultantId);
+            $stmtR->execute();
+            $resR = $stmtR->get_result();
+            while ($rowR = $resR->fetch_assoc()) {
+                $reassignCompCount++;
+                $det = json_decode($rowR['details'], true);
+                $reason = isset($det['reason']) && trim($det['reason']) !== '' ? trim($det['reason']) : 'Thu hồi chuyển lead';
+                $reassignDetails[] = [
+                    'admin_name' => $rowR['admin_name'] ?: 'Hệ thống',
+                    'admin_avatar' => $rowR['admin_avatar'] ?: '',
+                    'created_at' => $rowR['created_at'],
+                    'reason' => $reason
+                ];
+            }
+            $stmtR->close();
+        }
+
+        // 6. Query Active Compensations (Manual by admin with reasons and avatars)
+        $activeCompBreakdown = [];
+        $activeCompTotal = 0;
+        $activeSql = "SELECT acl.reason, acl.amount, acl.created_at, a.name as admin_name, a.avatar as admin_avatar
+                      FROM active_compensation_logs acl
+                      LEFT JOIN accounts a ON acl.admin_id = a.id
+                      WHERE acl.consultant_id = ? 
+                        " . ($roundId > 0 ? " AND acl.round_id = $roundId" : "") . "
+                      ORDER BY acl.created_at DESC";
+        $stmtAc = $conn->prepare($activeSql);
+        if ($stmtAc) {
+            $stmtAc->bind_param("i", $consultantId);
+            $stmtAc->execute();
+            $resAc = $stmtAc->get_result();
+            while ($row = $resAc->fetch_assoc()) {
+                $reason = trim($row['reason']) !== '' ? trim($row['reason']) : 'Bù chủ động';
+                $amt = (int)$row['amount'];
+                $activeCompTotal += $amt;
+                $activeCompBreakdown[] = [
+                    'reason' => $reason,
+                    'count' => $amt,
+                    'admin_name' => $row['admin_name'] ?: 'Hệ thống',
+                    'admin_avatar' => $row['admin_avatar'] ?: '',
+                    'created_at' => $row['created_at']
+                ];
+            }
+            $stmtAc->close();
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'consultant_id' => $consultantId,
+                'name' => $cName,
+                'avatar' => $cAvatar,
+                'total_assigned' => $totalAssigned,
+                'total_compensation_received' => $totalCompensationReceived,
+                'breakdown' => [
+                    'ticket' => $ticketCompCount,
+                    'ticket_details' => $ticketDetails,
+                    'blacklist' => $blacklistCompCount,
+                    'blacklist_details' => $blacklistDetails,
+                    'reassign' => $reassignCompCount,
+                    'reassign_details' => $reassignDetails,
+                    'active_total' => $activeCompTotal,
+                    'active_details' => $activeCompBreakdown
+                ]
             ]
         ]);
         break;
@@ -6521,6 +6894,36 @@ switch ($action) {
         }
 
         echo json_encode(['success' => true]);
+        break;
+
+    case 'debug_migration':
+        $leadId = 30151;
+        $resLead = $conn->query("SELECT * FROM leads WHERE id = $leadId");
+        $lead = $resLead->fetch_assoc();
+
+        $resLogs = $conn->query("SELECT * FROM distribution_logs WHERE lead_id = $leadId ORDER BY id DESC");
+        $logs = [];
+        while ($row = $resLogs->fetch_assoc()) {
+            $logs[] = $row;
+        }
+
+        // Test the subquery for last_activity_at
+        $resSub = $conn->query("SELECT dl.id, dl.received_at, 
+                                       (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
+                                FROM distribution_logs dl 
+                                WHERE dl.lead_id = $leadId 
+                                ORDER BY dl.id DESC");
+        $subqueryResults = [];
+        while ($row = $resSub->fetch_assoc()) {
+            $subqueryResults[] = $row;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'lead' => $lead,
+            'logs' => $logs,
+            'subquery' => $subqueryResults
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         break;
 
     case 'block_lead':
