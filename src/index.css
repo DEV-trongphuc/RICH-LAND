@@ -978,8 +978,9 @@ select:focus {
 .overlay-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -2209,4 +2210,91 @@ th.col-check {
 
 [data-theme="dark"] .premium-alert-card:hover {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ================================================
+   PREMIUM INTERACTIONS & REFINEMENTS
+   ================================================ */
+
+/* Pulse Active Dot Indicator */
+.pulse-dot {
+  position: relative;
+  display: inline-block;
+  border-radius: 50%;
+}
+.pulse-dot.active {
+  background-color: var(--color-success);
+}
+.pulse-dot.inactive {
+  background-color: var(--color-border);
+}
+.pulse-dot.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse-ring 2.2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.pulse-dot.warning::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pulse-ring 2.2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.pulse-dot.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: pulse-ring 2.2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+  opacity: 0.6;
+  pointer-events: none;
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Avatar Stack Hover Slide-Out */
+.avatar-stack {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.avatar-stack-item {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease !important;
+}
+.avatar-stack:hover .avatar-stack-item {
+  margin-left: 2px !important;
+}
+.avatar-stack-item:hover {
+  transform: scale(1.25) translateY(-4px);
+  z-index: 50 !important;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+}
+[data-theme="dark"] .avatar-stack-item:hover {
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4) !important;
+}
+
+/* Premium Card Glow Hover */
+.hover-glow {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease !important;
+}
+.hover-glow:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 58, 237, 0.35) !important;
+  box-shadow: 0 12px 28px -4px rgba(124, 58, 237, 0.12), 0 8px 12px -6px rgba(124, 58, 237, 0.08) !important;
+}
+[data-theme="dark"] .hover-glow:hover {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 12px 28px -4px rgba(99, 102, 241, 0.22), 0 8px 12px -6px rgba(99, 102, 241, 0.15) !important;
 }

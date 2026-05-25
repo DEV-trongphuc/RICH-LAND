@@ -413,7 +413,7 @@ export const Rounds = () => {
             const color = ROUND_COLORS[idx % ROUND_COLORS.length];
 
             return viewMode === 'grid' ? (
-              <div key={r.id} className="card hover-lift" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div key={r.id} className="card hover-glow" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ height: 4, background: color }} />
                 <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -430,8 +430,11 @@ export const Rounds = () => {
                             </span>
                           )}
                         </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <span 
+                            className={`pulse-dot ${r.is_active ? 'active' : 'inactive'}`} 
+                            style={{ width: 6, height: 6, display: 'inline-block' }} 
+                          />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                             {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
                           </span>
@@ -500,7 +503,7 @@ export const Rounds = () => {
                           {t('{count} Thành viên').replace('{count}', String(consList.length))}
                         </p>
                         {consList.length > 0 ? (
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
                             {consList.slice(0, 4).map((c: string, i: number) => {
                               const matchedCons = consultants.find(x => x.name === c);
                               return (
@@ -509,6 +512,7 @@ export const Rounds = () => {
                                   src={matchedCons?.avatar}
                                   name={c}
                                   size={32}
+                                  className="avatar-stack-item"
                                   style={{
                                     border: '2px solid var(--color-surface)',
                                     marginLeft: i === 0 ? 0 : -8,
@@ -593,7 +597,7 @@ export const Rounds = () => {
                 </div>
               </div>
             ) : (
-              <div key={r.id} className="card hover-lift responsive-flex-row responsive-height-auto" style={{
+              <div key={r.id} className="card hover-glow responsive-flex-row responsive-height-auto" style={{
                 display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.5rem',
                 borderLeft: `4px solid ${color}`
               }}>
@@ -611,7 +615,10 @@ export const Rounds = () => {
                     )}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
+                    <span 
+                      className={`pulse-dot ${r.is_active ? 'active' : 'inactive'}`} 
+                      style={{ width: 8, height: 8, display: 'inline-block' }} 
+                    />
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                       {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
                     </span>
@@ -674,7 +681,7 @@ export const Rounds = () => {
                 )}
 
                 <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
                       {t('{count} Thành viên').replace('{count}', String(consList.length))}
                     </p>
@@ -686,6 +693,7 @@ export const Rounds = () => {
                           src={matchedCons?.avatar}
                           name={c}
                           size={32}
+                          className="avatar-stack-item"
                           style={{
                             border: '2px solid white',
                             marginLeft: i > 0 ? -12 : 0,
