@@ -507,20 +507,27 @@ export const Rounds = () => {
                             {consList.slice(0, 4).map((c: string, i: number) => {
                               const matchedCons = consultants.find(x => x.name === c);
                               return (
-                                <Avatar
+                                <span
                                   key={i}
-                                  src={matchedCons?.avatar}
-                                  name={c}
-                                  size={32}
                                   className="avatar-stack-item"
+                                  data-tooltip={c}
                                   style={{
-                                    border: '2px solid var(--color-surface)',
                                     marginLeft: i === 0 ? 0 : -8,
                                     position: 'relative',
                                     zIndex: 10 - i,
-                                    boxShadow: 'var(--shadow-sm)'
+                                    display: 'inline-block'
                                   }}
-                                />
+                                >
+                                  <Avatar
+                                    src={matchedCons?.avatar}
+                                    name={c}
+                                    size={32}
+                                    style={{
+                                      border: '2px solid var(--color-surface)',
+                                      boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                  />
+                                </span>
                               );
                             })}
                             {consList.length > 4 && (
@@ -688,18 +695,27 @@ export const Rounds = () => {
                     {consList.slice(0, 4).map((c: string, i: number) => {
                       const matchedCons = consultants.find(cons => cons.name === c);
                       return (
-                        <Avatar
+                        <span
                           key={i}
-                          src={matchedCons?.avatar}
-                          name={c}
-                          size={32}
                           className="avatar-stack-item"
+                          data-tooltip={c}
                           style={{
-                            border: '2px solid white',
                             marginLeft: i > 0 ? -12 : 0,
-                            boxShadow: 'var(--shadow-sm)'
+                            position: 'relative',
+                            zIndex: 10 - i,
+                            display: 'inline-block'
                           }}
-                        />
+                        >
+                          <Avatar
+                            src={matchedCons?.avatar}
+                            name={c}
+                            size={32}
+                            style={{
+                              border: '2px solid white',
+                              boxShadow: 'var(--shadow-sm)'
+                            }}
+                          />
+                        </span>
                       );
                     })}
                     {consList.length > 4 && (
