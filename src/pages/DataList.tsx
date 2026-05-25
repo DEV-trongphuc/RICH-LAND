@@ -6,6 +6,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type Lead = {
   id: number;
@@ -130,6 +131,7 @@ const parseBlacklistNote = (note: string) => {
 
 export const DataList = () => {
   const { user } = useAuth();
+  const { language, t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -165,7 +167,7 @@ export const DataList = () => {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
           id: item.id,
-          name: item.lead_name || 'Khách hàng ẩn danh',
+          name: item.lead_name || t('Khách hàng ẩn danh'),
           phone: item.phone || '-',
           email: item.email || '-',
           source: item.source || '-',
@@ -184,7 +186,7 @@ export const DataList = () => {
         setTotalCount(json.total_count ?? mappedLeads.length);
       }
     } catch (e: any) {
-      toast.error('Lỗi tải dữ liệu: ' + e.message);
+      toast.error(t('Lỗi tải dữ liệu: ') + e.message);
     }
     setLoading(false);
   };
@@ -247,7 +249,7 @@ export const DataList = () => {
         setCalendarData(json.data || {});
       }
     } catch (e: any) {
-      toast.error('Lỗi tải dữ liệu lịch: ' + e.message);
+      toast.error(t('Lỗi tải dữ liệu lịch: ') + e.message);
     }
     setCalendarLoading(false);
   };
@@ -262,7 +264,7 @@ export const DataList = () => {
         setDayDetails(json.data);
       }
     } catch (e: any) {
-      toast.error('Lỗi tải chi tiết ngày: ' + e.message);
+      toast.error(t('Lỗi tải chi tiết ngày: ') + e.message);
     }
     setDayDetailsLoading(false);
   };
@@ -335,8 +337,8 @@ export const DataList = () => {
       });
       if (res.success) {
         toast.success(compensate
-          ? 'Giao lại Tư vấn viên & Đền bù thành công!'
-          : 'Giao lại Tư vấn viên thành công!'
+          ? t('Giao lại Tư vấn viên & Đền bù thành công!')
+          : t('Giao lại Tư vấn viên thành công!')
         );
         setSelectedLead(null);
         setReassignConsId('');
@@ -344,10 +346,10 @@ export const DataList = () => {
         fetchLeads();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
-        toast.error('Lỗi: ' + (res.message || 'Không thể giao lại')); // BUG-03 fix
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể giao lại'))); // BUG-03 fix
       }
     } catch (err: any) {
-      toast.error('Đã xảy ra lỗi: ' + err.message); // BUG-03 fix
+      toast.error(t('Đã xảy ra lỗi: ') + err.message); // BUG-03 fix
     }
     setIsReassigning(false);
   };
@@ -355,7 +357,7 @@ export const DataList = () => {
   const handleBlockLead = async () => {
     if (!selectedLead) return;
     if (!blockReason.trim()) {
-      toast.error('Vui lòng nhập lý do chặn.');
+      toast.error(t('Vui lòng nhập lý do chặn.'));
       return;
     }
     setIsBlocking(true);
@@ -369,7 +371,7 @@ export const DataList = () => {
         })
       });
       if (res.success) {
-        toast.success('Chặn khách hàng và đưa vào Blacklist thành công!');
+        toast.success(t('Chặn khách hàng và đưa vào Blacklist thành công!'));
         setSelectedLead(null);
         setConfirmBlockOpen(false);
         setBlockReason('');
@@ -377,10 +379,10 @@ export const DataList = () => {
         fetchLeads();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
-        toast.error('Lỗi: ' + (res.message || 'Không thể chặn khách hàng'));
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể chặn khách hàng')));
       }
     } catch (err: any) {
-      toast.error('Đã xảy ra lỗi: ' + err.message);
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
     }
     setIsBlocking(false);
   };
@@ -390,26 +392,26 @@ export const DataList = () => {
   // BUG-05 fix: Implement CSV export using Backend Stream to prevent browser/server OOM
   const handleExportCSV = () => {
     if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
-      toast.loading('Đang chuẩn bị dữ liệu xuất CSV (Demo)...', { id: 'export' });
+      toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV (Demo)...'), { id: 'export' });
       try {
         if (leads.length === 0) {
-          toast.error('Không có dữ liệu để xuất!', { id: 'export' });
+          toast.error(t('Không có dữ liệu để xuất!'), { id: 'export' });
           return;
         }
 
-        const headers = ['ID', 'Họ Tên', 'SĐT', 'Email', 'Vòng', 'Phân bổ cho', 'Trạng thái', 'Nguồn', 'Ghi chú', 'Thời gian'];
+        const headers = [t('ID'), t('Họ Tên'), t('SĐT'), t('Email'), t('Vòng'), t('Phân bổ cho'), t('Trạng thái'), t('Nguồn'), t('Ghi chú'), t('Thời gian')];
         const rows = leads.map(lead => [
           lead.id,
           lead.name,
           lead.phone,
           lead.email,
           lead.round_name || '',
-          lead.assigned_to_name || 'Chưa phân bổ',
-          lead.status === 'assigned' ? 'Đã chia' :
-            lead.status === 'compensation' ? 'Data Bù' :
-              lead.status === 'pending' ? 'Chờ chia' :
-                lead.status === 'silent' ? 'Chỉ đồng bộ' :
-                  lead.status === 'reminder' ? 'Nhắc lại' : lead.status,
+          lead.assigned_to_name || t('Chưa phân bổ'),
+          lead.status === 'assigned' ? t('Đã chia') :
+            lead.status === 'compensation' ? t('Data Bù') :
+              lead.status === 'pending' ? t('Chờ chia') :
+                lead.status === 'silent' ? t('Chỉ đồng bộ') :
+                  lead.status === 'reminder' ? t('Nhắc lại') : lead.status,
           lead.source || '',
           lead.note || '',
           lead.created_at
@@ -433,14 +435,14 @@ export const DataList = () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        toast.success('Đã tải xuống file CSV an toàn!', { id: 'export' });
+        toast.success(t('Đã tải xuống file CSV an toàn!'), { id: 'export' });
       } catch (err) {
-        toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
+        toast.error(t('Có lỗi xảy ra khi xuất dữ liệu'), { id: 'export' });
       }
       return;
     }
 
-    toast.loading('Đang chuẩn bị dữ liệu xuất CSV...', { id: 'export' });
+    toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV...'), { id: 'export' });
     try {
       const token = localStorage.getItem('domation_token') || '';
       const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
@@ -453,9 +455,9 @@ export const DataList = () => {
       link.click();
       document.body.removeChild(link);
 
-      toast.success('Đang tải xuống file CSV...', { id: 'export' });
+      toast.success(t('Đang tải xuống file CSV...'), { id: 'export' });
     } catch (err) {
-      toast.error('Có lỗi xảy ra khi xuất dữ liệu', { id: 'export' });
+      toast.error(t('Có lỗi xảy ra khi xuất dữ liệu'), { id: 'export' });
     }
   };
 
@@ -464,19 +466,19 @@ export const DataList = () => {
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'error' && reportStatus === 'approved') {
-      return <span className="badge warning">Ticket</span>;
+      return <span className="badge warning">{t('Ticket')}</span>;
     }
     switch (status) {
-      case 'assigned': return <span className="badge success">Đã chia</span>;
-      case 'compensation': return <span className="badge purple">Data Bù</span>;
-      case 'pending_work_hours': return <span className="badge warm">Chờ giờ làm</span>;
-      case 'error': return <span className="badge danger">Ticket</span>;
-      case 'pending': return <span className="badge warning">Chờ chia</span>;
-      case 'reminder': return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.12)', color: '#ec4899' }}>Nhắc lại</span>;
-      case 'duplicate': return <span className="badge danger">Trùng lặp</span>;
-      case 'rule_6_month': return <span className="badge cold">Quy định 6 tháng</span>;
-      case 'silent': return <span className="badge cold">Chỉ đồng bộ</span>;
-      case 'blacklisted': return <span className="badge danger">Blacklist</span>;
+      case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
+      case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
+      case 'pending_work_hours': return <span className="badge warm">{t('Chờ giờ làm')}</span>;
+      case 'error': return <span className="badge danger">{t('Ticket')}</span>;
+      case 'pending': return <span className="badge warning">{t('Chờ chia')}</span>;
+      case 'reminder': return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.12)', color: '#ec4899' }}>{t('Nhắc lại')}</span>;
+      case 'duplicate': return <span className="badge danger">{t('Trùng lặp')}</span>;
+      case 'rule_6_month': return <span className="badge cold">{t('Quy định 6 tháng')}</span>;
+      case 'silent': return <span className="badge cold">{t('Chỉ đồng bộ')}</span>;
+      case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
       default: return null;
     }
   };
@@ -489,7 +491,7 @@ export const DataList = () => {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const monthName = new Intl.DateTimeFormat('vi-VN', { month: 'long' }).format(currentDate);
+  const monthName = new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long' }).format(currentDate);
 
   const days = [];
   const totalDays = daysInMonth(year, month);
@@ -544,7 +546,7 @@ export const DataList = () => {
             backgroundColor: isToday ? 'var(--color-primary)' : 'transparent',
             color: isToday ? 'white' : 'var(--color-text-light)'
           }}>{d}</span>
-          {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>Hôm nay</span>}
+          {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>{t('Hôm nay')}</span>}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px', alignContent: 'end' }}>
@@ -559,7 +561,7 @@ export const DataList = () => {
               color: 'var(--color-success)',
               fontSize: '0.6875rem',
               fontWeight: 600
-            }} title="Đã chia">
+            }} title={t("Đã chia")}>
               <span>Chia:</span>
               <strong>{dayData.distributed}</strong>
             </div>
@@ -576,7 +578,7 @@ export const DataList = () => {
               fontSize: '0.6875rem',
               fontWeight: 600
             }} title="Blacklist">
-              <span>Chặn:</span>
+              <span>{t('Chặn')}:</span>
               <strong>{dayData.blacklist}</strong>
             </div>
           )}
@@ -592,7 +594,7 @@ export const DataList = () => {
               fontSize: '0.6875rem',
               fontWeight: 600,
               border: '1px solid #ddd6fe'
-            }} title="Ticket lỗi">
+            }} title={t("Ticket lỗi")}>
               <span>Ticket:</span>
               <strong>{dayData.ticket_total}</strong>
             </div>
@@ -608,8 +610,8 @@ export const DataList = () => {
               color: '#db2777',
               fontSize: '0.6875rem',
               fontWeight: 600
-            }} title="Nhắc lại">
-              <span>Nhắc:</span>
+            }} title={t("Nhắc lại")}>
+              <span>{t('Nhắc')}:</span>
               <strong>{dayData.reminder}</strong>
             </div>
           )}
@@ -624,7 +626,7 @@ export const DataList = () => {
               color: 'var(--color-warning)',
               fontSize: '0.6875rem',
               fontWeight: 600
-            }} title="Ticket">
+            }} title={t("Ticket")}>
               <span>Ticket:</span>
               <strong>{dayData.error}</strong>
             </div>
@@ -649,9 +651,9 @@ export const DataList = () => {
       <div className="page-header" style={{ marginBottom: '1.25rem', flexShrink: 0 }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Database size={24} color="var(--color-primary)" /> Quản lý Data
+            <Database size={24} color="var(--color-primary)" /> {t('Quản lý Data')}
           </h1>
-          <p className="page-subtitle">Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.</p>
+          <p className="page-subtitle">{t('Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.')}</p>
         </div>
         <div className="data-list-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <div style={{
@@ -693,7 +695,7 @@ export const DataList = () => {
                   height: '28px'
                 }}
               >
-                <LayoutList size={13} /> <span className="hide-on-mobile">Danh sách</span>
+                <LayoutList size={13} /> <span className="hide-on-mobile">{t('Danh sách')}</span>
               </button>
               <button
                 type="button"
@@ -715,7 +717,7 @@ export const DataList = () => {
                   height: '28px'
                 }}
               >
-                <Calendar size={13} /> <span className="hide-on-mobile">Lịch biểu</span>
+                <Calendar size={13} /> <span className="hide-on-mobile">{t('Lịch biểu')}</span>
               </button>
             </div>
 
@@ -743,7 +745,7 @@ export const DataList = () => {
               }}
               className="btn-export-csv-compact"
             >
-              <Download size={13} /> <span>Xuất<span className="hide-on-mobile"> CSV</span></span>
+              <Download size={13} /> <span>{t('Xuất')}<span className="hide-on-mobile"> CSV</span></span>
             </button>
           </div>
         </div>
@@ -752,7 +754,7 @@ export const DataList = () => {
       {/* Mobile Filter Toggle */}
       <div className="mobile-only" style={{ marginBottom: '1rem' }}>
         <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
-          <Filter size={16} /> {showMobileFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+          <Filter size={16} /> {showMobileFilters ? t('Ẩn bộ lọc') : t('Hiện bộ lọc')}
         </button>
       </div>
 
@@ -777,7 +779,7 @@ export const DataList = () => {
           <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-muted)' }} />
           <input
             className="form-input"
-            placeholder="Tìm theo tên, SĐT, email..."
+            placeholder={t("Tìm theo tên, SĐT, email...")}
             style={{ paddingLeft: 36, width: '100%', height: 38, fontSize: '0.875rem' }}
             value={searchTerm}
             onChange={e => updateParams('search', e.target.value)}
@@ -787,16 +789,16 @@ export const DataList = () => {
         <div className="responsive-filter-item">
           <CustomSelect
             options={[
-              { value: 'all', label: 'Tất cả thời gian', icon: <Clock size={16} /> },
-              { value: 'today', label: 'Hôm nay' },
-              { value: 'yesterday', label: 'Hôm qua' },
-              { value: 'this_week', label: 'Tuần này' },
-              { value: 'last_week', label: 'Tuần trước' },
-              { value: 'two_weeks_ago', label: 'Tuần trước nữa' },
-              { value: '7days', label: '7 ngày qua' },
-              { value: '30days', label: '30 ngày qua' },
-              { value: 'this_month', label: 'Tháng này' },
-              { value: 'last_month', label: 'Tháng trước' }
+              { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
+              { value: 'today', label: t('Hôm nay') },
+              { value: 'yesterday', label: t('Hôm qua') },
+              { value: 'this_week', label: t('Tuần này') },
+              { value: 'last_week', label: t('Tuần trước') },
+              { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
+              { value: '7days', label: t('7 ngày qua') },
+              { value: '30days', label: t('30 ngày qua') },
+              { value: 'this_month', label: t('Tháng này') },
+              { value: 'last_month', label: t('Tháng trước') }
             ]}
             value={dateFilter}
             onChange={val => updateParams('date', val.toString())}
@@ -807,17 +809,17 @@ export const DataList = () => {
         <div className="responsive-filter-item">
           <CustomSelect
             options={[
-              { value: 'all', label: 'Tất cả trạng thái', icon: <Filter size={16} /> },
-              { value: 'assigned', label: 'Đã chia' },
-              { value: 'compensation', label: 'Data Bù' },
-              { value: 'pending_work_hours', label: 'Chờ giờ làm' },
-              { value: 'pending', label: 'Chờ chia' },
-              { value: 'reminder', label: 'Nhắc lại' },
-              { value: 'duplicate', label: 'Trùng lặp' },
-              { value: 'rule_6_month', label: 'Quy định 6 tháng' },
-              { value: 'silent', label: 'Chỉ đồng bộ' },
-              { value: 'error', label: 'Ticket' },
-              { value: 'blacklisted', label: 'Blacklist' }
+              { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
+              { value: 'assigned', label: t('Đã chia') },
+              { value: 'compensation', label: t('Data Bù') },
+              { value: 'pending_work_hours', label: t('Chờ giờ làm') },
+              { value: 'pending', label: t('Chờ chia') },
+              { value: 'reminder', label: t('Nhắc lại') },
+              { value: 'duplicate', label: t('Trùng lặp') },
+              { value: 'rule_6_month', label: t('Quy định 6 tháng') },
+              { value: 'silent', label: t('Chỉ đồng bộ') },
+              { value: 'error', label: t('Ticket') },
+              { value: 'blacklisted', label: t('Blacklist') }
             ]}
             value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
             onChange={val => {
@@ -834,7 +836,7 @@ export const DataList = () => {
         <div className="responsive-filter-item">
           <CustomSelect
             options={[
-              { value: 'all', label: 'Tất cả vòng', icon: <Tag size={16} /> },
+              { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={16} /> },
               ...rounds.map(r => ({
                 value: r.round_name,
                 label: r.round_name
@@ -849,7 +851,7 @@ export const DataList = () => {
         <div className="responsive-filter-item">
           <CustomSelect
             options={[
-              { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
+              { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
               ...consultants.map(c => ({
                 value: c.name,
                 label: c.name,
@@ -865,7 +867,7 @@ export const DataList = () => {
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          Tổng cộng: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> data
+          {t('Tổng cộng')}: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> {t('data')}
         </div>
       </div>
 
@@ -914,12 +916,12 @@ export const DataList = () => {
                 onClick={() => setCurrentDate(new Date())}
                 style={{ height: 36, padding: '0 0.85rem', fontSize: '0.8rem', fontWeight: 600 }}
               >
-                Hôm nay
+                {t('Hôm nay')}
               </button>
 
               <CustomSelect
                 options={[
-                  { value: 'all', label: 'Tất cả TVV', icon: <User size={16} /> },
+                  { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
                   ...consultants.map(c => ({
                     value: c.name,
                     label: c.name,
@@ -938,23 +940,23 @@ export const DataList = () => {
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', fontWeight: 600 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-success)' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Đã chia</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Đã chia')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-danger)' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Blacklist</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Blacklist')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Ticket lỗi</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Ticket lỗi')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#db2777' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Nhắc lại</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Nhắc lại')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-warning)' }}></span>
-                <span style={{ color: 'var(--color-text-muted)' }}>Ticket</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Ticket')}</span>
               </div>
             </div>
           </div>
@@ -973,8 +975,8 @@ export const DataList = () => {
               }}>
                 {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(wd => (
                   <div key={wd} style={{ padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: wd === 'CN' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                    <span className="hide-on-mobile">{wd}</span>
-                    <span className="mobile-only">{wd === 'CN' ? 'CN' : wd.replace('Thứ ', 'T')}</span>
+                    <span className="hide-on-mobile">{t(wd)}</span>
+                    <span className="mobile-only">{wd === 'CN' ? t('CN') : t(wd.replace('Thứ ', 'T'))}</span>
                   </div>
                 ))}
               </div>
@@ -990,7 +992,7 @@ export const DataList = () => {
                 {calendarLoading ? (
                   <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
                     <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu lịch biểu...</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu lịch biểu...')}</span>
                   </div>
                 ) : days}
               </div>
@@ -1003,11 +1005,11 @@ export const DataList = () => {
             <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
                 <tr>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Khách hàng</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ cho</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Thời gian nhận</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Phân bổ cho')}</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1062,7 +1064,7 @@ export const DataList = () => {
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                           {getStatusBadge(lead.status, lead.report_status)}
-                          {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>Report Pending</span>}
+                          {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
@@ -1084,7 +1086,7 @@ export const DataList = () => {
                 }) : (
                   <tr>
                     <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-                      Không tìm thấy dữ liệu phù hợp.
+                      {t('Không tìm thấy dữ liệu phù hợp.')}
                     </td>
                   </tr>
                 )}
@@ -1095,7 +1097,7 @@ export const DataList = () => {
           {totalPages > 0 && (
             <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
               <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+                {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
@@ -1153,7 +1155,7 @@ export const DataList = () => {
           setSelectedLead(null);
           setReassignConsId('');
         }}
-        title="Chi tiết Khách hàng"
+        title={t("Chi tiết Khách hàng")}
         width="850px"
       >
         {selectedLead && (
@@ -1172,7 +1174,7 @@ export const DataList = () => {
                             setCompensateBlock(selectedLead.assigned_to_name !== '-');
                             setConfirmBlockOpen(true);
                           }}
-                          title="Chặn & Blacklist khách hàng này"
+                          title={t("Chặn & Blacklist khách hàng này")}
                           style={{
                             background: '#fee2e2',
                             border: '1px solid #fecaca',
@@ -1198,7 +1200,7 @@ export const DataList = () => {
                           }}
                         >
                           <AlertTriangle size={12} />
-                          Chặn
+                          {t('Chặn')}
                         </button>
                       )}
                     </div>
@@ -1223,11 +1225,11 @@ export const DataList = () => {
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t('Nguồn Data')}</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t('Trạng thái')}</div>
                     <div>
                       {getStatusBadge(selectedLead.status, selectedLead.report_status)}
                     </div>
@@ -1263,19 +1265,19 @@ export const DataList = () => {
                           }}>
                             <Tag size={18} strokeWidth={2.5} />
                           </div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t('Ghi chú & Phân loại')}</span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>Loại Data:</span>
-                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t('Loại Data:')}</span>
+                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
 
                           <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t('Nội dung ghi chú:')}</span>
                             <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
+                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t('Không có ghi chú thêm')}</em>}
                             </div>
                           </div>
                         </div>
@@ -1377,13 +1379,13 @@ export const DataList = () => {
                             const actionReason = msgParts[1] || '';
 
                             let cleanReason = actionReason.trim();
-                            let reasonLabel = isApproved ? 'Lý do duyệt:' : 'Lý do từ chối:';
+                            let reasonLabel = isApproved ? t('Lý do duyệt:') : t('Lý do từ chối:');
 
                             if (cleanReason.startsWith('Lý do duyệt:')) {
-                              reasonLabel = 'Lý do duyệt:';
+                              reasonLabel = t('Lý do duyệt:');
                               cleanReason = cleanReason.replace(/^Lý do duyệt:/, '').trim();
                             } else if (cleanReason.startsWith('Lý do từ chối:')) {
-                              reasonLabel = 'Lý do từ chối:';
+                              reasonLabel = t('Lý do từ chối:');
                               cleanReason = cleanReason.replace(/^Lý do từ chối:/, '').trim();
                             }
 
@@ -1416,7 +1418,7 @@ export const DataList = () => {
                                       <IconComponent size={18} strokeWidth={2.5} />
                                     </div>
                                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: colors.title, letterSpacing: '-0.01em' }}>
-                                      {isApproved ? 'Thông tin lỗi - Đã Duyệt' : 'Thông tin lỗi - Từ Chối'}
+                                      {isApproved ? t('Thông tin lỗi - Đã Duyệt') : t('Thông tin lỗi - Từ Chối')}
                                     </span>
                                   </div>
                                   <span style={{
@@ -1430,14 +1432,14 @@ export const DataList = () => {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
                                   }}>
-                                    {isApproved ? 'Đã duyệt' : 'Từ chối'}
+                                    {isApproved ? t('Đã duyệt') : t('Từ chối')}
                                   </span>
                                 </div>
 
                                 {/* Content block */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                   <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#cbd5e1' : '#1e293b', fontWeight: 500, lineHeight: 1.5 }}>
-                                    Lỗi: <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
+                                    {t('Lỗi: ')}<span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
                                   </div>
                                   {actionReason && (
                                     <div style={{
@@ -1468,12 +1470,12 @@ export const DataList = () => {
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Avatar src={getUserAvatarByName(displayAdmin)} name={displayAdmin} size={16} />
-                                    <span>Xử lý bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
+                                    <span>{t('Xử lý bởi: ')}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayTime}</strong></span>
+                                    <span>{t('Thời gian: ')}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayTime}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1569,7 +1571,7 @@ export const DataList = () => {
                                       borderRadius: '8px',
                                       border: theme === 'dark' ? '1px dashed rgba(255, 255, 255, 0.08)' : '1px dashed rgba(0, 0, 0, 0.05)'
                                     }}>
-                                      <strong>Lý do chặn:</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
+                                      <strong>{t('Lý do chặn:')}</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1585,12 +1587,12 @@ export const DataList = () => {
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
-                                    <span>Chặn bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
+                                    <span>{t('Chặn bởi: ')}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
+                                    <span>{t('Thời gian: ')}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1605,33 +1607,33 @@ export const DataList = () => {
 
               {/* Cột Phải: Phân bổ */}
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>Thông tin Phân bổ</h3>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t('Thông tin Phân bổ')}</h3>
 
                 {selectedLead.assigned_to_name !== '-' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> Vòng chia</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Vòng chia')}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
-                          <Clock size={12} /> Thời gian nhận
+                          <Clock size={12} /> {t('Thời gian nhận')}
                         </div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
                       </div>
                       {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
-                            <Clock size={12} /> Thời gian nhắc lại từ:
+                            <Clock size={12} /> {t('Thời gian nhắc lại từ:')}
                           </div>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f59e0b' }}>
                             {selectedLead.last_activity_at}
@@ -1642,22 +1644,22 @@ export const DataList = () => {
                   </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
-                    Chưa có thông tin phân bổ cho Khách hàng này.
+                    {t('Chưa có thông tin phân bổ cho Khách hàng này.')}
                   </div>
                 )}
 
                 {/* Reassignment section */}
                 <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                   <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên
+                    <User size={16} color="var(--color-primary)" /> {t('Giao lại Tư vấn viên')}
                   </h4>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
-                    Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).
+                    {t('Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).')}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <CustomSelect
                       options={[
-                        { value: '', label: '-- Chọn Tư vấn viên --' },
+                        { value: '', label: t('-- Chọn Tư vấn viên --') },
                         ...consultants
                           .filter(c => c.name !== selectedLead?.assigned_to_name)
                           .map(c => ({
@@ -1680,7 +1682,7 @@ export const DataList = () => {
                       style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
                     >
                       {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
-                      Xác nhận giao
+                      {t('Xác nhận giao')}
                     </button>
                   </div>
                 </div>
@@ -1694,7 +1696,7 @@ export const DataList = () => {
       <CustomModal
         isOpen={confirmReassignOpen}
         onClose={() => setConfirmReassignOpen(false)}
-        title="Xác nhận Giao lại Lead"
+        title={t("Xác nhận Giao lại Lead")}
         width={500}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
@@ -1707,18 +1709,18 @@ export const DataList = () => {
             </div>
             <div>
               <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
-                Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead <strong>"{selectedLead?.name}"</strong> sang cho Tư vấn viên <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
+                {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
               </p>
               {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                  Tư vấn viên hiện tại: <strong>{selectedLead.assigned_to_name}</strong>. Chọn hình thức giao lại:
+                  {t('Tư vấn viên hiện tại:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Chọn hình thức giao lại:')}
                 </p>
               )}
             </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>Hủy</button>
+            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t('Hủy')}</button>
 
             {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
               <>
@@ -1728,7 +1730,7 @@ export const DataList = () => {
                   style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Giao lại luôn
+                  {t('Giao lại luôn')}
                 </button>
                 <button
                   className="btn success"
@@ -1736,7 +1738,7 @@ export const DataList = () => {
                   style={{ background: '#10b981', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Giao lại và bù vòng cho TVV
+                  {t('Giao lại và bù vòng cho TVV')}
                 </button>
               </>
             ) : (
@@ -1745,7 +1747,7 @@ export const DataList = () => {
                 onClick={() => handleReassign(false)}
                 disabled={isReassigning}
               >
-                Xác nhận chuyển
+                {t('Xác nhận chuyển')}
               </button>
             )}
           </div>
@@ -1759,7 +1761,7 @@ export const DataList = () => {
           setBlockReason('');
           setCompensateBlock(false);
         }}
-        title="Xác nhận Chặn & Blacklist"
+        title={t("Xác nhận Chặn & Blacklist")}
         width="550px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
@@ -1772,16 +1774,16 @@ export const DataList = () => {
             </div>
             <div>
               <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
-                Bạn có chắc chắn muốn chặn khách hàng "{selectedLead?.name}"?
+                {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name}"?
               </p>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
-                Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.
+                {t('Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.')}
               </p>
             </div>
           </div>
 
           <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Hình thức chặn:</div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hình thức chặn:')}</div>
 
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
               <input
@@ -1792,8 +1794,8 @@ export const DataList = () => {
                 style={{ marginTop: '3px' }}
               />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chỉ đưa vào danh sách đen (Blacklist)</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Không thực hiện đền bù data cho Sale.</p>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chỉ đưa vào danh sách đen (Blacklist)')}</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t('Không thực hiện đền bù data cho Sale.')}</p>
               </div>
             </label>
 
@@ -1807,26 +1809,26 @@ export const DataList = () => {
                 style={{ marginTop: '3px' }}
               />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chặn và Bù vòng cho Sale</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chặn và Bù vòng cho Sale')}</span>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                  Đền bù 1 lượt data vòng <strong>"{selectedLead?.round_name}"</strong> cho Sale <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                  {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
                 </p>
               </div>
             </label>
 
             {selectedLead?.assigned_to_name === '-' && (
               <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.
+                <AlertTriangle size={12} /> {t('Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.')}
               </div>
             )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Lý do chặn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Lý do chặn')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <textarea
               value={blockReason}
               onChange={(e) => setBlockReason(e.target.value)}
-              placeholder="Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)"
+              placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
               style={{
                 width: '100%',
                 height: '80px',
@@ -1850,7 +1852,7 @@ export const DataList = () => {
               }}
               disabled={isBlocking}
             >
-              Hủy
+              {t('Hủy')}
             </button>
             <button
               className="btn danger"
@@ -1859,7 +1861,7 @@ export const DataList = () => {
               style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
-              Xác nhận chặn
+              {t('Xác nhận chặn')}
             </button>
           </div>
         </div>
@@ -1873,13 +1875,13 @@ export const DataList = () => {
           setDayDetails(null);
           setActiveModalTab('sales');
         }}
-        title={`Chi tiết hoạt động ngày ${selectedDate ? new Date(selectedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
+        title={`${t('Chi tiết hoạt động ngày')} ${selectedDate ? new Date(selectedDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
         width="900px"
       >
         {dayDetailsLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
             <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải dữ liệu chi tiết...</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
           </div>
         ) : dayDetails ? (
           <div style={{ display: 'flex', flexDirection: 'column', height: '580px', margin: '-1.5rem', overflow: 'hidden' }}>
@@ -1918,7 +1920,7 @@ export const DataList = () => {
                 }}
                 className="modal-tab-button"
               >
-                <span>Phân bổ cho Sale</span>
+                <span>{t('Phân bổ cho Sale')}</span>
                 <span style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
@@ -1954,7 +1956,7 @@ export const DataList = () => {
                 }}
                 className="modal-tab-button"
               >
-                <span>Ticket Lỗi</span>
+                <span>{t('Ticket Lỗi')}</span>
                 <span style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
@@ -1990,7 +1992,7 @@ export const DataList = () => {
                 }}
                 className="modal-tab-button"
               >
-                <span>Blacklist & Lỗi Hệ Thống</span>
+                <span>{t('Blacklist & Lỗi Hệ Thống')}</span>
                 <span style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
@@ -2014,10 +2016,10 @@ export const DataList = () => {
                       <table className="premium-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '45%' }}>Tư vấn viên</th>
-                            <th style={{ width: '25%' }}>Vòng</th>
-                            <th style={{ width: '15%' }}>Trạng thái</th>
-                            <th style={{ width: '15%', textAlign: 'right' }}>Số lượng data</th>
+                            <th style={{ width: '45%' }}>{t('Tư vấn viên')}</th>
+                            <th style={{ width: '25%' }}>{t('Vòng')}</th>
+                            <th style={{ width: '15%' }}>{t('Trạng thái')}</th>
+                            <th style={{ width: '15%', textAlign: 'right' }}>{t('Số lượng data')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2053,7 +2055,7 @@ export const DataList = () => {
                   ) : (
                     <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
                       <User size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>Không có lịch sử chia data cho tư vấn viên nào vào ngày này.</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có lịch sử chia data cho tư vấn viên nào vào ngày này.')}</p>
                     </div>
                   )}
                 </div>
@@ -2066,11 +2068,11 @@ export const DataList = () => {
                       <table className="premium-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '25%' }}>Khách hàng</th>
-                            <th style={{ width: '22%' }}>Tư vấn viên báo cáo</th>
-                            <th style={{ width: '28%' }}>Lý do lỗi</th>
-                            <th style={{ width: '13%' }}>Trạng thái</th>
-                            <th style={{ width: '12%', textAlign: 'right' }}>Thời gian báo</th>
+                            <th style={{ width: '25%' }}>{t('Khách hàng')}</th>
+                            <th style={{ width: '22%' }}>{t('Tư vấn viên báo cáo')}</th>
+                            <th style={{ width: '28%' }}>{t('Lý do lỗi')}</th>
+                            <th style={{ width: '13%' }}>{t('Trạng thái')}</th>
+                            <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian báo')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2109,9 +2111,9 @@ export const DataList = () => {
                                   </div>
                                 </td>
                                 <td>
-                                  {item.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>Chờ duyệt</span>}
-                                  {item.status === 'approved' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>Đã duyệt</span>}
-                                  {item.status === 'rejected' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>Từ chối</span>}
+                                  {item.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Chờ duyệt')}</span>}
+                                  {item.status === 'approved' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã duyệt')}</span>}
+                                  {item.status === 'rejected' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{t('Từ chối')}</span>}
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -2128,7 +2130,7 @@ export const DataList = () => {
                   ) : (
                     <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
                       <AlertTriangle size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>Không có báo cáo ticket lỗi dữ liệu nào trong ngày này.</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có báo cáo ticket lỗi dữ liệu nào trong ngày này.')}</p>
                     </div>
                   )}
                 </div>
@@ -2141,10 +2143,10 @@ export const DataList = () => {
                       <table className="premium-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '32%' }}>Khách hàng</th>
-                            <th style={{ width: '13%' }}>Loại</th>
-                            <th style={{ width: '43%' }}>Thông điệp hệ thống</th>
-                            <th style={{ width: '12%', textAlign: 'right' }}>Thời gian</th>
+                            <th style={{ width: '32%' }}>{t('Khách hàng')}</th>
+                            <th style={{ width: '13%' }}>{t('Loại')}</th>
+                            <th style={{ width: '43%' }}>{t('Thông điệp hệ thống')}</th>
+                            <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2203,7 +2205,7 @@ export const DataList = () => {
                   ) : (
                     <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
                       <ShieldAlert size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>Không phát hiện trường hợp Blacklist hay Lỗi hệ thống nào vào ngày này.</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không phát hiện trường hợp Blacklist hay Lỗi hệ thống nào vào ngày này.')}</p>
                     </div>
                   )}
                 </div>
@@ -2228,13 +2230,13 @@ export const DataList = () => {
                   setActiveModalTab('sales');
                 }}
               >
-                Đóng
+                {t('Đóng')}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            Có lỗi xảy ra khi hiển thị chi tiết.
+            {t('Có lỗi xảy ra khi hiển thị chi tiết.')}
           </div>
         )}
       </CustomModal>

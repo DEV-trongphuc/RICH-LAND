@@ -17,6 +17,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
@@ -34,6 +35,7 @@ const OP_LABELS: Record<string, string> = {
 
 // Sortable Item Component
 const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisabled }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean }) => {
+  const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
   const style = {
@@ -82,7 +84,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                 if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
                   return (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                      <Globe size={14} color="#6366f1" /> Tất cả mọi kết nối (Sheet & API & Nhập tay)
+                      <Globe size={14} color="#6366f1" /> {t("Tất cả mọi kết nối (Sheet & API & Nhập tay)")}
                     </span>
                   );
                 }
@@ -92,21 +94,21 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                   if (cId === -1) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <FileSpreadsheet size={14} color="#10b981" /> Tất cả các Google Sheets
+                        <FileSpreadsheet size={14} color="#10b981" /> {t("Tất cả các Google Sheets")}
                       </span>
                     );
                   }
                   if (cId === -2) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Zap size={14} color="#f59e0b" /> Tất cả các API / Landing Pages
+                        <Zap size={14} color="#f59e0b" /> {t("Tất cả các API / Landing Pages")}
                       </span>
                     );
                   }
                   if (cId === -3) {
                     return (
                       <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Keyboard size={14} color="#ec4899" /> Chỉ Data Nhập tay (Thêm Data Nhanh)
+                        <Keyboard size={14} color="#ec4899" /> {t("Chỉ Data Nhập tay (Thêm Data Nhanh)")}
                       </span>
                     );
                   }
@@ -123,7 +125,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
               })()}
             </div>
 
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Điều kiện kích hoạt</p>
+            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Điều kiện kích hoạt")}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {(() => {
                 let parsed = [];
@@ -177,7 +179,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                               <Server size={12} /> {c.col}
                             </span>
                             <span style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-                              {OP_LABELS[c.op] || c.op}
+                              {t(OP_LABELS[c.op]) || c.op}
                             </span>
                             {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
                               <span style={{
@@ -201,7 +203,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
           </div>
 
           <div style={{ flex: '0 0 250px' }}>
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Hành động xử lý</p>
+            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Hành động xử lý")}</p>
             <div style={{
               background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.15))',
               border: '1px solid var(--color-primary)',
@@ -216,7 +218,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
               <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <MapPin size={16} />
               </div>
-              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rule.round_name || `Vòng ID: ${rule.target_round_id}`}</span>
+              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rule.round_name || t("Vòng ID: {id}").replace('{id}', String(rule.target_round_id))}</span>
             </div>
           </div>
         </div>
@@ -227,7 +229,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
             onClick={() => onEdit(rule)}
             className="btn ghost"
             style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-primary)' }}
-            title="Sửa quy tắc"
+            title={t("Sửa quy tắc")}
           >
             <Edit2 size={16} />
           </button>
@@ -235,7 +237,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
             onClick={() => onDelete(rule.id)}
             className="btn ghost"
             style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-danger)' }}
-            title="Xóa quy tắc này"
+            title={t("Xóa quy tắc này")}
           >
             <Trash2 size={16} />
           </button>
@@ -247,6 +249,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
 
 
 export const RuleSettings = () => {
+  const { t } = useLanguage();
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,10 +333,10 @@ export const RuleSettings = () => {
       if (res.success) {
         setSimulateResult(res);
       } else {
-        toast.error(res.message || 'Lỗi mô phỏng');
+        toast.error(res.message || t('Lỗi mô phỏng'));
       }
     } catch (err: any) {
-      toast.error('Lỗi khi kết nối mô phỏng: ' + err.message);
+      toast.error(t('Lỗi khi kết nối mô phỏng: ') + err.message);
     }
     setSimulateLoading(false);
   };
@@ -407,7 +410,7 @@ export const RuleSettings = () => {
         // Silent success — order is already reflected on screen
       } catch (e: any) {
         // Revert on failure
-        toast.error('Lỗi lưu thứ tự: ' + e.message);
+        toast.error(t('Lỗi lưu thứ tự: ') + e.message);
         fetchRules(); // Re-fetch to restore correct order
       }
     }
@@ -475,18 +478,18 @@ export const RuleSettings = () => {
 
   const handleSaveRule = async () => {
     for (const branch of branches) {
-      if (!branch.conditions || branch.conditions.length === 0) return toast.error('Có nhánh đang trống điều kiện');
+      if (!branch.conditions || branch.conditions.length === 0) return toast.error(t('Có nhánh đang trống điều kiện'));
       for (const c of branch.conditions) {
         const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
-        if (!c.col || !c.op || (!c.val && !isNoValueOp)) return toast.error('Vui lòng nhập đủ thông tin các điều kiện');
+        if (!c.col || !c.op || (!c.val && !isNoValueOp)) return toast.error(t('Vui lòng nhập đủ thông tin các điều kiện'));
       }
       if (branch.inject?.enabled && branch.inject.fields) {
         for (const f of branch.inject.fields) {
-          if (!f.col || !f.val) return toast.error('Vui lòng nhập đủ thông tin trường dữ liệu ghi đè');
+          if (!f.col || !f.val) return toast.error(t('Vui lòng nhập đủ thông tin trường dữ liệu ghi đè'));
         }
       }
     }
-    if (!targetRound) return toast.error('Vui lòng chọn vòng phân bổ');
+    if (!targetRound) return toast.error(t('Vui lòng chọn vòng phân bổ'));
     if (isSaving) return;
 
     setIsSaving(true);
@@ -508,14 +511,14 @@ export const RuleSettings = () => {
         body: JSON.stringify(payload)
       });
       if (json.success) {
-        toast.success(editingRule ? 'Cập nhật thành công!' : 'Thêm rule thành công!');
+        toast.success(editingRule ? t('Cập nhật thành công!') : t('Thêm rule thành công!'));
         setIsModalOpen(false);
         fetchRules();
       } else {
-        toast.error(json.message || "Lỗi lưu Rule");
+        toast.error(json.message || t("Lỗi lưu Rule"));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsSaving(false);
   };
@@ -526,13 +529,13 @@ export const RuleSettings = () => {
     try {
       const json = await fetchAPI(`delete_rule&id=${deleteId}`);
       if (json.success) {
-        toast.success('Xóa thành công!');
+        toast.success(t('Xóa thành công!'));
         fetchRules();
       } else {
-        toast.error(json.message || 'Lỗi khi xóa');
+        toast.error(json.message || t('Lỗi khi xóa'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsDeleting(false);
     setIsConfirmOpen(false);
@@ -540,20 +543,20 @@ export const RuleSettings = () => {
 
   const getFieldOptions = () => {
     const baseFields = [
-      { value: 'source', label: 'Nguồn Data (Hệ thống)' },
-      { value: 'type', label: 'Loại Data (Hệ thống)' },
-      { value: 'note', label: 'Ghi Chú (Hệ thống)' },
-      { value: 'name', label: 'Họ và Tên (Hệ thống)' },
-      { value: 'phone', label: 'Số điện thoại (Hệ thống)' },
-      { value: 'email', label: 'Email (Hệ thống)' },
-      { value: 'connection_id', label: 'Tích hợp (Sheet/Webhook)' }
+      { value: 'source', label: t('Nguồn Data (Hệ thống)') },
+      { value: 'type', label: t('Loại Data (Hệ thống)') },
+      { value: 'note', label: t('Ghi Chú (Hệ thống)') },
+      { value: 'name', label: t('Họ và Tên (Hệ thống)') },
+      { value: 'phone', label: t('Số điện thoại (Hệ thống)') },
+      { value: 'email', label: t('Email (Hệ thống)') },
+      { value: 'connection_id', label: t('Tích hợp (Sheet/Webhook)') }
     ];
     if (!connectionId.includes('all') && connectionId.length === 1) {
       const conn = connections.find(c => Number(c.id) === Number(connectionId[0]));
       if (conn && conn.mappings) {
         const customFields = conn.mappings.map((m: any) => ({
           value: m.sheet_column,
-          label: `Cột: ${m.sheet_column}`
+          label: t("Cột: {col}").replace('{col}', m.sheet_column)
         }));
         return [...baseFields, ...customFields];
       }
@@ -562,17 +565,17 @@ export const RuleSettings = () => {
   };
 
   const opOptions = [
-    { value: 'contains', label: 'Có chứa từ khóa' },
-    { value: 'not_contains', label: 'Không chứa từ khóa' },
-    { value: 'equals', label: 'Trùng khớp chính xác với' },
-    { value: 'not_equals', label: 'Không trùng khớp chính xác' },
-    { value: 'starts_with', label: 'Bắt đầu bằng' },
-    { value: 'ends_with', label: 'Kết thúc bằng' },
-    { value: 'is_empty', label: 'Trống (Không có dữ liệu)' },
-    { value: 'is_not_empty', label: 'Không trống (Có dữ liệu)' },
-    { value: 'date_before', label: 'Ngày trước (Nhỏ hơn ngày) (YYYY-MM-DD)' },
-    { value: 'date_after', label: 'Ngày sau (Lớn hơn ngày) (YYYY-MM-DD)' },
-    { value: 'date_equals', label: 'Chính xác ngày (YYYY-MM-DD)' }
+    { value: 'contains', label: t('Có chứa từ khóa') },
+    { value: 'not_contains', label: t('Không chứa từ khóa') },
+    { value: 'equals', label: t('Trùng khớp chính xác với') },
+    { value: 'not_equals', label: t('Không trùng khớp chính xác') },
+    { value: 'starts_with', label: t('Bắt đầu bằng') },
+    { value: 'ends_with', label: t('Kết thúc bằng') },
+    { value: 'is_empty', label: t('Trống (Không có dữ liệu)') },
+    { value: 'is_not_empty', label: t('Không trống (Có dữ liệu)') },
+    { value: 'date_before', label: t('Ngày trước (Nhỏ hơn ngày) (YYYY-MM-DD)') },
+    { value: 'date_after', label: t('Ngày sau (Lớn hơn ngày) (YYYY-MM-DD)') },
+    { value: 'date_equals', label: t('Chính xác ngày (YYYY-MM-DD)') }
   ];
 
   const filteredRules = rules.filter(r => {
@@ -589,16 +592,16 @@ export const RuleSettings = () => {
       <div className="page-header" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Filter size={24} color="var(--color-primary)" /> Quy tắc Định tuyến (Routing Rules)
+            <Filter size={24} color="var(--color-primary)" /> {t("Quy tắc Định tuyến (Routing Rules)")}
           </h1>
-          <p className="page-subtitle">Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.</p>
+          <p className="page-subtitle">{t("Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.")}</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn outline" onClick={openSimulateModal} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-            <Play size={16} style={{ fill: 'currentColor' }} /> Thử nghiệm Định tuyến
+            <Play size={16} style={{ fill: 'currentColor' }} /> {t("Thử nghiệm Định tuyến")}
           </button>
           <button className="btn primary" onClick={openAddModal}>
-            <Plus size={18} /> Thêm Quy tắc mới
+            <Plus size={18} /> {t("Thêm Quy tắc mới")}
           </button>
         </div>
       </div>
@@ -617,24 +620,24 @@ export const RuleSettings = () => {
           <ShieldCheck size={20} />
         </div>
         <div>
-          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4 }}>Nguyên tắc hoạt động</h4>
+          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4 }}>{t("Nguyên tắc hoạt động")}</h4>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6 }}>
-            Các quy tắc được kiểm tra ưu tiên <strong>từ trên xuống dưới</strong> (Top-Down). Kéo thả biểu tượng <strong>⋮⋮</strong> để thay đổi độ ưu tiên.
+            {t("Các quy tắc được kiểm tra ưu tiên {topDown} (Top-Down). Kéo thả biểu tượng {grip} để thay đổi độ ưu tiên.").replace('{topDown}', t('từ trên xuống dưới')).replace('{grip}', '⋮⋮')}
           </p>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>Lọc theo nguồn:</div>
+        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t("Lọc theo nguồn:")}</div>
         <div style={{ width: 320 }}>
           <CustomSelect
             options={[
-              { value: 'all', label: 'Hiển thị tất cả Quy tắc', icon: <Filter size={14} color="#64748b" /> },
-              { value: 'null', label: 'Chỉ các Quy tắc "Tất cả mọi kết nối"', icon: <Globe size={14} color="#6366f1" /> },
-              { value: -1, label: 'Chỉ nhóm "Tất cả các Google Sheets"', icon: <FileSpreadsheet size={14} color="#10b981" /> },
-              { value: -2, label: 'Chỉ nhóm "Tất cả API / Landing Pages"', icon: <Zap size={14} color="#f59e0b" /> },
-              { value: -3, label: 'Chỉ nhóm "Data Nhập tay"', icon: <Keyboard size={14} color="#ec4899" /> },
-              ...connections.map(c => ({ value: c.id, label: `Nguồn: ${c.sheet_name}`, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
+              { value: 'all', label: t('Hiển thị tất cả Quy tắc'), icon: <Filter size={14} color="#64748b" /> },
+              { value: 'null', label: t('Chỉ các Quy tắc "Tất cả mọi kết nối"'), icon: <Globe size={14} color="#6366f1" /> },
+              { value: -1, label: t('Chỉ nhóm "Tất cả các Google Sheets"'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
+              { value: -2, label: t('Chỉ nhóm "Tất cả API / Landing Pages"'), icon: <Zap size={14} color="#f59e0b" /> },
+              { value: -3, label: t('Chỉ nhóm "Data Nhập tay"'), icon: <Keyboard size={14} color="#ec4899" /> },
+              ...connections.map(c => ({ value: c.id, label: t("Nguồn: {name}").replace('{name}', c.sheet_name), icon: <FileSpreadsheet size={14} color="#10b981" /> }))
             ]}
             value={activeFilter === null ? 'null' : activeFilter.toString()}
             onChange={(v) => setActiveFilter(v === 'all' ? 'all' : (v === 'null' ? null : Number(v)))}
@@ -642,7 +645,7 @@ export const RuleSettings = () => {
         </div>
         {activeFilter !== 'all' && (
           <div style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Filter size={14} /> Chế độ lọc đang bật. Kéo thả thứ tự tạm khóa.
+            <Filter size={14} /> {t("Chế độ lọc đang bật. Kéo thả thứ tự tạm khóa.")}
           </div>
         )}
       </div>
@@ -657,9 +660,9 @@ export const RuleSettings = () => {
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
               <Filter size={32} color="var(--color-text-muted)" />
             </div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Không tìm thấy Quy tắc nào</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Thử thay đổi bộ lọc hoặc thêm quy tắc mới.</p>
-            <button className="btn primary" onClick={openAddModal}><Plus size={18} /> Thêm Quy tắc</button>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t("Không tìm thấy Quy tắc nào")}</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t("Thử thay đổi bộ lọc hoặc thêm quy tắc mới.")}</p>
+            <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t("Thêm Quy tắc")}</button>
           </div>
         ) : (
           <div style={{ padding: '0.5rem' }}>
@@ -683,7 +686,7 @@ export const RuleSettings = () => {
                 onClick={openAddModal}
                 style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
               >
-                <Filter size={18} /> Thêm Quy tắc mới
+                <Filter size={18} /> {t("Thêm Quy tắc mới")}
               </button>
             </div>
           </div>
@@ -694,19 +697,19 @@ export const RuleSettings = () => {
       <CustomModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingRule ? "Chỉnh sửa Quy tắc" : "Thêm Quy tắc mới"}
+        title={editingRule ? t("Chỉnh sửa Quy tắc") : t("Thêm Quy tắc mới")}
         width="800px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
           <div>
-            <label className="form-label">Áp dụng cho Nguồn (Connection)</label>
+            <label className="form-label">{t("Áp dụng cho Nguồn (Connection)")}</label>
             <CustomSelect
               multiple
               options={[
-                { value: 'all', label: 'Tất cả mọi kết nối (Sheet & API & Nhập tay)', icon: <Globe size={14} color="#6366f1" /> },
-                { value: -1, label: 'Tất cả các Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> },
-                { value: -2, label: 'Tất cả các API / Landing Pages', icon: <Zap size={14} color="#f59e0b" /> },
-                { value: -3, label: 'Chỉ Data Nhập tay (Thêm Data Nhanh)', icon: <Keyboard size={14} color="#ec4899" /> },
+                { value: 'all', label: t('Tất cả mọi kết nối (Sheet & API & Nhập tay)'), icon: <Globe size={14} color="#6366f1" /> },
+                { value: -1, label: t('Tất cả các Google Sheets'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
+                { value: -2, label: t('Tất cả các API / Landing Pages'), icon: <Zap size={14} color="#f59e0b" /> },
+                { value: -3, label: t('Chỉ Data Nhập tay (Thêm Data Nhanh)'), icon: <Keyboard size={14} color="#ec4899" /> },
                 ...connections.map(c => ({ value: c.id, label: c.sheet_name, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
               ]}
               value={connectionId}
@@ -720,7 +723,7 @@ export const RuleSettings = () => {
               <div key={bIndex} style={{ border: '1px solid #e2e8f0', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#8b5cf6', borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#4c1d95', textTransform: 'uppercase', margin: 0 }}>Nhánh {bIndex + 1}</h4>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#4c1d95', textTransform: 'uppercase', margin: 0 }}>{t("Nhánh {num}").replace('{num}', String(bIndex + 1))}</h4>
                   {branches.length > 1 && (
                     <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: 4 }} onClick={() => setBranches(branches.filter((_, idx) => idx !== bIndex))}>
                       <Trash2 size={16} />
@@ -755,7 +758,7 @@ export const RuleSettings = () => {
                                 newB[bIndex].conditions[i].col = String(val);
                                 setBranches(newB);
                               }}
-                              placeholder="Chọn trường..."
+                              placeholder={t("Chọn trường...")}
                             />
                           </div>
                         </div>
@@ -788,7 +791,7 @@ export const RuleSettings = () => {
                             ) : c.col === 'connection_id' ? (
                               <CustomSelect
                                 options={[
-                                  { value: '', label: 'Chọn Sheet tích hợp...' },
+                                  { value: '', label: t('Chọn Sheet tích hợp...') },
                                   ...connections.map(conn => ({ value: String(conn.id), label: conn.sheet_name }))
                                 ]}
                                 value={c.val}
@@ -801,7 +804,7 @@ export const RuleSettings = () => {
                             ) : (
                               <input
                                 style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                placeholder="Nhập giá trị..."
+                                placeholder={t("Nhập giá trị...")}
                                 value={c.val}
                                 onChange={e => {
                                   const newB = [...branches];
@@ -822,7 +825,7 @@ export const RuleSettings = () => {
                               newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
                               setBranches(newB);
                             }}
-                            title="Xóa điều kiện này"
+                            title={t("Xóa điều kiện này")}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -841,7 +844,7 @@ export const RuleSettings = () => {
                       }}
                       style={{ background: '#f3e8ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
-                      <Plus size={14} /> Thêm điều kiện
+                      <Plus size={14} /> {t("Thêm điều kiện")}
                     </button>
                   </div>
 
@@ -882,7 +885,7 @@ export const RuleSettings = () => {
                           boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                         }} />
                       </div>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Tự động gán trường dữ liệu (Inject Data)</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t("Tự động gán trường dữ liệu (Inject Data)")}</span>
                     </div>
 
                     {branch.inject?.enabled && (
@@ -894,11 +897,11 @@ export const RuleSettings = () => {
                               <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                                 <CustomSelect
                                   options={[
-                                    { value: 'source', label: 'Nguồn Khách (Source)' },
-                                    { value: 'type', label: 'Loại Khách (Type)' },
-                                    { value: 'note', label: 'Ghi Chú (Note)' },
-                                    { value: 'name', label: 'Tên Khách Hàng (Name)' },
-                                    { value: 'custom_trigger', label: 'Tùy chỉnh (Custom Key)...' }
+                                    { value: 'source', label: t('Nguồn Khách (Source)') },
+                                    { value: 'type', label: t('Loại Khách (Type)') },
+                                    { value: 'note', label: t('Ghi Chú (Note)') },
+                                    { value: 'name', label: t('Tên Khách Hàng (Name)') },
+                                    { value: 'custom_trigger', label: t('Tùy chỉnh (Custom Key)...') }
                                   ]}
                                   value={isCustomMode ? 'custom_trigger' : f.col}
                                   onChange={val => {
@@ -921,7 +924,7 @@ export const RuleSettings = () => {
                                 <div style={{ flex: 1, minWidth: 120 }}>
                                   <input
                                     style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                    placeholder="Tên trường custom (vd: utm_source)..."
+                                    placeholder={t("Tên trường custom (vd: utm_source)...")}
                                     value={f.col}
                                     onChange={e => {
                                       const newB = [...branches];
@@ -935,7 +938,7 @@ export const RuleSettings = () => {
                               <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
                                 <input
                                   style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                  placeholder="Giá trị muốn gán tự động..."
+                                  placeholder={t("Giá trị muốn gán tự động...")}
                                   value={f.val}
                                   onChange={e => {
                                     const newB = [...branches];
@@ -960,7 +963,7 @@ export const RuleSettings = () => {
                           newB[bIndex].inject.fields.push({ col: 'source', val: '' });
                           setBranches(newB);
                         }}>
-                          <Plus size={14} /> Thêm trường
+                          <Plus size={14} /> {t("Thêm trường")}
                         </button>
                       </div>
                     )}
@@ -976,22 +979,22 @@ export const RuleSettings = () => {
               onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
               style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
             >
-              <Plus size={18} /> Thêm Nhánh Mới
+              <Plus size={18} /> {t("Thêm Nhánh Mới")}
             </button>
           </div>
           <div>
-            <label className="form-label">Hành động: Phân bổ vào</label>
+            <label className="form-label">{t("Hành động: Phân bổ vào")}</label>
             <CustomSelect
               options={rounds.map(r => ({ value: r.id.toString(), label: r.name || r.round_name }))}
               value={targetRound.toString()}
               onChange={(v) => setTargetRound(Number(v))}
-              placeholder="Chọn vòng phân bổ..."
+              placeholder={t("Chọn vòng phân bổ...")}
             />
           </div>
           <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>Hủy bỏ</button>
+            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>{t("Hủy bỏ")}</button>
             <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
-              {isSaving ? 'Đang lưu...' : (editingRule ? 'Cập nhật' : 'Thêm mới')}
+              {isSaving ? t('Đang lưu...') : (editingRule ? t('Cập nhật') : t('Thêm mới'))}
             </button>
           </div>
         </div>
@@ -1002,26 +1005,26 @@ export const RuleSettings = () => {
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleDelete}
-        title="Xóa Quy Tắc Định Tuyến"
-        message="Bạn có chắc chắn muốn xóa Quy tắc này? Các luồng phân bổ Data có thể bị ảnh hưởng ngay lập tức."
+        title={t("Xóa Quy Tắc Định Tuyến")}
+        message={t("Bạn có chắc chắn muốn xóa Quy tắc này? Các luồng phân bổ Data có thể bị ảnh hưởng ngay lập tức.")}
       />
 
       {/* No Sheet Modal */}
       <CustomModal
         isOpen={isNoSheetModalOpen}
         onClose={() => setIsNoSheetModalOpen(false)}
-        title="Chưa có kết nối Google Sheets"
+        title={t("Chưa có kết nối Google Sheets")}
         width={400}
       >
         <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
           <div style={{ background: 'var(--color-warning-light)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
             <Link2 size={32} color="var(--color-warning)" />
           </div>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Bạn cần kết nối Sheets trước</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>Hệ thống quy tắc định tuyến cần có cấu hình cột từ Google Sheets để hoạt động. Vui lòng thiết lập ít nhất 1 kết nối Tích hợp trước khi tạo quy tắc.</p>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t("Bạn cần kết nối Sheets trước")}</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>{t("Hệ thống quy tắc định tuyến cần có cấu hình cột từ Google Sheets để hoạt động. Vui lòng thiết lập ít nhất 1 kết nối Tích hợp trước khi tạo quy tắc.")}</p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-            <button className="btn outline" onClick={() => setIsNoSheetModalOpen(false)}>Hủy bỏ</button>
-            <button className="btn primary" onClick={() => navigate('/integrations')}>Đi tới Tích hợp</button>
+            <button className="btn outline" onClick={() => setIsNoSheetModalOpen(false)}>{t("Hủy bỏ")}</button>
+            <button className="btn primary" onClick={() => navigate('/integrations')}>{t("Đi tới Tích hợp")}</button>
           </div>
         </div>
       </CustomModal>
@@ -1030,85 +1033,85 @@ export const RuleSettings = () => {
       <CustomModal
         isOpen={isSimulateModalOpen}
         onClose={() => setIsSimulateModalOpen(false)}
-        title="Thử nghiệm Định tuyến Lead"
+        title={t("Thử nghiệm Định tuyến Lead")}
         width="1050px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
-            Giả lập một lead mới đi vào hệ thống định tuyến để kiểm tra xem rule nào khớp và Sale nào sẽ nhận được data.
+            {t("Giả lập một lead mới đi vào hệ thống định tuyến để kiểm tra xem rule nào khớp và Sale nào sẽ nhận được data.")}
           </p>
 
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
             {/* Cột trái: Nhập thông tin (Form) */}
             <div style={{ flex: '1 1 450px', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Server size={16} color="var(--color-primary)" /> Thông tin Lead Giả lập
+                <Server size={16} color="var(--color-primary)" /> {t("Thông tin Lead Giả lập")}
               </h4>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Họ và Tên</label>
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Họ và Tên")}</label>
                 <input
                   className="form-input"
                   value={simulatePayload.name}
                   onChange={e => setSimulatePayload({ ...simulatePayload, name: e.target.value })}
-                  placeholder="VD: Nguyễn Văn A"
+                  placeholder={t("VD: Nguyễn Văn A")}
                 />
               </div>
 
               <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Số điện thoại</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Số điện thoại")}</label>
                   <input
                     className="form-input"
                     value={simulatePayload.phone}
                     onChange={e => setSimulatePayload({ ...simulatePayload, phone: e.target.value })}
-                    placeholder="VD: 0987654321"
+                    placeholder={t("VD: 0987654321")}
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Email</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Email")}</label>
                   <input
                     className="form-input"
                     value={simulatePayload.email}
                     onChange={e => setSimulatePayload({ ...simulatePayload, email: e.target.value })}
-                    placeholder="VD: test@domain.com"
+                    placeholder={t("VD: test@domain.com")}
                   />
                 </div>
               </div>
 
               <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Nguồn (Source)</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Nguồn (Source)")}</label>
                   <input
                     className="form-input"
                     value={simulatePayload.source}
                     onChange={e => setSimulatePayload({ ...simulatePayload, source: e.target.value })}
-                    placeholder="VD: Facebook Ads"
+                    placeholder={t("VD: Facebook Ads")}
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Loại (Type)</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Loại (Type)")}</label>
                   <input
                     className="form-input"
                     value={simulatePayload.type}
                     onChange={e => setSimulatePayload({ ...simulatePayload, type: e.target.value })}
-                    placeholder="VD: Dang ky hoc"
+                    placeholder={t("VD: Dang ky hoc")}
                   />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Ghi chú (Note)</label>
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Ghi chú (Note)")}</label>
                 <input
                   className="form-input"
                   value={simulatePayload.note}
                   onChange={e => setSimulatePayload({ ...simulatePayload, note: e.target.value })}
-                  placeholder="VD: Tư vấn buổi tối"
+                  placeholder={t("VD: Tư vấn buổi tối")}
                 />
               </div>
 
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#475569' }}>Cấu hình Kết nối & Loại nguồn nhận</h5>
+                <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#475569' }}>{t("Cấu hình Kết nối & Loại nguồn nhận")}</h5>
                 <div 
                   className={simulateConnectionType === 'manual' ? '' : 'responsive-grid-1-1'}
                   style={{ 
@@ -1118,10 +1121,10 @@ export const RuleSettings = () => {
                   }}>
                   {simulateConnectionType !== 'manual' && (
                     <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Nguồn tích hợp</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Nguồn tích hợp")}</label>
                       <CustomSelect
                         options={[
-                          { value: 'all', label: 'Tất cả kết nối', icon: <Globe size={14} color="#6366f1" /> },
+                          { value: 'all', label: t('Tất cả kết nối'), icon: <Globe size={14} color="#6366f1" /> },
                           ...connections
                             .filter(c => c.connection_type === simulateConnectionType)
                             .map(c => ({
@@ -1138,16 +1141,16 @@ export const RuleSettings = () => {
                     </div>
                   )}
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Loại kết nối</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Loại kết nối")}</label>
                     <CustomSelect
                       options={[
                         ...(connections.some(c => c.connection_type === 'sheets') ? [
-                          { value: 'sheets', label: 'Google Sheets', icon: <FileSpreadsheet size={14} color="#10b981" /> }
+                          { value: 'sheets', label: t('Google Sheets'), icon: <FileSpreadsheet size={14} color="#10b981" /> }
                         ] : []),
                         ...(connections.some(c => c.connection_type === 'landing_page') ? [
-                          { value: 'landing_page', label: 'Landing Page API', icon: <Zap size={14} color="#f59e0b" /> }
+                          { value: 'landing_page', label: t('Landing Page API'), icon: <Zap size={14} color="#f59e0b" /> }
                         ] : []),
-                        { value: 'manual', label: 'Nhập tay', icon: <Keyboard size={14} color="#ec4899" /> }
+                        { value: 'manual', label: t('Nhập tay'), icon: <Keyboard size={14} color="#ec4899" /> }
                       ]}
                       value={simulateConnectionType}
                       onChange={v => setSimulateConnectionType(String(v))}
@@ -1159,13 +1162,13 @@ export const RuleSettings = () => {
               {/* Custom fields list */}
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: '#475569' }}>Trường dữ liệu tùy chỉnh (Cột Sheets custom)</h5>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: '#475569' }}>{t("Trường dữ liệu tùy chỉnh (Cột Sheets custom)")}</h5>
                   <button
                     type="button"
                     onClick={() => setSimulateCustomFields([...simulateCustomFields, { key: '', val: '' }])}
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                   >
-                    <Plus size={14} /> Thêm trường
+                    <Plus size={14} /> {t("Thêm trường")}
                   </button>
                 </div>
 
@@ -1175,7 +1178,7 @@ export const RuleSettings = () => {
                       <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <input
                           style={{ flex: 1, padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-                          placeholder="Tên cột (vd: utm_medium)..."
+                          placeholder={t("Tên cột (vd: utm_medium)...")}
                           value={f.key}
                           onChange={e => {
                             const newF = [...simulateCustomFields];
@@ -1185,7 +1188,7 @@ export const RuleSettings = () => {
                         />
                         <input
                           style={{ flex: 1.5, padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-                          placeholder="Giá trị..."
+                          placeholder={t("Giá trị...")}
                           value={f.val}
                           onChange={e => {
                             const newF = [...simulateCustomFields];
@@ -1215,11 +1218,11 @@ export const RuleSettings = () => {
               >
                 {simulateLoading ? (
                   <>
-                    <RefreshCw size={16} className="spin" /> Đang chạy mô phỏng...
+                    <RefreshCw size={16} className="spin" /> {t("Đang chạy mô phỏng...")}
                   </>
                 ) : (
                   <>
-                    <Play size={16} fill="white" /> Bắt đầu Mô phỏng
+                    <Play size={16} fill="white" /> {t("Bắt đầu Mô phỏng")}
                   </>
                 )}
               </button>
@@ -1229,7 +1232,7 @@ export const RuleSettings = () => {
             <div style={{ flex: '1.2 1 500px', display: 'flex', flexDirection: 'column', minHeight: '500px', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ background: 'var(--color-bg)', padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, textTransform: 'uppercase' }}>
-                  Kết quả phân tích đường đi
+                  {t("Kết quả phân tích đường đi")}
                 </h4>
               </div>
 
@@ -1237,15 +1240,15 @@ export const RuleSettings = () => {
                 {simulateLoading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: 'var(--color-text-muted)' }}>
                     <div style={{ width: 40, height: 40, border: '4px solid var(--color-border-light)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ fontSize: '0.875rem' }}>Đang chạy phân tích quy tắc hệ thống...</span>
+                    <span style={{ fontSize: '0.875rem' }}>{t("Đang chạy phân tích quy tắc hệ thống...")}</span>
                   </div>
                 ) : !simulateResult ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, border: '2px dashed var(--color-border)', borderRadius: '8px', padding: '3rem 1.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1rem' }}>
                       <Play size={24} fill="currentColor" style={{ marginLeft: 3 }} />
                     </div>
-                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: 4 }}>Chưa chạy thử nghiệm</h5>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', maxWidth: 350, margin: 0 }}>Vui lòng điền thông tin lead giả lập ở cột bên trái và bấm nút "Bắt đầu Mô phỏng".</p>
+                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: 4 }}>{t("Chưa chạy thử nghiệm")}</h5>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', maxWidth: 350, margin: 0 }}>{t("Vui lòng điền thông tin lead giả lập ở cột bên trái và bấm nút \"Bắt đầu Mô phỏng\".")}</p>
                   </div>
                 ) : (
                   <>
@@ -1281,7 +1284,7 @@ export const RuleSettings = () => {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-                            {simulateResult.consultant ? simulateResult.consultant.name : 'Không tìm thấy người nhận'}
+                            {simulateResult.consultant ? simulateResult.consultant.name : t('Không tìm thấy người nhận')}
                           </h4>
                           <span style={{
                             fontSize: '0.625rem',
@@ -1294,8 +1297,8 @@ export const RuleSettings = () => {
                             letterSpacing: '0.2px'
                           }}>
                             {simulateResult.is_fallback_admin
-                              ? 'Fallback (Admin)'
-                              : (simulateResult.is_fallback ? 'Fallback (Mặc định)' : (simulateResult.consultant ? 'Thành công' : 'Không khớp'))}
+                              ? t('Fallback (Admin)')
+                              : (simulateResult.is_fallback ? t('Fallback (Mặc định)') : (simulateResult.consultant ? t('Thành công') : t('Không khớp')))}
                           </span>
                         </div>
 
@@ -1303,11 +1306,11 @@ export const RuleSettings = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.775rem', color: '#475569' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <MapPin size={12} color="var(--color-primary)" /> <strong>Vòng chia:</strong> {simulateResult.consultant.round_name}
+                                <MapPin size={12} color="var(--color-primary)" /> <strong>{t("Vòng chia:")}</strong> {simulateResult.consultant.round_name}
                               </div>
                               {simulateResult.consultant.email && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b' }}>
-                                  <Mail size={12} color="var(--color-text-muted)" /> <strong>Email:</strong> {simulateResult.consultant.email}
+                                  <Mail size={12} color="var(--color-text-muted)" /> <strong>{t("Email:")}</strong> {simulateResult.consultant.email}
                                 </div>
                               )}
                             </div>
@@ -1321,22 +1324,22 @@ export const RuleSettings = () => {
                                 fontSize: '0.75rem',
                                 color: '#475569'
                               }}>
-                                <strong>Lý do:</strong>{' '}
+                                <strong>{t("Lý do:")}</strong>{' '}
                                 {simulateResult.consultant.reason ? (
                                   <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-                                    {simulateResult.consultant.reason}
+                                    {t(simulateResult.consultant.reason)}
                                   </span>
                                 ) : simulateResult.consultant.is_compensation ? (
                                   <span style={{ color: '#10b981', fontWeight: 600 }}>
-                                    Được nhận đền bù số lỗi (còn nợ: {simulateResult.consultant.compensation_count} số).
+                                    {t("Được nhận đền bù số lỗi (còn nợ: {count} số).").replace('{count}', String(simulateResult.consultant.compensation_count))}
                                   </span>
                                 ) : simulateResult.consultant.is_mid_turn ? (
                                   <span style={{ color: '#3b82f6', fontWeight: 600 }}>
-                                    Đang trong lượt nhận gộp (còn {simulateResult.consultant.current_turn_remaining} số).
+                                    {t("Đang trong lượt nhận gộp (còn {count} số).").replace('{count}', String(simulateResult.consultant.current_turn_remaining))}
                                   </span>
                                 ) : (
                                   <span>
-                                    Xoay vòng thông thường (Skip: {simulateResult.consultant.skip_count}/{simulateResult.consultant.receive_ratio - 1}).
+                                    {t("Xoay vòng thông thường (Skip: {count1}/{count2}).").replace('{count1}', String(simulateResult.consultant.skip_count)).replace('{count2}', String(simulateResult.consultant.receive_ratio - 1))}
                                   </span>
                                 )}
                               </div>
@@ -1350,7 +1353,7 @@ export const RuleSettings = () => {
                     {simulateResult.injected_fields && Object.keys(simulateResult.injected_fields).length > 0 && (
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--color-primary-light)', border: '1px solid var(--color-border)', borderRadius: '10px' }}>
                         <h5 style={{ fontSize: '0.8rem', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Zap size={14} color="var(--color-primary)" /> Ghi đè thuộc tính (Inject Data):
+                          <Zap size={14} color="var(--color-primary)" /> {t("Ghi đè thuộc tính (Inject Data):")}
                         </h5>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {Object.entries(simulateResult.injected_fields).map(([key, val]: any) => (
@@ -1365,12 +1368,12 @@ export const RuleSettings = () => {
                     {/* Danh sách Trace Logs */}
                     <div>
                       <h5 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-light)', margin: '0 0 10px', textTransform: 'uppercase' }}>
-                        Chi tiết quy trình quét quy tắc (Trace Logs)
+                        {t("Chi tiết quy trình quét quy tắc (Trace Logs)")}
                       </h5>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {simulateResult.trace && simulateResult.trace.map((t: any, idx: number) => {
-                          const isMatched = t.status === 'matched';
-                          const isSkipped = t.status === 'skipped';
+                        {simulateResult.trace && simulateResult.trace.map((traceItem: any, idx: number) => {
+                          const isMatched = traceItem.status === 'matched';
+                          const isSkipped = traceItem.status === 'skipped';
                           return (
                             <div key={idx} style={{
                               border: '1px solid ' + (isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-border)' : 'var(--color-danger)')),
@@ -1392,7 +1395,7 @@ export const RuleSettings = () => {
                                     background: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-muted)' : 'var(--color-danger)')
                                   }} />
                                   <span style={{ fontSize: '0.825rem', fontWeight: 700, color: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-light)' : 'var(--color-danger)') }}>
-                                    {t.description}
+                                    {traceItem.description}
                                   </span>
                                 </div>
                                 <span style={{
@@ -1404,7 +1407,7 @@ export const RuleSettings = () => {
                                   color: isMatched ? 'var(--color-success)' : (isSkipped ? 'var(--color-text-light)' : 'var(--color-danger)'),
                                   textTransform: 'uppercase'
                                 }}>
-                                  {isMatched ? 'Khớp' : (isSkipped ? 'Bỏ qua' : 'Lỗi')}
+                                  {isMatched ? t('Khớp') : (isSkipped ? t('Bỏ qua') : t('Lỗi'))}
                                 </span>
                               </div>
 
@@ -1412,18 +1415,18 @@ export const RuleSettings = () => {
                               <div style={{ padding: '8px 12px', background: 'var(--color-surface)', fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
                                 {isSkipped ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontStyle: 'italic' }}>
-                                    <AlertCircle size={14} /> {t.reason}
+                                    <AlertCircle size={14} /> {t(traceItem.reason)}
                                   </div>
                                 ) : (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {t.conditions && t.conditions.map((c: any, ci: number) => (
+                                    {traceItem.conditions && traceItem.conditions.map((c: any, ci: number) => (
                                       <div key={ci} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                           <span style={{ background: 'var(--color-bg)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, color: 'var(--color-text-light)' }}>
                                             {c.col}
                                           </span>
                                           <span style={{ fontStyle: 'italic', fontSize: '0.725rem' }}>
-                                            {OP_LABELS[c.op] || c.op}
+                                            {t(OP_LABELS[c.op]) || c.op}
                                           </span>
                                           {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
                                             <span style={{ fontWeight: 600 }}>
@@ -1432,12 +1435,12 @@ export const RuleSettings = () => {
                                           )}
                                         </div>
                                         <span style={{ fontWeight: 700, color: c.matched ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                                          {c.matched ? 'Đạt' : 'Không đạt'}
+                                          {c.matched ? t('Đạt') : t('Không đạt')}
                                         </span>
                                       </div>
                                     ))}
                                     <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4, fontSize: '0.725rem', fontStyle: 'italic', color: '#94a3b8' }}>
-                                      Kết luận: {t.reason}
+                                      {t("Kết luận:")} {t(traceItem.reason)}
                                     </div>
                                   </div>
                                 )}

@@ -2,10 +2,12 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const DemoEntry: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     // Set global demo mode flag
@@ -29,8 +31,8 @@ export const DemoEntry: React.FC = () => {
   return (
     <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white', position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
       <Loader2 size={48} className="spin" style={{ color: '#3b82f6', marginBottom: 20 }} />
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>Khởi tạo môi trường Demo...</h2>
-      <p style={{ color: '#94a3b8' }}>Đang nạp dữ liệu ảo và chuẩn bị giao diện.</p>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>{t("Khởi tạo môi trường Demo...")}</h2>
+      <p style={{ color: '#94a3b8' }}>{t("Đang nạp dữ liệu ảo và chuẩn bị giao diện.")}</p>
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );

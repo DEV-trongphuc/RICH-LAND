@@ -21,10 +21,20 @@ if ($danRes && $row = $danRes->fetch_assoc()) {
 }
 
 if ($danId > 0) {
-    // Clean up the previous incorrect active compensation log under admin 5
-    $conn->query("DELETE FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 5 AND DATE(created_at) = '2026-05-23'");
+    // 1. Insert/Verify active compensation log by Mai Nữ (ID 5)
+    $checkMaiNu = $conn->query("SELECT id FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 5 AND DATE(created_at) = '2026-05-23'");
+    if ($checkMaiNu && $checkMaiNu->num_rows > 0) {
+        echo "Active compensation log for Đan by Mai Nữ (ID 5) already exists.\n";
+    } else {
+        $roundId = 1; // Vòng form
+        $stmt = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason, created_at) VALUES (?, ?, 5, 1, 'Bù chủ động (vòng form)', '2026-05-23 18:00:00')");
+        $stmt->bind_param("ii", $roundId, $danId);
+        $stmt->execute();
+        $stmt->close();
+        echo "Successfully inserted active compensation log for Đan by admin ID 5 (Mai Nữ) under round ID $roundId.\n";
+    }
     
-    // Insert/Verify correct active compensation log under admin 3
+    // 2. Insert/Verify active compensation log by Turnio DEV (ID 3)
     $checkCorrect = $conn->query("SELECT id FROM active_compensation_logs WHERE consultant_id = $danId AND admin_id = 3 AND DATE(created_at) = '2026-05-21'");
     if ($checkCorrect && $checkCorrect->num_rows > 0) {
         echo "Correct active compensation log for Đan by Turnio DEV (ID 3) already exists.\n";

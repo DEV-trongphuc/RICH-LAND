@@ -1,6 +1,7 @@
 import React from 'react';
 import { CustomModal } from './CustomModal';
 import { AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   width,
   children
 }) => {
+  const { t } = useLanguage();
   let btnClass = 'btn danger';
   let iconBg = 'var(--color-danger-light)';
   let iconColor = 'var(--color-danger)';
@@ -42,7 +44,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   }
 
   return (
-    <CustomModal isOpen={isOpen} onClose={onClose} title={title} width={width}>
+    <CustomModal isOpen={isOpen} onClose={onClose} title={t(title)} width={width}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ 
@@ -52,15 +54,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <AlertTriangle size={20} />
           </div>
           <div>
-            {message && <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', whiteSpace: 'pre-line', margin: 0 }}>{message}</p>}
+            {message && <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', whiteSpace: 'pre-line', margin: 0 }}>{t(message)}</p>}
           </div>
         </div>
 
         {children}
         
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-          <button className="btn outline" onClick={onClose}>{cancelText}</button>
-          <button className={btnClass} onClick={() => { onConfirm(); onClose(); }}>{confirmText}</button>
+          <button className="btn outline" onClick={onClose}>{t(cancelText)}</button>
+          <button className={btnClass} onClick={() => { onConfirm(); onClose(); }}>{t(confirmText)}</button>
         </div>
       </div>
     </CustomModal>

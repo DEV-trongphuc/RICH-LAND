@@ -1,14 +1,26 @@
 import { useState, useEffect } from 'react';
-import { Search, Command, Activity, Sun, Moon, Keyboard } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Avatar } from '../ui/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
 import { fetchAPI } from '../../utils/api';
+import vnFlag from '../../assets/vn.svg';
+import usFlag from '../../assets/us.svg';
 
 export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   const { user } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const [isLangOpen, setIsLangOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLangOpen) return;
+    const handleClose = () => setIsLangOpen(false);
+    document.addEventListener('click', handleClose);
+    return () => document.removeEventListener('click', handleClose);
+  }, [isLangOpen]);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -36,11 +48,11 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
 
   const getRoleLabel = (role?: string) => {
     switch (role) {
-      case 'admin': return 'Quản trị viên';
-      case 'assistant': return 'Trợ lý';
-      case 'viewer': return 'Người xem';
-      case 'sale': return 'Tư vấn viên';
-      default: return 'Người dùng';
+      case 'admin': return t('Quản trị viên');
+      case 'assistant': return t('Trợ lý');
+      case 'viewer': return t('Người xem');
+      case 'sale': return t('Tư vấn viên');
+      default: return t('Người dùng');
     }
   };
 
@@ -105,17 +117,17 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
   }, [searchQuery]);
 
   const navItems: Array<{ name: string; path: string; description: string; shortcut: string; adminOnly?: boolean; action?: () => void }> = [
-    { name: 'Dashboard', path: '/', description: 'Trang tổng quan thống kê hệ thống', shortcut: 'Alt + D' },
-    { name: 'Nhật ký Lead (Data Log)', path: '/data', description: 'Xem logs danh sách lead và trạng thái cuộc gọi', shortcut: 'Alt + L' },
-    { name: 'Bản tin hoạt động hệ thống', path: '#feed', description: 'Bản tin các hoạt động và phân bổ lead gần đây', shortcut: 'Alt + H', action: () => window.dispatchEvent(new CustomEvent('open-activity-feed')) },
-    { name: 'Vòng xoay chia số (Rounds)', path: '/rounds', description: 'Cấu hình danh sách các vòng chia lead cho sale', adminOnly: true, shortcut: 'Alt + R' },
-    { name: 'Quy tắc chia số (Rules)', path: '/rules', description: 'Thiết lập logic điều phối và skip interval', adminOnly: true, shortcut: 'Alt + W' },
-    { name: 'Quản lý Tư vấn viên (Consultants)', path: '/consultants', description: 'Quản lý danh sách sale reps và trạng thái trực ca', adminOnly: true, shortcut: 'Alt + C' },
-    { name: 'Ticket báo lỗi data', path: '/tickets', description: 'Phê duyệt đền bù lead lỗi hoặc trùng', adminOnly: true, shortcut: 'Alt + T' },
-    { name: 'Đối soát công bằng (Fair Share)', path: '/fair-share', description: 'Đo lường độ lệch phân phối lead', adminOnly: true, shortcut: 'Alt + S' },
-    { name: 'Tích hợp API & Google Sheets', path: '/integrations', description: 'Kết nối webhook và đồng bộ trang tính', adminOnly: true, shortcut: 'Alt + I' },
-    { name: 'Cài đặt hệ thống', path: '/settings', description: 'Cài đặt quy chuẩn và dọn dẹp dữ liệu', adminOnly: true, shortcut: 'Alt + O' },
-    { name: 'Quản lý tài khoản', path: '/accounts', description: 'Phân quyền tài khoản quản trị và trợ lý', adminOnly: true, shortcut: 'Alt + A' }
+    { name: t('Dashboard'), path: '/', description: t('Trang tổng quan thống kê hệ thống'), shortcut: 'Alt + D' },
+    { name: t('Nhật ký Lead (Data Log)'), path: '/data', description: t('Xem logs danh sách lead và trạng thái cuộc gọi'), shortcut: 'Alt + L' },
+    { name: t('Bản tin hoạt động hệ thống'), path: '#feed', description: t('Bản tin các hoạt động và phân bổ lead gần đây'), shortcut: 'Alt + H', action: () => window.dispatchEvent(new CustomEvent('open-activity-feed')) },
+    { name: t('Vòng xoay chia số (Rounds)'), path: '/rounds', description: t('Cấu hình danh sách các vòng chia lead cho sale'), adminOnly: true, shortcut: 'Alt + R' },
+    { name: t('Quy tắc chia số (Rules)'), path: '/rules', description: t('Thiết lập logic điều phối và skip interval'), adminOnly: true, shortcut: 'Alt + W' },
+    { name: t('Quản lý Tư vấn viên (Consultants)'), path: '/consultants', description: t('Quản lý danh sách sale reps và trạng thái trực ca'), adminOnly: true, shortcut: 'Alt + C' },
+    { name: t('Ticket báo lỗi data'), path: '/tickets', description: t('Phê duyệt đền bù lead lỗi hoặc trùng'), adminOnly: true, shortcut: 'Alt + T' },
+    { name: t('Đối soát công bằng (Fair Share)'), path: '/fair-share', description: t('Đo lường độ lệch phân phối lead'), adminOnly: true, shortcut: 'Alt + S' },
+    { name: t('Tích hợp API & Google Sheets'), path: '/integrations', description: t('Kết nối webhook và đồng bộ trang tính'), adminOnly: true, shortcut: 'Alt + I' },
+    { name: t('Cài đặt hệ thống'), path: '/settings', description: t('Cài đặt quy chuẩn và dọn dẹp dữ liệu'), adminOnly: true, shortcut: 'Alt + O' },
+    { name: t('Quản lý tài khoản'), path: '/accounts', description: t('Phân quyền tài khoản quản trị và trợ lý'), adminOnly: true, shortcut: 'Alt + A' }
   ];
 
   const visibleNavItems = navItems.filter(item => !item.adminOnly || user?.role === 'admin');
@@ -163,14 +175,14 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             transition: 'color 0.2s',
             outline: 'none'
           }}
-          title="Bảng phím tắt điều hướng nhanh (?)"
+          title={t("Bảng phím tắt điều hướng nhanh (?)")}
           onMouseEnter={e => {
             e.currentTarget.style.color = 'var(--color-primary)';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.color = 'var(--color-text-muted)';
           }}
-        >
+         >
           <Keyboard size={20} />
         </button>
 
@@ -195,7 +207,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
           className="responsive-search-box"
         >
           <Search size={16} />
-          <span className="responsive-hide-mobile">Tìm kiếm toàn hệ thống...</span>
+          <span className="responsive-hide-mobile">{t("Tìm kiếm toàn hệ thống...")}</span>
           <span className="responsive-hide-mobile" style={{
             marginLeft: 'auto',
             display: 'flex',
@@ -248,7 +260,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             position: 'relative',
             outline: 'none'
           }}
-          title="Bản tin hoạt động hệ thống"
+          title={t("Bản tin hoạt động hệ thống")}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'var(--color-bg)';
             e.currentTarget.style.color = 'var(--color-primary)';
@@ -289,7 +301,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             transition: 'all 0.2s',
             outline: 'none'
           }}
-          title={theme === 'light' ? "Chuyển sang giao diện tối" : "Chuyển sang giao diện sáng"}
+          title={theme === 'light' ? t("Chuyển sang giao diện tối") : t("Chuyển sang giao diện sáng")}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'var(--color-bg)';
             e.currentTarget.style.color = 'var(--color-primary)';
@@ -301,6 +313,152 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
         >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
         </button>
+
+        {/* Language Selector Dropdown */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLangOpen(!isLangOpen);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '6px',
+              padding: '3px 6px',
+              cursor: 'pointer',
+              color: 'var(--color-text)',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              transition: 'all 0.2s',
+              height: 30,
+              outline: 'none',
+            }}
+            title={t('Chọn ngôn ngữ')}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--color-primary)';
+            }}
+            onMouseLeave={e => {
+              if (!isLangOpen) {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+              }
+            }}
+          >
+            <img 
+              src={language === 'vi' ? vnFlag : usFlag} 
+              style={{ 
+                width: 24, 
+                height: 16, 
+                borderRadius: '1.5px', 
+                objectFit: 'cover',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                display: 'block' 
+              }} 
+              alt={language === 'vi' ? t('Tiếng Việt') : t('English')} 
+            />
+            <ChevronDown 
+              size={12} 
+              style={{ 
+                color: 'var(--color-text-muted)',
+                transform: isLangOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.2s'
+              }} 
+            />
+          </button>
+
+          {isLangOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              padding: '4px',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              minWidth: '135px',
+              zIndex: 50
+            }}>
+              <button
+                onClick={() => {
+                  setLanguage('vi');
+                  setIsLangOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: 'none',
+                  background: language === 'vi' ? 'var(--color-bg)' : 'transparent',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text)',
+                  fontSize: '0.8125rem',
+                  fontWeight: language === 'vi' ? 600 : 400,
+                  textAlign: 'left',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => {
+                  if (language !== 'vi') e.currentTarget.style.background = 'var(--color-bg)';
+                }}
+                onMouseLeave={e => {
+                  if (language !== 'vi') e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <img 
+                  src={vnFlag} 
+                  style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
+                  alt={t("Tiếng Việt")} 
+                />
+                {t('Tiếng Việt')}
+              </button>
+
+              <button
+                onClick={() => {
+                  setLanguage('en');
+                  setIsLangOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: 'none',
+                  background: language === 'en' ? 'var(--color-bg)' : 'transparent',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text)',
+                  fontSize: '0.8125rem',
+                  fontWeight: language === 'en' ? 600 : 400,
+                  textAlign: 'left',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => {
+                  if (language !== 'en') e.currentTarget.style.background = 'var(--color-bg)';
+                }}
+                onMouseLeave={e => {
+                  if (language !== 'en') e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <img 
+                  src={usFlag} 
+                  style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
+                  alt={t("English")} 
+                />
+                {t('English')}
+              </button>
+            </div>
+          )}
+        </div>
 
         <div 
           onClick={handleProfileClick}
@@ -332,51 +490,51 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
         </div>
       </div>
 
-      {/* Global Command/Search Palette Modal */}
-      <CustomModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        title="Tìm kiếm toàn hệ thống"
-        width="600px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Search Input Group */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '8px 12px' }}>
-            <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
-            <input
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Nhập tên, số điện thoại, email hoặc trang cần tìm..."
-              style={{
-                flex: 1,
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                color: 'var(--color-text)',
-                fontSize: '0.9375rem',
-                padding: '4px 0'
-              }}
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
-              >
-                Xóa
-              </button>
-            )}
-          </div>
+    {/* Global Command/Search Palette Modal */}
+    <CustomModal
+      isOpen={isSearchOpen}
+      onClose={() => setIsSearchOpen(false)}
+      title={t("Tìm kiếm toàn hệ thống")}
+      width="600px"
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Search Input Group */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '8px 12px' }}>
+          <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
+          <input
+            autoFocus
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("Nhập tên, số điện thoại, email hoặc trang cần tìm...")}
+            style={{
+              flex: 1,
+              border: 'none',
+              background: 'transparent',
+              outline: 'none',
+              color: 'var(--color-text)',
+              fontSize: '0.9375rem',
+              padding: '4px 0'
+            }}
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
+            >
+              {t("Xóa")}
+            </button>
+          )}
+        </div>
 
-          {/* Results Area */}
-          <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '4px' }}>
-            {/* 1. Pages/Navigation Results */}
-            {filteredNavItems.length > 0 && (
-              <div>
-                <h5 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
-                  Liên kết nhanh ({filteredNavItems.length})
-                </h5>
+        {/* Results Area */}
+        <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '4px' }}>
+          {/* 1. Pages/Navigation Results */}
+          {filteredNavItems.length > 0 && (
+            <div>
+              <h5 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
+                {t("Liên kết nhanh")} ({filteredNavItems.length})
+              </h5>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {filteredNavItems.map((item) => (
                     <div
@@ -418,8 +576,8 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             {searchQuery.trim() !== '' && (
               <div>
                 <h5 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Kết quả Dữ liệu Lead
-                  {searching && <span style={{ fontSize: '0.6875rem', textTransform: 'none', fontWeight: 500, color: 'var(--color-primary)' }}>Đang tìm...</span>}
+                  {t("Kết quả Dữ liệu Lead")}
+                  {searching && <span style={{ fontSize: '0.6875rem', textTransform: 'none', fontWeight: 500, color: 'var(--color-primary)' }}>{t("Đang tìm...")}</span>}
                 </h5>
                 {leadResults.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -444,23 +602,23 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {lead.lead_name || 'Ẩn danh'}
+                            {lead.lead_name || t('Ẩn danh')}
                           </span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
                             SĐT: {lead.phone || '-'} | Email: {lead.email || '-'}
                           </span>
                           {lead.note && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>
-                              Ghi chú: {lead.note}
+                              {t('Ghi chú')}: {lead.note}
                             </span>
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                           <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '2px 8px', borderRadius: '4px' }}>
-                            {lead.source || 'Nguồn khác'}
+                            {lead.source || t('Nguồn khác')}
                           </span>
                           <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                            {lead.assigned_to_name ? `Sale: ${lead.assigned_to_name}` : 'Chưa giao'}
+                            {lead.assigned_to_name ? `${t('Sale')}: ${lead.assigned_to_name}` : t('Chưa giao')}
                           </span>
                         </div>
                       </div>
@@ -469,7 +627,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
                 ) : (
                   !searching && (
                     <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', padding: '12px', textAlign: 'center', background: 'var(--color-bg)', borderRadius: '8px' }}>
-                      Không tìm thấy lead nào khớp với từ khóa "{searchQuery}"
+                      {t("Không tìm thấy lead nào khớp với từ khóa")} "{searchQuery}"
                     </div>
                   )
                 )}
@@ -479,7 +637,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             {/* 3. Empty Search Helper */}
             {!searchQuery.trim() && filteredNavItems.length === 0 && (
               <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', padding: '16px', textAlign: 'center' }}>
-                Bắt đầu gõ để tìm kiếm trang quản trị hoặc thông tin lead...
+                {t("Bắt đầu gõ để tìm kiếm trang quản trị hoặc thông tin lead...")}
               </div>
             )}
           </div>

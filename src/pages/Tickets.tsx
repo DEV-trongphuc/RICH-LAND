@@ -8,6 +8,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type Lead = {
   id: number;
@@ -129,6 +130,7 @@ const parseBlacklistNote = (note: string) => {
 };
 
 export const Tickets = () => {
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -210,35 +212,35 @@ export const Tickets = () => {
   };
 
   const dateOptions = [
-    { value: 'all', label: 'Tất cả thời gian' },
-    { value: 'Hôm nay', label: 'Hôm nay' },
-    { value: 'Hôm qua', label: 'Hôm qua' },
-    { value: 'Tuần này', label: 'Tuần này' },
-    { value: 'Tuần trước', label: 'Tuần trước' },
-    { value: 'Tuần trước nữa', label: 'Tuần trước nữa' },
-    { value: '7 ngày qua', label: '7 ngày qua' },
-    { value: '30 ngày qua', label: '30 ngày qua' },
-    { value: 'Tháng này', label: 'Tháng này' },
-    { value: 'Tháng trước', label: 'Tháng trước' }
+    { value: 'all', label: t('Tất cả thời gian') },
+    { value: 'Hôm nay', label: t('Hôm nay') },
+    { value: 'Hôm qua', label: t('Hôm qua') },
+    { value: 'Tuần này', label: t('Tuần này') },
+    { value: 'Tuần trước', label: t('Tuần trước') },
+    { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+    { value: '7 ngày qua', label: t('7 ngày qua') },
+    { value: '30 ngày qua', label: t('30 ngày qua') },
+    { value: 'Tháng này', label: t('Tháng này') },
+    { value: 'Tháng trước', label: t('Tháng trước') }
   ];
 
   const defaultFilters = ['all', 'Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
   if (!defaultFilters.includes(dateFilter)) {
-    dateOptions.push({ value: dateFilter, label: dateFilter });
+    dateOptions.push({ value: dateFilter, label: t(dateFilter) });
   }
 
-  dateOptions.push({ value: 'Tùy chỉnh', label: 'Tùy chỉnh...' });
+  dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
 
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) {
-      toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
+      toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
       return;
     }
     if (new Date(startDate) > new Date(endDate)) {
-      toast.error("Từ ngày không được lớn hơn Đến ngày");
+      toast.error(t("Từ ngày không được lớn hơn Đến ngày"));
       return;
     }
-    const label = `${startDate} đến ${endDate}`;
+    const label = `${startDate} ${t('đến')} ${endDate}`;
     updateParams('date', label);
     setShowDateModal(false);
   };
@@ -266,7 +268,7 @@ export const Tickets = () => {
         if (res.consultants) setConsultantOptions(res.consultants);
       }
     } catch (e: any) {
-      toast.error('Lỗi tải ticket: ' + e.message);
+      toast.error(t('Lỗi tải ticket: ') + e.message);
     }
     setLoading(false);
   };
@@ -371,14 +373,14 @@ export const Tickets = () => {
         })
       });
       if (res.success) {
-        toast.success('Đã duyệt đền bù Data!');
+        toast.success(t('Đã duyệt đền bù Data!'));
         window.dispatchEvent(new Event('ticket-resolved'));
         fetchReports();
       } else {
-        toast.error(res.message || 'Có lỗi xảy ra');
+        toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsActioning(null);
   };
@@ -402,14 +404,14 @@ export const Tickets = () => {
         body: JSON.stringify({ id: rejectingId, reject_reason: rejectReason })
       });
       if (res.success) {
-        toast.success('Đã từ chối báo cáo!');
+        toast.success(t('Đã từ chối báo cáo!'));
         window.dispatchEvent(new Event('ticket-resolved'));
         fetchReports();
       } else {
-        toast.error(res.message || 'Có lỗi xảy ra');
+        toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsActioning(null);
   };
@@ -424,14 +426,14 @@ export const Tickets = () => {
         body: JSON.stringify({ consultant_id: quickMessageTarget.consultant_id, message: quickMessageText })
       });
       if (res.success) {
-        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
+        toast.success(res.message || t('Đã gửi tin nhắn thành công!'));
         setQuickMessageOpen(false);
         setQuickMessageText('');
       } else {
-        toast.error(res.message || 'Lỗi khi gửi tin');
+        toast.error(res.message || t('Lỗi khi gửi tin'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsSendingMsg(false);
   };
@@ -450,8 +452,8 @@ export const Tickets = () => {
       });
       if (res.success) {
         toast.success(compensate 
-          ? 'Giao lại Tư vấn viên & Đền bù thành công!' 
-          : 'Giao lại Tư vấn viên thành công!'
+          ? t('Giao lại Tư vấn viên & Đền bù thành công!') 
+          : t('Giao lại Tư vấn viên thành công!')
         );
         setSelectedLead(null);
         setReassignConsId('');
@@ -459,10 +461,10 @@ export const Tickets = () => {
         fetchReports();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
-        toast.error('Lỗi: ' + (res.message || 'Không thể giao lại'));
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể giao lại')));
       }
     } catch (err: any) {
-      toast.error('Đã xảy ra lỗi: ' + err.message);
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
     }
     setIsReassigning(false);
   };
@@ -470,7 +472,7 @@ export const Tickets = () => {
   const handleBlockLead = async () => {
     if (!selectedLead) return;
     if (!blockReason.trim()) {
-      toast.error('Vui lòng nhập lý do chặn.');
+      toast.error(t('Vui lòng nhập lý do chặn.'));
       return;
     }
     setIsBlocking(true);
@@ -484,7 +486,7 @@ export const Tickets = () => {
         })
       });
       if (res.success) {
-        toast.success('Chặn khách hàng và đưa vào Blacklist thành công!');
+        toast.success(t('Chặn khách hàng và đưa vào Blacklist thành công!'));
         setSelectedLead(null);
         setConfirmBlockOpen(false);
         setBlockReason('');
@@ -492,17 +494,17 @@ export const Tickets = () => {
         fetchReports();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
-        toast.error('Lỗi: ' + (res.message || 'Không thể chặn khách hàng'));
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể chặn khách hàng')));
       }
     } catch (err: any) {
-      toast.error('Đã xảy ra lỗi: ' + err.message);
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
     }
     setIsBlocking(false);
   };
 
 
   const roundOptions = [
-    { value: 'all', label: 'Tất cả các vòng', icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả các vòng'), icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...rounds.map(r => ({
       value: Number(r.id),
       label: r.round_name,
@@ -511,7 +513,7 @@ export const Tickets = () => {
   ];
 
   const saleOptions = [
-    { value: 'all', label: 'Tất cả Salepersons', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả Salepersons'), icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...allConsultants.map(c => ({
       value: Number(c.id),
       label: c.name,
@@ -520,7 +522,7 @@ export const Tickets = () => {
   ];
 
   const connectionOptions = [
-    { value: 'all', label: 'Tất cả các nguồn', icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả các nguồn'), icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...connections.map(conn => ({
       value: Number(conn.id),
       label: conn.sheet_name,
@@ -539,13 +541,13 @@ export const Tickets = () => {
         })
       });
       if (res.success) {
-        toast.success("Đã lưu cấu hình Tự động duyệt ticket thành công!");
+        toast.success(t("Đã lưu cấu hình Tự động duyệt ticket thành công!"));
         setShowAutoApproveModal(false);
       } else {
-        toast.error("Lỗi khi lưu cấu hình!");
+        toast.error(t("Lỗi khi lưu cấu hình!"));
       }
     } catch (e: any) {
-      toast.error("Lỗi kết nối: " + e.message);
+      toast.error(t("Lỗi kết nối: ") + e.message);
     }
     setSavingSettings(false);
   };
@@ -569,24 +571,24 @@ export const Tickets = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <TicketIcon size={28} color="var(--color-primary)" /> Ticket Lỗi Data
+            <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
           </h1>
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên
+            {t('Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên')}
           </p>
         </div>
         <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {FILTER_TABS.map(tab => (
             <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
-              {tab.label} {`(${stats[tab.key]})`}
+              {t(tab.label)} {`(${stats[tab.key]})`}
             </button>
           ))}
-          <button onClick={fetchReports} disabled={loading} title="Làm mới" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+          <button onClick={fetchReports} disabled={loading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
             <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           </button>
           <button
             onClick={() => setShowSettingsModal(true)}
-            title="Thiết lập thông báo Ticket"
+            title={t("Thiết lập thông báo Ticket")}
             style={{
               padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-primary)',
               background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
@@ -594,7 +596,7 @@ export const Tickets = () => {
               fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s'
             }}
           >
-            <Settings2 size={14} /> Cài đặt thông báo
+            <Settings2 size={14} /> {t('Cài đặt thông báo')}
           </button>
 
           <div style={{
@@ -604,7 +606,7 @@ export const Tickets = () => {
             display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4
           }}>
             {pendingCount > 0 ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
-            {pendingCount} chờ duyệt
+            {pendingCount} {t('chờ duyệt')}
           </div>
         </div>
 
@@ -616,7 +618,7 @@ export const Tickets = () => {
               <CustomSelect
                 options={FILTER_TABS.map(tab => ({
                   value: tab.key,
-                  label: `${tab.label} (${stats[tab.key] || 0})`,
+                  label: `${t(tab.label)} (${stats[tab.key] || 0})`,
                   icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
                 }))}
                 value={activeFilter}
@@ -628,7 +630,7 @@ export const Tickets = () => {
             {/* Filter Toggle Button (Icon only) */}
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
-              title={showMobileFilters ? "Ẩn bộ lọc" : "Hiện bộ lọc"}
+              title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
               style={{
                 padding: 0,
                 borderRadius: 8,
@@ -652,7 +654,7 @@ export const Tickets = () => {
             <button
               onClick={fetchReports}
               disabled={loading}
-              title="Làm mới"
+              title={t("Làm mới")}
               style={{
                 padding: 0,
                 borderRadius: 8,
@@ -674,7 +676,7 @@ export const Tickets = () => {
             {/* Settings Button */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              title="Thiết lập thông báo Ticket"
+              title={t("Thiết lập thông báo Ticket")}
               style={{
                 padding: 0,
                 borderRadius: 8,
@@ -708,7 +710,7 @@ export const Tickets = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
           <Filter size={14} />
-          <span>Bộ lọc</span>
+          <span>{t('Bộ lọc')}</span>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
@@ -717,7 +719,7 @@ export const Tickets = () => {
         <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <CustomSelect
             options={[
-              { value: '', label: 'Tất cả Saleperson', icon: <Users size={16} /> },
+              { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
               ...consultantOptions.map(name => {
                 const matched = allConsultants.find(c => c.name === name);
                 return {
@@ -769,7 +771,7 @@ export const Tickets = () => {
               boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
               transition: 'all 0.15s'
             }}>
-            ✕ Xóa lọc
+            ✕ {t('Xóa lọc')}
           </button>
         )}
 
@@ -782,7 +784,7 @@ export const Tickets = () => {
           {/* Auto duyệt Toggle */}
           <div 
             onClick={() => setShowAutoApproveModal(true)}
-            title="Cấu hình quy tắc tự động duyệt"
+            title={t("Cấu hình quy tắc tự động duyệt")}
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -814,7 +816,7 @@ export const Tickets = () => {
                 textDecorationStyle: 'dotted'
               }}
             >
-              Auto duyệt
+              {t('Auto duyệt')}
             </span>
             <div 
               style={{
@@ -835,7 +837,7 @@ export const Tickets = () => {
           <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
           <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-            Tổng cộng: {totalCount} tickets
+            {t('Tổng cộng:')} {totalCount} {t('tickets')}
           </span>
         </div>
       </div>
@@ -850,10 +852,10 @@ export const Tickets = () => {
               <CheckCircle size={40} color="#10b981" />
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-              {hasActiveFilters ? 'Không có kết quả phù hợp' : 'Chưa có báo cáo lỗi nào'}
+              {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
             </h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
-              {hasActiveFilters ? 'Thử thay đổi bộ lọc để tìm kết quả khác.' : 'Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.'}
+              {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
             </p>
           </div>
         ) : (
@@ -861,11 +863,11 @@ export const Tickets = () => {
             <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thông tin Lead</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tư vấn viên</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Vòng phân bổ</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Lý do lỗi</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>Thao tác</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Thông tin Lead')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tư vấn viên')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Vòng phân bổ')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do lỗi')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>{t('Thao tác')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -930,24 +932,24 @@ export const Tickets = () => {
                           background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
                           color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
                         }}>
-                          {r.status === 'pending' ? 'Chờ duyệt' : r.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+                          {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
                         </div>
                         {r.status === 'rejected' && r.reject_reason && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                            Lý do: {r.reject_reason}
+                            {t('Lý do:')} {r.reject_reason}
                           </div>
                         )}
                         {r.status === 'approved' && r.approval_reason && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                            Lý do: {r.approval_reason}
+                            {t('Lý do:')} {r.approval_reason}
                           </div>
                         )}
                       </div>
                       {r.status !== 'pending' && (
                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Avatar src={r.resolved_by_avatar} name={r.resolved_by || 'Hệ thống'} size={16} />
+                          <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
                           <span>
-                            {r.status === 'approved' ? 'Duyệt' : 'Từ chối'} bởi: <strong style={{ color: 'var(--color-text-muted)' }}>{r.resolved_by || 'Hệ thống'}</strong>
+                            {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
                           </span>
                           {r.resolved_at && (
                             <>
@@ -962,26 +964,26 @@ export const Tickets = () => {
                       {r.status === 'pending' ? (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
                               <Bell size={14} />
                             </button>
                           )}
                           <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
-                            Từ chối
+                            {t('Từ chối')}
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
-                            {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
+                            {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
                           </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
                           {r.zalo_chat_id && (
-                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title="Nhắn Zalo Bot cho Sale">
+                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
                               <Bell size={14} />
                             </button>
                           )}
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? '#10b981' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {r.status === 'approved' ? <><CheckCircle size={14} /> Đã Đền Bù</> : 'Đã Từ chối'}
+                            {r.status === 'approved' ? <><CheckCircle size={14} /> {t('Đã Đền Bù')}</> : t('Đã Từ chối')}
                           </div>
                         </div>
                       )}
@@ -997,7 +999,7 @@ export const Tickets = () => {
         {!loading && totalPages > 0 && (
           <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+              {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button 
@@ -1053,12 +1055,12 @@ export const Tickets = () => {
       <CustomModal 
         isOpen={showDateModal} 
         onClose={() => setShowDateModal(false)} 
-        title="Tùy chỉnh thời gian"
+        title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
-            <label className="form-label">Từ ngày</label>
+            <label className="form-label">{t("Từ ngày")}</label>
             <input 
               type="date" 
               className="form-input" 
@@ -1067,7 +1069,7 @@ export const Tickets = () => {
             />
           </div>
           <div>
-            <label className="form-label">Đến ngày</label>
+            <label className="form-label">{t("Đến ngày")}</label>
             <input 
               type="date" 
               className="form-input" 
@@ -1076,24 +1078,24 @@ export const Tickets = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDateModal(false)}>Hủy</button>
-            <button className="btn primary" onClick={handleCustomDateSubmit}>Áp dụng</button>
+            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
+            <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
           </div>
         </div>
       </CustomModal>
 
       {/* Reject Modal */}
-      <CustomModal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="Từ chối Báo cáo Lỗi">
+      <CustomModal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title={t("Từ chối Báo cáo Lỗi")}>
         <form onSubmit={submitReject}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-              Vui lòng nhập lý do từ chối để Tư vấn viên biết lý do không được đền bù Data:
+              {t("Vui lòng nhập lý do từ chối để Tư vấn viên biết lý do không được đền bù Data:")}
             </p>
             <div className="form-group">
-              <label className="form-label">Lý do từ chối <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <label className="form-label">{t("Lý do từ chối")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <textarea
                 className="form-input"
-                placeholder="Ví dụ: Khách bảo có nhu cầu nhưng Sale tư vấn chưa tốt..."
+                placeholder={t("Ví dụ: Khách bảo có nhu cầu nhưng Sale tư vấn chưa tốt...")}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 required
@@ -1102,9 +1104,9 @@ export const Tickets = () => {
               />
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setRejectModalOpen(false)}>Hủy</button>
+              <button type="button" className="btn ghost" onClick={() => setRejectModalOpen(false)}>{t("Hủy")}</button>
               <button type="submit" className="btn primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} disabled={isActioning !== null}>
-                {isActioning ? 'Đang xử lý...' : 'Xác nhận Từ chối'}
+                {isActioning ? t("Đang xử lý...") : t("Xác nhận Từ chối")}
               </button>
             </div>
           </div>
@@ -1112,15 +1114,15 @@ export const Tickets = () => {
       </CustomModal>
 
       {/* Quick Message Modal */}
-      <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`Nhắn tin cho ${quickMessageTarget?.name || 'Sale'}`}>
+      <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`${t("Nhắn tin cho")} ${quickMessageTarget?.name || t("Sale")}`}>
         <form onSubmit={handleSendQuickMessage}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>{t("Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]")}</p>
             <div className="form-group">
-              <label className="form-label">Nội dung tin nhắn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <label className="form-label">{t("Nội dung tin nhắn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <textarea
                 className="form-input"
-                placeholder="Nhập nội dung cần thông báo cho Sale..."
+                placeholder={t("Nhập nội dung cần thông báo cho Sale...")}
                 value={quickMessageText}
                 onChange={e => setQuickMessageText(e.target.value)}
                 required
@@ -1129,9 +1131,9 @@ export const Tickets = () => {
               />
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>Hủy</button>
+              <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>{t("Hủy")}</button>
               <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
-                {isSendingMsg ? 'Đang gửi...' : 'Gửi tin nhắn'}
+                {isSendingMsg ? t("Đang gửi...") : t("Gửi tin nhắn")}
               </button>
             </div>
           </div>
@@ -1139,17 +1141,17 @@ export const Tickets = () => {
       </CustomModal>
 
       {/* Approve Modal */}
-      <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title="Duyệt & Đền Bù Data">
+      <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title={t("Duyệt & Đền Bù Data")}>
         <form onSubmit={submitApprove}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-              Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.
+              {t("Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.")}
             </p>
             <div className="form-group">
-              <label className="form-label">Lý do duyệt (không bắt buộc)</label>
+              <label className="form-label">{t("Lý do duyệt (không bắt buộc)")}</label>
               <textarea
                 className="form-input"
-                placeholder="Ví dụ: Đã kiểm tra đúng là khách hàng trùng hoặc thuê bao..."
+                placeholder={t("Ví dụ: Đã kiểm tra đúng là khách hàng trùng hoặc thuê bao...")}
                 value={approveReason}
                 onChange={(e) => setApproveReason(e.target.value)}
                 autoFocus
@@ -1159,11 +1161,11 @@ export const Tickets = () => {
             {reports.find(r => Number(r.id) === Number(approvingId))?.reason?.includes('Trùng của người khác') && (
               <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                  Nhắc lại cho TVV khác (Tùy chọn)
+                  {t("Nhắc lại cho TVV khác (Tùy chọn)")}
                 </label>
                 <CustomSelect
                   options={[
-                    { value: '', label: 'Không nhắc lại cho TVV khác', icon: null },
+                    { value: '', label: t('Không nhắc lại cho TVV khác'), icon: null },
                     ...allConsultants
                       .filter(c => {
                         const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
@@ -1180,18 +1182,18 @@ export const Tickets = () => {
                   onChange={(val) => setReassignConsultantId(val ? String(val) : '')}
                   showAvatars={true}
                   searchable={true}
-                  placeholder="Chọn TVV khác..."
+                  placeholder={t("Chọn TVV khác...")}
                   width="100%"
                 />
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).
+                  {t("Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).")}
                 </p>
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>Hủy</button>
+              <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>{t("Hủy")}</button>
               <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
-                {isActioning ? 'Đang xử lý...' : 'Xác nhận duyệt'}
+                {isActioning ? t("Đang xử lý...") : t("Xác nhận duyệt")}
               </button>
             </div>
           </div>
@@ -1205,7 +1207,7 @@ export const Tickets = () => {
           setSelectedLead(null);
           setReassignConsId('');
         }}
-        title="Chi tiết Khách hàng"
+        title={t("Chi tiết Khách hàng")}
         width="850px"
       >
         {selectedLead && (
@@ -1224,7 +1226,7 @@ export const Tickets = () => {
                             setCompensateBlock(selectedLead.assigned_to_name !== '-');
                             setConfirmBlockOpen(true);
                           }}
-                          title="Chặn & Blacklist khách hàng này"
+                          title={t("Chặn & Blacklist khách hàng này")}
                           style={{
                             background: 'var(--color-danger-light)',
                             border: '1px solid var(--color-danger-light)',
@@ -1250,7 +1252,7 @@ export const Tickets = () => {
                           }}
                         >
                           <AlertTriangle size={12} />
-                          Chặn
+                          {t("Chặn")}
                         </button>
                       )}
                     </div>
@@ -1260,13 +1262,13 @@ export const Tickets = () => {
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Phone</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> {t("Phone")}</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                     </div>
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> {t("Email")}</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
                     </div>
@@ -1275,22 +1277,22 @@ export const Tickets = () => {
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> Nguồn Data</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t("Nguồn Data")}</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> Trạng thái</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
                     <div>
-                      {selectedLead.status === 'assigned' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>Đã chia</span>}
-                      {selectedLead.status === 'compensation' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>Data Bù</span>}
-                      {selectedLead.status === 'pending_work_hours' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ giờ làm</span>}
-                      {selectedLead.status === 'error' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Ticket</span>}
-                      {selectedLead.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>Chờ chia</span>}
-                      {selectedLead.status === 'reminder' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: theme === 'dark' ? 'rgba(219, 39, 119, 0.15)' : '#fce7f3', color: theme === 'dark' ? '#f472b6' : '#db2777' }}>Nhắc lại</span>}
-                      {selectedLead.status === 'duplicate' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Trùng lặp</span>}
-                      {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Quy định 6 tháng</span>}
-                      {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>Chỉ đồng bộ</span>}
-                      {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>Blacklist</span>}
+                      {selectedLead.status === 'assigned' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>{t("Đã chia")}</span>}
+                      {selectedLead.status === 'compensation' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>{t("Data Bù")}</span>}
+                      {selectedLead.status === 'pending_work_hours' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("Chờ giờ làm")}</span>}
+                      {selectedLead.status === 'error' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>{t("Ticket")}</span>}
+                      {selectedLead.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("Chờ chia")}</span>}
+                      {selectedLead.status === 'reminder' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: theme === 'dark' ? 'rgba(219, 39, 119, 0.15)' : '#fce7f3', color: theme === 'dark' ? '#f472b6' : '#db2777' }}>{t("Nhắc lại")}</span>}
+                      {selectedLead.status === 'duplicate' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>{t("Trùng lặp")}</span>}
+                      {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Quy định 6 tháng")}</span>}
+                      {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Chỉ đồng bộ")}</span>}
+                      {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>{t("Blacklist")}</span>}
                     </div>
                   </div>
                 </div>
@@ -1434,7 +1436,7 @@ export const Tickets = () => {
                                       <IconComponent size={18} strokeWidth={2.5} />
                                     </div>
                                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: colors.title, letterSpacing: '-0.01em' }}>
-                                      {isApproved ? 'Thông tin lỗi - Đã Duyệt' : 'Thông tin lỗi - Từ Chối'}
+                                      {isApproved ? t('Thông tin lỗi - Đã Duyệt') : t('Thông tin lỗi - Từ Chối')}
                                     </span>
                                   </div>
                                   <span style={{ 
@@ -1448,14 +1450,14 @@ export const Tickets = () => {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
                                   }}>
-                                    {isApproved ? 'Đã duyệt' : 'Từ chối'}
+                                    {isApproved ? t('Đã duyệt') : t('Từ chối')}
                                   </span>
                                 </div>
 
                                 {/* Content block */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                   <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? 'var(--color-text)' : '#1e293b', fontWeight: 500, lineHeight: 1.5 }}>
-                                    Lỗi: <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
+                                    {t("Lỗi:")} <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
                                   </div>
                                   {actionReason && (
                                     <div style={{ 
@@ -1469,7 +1471,7 @@ export const Tickets = () => {
                                       border: theme === 'dark' ? '1px dashed var(--color-border)' : '1px dashed rgba(0, 0, 0, 0.05)',
                                       marginTop: 2
                                     }}>
-                                      <strong>{reasonLabel}</strong> {cleanReason}
+                                      <strong>{t(reasonLabel)}</strong> {cleanReason}
                                     </div>
                                   )}
                                 </div>
@@ -1485,13 +1487,13 @@ export const Tickets = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar src={getUserAvatarByName(displayAdmin)} name={displayAdmin} size={16} />
-                                    <span>Xử lý bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
+                                    <Avatar src={getUserAvatarByName(displayAdmin)} name={t(displayAdmin)} size={16} />
+                                    <span>{t("Xử lý bởi:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{t(displayAdmin)}</strong></span>
                                   </div>
                                   <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayTime}</strong></span>
+                                    <span>{t("Thời gian:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{t(displayTime)}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1525,19 +1527,19 @@ export const Tickets = () => {
                           }}>
                             <Tag size={18} strokeWidth={2.5} />
                           </div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>Ghi chú & Phân loại</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t("Ghi chú & Phân loại")}</span>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>Loại Data:</span>
-                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : 'Không có'}</span>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
+                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
                           
                           <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>Nội dung ghi chú:</span>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t("Nội dung ghi chú:")}</span>
                             <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>Không có ghi chú thêm</em>}
+                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t("Không có ghi chú thêm")}</em>}
                             </div>
                           </div>
                         </div>
@@ -1600,7 +1602,7 @@ export const Tickets = () => {
                                       <ShieldAlert size={18} strokeWidth={2.5} />
                                     </div>
                                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: blacklistColors.title, letterSpacing: '-0.01em' }}>
-                                      Thông tin chặn (Blacklist)
+                                      {t("Thông tin chặn (Blacklist)")}
                                     </span>
                                   </div>
                                   <span style={{ 
@@ -1614,7 +1616,7 @@ export const Tickets = () => {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
                                   }}>
-                                    Bị Chặn
+                                    {t("Bị Chặn")}
                                   </span>
                                 </div>
 
@@ -1630,7 +1632,7 @@ export const Tickets = () => {
                                       borderRadius: '8px',
                                       border: theme === 'dark' ? '1px dashed var(--color-border)' : '1px dashed rgba(0, 0, 0, 0.05)'
                                     }}>
-                                      <strong>Lý do chặn:</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
+                                      <strong>{t("Lý do chặn:")}</strong> <span style={{ color: blacklistColors.text, fontWeight: 600 }}>{parsed.reason}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1645,13 +1647,13 @@ export const Tickets = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
-                                    <span>Chặn bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
+                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={t(parsed.admin)} size={16} />
+                                    <span>{t("Chặn bởi:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{t(parsed.admin)}</strong></span>
                                   </div>
                                   <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
                                     <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>Thời gian: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
+                                    <span>{t("Thời gian:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{t(parsed.time)}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -1666,33 +1668,33 @@ export const Tickets = () => {
 
               {/* Cột Phải: Phân bổ */}
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>Thông tin Phân bổ</h3>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t("Thông tin Phân bổ")}</h3>
                 
                 {selectedLead.assigned_to_name !== '-' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Người tiếp nhận</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t("Người tiếp nhận")}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
                       </div>
                     </div>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> Vòng chia</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t("Vòng chia")}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.round_name}</div>
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
-                          <Clock size={12} /> Thời gian nhận
+                          <Clock size={12} /> {t("Thời gian nhận")}
                         </div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at}</div>
                       </div>
                       {selectedLead.status === 'reminder' && selectedLead.last_activity_at && (
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
-                            <Clock size={12} /> Thời gian nhắc lại từ:
+                            <Clock size={12} /> {t("Thời gian nhắc lại từ:")}
                           </div>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f59e0b' }}>
                             {selectedLead.last_activity_at}
@@ -1703,7 +1705,7 @@ export const Tickets = () => {
                   </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, border: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                    Chưa có thông tin phân bổ cho Khách hàng này.
+                    {t("Chưa có thông tin phân bổ cho Khách hàng này.")}
                   </div>
                 )}
 
@@ -1711,15 +1713,15 @@ export const Tickets = () => {
                 {user?.role === 'admin' && (
                   <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <User size={16} color="var(--color-primary)" /> Giao lại Tư vấn viên
+                      <User size={16} color="var(--color-primary)" /> {t("Giao lại Tư vấn viên")}
                     </h4>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
-                      Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).
+                      {t("Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).")}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <CustomSelect 
                         options={[
-                          { value: '', label: '-- Chọn Tư vấn viên --' },
+                          { value: '', label: t('-- Chọn Tư vấn viên --') },
                           ...allConsultants
                             .filter(c => c.status === 'active')
                             .map(c => ({
@@ -1742,7 +1744,7 @@ export const Tickets = () => {
                         style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
                       >
                         {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
-                        Xác nhận giao
+                        {t("Xác nhận giao")}
                       </button>
                     </div>
                   </div>
@@ -1758,7 +1760,7 @@ export const Tickets = () => {
       <CustomModal
         isOpen={confirmReassignOpen}
         onClose={() => setConfirmReassignOpen(false)}
-        title="Xác nhận Giao lại Lead"
+        title={t("Xác nhận Giao lại Lead")}
         width={500}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
@@ -1771,18 +1773,18 @@ export const Tickets = () => {
             </div>
             <div>
               <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
-                Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead <strong>"{selectedLead?.name}"</strong> sang cho Tư vấn viên <strong>"{allConsultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
+                {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{allConsultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
               </p>
               {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                  Lead này hiện đang thuộc về: <strong>{selectedLead.assigned_to_name}</strong>. Bạn muốn bù data cho <strong>{selectedLead.assigned_to_name}</strong> chứ?
+                  {t('Lead này hiện đang thuộc về:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Bạn muốn bù data cho')} <strong>{selectedLead.assigned_to_name}</strong> {t('chứ?')}
                 </p>
               )}
             </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>Hủy</button>
+            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t("Hủy")}</button>
             
             {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
               <>
@@ -1792,7 +1794,7 @@ export const Tickets = () => {
                   style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Chuyển luôn, Không bù
+                  {t("Chuyển luôn, Không bù")}
                 </button>
                 <button 
                   className="btn success" 
@@ -1800,7 +1802,7 @@ export const Tickets = () => {
                   style={{ background: '#10b981', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
-                  Chuyển & Bù cho sale cũ
+                  {t("Chuyển & Bù cho sale cũ")}
                 </button>
               </>
             ) : (
@@ -1824,7 +1826,7 @@ export const Tickets = () => {
           setBlockReason('');
           setCompensateBlock(false);
         }}
-        title="Xác nhận Chặn & Blacklist"
+        title={t("Xác nhận Chặn & Blacklist")}
         width="550px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
@@ -1837,16 +1839,16 @@ export const Tickets = () => {
             </div>
             <div>
               <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
-                Bạn có chắc chắn muốn chặn khách hàng "{selectedLead?.name}"?
+                {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name || ''}"?
               </p>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
-                Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.
+                {t("Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.")}
               </p>
             </div>
           </div>
 
           <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Hình thức chặn:</div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Hình thức chặn:")}</div>
             
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
               <input 
@@ -1857,8 +1859,8 @@ export const Tickets = () => {
                 style={{ marginTop: '3px' }}
               />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chỉ đưa vào danh sách đen (Blacklist)</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Không thực hiện đền bù data cho Sale.</p>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chỉ đưa vào danh sách đen (Blacklist)")}</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t("Không thực hiện đền bù data cho Sale.")}</p>
               </div>
             </label>
 
@@ -1872,26 +1874,26 @@ export const Tickets = () => {
                 style={{ marginTop: '3px' }}
               />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Chặn và Bù vòng cho Sale</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chặn và Bù vòng cho Sale")}</span>
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                  Đền bù 1 lượt data vòng <strong>"{selectedLead?.round_name}"</strong> cho Sale <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                  {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
                 </p>
               </div>
             </label>
             
             {selectedLead?.assigned_to_name === '-' && (
               <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.
+                <AlertTriangle size={12} /> {t("Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.")}
               </div>
             )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Lý do chặn <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Lý do chặn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <textarea
               value={blockReason}
               onChange={(e) => setBlockReason(e.target.value)}
-              placeholder="Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)"
+              placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
               style={{
                 width: '100%',
                 height: '80px',
@@ -1915,7 +1917,7 @@ export const Tickets = () => {
               }}
               disabled={isBlocking}
             >
-              Hủy
+              {t("Hủy")}
             </button>
             <button 
               className="btn danger" 
@@ -1924,7 +1926,7 @@ export const Tickets = () => {
               style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
-              Xác nhận chặn
+              {t("Xác nhận chặn")}
             </button>
           </div>
         </div>
@@ -1934,7 +1936,7 @@ export const Tickets = () => {
       <CustomModal
         isOpen={showAutoApproveModal}
         onClose={() => setShowAutoApproveModal(false)}
-        title="Cấu hình Tự Động Duyệt Ticket"
+        title={t("Cấu hình Tự Động Duyệt Ticket")}
         width="680px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
@@ -1946,9 +1948,9 @@ export const Tickets = () => {
             borderRadius: 'var(--radius-lg)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>Trạng thái tự động duyệt ticket</span>
+              <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{t("Trạng thái tự động duyệt ticket")}</span>
               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.
+                {t("Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.")}
               </span>
             </div>
             <div 
@@ -1974,7 +1976,7 @@ export const Tickets = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                  Danh sách luật duyệt tự động
+                  {t("Danh sách luật duyệt tự động")}
                 </span>
                 <button
                   type="button"
@@ -1991,7 +1993,7 @@ export const Tickets = () => {
                   className="btn primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
                 >
-                  <Plus size={16} /> Thêm Luật Mới
+                  <Plus size={16} /> {t("Thêm Luật Mới")}
                 </button>
               </div>
 
@@ -2000,22 +2002,22 @@ export const Tickets = () => {
                   textAlign: 'center', padding: '3rem 2rem', border: '2px dashed var(--color-border)',
                   borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
                 }}>
-                  Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.
+                  {t("Chưa có luật tự động duyệt nào. Nhấp \"Thêm Luật Mới\" để bắt đầu thiết lập.")}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
                   {ticketAutoApproveRules.map((rule) => {
                     const targetRounds = rule.rounds.includes('all')
-                      ? 'Tất cả vòng'
-                      : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
+                      ? t('Tất cả vòng')
+                      : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || t('Không xác định');
 
                     const targetSales = rule.sales.includes('all')
-                      ? 'Tất cả Salepersons'
-                      : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
+                      ? t('Tất cả Salepersons')
+                      : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || t('Không xác định');
 
                     const targetConns = (rule.connections || []).includes('all') || !rule.connections
-                      ? 'Tất cả nguồn'
-                      : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || 'Không xác định';
+                      ? t('Tất cả nguồn')
+                      : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || t('Không xác định');
 
                     const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
 
@@ -2036,7 +2038,7 @@ export const Tickets = () => {
                               {rule.name}
                               {!rule.active && (
                                 <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
-                                  Tắt
+                                  {t("Tắt")}
                                 </span>
                               )}
                             </h4>
@@ -2076,19 +2078,19 @@ export const Tickets = () => {
                                 setRuleModalOpen(true);
                               }}
                               style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title="Chỉnh sửa"
+                              title={t("Chỉnh sửa")}
                             >
                               <Edit2 size={15} />
                             </button>
                             <button
                               type="button"
                               onClick={() => {
-                                if (window.confirm(`Bạn có chắc chắn muốn xóa luật "${rule.name}"?`)) {
+                                if (window.confirm(t('Bạn có chắc chắn muốn xóa luật') + ` "${rule.name}"?`)) {
                                   setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
                                 }
                               }}
                               style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title="Xóa"
+                              title={t("Xóa")}
                             >
                               <Trash2 size={15} />
                             </button>
@@ -2098,22 +2100,22 @@ export const Tickets = () => {
                         {/* Details/Tags */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
                           <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>Vòng:</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Vòng:")}</span>
                             <span style={{ fontWeight: 600 }}>{targetRounds}</span>
                           </div>
                           <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>Sales:</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Sales:")}</span>
                             <span style={{ fontWeight: 600 }}>{targetSales}</span>
                           </div>
                           <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>Nguồn:</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Nguồn:")}</span>
                             <span style={{ fontWeight: 600 }}>{targetConns}</span>
                           </div>
                         </div>
 
                         {/* Keywords list */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>Từ khóa ({kwList.length}):</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>{t("Từ khóa")} ({kwList.length}):</span>
                           {kwList.map((kw: string, i: number) => (
                             <span
                               key={i}
@@ -2135,14 +2137,14 @@ export const Tickets = () => {
           )}
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-            <button onClick={() => setShowAutoApproveModal(false)} className="btn ghost" type="button">Hủy</button>
+            <button onClick={() => setShowAutoApproveModal(false)} className="btn ghost" type="button">{t("Hủy")}</button>
             <button
               onClick={handleSaveAutoApprove}
               disabled={savingSettings}
               className="btn primary"
               type="button"
             >
-              <Save size={16} /> {savingSettings ? 'Đang lưu...' : 'Lưu cấu hình'}
+              <Save size={16} /> {savingSettings ? t('Đang lưu...') : t('Lưu cấu hình')}
             </button>
           </div>
         </div>
@@ -2152,17 +2154,17 @@ export const Tickets = () => {
       <CustomModal
         isOpen={ruleModalOpen}
         onClose={() => setRuleModalOpen(false)}
-        title={editingRule ? "Chỉnh sửa Luật Tự Động Duyệt" : "Thêm Luật Tự Động Duyệt Mới"}
+        title={editingRule ? t("Chỉnh sửa Luật Tự Động Duyệt") : t("Thêm Luật Tự Động Duyệt Mới")}
         width="620px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
           {/* Name */}
           <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>Tên luật duyệt tự động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t("Tên luật duyệt tự động")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <input
               type="text"
               className="form-input"
-              placeholder="Ví dụ: Lỗi số điện thoại — Vòng A"
+              placeholder={t("Ví dụ: Lỗi số điện thoại — Vòng A")}
               value={ruleName}
               onChange={e => setRuleName(e.target.value)}
             />
@@ -2171,54 +2173,54 @@ export const Tickets = () => {
           {/* Scope: Rounds */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Vòng phân bổ"
+              label={t("Áp dụng cho Vòng phân bổ")}
               options={roundOptions}
               value={ruleRounds}
               onChange={setRuleRounds}
               multiple={true}
               searchable={true}
-              placeholder="Chọn vòng phân bổ..."
+              placeholder={t("Chọn vòng phân bổ...")}
             />
           </div>
 
           {/* Scope: Sales */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Tư vấn viên (Sales)"
+              label={t("Áp dụng cho Tư vấn viên (Sales)")}
               options={saleOptions}
               value={ruleSales}
               onChange={setRuleSales}
               multiple={true}
               searchable={true}
-              placeholder="Chọn tư vấn viên..."
+              placeholder={t("Chọn tư vấn viên...")}
             />
           </div>
 
           {/* Scope: Sources (Sheet Connections) */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Nguồn dữ liệu (Sources)"
+              label={t("Áp dụng cho Nguồn dữ liệu (Sources)")}
               options={connectionOptions}
               value={ruleConnections}
               onChange={setRuleConnections}
               multiple={true}
               searchable={true}
-              placeholder="Chọn nguồn dữ liệu..."
+              placeholder={t("Chọn nguồn dữ liệu...")}
             />
           </div>
 
           {/* Keywords / Reasons */}
           <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t("Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy)")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <textarea
               className="form-input"
-              placeholder="Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được"
+              placeholder={t("Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được")}
               value={ruleKeywords}
               onChange={e => setRuleKeywords(e.target.value)}
               style={{ minHeight: 80, resize: 'vertical' }}
             />
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-              Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.
+              {t("Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.")}
             </span>
           </div>
 
@@ -2229,8 +2231,8 @@ export const Tickets = () => {
             borderRadius: 'var(--radius-lg)', marginTop: '0.25rem'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>Trạng thái hoạt động</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Kích hoạt hoặc tạm ngưng áp dụng luật này</span>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t("Trạng thái hoạt động")}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Kích hoạt hoặc tạm ngưng áp dụng luật này")}</span>
             </div>
             <div
               onClick={() => setRuleActive(!ruleActive)}
@@ -2257,30 +2259,30 @@ export const Tickets = () => {
               className="btn outline"
               onClick={() => setRuleModalOpen(false)}
             >
-              Hủy
+              {t("Hủy")}
             </button>
             <button
               type="button"
               className="btn primary"
               onClick={() => {
                 if (!ruleName.trim()) {
-                  toast.error("Vui lòng nhập tên luật!");
+                  toast.error(t("Vui lòng nhập tên luật!"));
                   return;
                 }
                 if (!ruleKeywords.trim()) {
-                  toast.error("Vui lòng nhập từ khóa duyệt!");
+                  toast.error(t("Vui lòng nhập từ khóa duyệt!"));
                   return;
                 }
                 if (ruleRounds.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một vòng áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một vòng áp dụng!"));
                   return;
                 }
                 if (ruleSales.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một Sale áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một Sale áp dụng!"));
                   return;
                 }
                 if (ruleConnections.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một nguồn áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một nguồn áp dụng!"));
                   return;
                 }
 
@@ -2300,15 +2302,15 @@ export const Tickets = () => {
 
                 if (editingRule) {
                   setTicketAutoApproveRules(prev => prev.map(r => r.id === editingRule.id ? newRule : r));
-                  toast.success("Đã cập nhật luật thành công!");
+                  toast.success(t("Đã cập nhật luật thành công!"));
                 } else {
                   setTicketAutoApproveRules(prev => [...prev, newRule]);
-                  toast.success("Đã thêm luật mới thành công!");
+                  toast.success(t("Đã thêm luật mới thành công!"));
                 }
                 setRuleModalOpen(false);
               }}
             >
-              Xác nhận
+              {t("Xác nhận")}
             </button>
           </div>
         </div>
@@ -2332,6 +2334,8 @@ export const Tickets = () => {
 // TicketSettingsModal — Chọn admin nhận email thông báo Ticket
 // ─────────────────────────────────────────────────────────────
 const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  const { t } = useLanguage();
+
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -2346,7 +2350,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
     ]).then(([accRes, settingsRes]) => {
       if (accRes.success) setAccounts(accRes.data);
       if (settingsRes.success) setSelectedIds((settingsRes.data ?? []).map((id: any) => Number(id)));
-    }).catch((e: any) => toast.error('Lỗi tải cấu hình: ' + e.message))
+    }).catch((e: any) => toast.error(t('Lỗi tải cấu hình: ') + e.message))
       .finally(() => setLoadingData(false));
   }, [open]);
 
@@ -2363,26 +2367,26 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
         body: JSON.stringify({ admin_ids: selectedIds })
       });
       if (res.success) {
-        toast.success('Đã lưu cài đặt thông báo Ticket!');
+        toast.success(t('Đã lưu cài đặt thông báo Ticket!'));
         onClose();
       } else {
-        toast.error(res.message || 'Lỗi lưu cài đặt');
+        toast.error(res.message || t('Lỗi lưu cài đặt'));
       }
     } catch (e: any) {
-      toast.error('Lỗi kết nối: ' + e.message);
+      toast.error(t('Lỗi kết nối: ') + e.message);
     }
     setSaving(false);
   };
 
   return (
-    <CustomModal isOpen={open} onClose={onClose} title="Cài đặt thông báo Ticket">
+    <CustomModal isOpen={open} onClose={onClose} title={t("Cài đặt thông báo Ticket")}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {loadingData ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Đang tải...</div>
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t("Đang tải...")}</div>
         ) : (
           <>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
-              Admin đầu tiên nhận email <strong>To:</strong> — Các admin còn lại nhận <strong>CC:</strong>. Admin phải có email mới có thể được chọn.
+              {t("Admin đầu tiên nhận email To: — Các admin còn lại nhận CC:. Admin phải có email mới có thể được chọn.")}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
@@ -2409,7 +2413,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>
                       <div style={{ fontSize: '0.8rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2 }}>
                         {noEmail
-                          ? <span style={{ color: 'var(--color-danger)' }}>⚠ Chưa cài email — không nhận được</span>
+                          ? <span style={{ color: 'var(--color-danger)' }}>{t("⚠ Chưa cài email — không nhận được")}</span>
                           : acc.email
                         }
                       </div>
@@ -2420,7 +2424,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       background: acc.role === 'admin' ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
                       color: acc.role === 'admin' ? 'var(--color-primary)' : '#10b981'
                     }}>
-                      {acc.role === 'admin' ? 'Admin' : 'Assistant'}
+                      {acc.role === 'admin' ? t('Admin') : t('Assistant')}
                     </span>
                     {/* Toggle switch */}
                     <div style={{
@@ -2438,21 +2442,21 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                 );
               })}
               {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Chưa có admin nào trong hệ thống</div>
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Chưa có admin nào trong hệ thống")}</div>
               )}
             </div>
           </>
         )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-          <button onClick={onClose} className="btn ghost" type="button">Hủy</button>
+          <button onClick={onClose} className="btn ghost" type="button">{t("Hủy")}</button>
           <button
             onClick={handleSave}
             disabled={saving || loadingData}
             className="btn primary"
             type="button"
           >
-            <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu cài đặt'}
+            <Save size={16} /> {saving ? t('Đang lưu...') : t('Lưu cài đặt')}
           </button>
         </div>
       </div>

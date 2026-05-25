@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Keyboard } from 'lucide-react';
@@ -116,6 +117,7 @@ const AppTabs = () => {
 const KeyboardShortcutsController = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
@@ -209,13 +211,13 @@ const KeyboardShortcutsController = () => {
       <CustomModal
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
-        title="Bảng phím tắt điều hướng nhanh"
+        title={t("Bảng phím tắt điều hướng nhanh")}
         width="650px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
             <Keyboard size={20} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Mẹo: Nhấn Alt + [Chữ cái] để chuyển hướng nhanh toàn hệ thống</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>{t("Mẹo: Nhấn Alt + [Chữ cái] để chuyển hướng nhanh toàn hệ thống")}</span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isSystemAdmin ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
@@ -223,27 +225,27 @@ const KeyboardShortcutsController = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
-                  Chung & Vận hành
+                  {t("Chung & Vận hành")}
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--color-text)' }}>Trang chủ Dashboard</span>
+                    <span style={{ color: 'var(--color-text)' }}>{t("Trang chủ Dashboard")}</span>
                     <kbd className="shortcuts-kbd">Alt + D</kbd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--color-text)' }}>Nhật ký Lead (Data)</span>
+                    <span style={{ color: 'var(--color-text)' }}>{t("Nhật ký Lead (Data)")}</span>
                     <kbd className="shortcuts-kbd">Alt + L</kbd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--color-text)' }}>Thêm Data (Lead) nhanh</span>
+                    <span style={{ color: 'var(--color-text)' }}>{t("Thêm Data (Lead) nhanh")}</span>
                     <kbd className="shortcuts-kbd">Alt + N</kbd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--color-text)' }}>Bản tin hoạt động hệ thống</span>
+                    <span style={{ color: 'var(--color-text)' }}>{t("Bản tin hoạt động hệ thống")}</span>
                     <kbd className="shortcuts-kbd">Alt + H</kbd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--color-text)' }}>Xem kịch bản trợ giúp này</span>
+                    <span style={{ color: 'var(--color-text)' }}>{t("Xem kịch bản trợ giúp này")}</span>
                     <kbd className="shortcuts-kbd">?</kbd>
                   </div>
                 </div>
@@ -252,19 +254,19 @@ const KeyboardShortcutsController = () => {
               {isSystemAdmin && (
                 <div>
                   <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
-                    Chia số & Đối soát
+                    {t("Chia số & Đối soát")}
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Vòng xoay chia số (Rounds)</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Vòng xoay chia số (Rounds)")}</span>
                       <kbd className="shortcuts-kbd">Alt + R</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Quy tắc chia số (Rules)</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Quy tắc chia số (Rules)")}</span>
                       <kbd className="shortcuts-kbd">Alt + W</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Đối soát Công bằng (Fair Share)</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Đối soát Công bằng (Fair Share)")}</span>
                       <kbd className="shortcuts-kbd">Alt + S</kbd>
                     </div>
                   </div>
@@ -277,15 +279,15 @@ const KeyboardShortcutsController = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
-                    Nhân sự & Tickets
+                    {t("Nhân sự & Tickets")}
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Quản lý Tư vấn viên (Sale)</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Quản lý Tư vấn viên (Sale)")}</span>
                       <kbd className="shortcuts-kbd">Alt + C</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Quản lý Tickets báo lỗi</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Quản lý Tickets báo lỗi")}</span>
                       <kbd className="shortcuts-kbd">Alt + T</kbd>
                     </div>
                   </div>
@@ -293,19 +295,19 @@ const KeyboardShortcutsController = () => {
 
                 <div>
                   <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px' }}>
-                    Cấu hình & Quản trị
+                    {t("Cấu hình & Quản trị")}
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Tích hợp API & Google Sheets</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Tích hợp API & Google Sheets")}</span>
                       <kbd className="shortcuts-kbd">Alt + I</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Cài đặt Hệ thống</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Cài đặt Hệ thống")}</span>
                       <kbd className="shortcuts-kbd">Alt + O</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>Tài khoản phân quyền</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Tài khoản phân quyền")}</span>
                       <kbd className="shortcuts-kbd">Alt + A</kbd>
                     </div>
                   </div>
@@ -315,7 +317,7 @@ const KeyboardShortcutsController = () => {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <button className="btn primary" onClick={() => setShowHelpModal(false)}>Đóng</button>
+            <button className="btn primary" onClick={() => setShowHelpModal(false)}>{t("Đóng")}</button>
           </div>
         </div>
       </CustomModal>
@@ -351,38 +353,40 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <Toaster position="top-right" />
-        <Router>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/report-data" element={<ReportData />} />
-              <Route path="/demo" element={<DemoEntry />} />
-              <Route path="/sale-portal" element={<SalePortal />} />
-              
-              {/* Admin only routes */}
-              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/consultants" element={<AppTabs />} />
-                <Route path="/rounds" element={<AppTabs />} />
-                <Route path="/tickets" element={<AppTabs />} />
-                <Route path="/rules" element={<AppTabs />} />
-                <Route path="/integrations" element={<AppTabs />} />
-                <Route path="/settings" element={<AppTabs />} />
-                <Route path="/accounts" element={<AppTabs />} />
-                <Route path="/fair-share" element={<AppTabs />} />
-              </Route>
+      <LanguageProvider>
+        <AuthProvider>
+          <Toaster position="top-right" />
+          <Router>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/report-data" element={<ReportData />} />
+                <Route path="/demo" element={<DemoEntry />} />
+                <Route path="/sale-portal" element={<SalePortal />} />
+                
+                {/* Admin only routes */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/consultants" element={<AppTabs />} />
+                  <Route path="/rounds" element={<AppTabs />} />
+                  <Route path="/tickets" element={<AppTabs />} />
+                  <Route path="/rules" element={<AppTabs />} />
+                  <Route path="/integrations" element={<AppTabs />} />
+                  <Route path="/settings" element={<AppTabs />} />
+                  <Route path="/accounts" element={<AppTabs />} />
+                  <Route path="/fair-share" element={<AppTabs />} />
+                </Route>
 
-              {/* All authenticated users */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<AppTabs />} />
-                <Route path="/data" element={<AppTabs />} />
-              </Route>
-            </Routes>
-            <KeyboardShortcutsController />
-          </Suspense>
-        </Router>
-      </AuthProvider>
+                {/* All authenticated users */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<AppTabs />} />
+                  <Route path="/data" element={<AppTabs />} />
+                </Route>
+              </Routes>
+              <KeyboardShortcutsController />
+            </Suspense>
+          </Router>
+        </AuthProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

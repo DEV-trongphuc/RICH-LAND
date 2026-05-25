@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Send, X, Database, Sparkles, LayoutGrid } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
@@ -10,6 +11,7 @@ interface Message {
 }
 
 export const AIChatbot: React.FC = () => {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -17,7 +19,7 @@ export const AIChatbot: React.FC = () => {
     {
       id: 'welcome',
       sender: 'bot',
-      text: 'Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Domation. 🤖\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?',
+      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Domation. 🤖\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
       timestamp: new Date()
     }
   ]);
@@ -30,19 +32,19 @@ export const AIChatbot: React.FC = () => {
 
   // Sidebar stats card config
   const statsConfig = [
-    { key: 'total_today', label: 'Tổng tiếp nhận', color: '#6366f1', prompt: 'Hôm nay hệ thống nhận bao nhiêu data?' },
-    { key: 'distributed_today', label: 'Đã bàn giao', color: '#10b981', prompt: 'Hôm nay đã chia bao nhiêu data cho Sale?' },
-    { key: 'duplicates', label: 'Trùng lặp', color: '#f59e0b', prompt: 'Có bao nhiêu data trùng lặp hôm nay?' },
-    { key: 'blacklists', label: 'Chặn Blacklist', color: '#6b7280', prompt: 'Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?' },
-    { key: 'ticket_count', label: 'Lỗi / Ticket', color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
+    { key: 'total_today', label: t('Tổng tiếp nhận'), color: '#6366f1', prompt: 'Hôm nay hệ thống nhận bao nhiêu data?' },
+    { key: 'distributed_today', label: t('Đã bàn giao'), color: '#10b981', prompt: 'Hôm nay đã chia bao nhiêu data cho Sale?' },
+    { key: 'duplicates', label: t('Trùng lặp'), color: '#f59e0b', prompt: 'Có bao nhiêu data trùng lặp hôm nay?' },
+    { key: 'blacklists', label: t('Chặn Blacklist'), color: '#6b7280', prompt: 'Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?' },
+    { key: 'ticket_count', label: t('Lỗi / Ticket'), color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
   ];
 
   // Suggested prompts
   const quickPrompts = [
-    { label: '📊 Thống kê data hôm nay', text: 'Hôm nay hệ thống chia bao nhiêu data?' },
-    { label: '💬 Cài đặt Zalo Bot', text: 'Zalo Bot hoạt động thế nào?' },
-    { label: '🛡️ Quản lý Blacklist', text: 'Làm sao để cấu hình Blacklist?' },
-    { label: '🎫 Ticket báo lỗi đền bù', text: 'Quy trình xử lý Ticket lỗi thế nào?' }
+    { label: t('📊 Thống kê data hôm nay'), text: 'Hôm nay hệ thống chia bao nhiêu data?' },
+    { label: t('💬 Cài đặt Zalo Bot'), text: 'Zalo Bot hoạt động thế nào?' },
+    { label: t('🛡️ Quản lý Blacklist'), text: 'Làm sao để cấu hình Blacklist?' },
+    { label: t('🎫 Ticket báo lỗi đền bù'), text: 'Quy trình xử lý Ticket lỗi thế nào?' }
   ];
 
   // Responsive sidebar toggle
@@ -144,67 +146,82 @@ export const AIChatbot: React.FC = () => {
     if (q.includes('hôm nay') || q.includes('thống kê') || q.includes('báo cáo') || q.includes('chỉ số') || q.includes('data')) {
       if (q.includes('bao nhiêu') || q.includes('mấy') || q.includes('số lượng') || q.includes('tổng') || q.includes('chia') || q.includes('trùng') || q.includes('lỗi')) {
         if (currentStats) {
-          return `Dữ liệu thống kê hệ thống **hôm nay** như sau:\n\n` +
-                 `* 📥 **Tổng số tiếp nhận**: **${currentStats.total_today}** data\n` +
-                 `* 👤 **Đã bàn giao**: **${currentStats.distributed_today}** data\n` +
-                 `* 👥 **Trùng lặp (không chia)**: **${currentStats.duplicates}** data\n` +
-                 `* 🚫 **Chặn Blacklist**: **${currentStats.blacklists}** data\n` +
-                 `* ⚠️ **Data lỗi / Ticket**: **${currentStats.ticket_count}** data\n\n` +
-                 `*Hiệu số tăng trưởng hoặc chi tiết cụ thể bạn có thể xem trực tiếp ở trang chủ (Dashboard).*`;
+          return t(`Dữ liệu thống kê hệ thống **hôm nay** như sau:
+
+* 📥 **Tổng số tiếp nhận**: **{total}** data
+* 👤 **Đã bàn giao**: **{assigned}** data
+* 👥 **Trùng lặp (không chia)**: **{dup}** data
+* 🚫 **Chặn Blacklist**: **{blacklist}** data
+* ⚠️ **Data lỗi / Ticket**: **{ticket}** data
+
+*Hiệu số tăng trưởng hoặc chi tiết cụ thể bạn có thể xem trực tiếp ở trang chủ (Dashboard).*`)
+                         .replace('{total}', currentStats.total_today)
+                         .replace('{assigned}', currentStats.distributed_today)
+                         .replace('{dup}', currentStats.duplicates)
+                         .replace('{blacklist}', currentStats.blacklists)
+                         .replace('{ticket}', currentStats.ticket_count);
         } else {
-          return `Tôi đang tải số liệu thống kê từ hệ thống. Bạn vui lòng đợi một chút hoặc thử lại nhé!`;
+          return t(`Tôi đang tải số liệu thống kê từ hệ thống. Bạn vui lòng đợi một chút hoặc thử lại nhé!`);
         }
       }
     }
 
     // 2. Blacklist questions
     if (q.includes('blacklist') || q.includes('danh sách đen') || q.includes('chặn') || q.includes('bỏ qua')) {
-      return `Hệ thống **Blacklist (Danh sách đen)** hoạt động như sau:\n\n` +
-             `1. **Tự động chặn**: Khi có lead mới vào (qua Webhook/Sheets), hệ thống sẽ check số điện thoại/email đối chiếu với Blacklist. Nếu trùng, lead sẽ bị đánh dấu là \`blacklisted\` và chặn phân bổ.\n` +
-             `2. **Quản lý danh sách**: Admin có thể vào mục **Cài đặt -> Danh sách đen** để thêm/xóa thủ công các liên hệ hoặc tải lên file Excel chứa hàng ngàn liên hệ chặn.\n` +
-             `3. **Hiển thị**: Dữ liệu bị chặn blacklist sẽ được cộng vào thẻ KPI lỗi ngoài Dashboard để đảm bảo khớp dữ liệu tổng.`;
+      return t(`Hệ thống **Blacklist (Danh sách đen)** hoạt động như sau:
+
+1. **Tự động chặn**: Khi có lead mới vào (qua Webhook/Sheets), hệ thống sẽ check số điện thoại/email đối chiếu với Blacklist. Nếu trùng, lead sẽ bị đánh dấu là \`blacklisted\` và chặn phân bổ.
+2. **Quản lý danh sách**: Admin có thể vào mục **Cài đặt -> Danh sách đen** để thêm/xóa thủ công các liên hệ hoặc tải lên file Excel chứa hàng ngàn liên hệ chặn.
+3. **Hiển thị**: Dữ liệu bị chặn blacklist sẽ được cộng vào thẻ KPI lỗi ngoài Dashboard để đảm bảo khớp dữ liệu tổng.`);
     }
 
     // 3. Zalo Bot questions
     if (q.includes('zalo') || q.includes('bot') || q.includes('tin nhắn') || q.includes('chào buổi sáng') || q.includes('morning')) {
-      return `Hệ thống **Zalo Bot** hỗ trợ bàn giao và chăm sóc tự động:\n\n` +
-             `* **Bàn giao Lead**: Mỗi khi có lead được định tuyến cho Sale, Zalo Bot sẽ gửi ngay thông tin chi tiết (Tên, SĐT, Email, Nguồn, Ghi chú) trực tiếp đến chat ID Zalo của Sale đó.\n` +
-             `* **Gom tin nhắn chào buổi sáng**: Nếu ngoài giờ làm việc Sale nhận được nhiều hơn 1 data chờ, khi bắt đầu giờ làm hôm sau Zalo Bot sẽ gửi một tin nhắn tổng hợp chào buổi sáng (ví dụ: *"Chúc buổi sáng vui vẻ! Đêm qua bạn có 3 data..."*), sau đó mới gửi chi tiết từng data.\n` +
-             `* **Cài đặt**: Bạn có thể bật/tắt nhận báo cáo lỗi hoặc cấu hình Zalo chat ID của Admin/Sale tại mục **Tài khoản** hoặc **Tư vấn viên**.`;
+      return t(`Hệ thống **Zalo Bot** hỗ trợ bàn giao và chăm sóc tự động:
+
+* **Bàn giao Lead**: Mỗi khi có lead được định tuyến cho Sale, Zalo Bot sẽ gửi ngay thông tin chi tiết (Tên, SĐT, Email, Nguồn, Ghi chú) trực tiếp đến chat ID Zalo của Sale đó.
+* **Gom tin nhắn chào buổi sáng**: Nếu ngoài giờ làm việc Sale nhận được nhiều hơn 1 data chờ, khi bắt đầu giờ làm hôm sau Zalo Bot sẽ gửi một tin nhắn tổng hợp chào buổi sáng (ví dụ: *"Chúc buổi sáng vui vẻ! Đêm qua bạn có 3 data..."*), sau đó mới gửi chi tiết từng data.
+* **Cài đặt**: Bạn có thể bật/tắt nhận báo cáo lỗi hoặc cấu hình Zalo chat ID của Admin/Sale tại mục **Tài khoản** hoặc **Tư vấn viên**.`);
     }
 
     // 4. Routing Rules / Rounds questions
     if (q.includes('quy tắc') || q.includes('chia số') || q.includes('định tuyến') || q.includes('rule') || q.includes('vòng xoay') || q.includes('round')) {
-      return `Quy trình **Định tuyến & Chia số (Routing Rules & Rounds)**:\n\n` +
-             `* **Định tuyến (Rules)**: Khi lead từ Google Sheets hoặc Landing Page đẩy về, hệ thống sẽ chạy qua các Rule có độ ưu tiên từ cao đến thấp. Mỗi rule chứa các điều kiện so khớp (VD: Nguồn chứa "Ads", Loại là "Hot"...). Nếu khớp, lead sẽ đi vào Vòng xoay (Round) tương ứng.\n` +
-             `* **Vòng xoay (Rounds)**: Là nhóm các Sale nhận số. Hệ thống chia theo thuật toán **Round-robin** (xoay vòng) kết hợp tỉ lệ nhận (\`receive_ratio\`), đền bù (\`compensation_count\`), và chế độ nhận data mỗi lượt (\`data_per_turn\`).\n` +
-             `* **Giờ làm việc**: Sale ngoài giờ làm sẽ bị tạm giữ lead (\`pending_work_hours\`) và được tự động giải phóng khi đến giờ làm việc ngày hôm sau.`;
+      return t(`Quy trình **Định tuyến & Chia số (Routing Rules & Rounds)**:
+
+* **Định tuyến (Rules)**: Khi lead từ Google Sheets hoặc Landing Page đẩy về, hệ thống sẽ chạy qua các Rule có độ ưu tiên từ cao đến thấp. Mỗi rule chứa các điều kiện so khớp (VD: Nguồn chứa "Ads", Loại là "Hot"...). Nếu khớp, lead sẽ đi vào Vòng xoay (Round) tương ứng.
+* **Vòng xoay (Rounds)**: Là nhóm các Sale nhận số. Hệ thống chia theo thuật toán **Round-robin** (xoay vòng) kết hợp tỉ lệ nhận (\`receive_ratio\`), đền bù (\`compensation_count\`), and chế độ nhận data mỗi lượt (\`data_per_turn\`).
+* **Giờ làm việc**: Sale ngoài giờ làm sẽ bị tạm giữ lead (\`pending_work_hours\`) và được tự động giải phóng khi đến giờ làm việc ngày hôm sau.`);
     }
 
     // 5. General ticket / report error questions
     if (q.includes('ticket') || q.includes('báo lỗi') || q.includes('đền bù') || q.includes('lỗi dữ liệu') || q.includes('khiếu nại')) {
-      return `Quy trình **Báo cáo lỗi & Đền bù (Ticket System)**:\n\n` +
-             `1. **Gửi báo cáo**: Khi Sale nhận phải data bị lỗi (sai số, không liên lạc được, thuê bao...), Sale có thể gửi Ticket báo cáo lỗi trực tiếp từ Sale Portal.\n` +
-             `2. **Duyệt đền bù**: Admin sẽ nhận được thông báo đỏ trên Header. Admin vào trang **Báo cáo lỗi (Tickets)** để xem xét lý do, liên hệ và duyệt đền bù (cộng thêm lượt nhận data cho Sale trong vòng xoay) hoặc từ chối đền bù.\n` +
-             `3. **Giải quyết**: Khi duyệt, hệ thống sẽ tự động bù lượt nhận cho Sale vào lần phân bổ tiếp theo.`;
+      return t(`Quy trình **Báo cáo lỗi & Đền bù (Ticket System)**:
+
+1. **Gửi báo cáo**: Khi Sale nhận phải data bị lỗi (sai số, không liên lạc được, thuê bao...), Sale có thể gửi Ticket báo cáo lỗi trực tiếp từ Sale Portal.
+2. **Duyệt đền bù**: Admin sẽ nhận được thông báo đỏ trên Header. Admin vào trang **Báo cáo lỗi (Tickets)** để xem xét lý do, liên hệ và duyệt đền bù (cộng thêm lượt nhận data cho Sale trong vòng xoay) hoặc từ chối đền bù.
+3. **Giải quyết**: Khi duyệt, hệ thống sẽ tự động bù lượt nhận cho Sale vào lần phân bổ tiếp theo.`);
     }
 
     // 6. Google Sheets sync questions
     if (q.includes('sheet') || q.includes('đồng bộ') || q.includes('cron') || q.includes('kết nối') || q.includes('excel')) {
-      return `Hệ thống **Đồng bộ Google Sheets (Sheet Connections)**:\n\n` +
-             `* **Kết nối**: Admin cấu hình ID bảng tính và tên sheet tại mục **Kết nối Sheets**, sau đó ánh xạ các cột (Tên, SĐT, Email...) vào các trường của hệ thống.\n` +
-             `* **Đồng bộ tự động**: Tiến trình nền (\`cron_sync.php\`) sẽ tự động quét qua các sheet hoạt động mỗi 2-5 phút, chỉ lấy những dòng dữ liệu mới (dựa trên thuật toán mã hóa Row Hash để không trùng lặp) và chia cho Sale.\n` +
-             `* **Chế độ Silent (Im lặng)**: Bạn có thể chọn chế độ chỉ đồng bộ check trùng mà không chia số cho các sheet lưu trữ lịch sử.`;
+      return t(`Hệ thống **Đồng bộ Google Sheets (Sheet Connections)**:
+
+* **Kết nối**: Admin cấu hình ID bảng tính và tên sheet tại mục **Kết nối Sheets**, sau đó ánh xạ các cột (Tên, SĐT, Email...) vào các trường của hệ thống.
+* **Đồng bộ tự động**: Tiến trình nền (\`cron_sync.php\`) sẽ tự động quét qua các sheet hoạt động mỗi 2-5 phút, chỉ lấy những dòng dữ liệu mới (dựa trên thuật toán mã hóa Row Hash để không trùng lặp) và chia cho Sale.
+* **Chế độ Silent (Im lặng)**: Bạn có thể chọn chế độ chỉ đồng bộ check trùng mà không chia số cho các sheet lưu trữ lịch sử.`);
     }
 
     // Default fallback
-    return `Tôi chưa hiểu rõ câu hỏi của bạn. 🤖\n\nTôi có thể hỗ trợ bạn tốt nhất về các chủ đề sau:\n` +
-           `* 📊 **Số liệu thống kê hôm nay**: tổng số, đã chia, trùng, lỗi, blacklist.\n` +
-           `* 🛡️ **Hệ thống Blacklist**: chặn số tự động, import Excel.\n` +
-           `* 💬 **Zalo Bot**: gửi data tự động, tin nhắn tổng hợp chào buổi sáng.\n` +
-           `* ⚙️ **Quy tắc chia số (Rules/Rounds)**: xoay vòng, đền bù, giờ làm việc.\n` +
-           `* 🎫 **Ticket báo lỗi**: đền bù lượt chia cho Sale.\n\n` +
-           `Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới nhé!`;
+    return t(`Tôi chưa hiểu rõ câu hỏi của bạn. 🤖
+
+Tôi có thể hỗ trợ bạn tốt nhất về các chủ đề sau:
+* 📊 **Số liệu thống kê hôm nay**: tổng số, đã chia, trùng, lỗi, blacklist.
+* 🛡️ **Hệ thống Blacklist**: chặn số tự động, import Excel.
+* 💬 **Zalo Bot**: gửi data tự động, tin nhắn tổng hợp chào buổi sáng.
+* ⚙️ **Quy tắc chia số (Rules/Rounds)**: xoay vòng, đền bù, giờ làm việc.
+* 🎫 **Ticket báo lỗi**: đền bù lượt chia cho Sale.
+
+Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới nhé!`);
   };
 
   const renderText = (text: string) => {
@@ -621,7 +638,7 @@ export const AIChatbot: React.FC = () => {
             }}>
               <Database size={15} style={{ color: '#4f46e5' }} />
               <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--chatbot-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Số liệu hôm nay
+                {t('Số liệu hôm nay')}
               </span>
             </div>
 
@@ -668,7 +685,7 @@ export const AIChatbot: React.FC = () => {
                 })
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, opacity: 0.6 }}>
-                  <div className="dot-typing" style={{ color: 'var(--chatbot-text-muted)', fontSize: '0.8rem' }}>Đang tải số liệu</div>
+                  <div className="dot-typing" style={{ color: 'var(--chatbot-text-muted)', fontSize: '0.8rem' }}>{t('Đang tải số liệu')}</div>
                 </div>
               )}
             </div>
@@ -685,7 +702,7 @@ export const AIChatbot: React.FC = () => {
               background: 'rgba(79, 70, 229, 0.01)'
             }}>
               <Sparkles size={12} style={{ color: '#7c3aed' }} />
-              <span>Nhấp để hỏi AI tự động</span>
+              <span>{t('Nhấp để hỏi AI tự động')}</span>
             </div>
           </div>
         )}
@@ -709,12 +726,12 @@ export const AIChatbot: React.FC = () => {
               {renderBotAvatar(34, true)}
               <div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Trợ lý AI Domation
+                  {t('Trợ lý AI Domation')}
                   <Sparkles size={12} style={{ color: '#fcd34d' }} />
                 </div>
                 <div style={{ fontSize: '0.6875rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                  Đang trực tuyến
+                  {t('Đang trực tuyến')}
                 </div>
               </div>
             </div>
@@ -740,7 +757,7 @@ export const AIChatbot: React.FC = () => {
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-                title={showSidebar ? "Ẩn chỉ số" : "Hiện chỉ số"}
+                title={showSidebar ? t("Ẩn chỉ số") : t("Hiện chỉ số")}
               >
                 <LayoutGrid size={14} />
               </button>
@@ -838,7 +855,7 @@ export const AIChatbot: React.FC = () => {
                     alignItems: 'center',
                     gap: 6
                   }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">AI đang trả lời</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">{t('AI đang trả lời')}</span>
                   </div>
                 </div>
               </div>
@@ -857,7 +874,7 @@ export const AIChatbot: React.FC = () => {
               background: 'rgba(124, 58, 237, 0.01)'
             }}
           >
-            <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gợi ý hỏi nhanh:</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('Gợi ý hỏi nhanh:')}</div>
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
               {quickPrompts.map((p, idx) => (
                 <button
@@ -903,7 +920,7 @@ export const AIChatbot: React.FC = () => {
               type="text"
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              placeholder="Nhập câu hỏi của bạn..."
+              placeholder={t("Nhập câu hỏi của bạn...")}
               className="chatbot-input-field"
               style={{
                 flex: 1,

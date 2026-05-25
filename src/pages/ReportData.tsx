@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Send, Loader2, Shield, XCircle } from 'lucide-react';
 import { fetchPublicAPI } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const REPORT_REASONS = [
   'Sai số điện thoại / Số ảo',
@@ -41,6 +42,7 @@ interface ReportContext {
 }
 
 export const ReportData = () => {
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -79,19 +81,19 @@ export const ReportData = () => {
     // BUG-07 fix: Kiểm tra params phải là số nguyên dương hợp lệ, không chỉ "có tồn tại"
     const isValidId = (v: string) => /^\d+$/.test(v) && parseInt(v) > 0;
     if (!isValidId(params.leadId) || !isValidId(params.saleId) || !isValidId(params.roundId)) {
-      setCtxError('Đường dẫn không hợp lệ hoặc đã hết hạn. Vui lòng mở lại từ Email.');
+      setCtxError(t('Đường dẫn không hợp lệ hoặc đã hết hạn. Vui lòng mở lại từ Email.'));
       setLoadingCtx(false); return;
     }
     fetchPublicAPI(`get_report_context&lead_id=${params.leadId}&sale_id=${params.saleId}&round_id=${params.roundId}`)
-      .then(res => { if (res.success) setContext(res.data); else setCtxError(res.message || 'Không thể xác thực.'); })
-      .catch(e => setCtxError(e.message || 'Lỗi kết nối.'))
+      .then(res => { if (res.success) setContext(res.data); else setCtxError(t(res.message) || t('Không thể xác thực.')); })
+      .catch(e => setCtxError(t(e.message) || t('Lỗi kết nối.')))
       .finally(() => setLoadingCtx(false));
   }, []);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (params.isTest) { setSubmitError('Đây là link thử nghiệm — không thể gửi báo cáo thật.'); setSubmitStatus('error'); return; }
+    if (params.isTest) { setSubmitError(t('Đây là link thử nghiệm — không thể gửi báo cáo thật.')); setSubmitStatus('error'); return; }
     if (submitting || submitStatus === 'success') return;
     setSubmitting(true); setSubmitError('');
     const finalReason = reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' 
@@ -103,8 +105,8 @@ export const ReportData = () => {
         body: JSON.stringify({ lead_id: Number(params.leadId), sale_id: Number(params.saleId), round_id: Number(params.roundId), reason: finalReason })
       });
       if (res.success) setSubmitStatus('success');
-      else { setSubmitStatus('error'); setSubmitError(res.message || 'Có lỗi xảy ra.'); }
-    } catch (err: any) { setSubmitStatus('error'); setSubmitError(err.message || 'Lỗi kết nối.'); }
+      else { setSubmitStatus('error'); setSubmitError(t(res.message) || t('Có lỗi xảy ra.')); }
+    } catch (err: any) { setSubmitStatus('error'); setSubmitError(t(err.message) || t('Lỗi kết nối.')); }
     finally { setSubmitting(false); }
   };
 
@@ -123,14 +125,14 @@ export const ReportData = () => {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)', padding: '5px 14px', borderRadius: 20, marginBottom: 10 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
             <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem', fontWeight: 600 }}>
-              BÁO CÁO DATA{params.isTest ? ' (Thử nghiệm)' : ''}
+              {t("BÁO CÁO DATA")}{params.isTest ? ` ${t("(Thử nghiệm)")}` : ''}
             </span>
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', margin: 0, textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
-            Báo cáo data không đạt chuẩn
+            {t("Báo cáo data không đạt chuẩn")}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginTop: 4 }}>
-            Gửi báo cáo nếu thông tin khách hàng không chính xác
+            {t("Gửi báo cáo nếu thông tin khách hàng không chính xác")}
           </p>
         </div>
 
@@ -148,7 +150,7 @@ export const ReportData = () => {
                 <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#fca5a5,#f87171)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                   <XCircle size={36} color="white" />
                 </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>Đường dẫn không hợp lệ</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>{t("Đường dẫn không hợp lệ")}</h2>
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{ctxError}</p>
               </div>
             </div>
@@ -158,8 +160,8 @@ export const ReportData = () => {
                 <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                   <CheckCircle size={36} color="white" />
                 </div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>Gửi Báo Cáo Thành Công!</h3>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.7 }}>Báo cáo đã được gửi tới Admin. Nếu hợp lệ, bạn sẽ nhận Data bù ưu tiên trong lượt tiếp theo.</p>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>{t("Gửi Báo Cáo Thành Công!")}</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.7 }}>{t("Báo cáo đã được gửi tới Admin. Nếu hợp lệ, bạn sẽ nhận Data bù ưu tiên trong lượt tiếp theo.")}</p>
               </div>
             </div>
           ) : (
@@ -167,18 +169,18 @@ export const ReportData = () => {
               {/* ── LEFT: Info card (white) ── */}
               <div className="info-card">
                 <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Thông tin Data cần báo cáo
+                  {t("Thông tin Data cần báo cáo")}
                 </div>
 
                 {context && (
                   <>
                     {/* Customer avatar block */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #e0e7ff' }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
+                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
                         {initials(context.lead_name)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Khách hàng</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t("Khách hàng")}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{context.lead_name}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#d97706', marginTop: 1 }}>{context.lead_phone}</div>
                       </div>
@@ -190,45 +192,45 @@ export const ReportData = () => {
                         {initials(context.consultant_name)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Saleperson phụ trách</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#86efac', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t("Saleperson phụ trách")}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 700, color: theme === 'dark' ? '#34d399' : '#15803d' }}>{context.consultant_name}</div>
                       </div>
                     </div>
 
                     {/* Details */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <InfoItem label="Nguồn Data" value={context.lead_source || 'Không rõ'} />
+                      <InfoItem label={t("Nguồn Data")} value={context.lead_source || t('Không rõ')} />
                       
                       <button 
                         type="button" 
                         className="mobile-toggle-btn"
                         onClick={() => setExpandedMobile(!expandedMobile)}
                       >
-                        {expandedMobile ? 'Thu gọn chi tiết ▲' : 'Xem chi tiết ▼'}
+                        {expandedMobile ? t('Thu gọn chi tiết ▲') : t('Xem chi tiết ▼')}
                       </button>
 
                       <div className={`extra-details ${expandedMobile ? 'expanded' : ''}`}>
                         {context.lead_email && (
                           <>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
-                            <InfoItem label="Email" value={context.lead_email} />
+                            <InfoItem label={t("Email")} value={context.lead_email} />
                           </>
                         )}
                         {context.lead_type && (
                           <>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
-                            <InfoItem label="Loại Data" value={context.lead_type} />
+                            <InfoItem label={t("Loại Data")} value={context.lead_type} />
                           </>
                         )}
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
-                        <InfoItem label="Vòng phân bổ" value={context.round_name} accent />
+                        <InfoItem label={t("Vòng phân bổ")} value={context.round_name} accent />
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
-                        <InfoItem label="Nhận lúc" value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                        <InfoItem label={t("Nhận lúc")} value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
                         {context.lead_note && (
                           <>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <div>
-                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Ghi chú / Thông tin</div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t("Ghi chú / Thông tin")}</div>
                               <div style={{ 
                                 fontSize: '0.8rem', 
                                 fontWeight: 500, 
@@ -259,7 +261,7 @@ export const ReportData = () => {
                 {params.isTest && (
                   <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', color: '#b45309', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.08)' }}>
                     <AlertCircle size={16} color="#d97706" />
-                    <span>Trang xem thử — Dữ liệu mock, không gửi được.</span>
+                    <span>{t("Trang xem thử — Dữ liệu mock, không gửi được.")}</span>
                   </div>
                 )}
 
@@ -269,8 +271,8 @@ export const ReportData = () => {
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#fde68a,#f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(245,158,11,0.3)' }}>
                       <Shield size={26} color="white" />
                     </div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Đã gửi báo cáo trước đó</h3>
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Báo cáo đang chờ Admin xét duyệt.</p>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Đã gửi báo cáo trước đó")}</h3>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{t("Báo cáo đang chờ Admin xét duyệt.")}</p>
                   </div>
                 )}
 
@@ -279,8 +281,8 @@ export const ReportData = () => {
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#6ee7b7,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <CheckCircle size={26} color="white" />
                     </div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Báo cáo đã được duyệt ✅</h3>
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Bạn sẽ được ưu tiên nhận Data bù trong lượt tiếp theo.</p>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Báo cáo đã được duyệt ✅")}</h3>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{t("Bạn sẽ được ưu tiên nhận Data bù trong lượt tiếp theo.")}</p>
                   </div>
                 )}
 
@@ -293,7 +295,7 @@ export const ReportData = () => {
                       </div>
                     )}
 
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Chọn lý do lỗi</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t("Chọn lý do lỗi")}</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {REPORT_REASONS.map(r => (
@@ -310,17 +312,17 @@ export const ReportData = () => {
                           <input type="radio" name="reason" value={r} checked={reason === r}
                             onChange={() => setReason(r)}
                             style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.85rem', color: reason === r ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r ? 700 : 400 }}>{r}</span>
+                          <span style={{ fontSize: '0.85rem', color: reason === r ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r ? 700 : 400 }}>{t(r)}</span>
                         </label>
                       ))}
                     </div>
 
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>Ghi chú thêm</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>{t("Ghi chú thêm")}</div>
                     <textarea 
                       required={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)'} 
                       value={customReason} 
                       onChange={e => setCustomReason(e.target.value)}
-                      placeholder={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? 'Nhập chi tiết lý do lỗi (bắt buộc)...' : 'Nhập ghi chú thêm nếu có (tùy chọn)...'}
+                      placeholder={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? t('Nhập chi tiết lý do lỗi (bắt buộc)...') : t('Nhập ghi chú thêm nếu có (tùy chọn)...')}
                       style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0, background: 'var(--color-surface)', color: 'var(--color-text)' }} />
 
                     <button type="submit" disabled={submitting}
@@ -334,9 +336,9 @@ export const ReportData = () => {
                         boxShadow: params.isTest ? '0 4px 16px rgba(245,158,11,0.3)' : '0 4px 16px rgba(109,40,217,0.4)',
                         opacity: submitting ? 0.7 : 1, transition: 'all 0.2s'
                       }}>
-                      {submitting ? <><Loader2 size={17} className="spin" /> Đang gửi...</>
-                        : params.isTest ? 'Gửi bị tắt (Trang thử nghiệm)'
-                          : <><Send size={17} /> Gửi Báo Cáo</>}
+                      {submitting ? <><Loader2 size={17} className="spin" /> {t("Đang gửi...")}</>
+                        : params.isTest ? t('Gửi bị tắt (Trang thử nghiệm)')
+                          : <><Send size={17} /> {t("Gửi Báo Cáo")}</>}
                     </button>
                   </form>
                 )}

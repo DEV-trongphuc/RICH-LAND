@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Key, Scale } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState } from 'react';
 import { fetchAPI } from '../../utils/api';
 import { Avatar } from '../ui/Avatar';
@@ -20,6 +21,7 @@ const ALL_NAV_ITEMS = [
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }: { isCollapsed: boolean; onToggleCollapse: () => void; isMobileOpen?: boolean; onMobileClose?: () => void }) => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [pendingTickets, setPendingTickets] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -147,7 +149,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              title="Thêm Data Nhanh"
+              title={t("Thêm Data Nhanh")}
             >
               <Plus size={20} />
             </button>
@@ -170,7 +172,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.4)';
               }}
             >
-              <Plus size={18} /> Thêm Data Nhanh
+              <Plus size={18} /> {t("Thêm Data Nhanh")}
             </button>
           )}
         </div>
@@ -201,7 +203,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
                 textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
                 padding: '0.5rem 1.5rem', whiteSpace: 'nowrap'
-              }}>Chức năng chính</span>
+              }}>{t("Chức năng chính")}</span>
             )}
 
             {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
@@ -211,7 +213,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   key={href}
                   to={href}
                   end={end}
-                  title={isCollapsed ? name : undefined}
+                  title={isCollapsed ? t(name) : undefined}
                   onClick={() => {
                     if (onMobileClose) onMobileClose();
                   }}
@@ -259,7 +261,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       {/* Label + badge count when expanded */}
                       {!isCollapsed && (
                         <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          {name}
+                          {t(name)}
                           {badgeCount > 0 && (
                             <span style={{
                               background: '#ef4444', color: 'white',
@@ -309,7 +311,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               {!isCollapsed && (
                 <div style={{ overflow: 'hidden' }}>
                   <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</p>
-                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>{user?.role}</p>
+                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>{user?.role === 'admin' ? t('Quản trị viên') : user?.role === 'assistant' ? t('Trợ lý') : t('Người xem')}</p>
                 </div>
               )}
             </div>
@@ -321,7 +323,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#3b82f6')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                  title="Hồ sơ & Đổi mật khẩu"
+                  title={t("Hồ sơ & Đổi mật khẩu")}
                 >
                   <Key size={16} />
                 </button>
@@ -330,7 +332,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                  title="Đăng xuất"
+                  title={t("Đăng xuất")}
                 >
                   <LogOut size={16} />
                 </button>
@@ -345,7 +347,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#3b82f6')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                title="Hồ sơ & Đổi mật khẩu"
+                title={t("Hồ sơ & Đổi mật khẩu")}
               >
                 <Key size={16} />
               </button>
@@ -354,7 +356,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                title="Đăng xuất"
+                title={t("Đăng xuất")}
               >
                 <LogOut size={16} />
               </button>

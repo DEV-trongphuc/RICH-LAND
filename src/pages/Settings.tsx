@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -61,6 +62,7 @@ const formatExcelDate = (val: string) => {
 };
 
 export const Settings = () => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -69,12 +71,12 @@ export const Settings = () => {
   const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check' | 'ai'>('processing');
 
   const tabOptions = [
-    { value: 'processing', label: 'Cấu hình Xử lý', icon: <SettingsIcon size={16} /> },
-    { value: 'mail', label: 'Cấu hình Email', icon: <Mail size={16} /> },
-    { value: 'zalo', label: 'Cấu hình Zalo Bot', icon: <MessageCircle size={16} /> },
-    { value: 'report', label: 'Báo cáo', icon: <BarChart2 size={16} /> },
-    { value: 'duplicate_check', label: 'Ánh xạ dữ liệu cũ', icon: <FileSpreadsheet size={16} /> },
-    { value: 'ai', label: 'Cấu hình Trợ lý AI', icon: <Zap size={16} /> }
+    { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
+    { value: 'mail', label: t('Cấu hình Email'), icon: <Mail size={16} /> },
+    { value: 'zalo', label: t('Cấu hình Zalo Bot'), icon: <MessageCircle size={16} /> },
+    { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
+    { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
+    { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> }
   ];
 
   // States for Gemini API Connection
@@ -202,14 +204,14 @@ export const Settings = () => {
       });
 
       if (res.success) {
-        toast.success(res.message || "Đã xóa thành công!");
+        toast.success(res.message || t("Đã xóa thành công!"));
         setSelectedLogs([]);
         fetchImportHistory(historyPage);
       } else {
-        toast.error(res.message || "Lỗi khi xóa dữ liệu");
+        toast.error(res.message || t("Lỗi khi xóa dữ liệu"));
       }
     } catch (err: any) {
-      toast.error(err.message || "Lỗi kết nối hệ thống");
+      toast.error(err.message || t("Lỗi kết nối hệ thống"));
     }
     setConfirmDeleteLogsOpen(false);
     setLogsToDelete([]);
@@ -351,39 +353,39 @@ export const Settings = () => {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      if (json.success) toast.success("Đã lưu cấu hình thành công!");
-      else toast.error("Lỗi khi lưu cấu hình!");
+      if (json.success) toast.success(t("Đã lưu cấu hình thành công!"));
+      else toast.error(t("Lỗi khi lưu cấu hình!"));
     } catch {
-      toast.error("Lỗi kết nối Server");
+      toast.error(t("Lỗi kết nối Server"));
     }
     setSaving(false);
   };
 
 
   const handleTestEmail = async () => {
-    if (!testEmail) return toast.error("Vui lòng nhập Email người nhận test.");
+    if (!testEmail) return toast.error(t("Vui lòng nhập Email người nhận test."));
     setTesting(true);
     try {
       const json = await fetchAPI('test_email', {
         method: 'POST',
         body: JSON.stringify({ email: testEmail, type: testType })
       });
-      if (json.success) toast.success("Gửi mail test thành công! Vui lòng kiểm tra hộp thư đến.");
-      else toast.error("Gửi mail thất bại. Vui lòng kiểm tra lại cấu hình SMTP/AppScript.");
+      if (json.success) toast.success(t("Gửi mail test thành công! Vui lòng kiểm tra hộp thư đến."));
+      else toast.error(t("Gửi mail thất bại. Vui lòng kiểm tra lại cấu hình SMTP/AppScript."));
     } catch {
-      toast.error("Lỗi kết nối khi gửi mail test");
+      toast.error(t("Lỗi kết nối khi gửi mail test"));
     }
     setTesting(false);
   };
 
 
   const providerOptions = [
-    { value: 'appscript', label: 'Google Apps Script (Miễn phí, nên dùng nếu dưới 500 mail/ngày)' },
-    { value: 'ses', label: 'Amazon SES (Chuyên nghiệp, SMTP)' }
+    { value: 'appscript', label: t('Google Apps Script (Miễn phí, nên dùng nếu dưới 500 mail/ngày)') },
+    { value: 'ses', label: t('Amazon SES (Chuyên nghiệp, SMTP)') }
   ];
 
   const roundOptions = [
-    { value: 'all', label: 'Tất cả các vòng', icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả các vòng'), icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...rounds.map(r => ({
       value: Number(r.id),
       label: r.round_name,
@@ -392,7 +394,7 @@ export const Settings = () => {
   ];
 
   const saleOptions = [
-    { value: 'all', label: 'Tất cả Salepersons', icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả Salepersons'), icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...consultants.map(c => ({
       value: Number(c.id),
       label: c.name,
@@ -401,7 +403,7 @@ export const Settings = () => {
   ];
 
   const connectionOptions = [
-    { value: 'all', label: 'Tất cả các nguồn', icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
+    { value: 'all', label: t('Tất cả các nguồn'), icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...connections.map(conn => ({
       value: Number(conn.id),
       label: conn.sheet_name,
@@ -449,12 +451,12 @@ export const Settings = () => {
             rows.push(rowObj);
           }
           setLocalRows(rows);
-          toast.success(`Đã đọc thành công ${rows.length} dòng từ file.`);
+          toast.success(t('Đã đọc thành công {count} dòng từ file.').replace('{count}', String(rows.length)));
         } else {
-          toast.error("File rỗng.");
+          toast.error(t("File rỗng."));
         }
       } catch (err: any) {
-        toast.error("Không thể đọc file: " + err.message);
+        toast.error(t("Không thể đọc file: ") + err.message);
       }
     };
     reader.readAsBinaryString(file);
@@ -473,7 +475,7 @@ export const Settings = () => {
       if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
         processUploadedFile(file);
       } else {
-        toast.error("Vui lòng tải lên file Excel hoặc CSV (.xlsx, .xls, .csv)");
+        toast.error(t("Vui lòng tải lên file Excel hoặc CSV (.xlsx, .xls, .csv)"));
       }
     }
   };
@@ -512,7 +514,7 @@ export const Settings = () => {
           });
 
           if (foundContacts.length === 0) {
-            toast.error("Không tìm thấy số điện thoại hoặc email hợp lệ nào trong file.");
+            toast.error(t("Không tìm thấy số điện thoại hoặc email hợp lệ nào trong file."));
             return;
           }
 
@@ -528,9 +530,9 @@ export const Settings = () => {
           });
 
           setExclusionContacts(newContactsList.join(', '));
-          toast.success(`Đã thêm thành công ${addedCount} liên hệ rác mới vào danh sách đen!`);
+          toast.success(t('Đã thêm thành công {count} liên hệ rác mới vào danh sách đen!').replace('{count}', String(addedCount)));
         } else {
-          toast.error("File rỗng.");
+          toast.error(t("File rỗng."));
         }
       } catch (err: any) {
         toast.error("Lỗi khi đọc file: " + err.message);
@@ -546,11 +548,11 @@ export const Settings = () => {
 
     if (selectedSheetId === 'local') {
       if (localRows.length === 0) {
-        toast.error("Vui lòng tải lên file Excel hoặc CSV!");
+        toast.error(t("Vui lòng tải lên file Excel hoặc CSV!"));
         return;
       }
       if (!phoneCol && !emailCol) {
-        toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng!");
+        toast.error(t("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng!"));
         return;
       }
 
@@ -574,14 +576,14 @@ export const Settings = () => {
           if (res.success) {
             allResults = [...allResults, ...res.results];
           } else {
-            throw new Error(res.message || "Lỗi kiểm tra dữ liệu");
+            throw new Error(res.message || t("Lỗi kiểm tra dữ liệu"));
           }
         }
         setCheckedResults(allResults);
         setImportSubTab('list');
-        toast.success(`Đã hoàn tất lọc trùng ${allResults.length} dòng.`);
+        toast.success(t('Đã hoàn tất lọc trùng {count} dòng.').replace('{count}', String(allResults.length)));
       } catch (err: any) {
-        toast.error("Lỗi lọc trùng: " + err.message);
+        toast.error(t("Lỗi lọc trùng: ") + err.message);
       }
       setChecking(false);
     } else {
@@ -594,9 +596,9 @@ export const Settings = () => {
         if (res.success) {
           setCheckedResults(res.results);
           setImportSubTab('list');
-          toast.success(`Đã hoàn tất lọc trùng ${res.results.length} dòng từ Google Sheet.`);
+          toast.success(t('Đã hoàn tất lọc trùng {count} dòng từ Google Sheet.').replace('{count}', String(res.results.length)));
         } else {
-          toast.error(res.message || "Lỗi khi tải và kiểm tra dữ liệu Google Sheet.");
+          toast.error(res.message || t("Lỗi khi tải và kiểm tra dữ liệu Google Sheet."));
         }
       } catch (err: any) {
         toast.error("Lỗi: " + err.message);
@@ -607,15 +609,15 @@ export const Settings = () => {
 
   const handleImportLeads = () => {
     if (selectedSheetId !== 'local') {
-      toast.error("Tính năng nhập dữ liệu trực tiếp hiện tại chỉ áp dụng khi tải file Excel hoặc CSV từ máy tính.");
+      toast.error(t("Tính năng nhập dữ liệu trực tiếp hiện tại chỉ áp dụng khi tải file Excel hoặc CSV từ máy tính."));
       return;
     }
     if (localRows.length === 0) {
-      toast.error("Vui lòng tải lên file Excel hoặc CSV!");
+      toast.error(t("Vui lòng tải lên file Excel hoặc CSV!"));
       return;
     }
     if (!phoneCol && !emailCol) {
-      toast.error("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng và nhập liệu!");
+      toast.error(t("Vui lòng chọn ít nhất cột Số điện thoại hoặc Email để lọc trùng và nhập liệu!"));
       return;
     }
     setConfirmImportOpen(true);
@@ -653,11 +655,11 @@ export const Settings = () => {
           totalDup += res.duplicate_count || 0;
           totalImported += res.imported_count || 0;
         } else {
-          throw new Error(res.message || "Lỗi nhập dữ liệu");
+          throw new Error(res.message || t("Lỗi nhập dữ liệu"));
         }
       }
 
-      toast.success(`Nhập dữ liệu thành công! Đã xử lý ${totalImported} dòng (${totalNew} lead mới, ${totalDup} lead trùng).`);
+      toast.success(t('Nhập dữ liệu thành công! Đã xử lý {total} dòng ({newCount} lead mới, {dupCount} lead trùng).').replace('{total}', String(totalImported)).replace('{newCount}', String(totalNew)).replace('{dupCount}', String(totalDup)));
 
       // Clear file state, results state and show the list sub-tab with refreshed history
       setCheckedResults([]);
@@ -673,7 +675,7 @@ export const Settings = () => {
       setHistoryPage(1);
       await fetchImportHistory(1);
     } catch (err: any) {
-      toast.error("Lỗi nhập dữ liệu: " + err.message);
+      toast.error(t("Lỗi nhập dữ liệu: ") + err.message);
     }
     setImporting(false);
   };
@@ -696,9 +698,9 @@ export const Settings = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Kết quả lọc trùng");
+    XLSX.utils.book_append_sheet(workbook, worksheet, t("Kết quả lọc trùng"));
     XLSX.writeFile(workbook, `Ket_qua_loc_trung_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success("Đã xuất file kết quả lọc trùng thành công!");
+    toast.success(t("Đã xuất file kết quả lọc trùng thành công!"));
   };
 
   return (
@@ -718,13 +720,13 @@ export const Settings = () => {
       }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Settings2 size={24} color="var(--color-primary)" /> Cài đặt Hệ thống
+            <Settings2 size={24} color="var(--color-primary)" /> {t('Cài đặt Hệ thống')}
           </h1>
-          <p className="page-subtitle">Cấu hình Email, Webhooks và các tích hợp nâng cao.</p>
+          <p className="page-subtitle">{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
         </div>
         <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
           {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
-          <span className="hide-on-mobile">Lưu cấu hình</span>
+          <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
         </button>
       </div>
 
@@ -743,19 +745,19 @@ export const Settings = () => {
           onClick={() => setActiveTab('processing')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
-          <SettingsIcon size={18} /> Cấu hình Xử lý
+          <SettingsIcon size={18} /> {t('Cấu hình Xử lý')}
         </button>
         <button
           onClick={() => setActiveTab('mail')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
-          <Mail size={18} /> Cấu hình Email
+          <Mail size={18} /> {t('Cấu hình Email')}
         </button>
         <button
           onClick={() => setActiveTab('zalo')}
           style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
-          <MessageCircle size={18} /> Cấu hình Zalo Bot
+          <MessageCircle size={18} /> {t('Cấu hình Zalo Bot')}
         </button>
         <button
           onClick={() => setActiveTab('report')}
@@ -794,21 +796,21 @@ export const Settings = () => {
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 6, borderRadius: 6 }}>
                     <Zap size={16} />
                   </span>
-                  Cấu hình Trợ lý AI (Gemini Key)
+                  {t('Cấu hình Trợ lý AI (Gemini Key)')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
-                  Cấu hình khóa kết nối Google Gemini API để Trợ lý AI Chatbot có thể đọc dữ liệu thống kê trực tiếp và trả lời một cách thông minh, linh hoạt cho người dùng bằng mô hình <strong>Gemini 2.5 Flash Lite</strong>.
+                  {t('Cấu hình khóa kết nối Google Gemini API để Trợ lý AI Chatbot có thể đọc dữ liệu thống kê trực tiếp và trả lời một cách thông minh, linh hoạt cho người dùng bằng mô hình')} <strong>Gemini 2.5 Flash Lite</strong>.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                    Gemini API Key
+                    {t('Gemini API Key')}
                   </label>
                   <input
                     type="password"
                     value={geminiApiKey}
                     onChange={e => setGeminiApiKey(e.target.value)}
-                    placeholder="Nhập API Key của Google Gemini (AIzaSy...)"
+                    placeholder={t("Nhập API Key của Google Gemini (AIzaSy...)")}
                     style={{
                       padding: '10px 12px',
                       border: '1px solid var(--color-border)',
@@ -821,13 +823,13 @@ export const Settings = () => {
                     }}
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Khóa API này được lưu trữ an toàn ở phía máy chủ và được sử dụng làm thông tin xác thực để gửi truy vấn trực tiếp đến Google Gemini.
+                    {t('Khóa API này được lưu trữ an toàn ở phía máy chủ và được sử dụng làm thông tin xác thực để gửi truy vấn trực tiếp đến Google Gemini.')}
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                    Mô hình AI sử dụng (AI Model)
+                    {t('Mô hình AI sử dụng (AI Model)')}
                   </label>
                   <input
                     type="text"
@@ -846,7 +848,7 @@ export const Settings = () => {
                     }}
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Mặc định sử dụng <strong>gemini-2.5-flash</strong> (hoặc bạn có thể chỉ định mô hình tương thích khác như <code>gemini-2.5-flash-lite</code> nếu cần).
+                    {t('Mặc định sử dụng')} <strong>gemini-2.5-flash</strong> {t('(hoặc bạn có thể chỉ định mô hình tương thích khác như')} <code>gemini-2.5-flash-lite</code> {t('nếu cần).')}
                   </span>
                 </div>
               </div>
@@ -911,17 +913,17 @@ export const Settings = () => {
                         {/* Summary Cards */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                           <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tổng Data</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tổng Data')}</div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 4 }}>{total}</div>
                           </div>
                           <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-danger-light)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-danger)', textTransform: 'uppercase' }}>Trùng CRM</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-danger)', textTransform: 'uppercase' }}>{t('Trùng CRM')}</div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
                               {dupCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-danger)' }}>({dupPercent}%)</span>
                             </div>
                           </div>
                           <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-success-light)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-success)', textTransform: 'uppercase' }}>Mới hoàn toàn</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-success)', textTransform: 'uppercase' }}>{t('Mới hoàn toàn')}</div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
                               {newCount} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-success)' }}>({newPercent}%)</span>
                             </div>
@@ -936,8 +938,8 @@ export const Settings = () => {
                             <button type="button" className={`btn ${filterType === 'new' ? 'success' : 'outline'}`} style={{ padding: '6px 12px', fontSize: '0.8rem', height: 32, background: filterType === 'new' ? 'var(--color-success)' : '', color: filterType === 'new' ? 'white' : '' }} onClick={() => { setFilterType('new'); setResultsPage(1); }}>Mới ({newCount})</button>
                           </div>
                           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%', maxWidth: '400px', flex: '1 1 300px' }}>
-                            <input className="form-input" placeholder="Tìm kiếm theo Tên, SĐT, Email..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setResultsPage(1); }} style={{ height: 34, fontSize: '0.825rem' }} />
-                            <button type="button" className="btn success" style={{ gap: 6, padding: '6px 14px', height: 34, flexShrink: 0, fontWeight: 700 }} onClick={handleExportResults}><Download size={14} /> Xuất File</button>
+                            <input className="form-input" placeholder={t("Tìm kiếm theo Tên, SĐT, Email...")} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setResultsPage(1); }} style={{ height: 34, fontSize: '0.825rem' }} />
+                            <button type="button" className="btn success" style={{ gap: 6, padding: '6px 14px', height: 34, flexShrink: 0, fontWeight: 700 }} onClick={handleExportResults}><Download size={14} /> {t('Xuất File')}</button>
                           </div>
                         </div>
 
@@ -947,10 +949,10 @@ export const Settings = () => {
                             <thead>
                               <tr style={{ background: 'var(--color-bg)' }}>
                                 <th style={{ ...thStyle, width: '50px' }}>STT</th>
-                                <th style={thStyle}>Khách hàng</th>
-                                <th style={thStyle}>Liên hệ</th>
-                                <th style={thStyle}>Sale Sở Hữu</th>
-                                <th style={thStyle}>Tương Tác Cuối</th>
+                                <th style={thStyle}>{t('Khách hàng')}</th>
+                                <th style={thStyle}>{t('Liên hệ')}</th>
+                                <th style={thStyle}>{t('Sale Sở Hữu')}</th>
+                                <th style={thStyle}>{t('Tương Tác Cuối')}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -965,7 +967,7 @@ export const Settings = () => {
                                   if (item.consultant_status) {
                                     const statusBg = item.consultant_status === 'active' ? 'var(--color-success-light)' : (item.consultant_status === 'leave' ? 'var(--color-warning-light)' : 'var(--color-border)');
                                     const statusText = item.consultant_status === 'active' ? 'var(--color-success)' : (item.consultant_status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)');
-                                    const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
+                                    const statusLabel = item.consultant_status === 'active' ? t('Hoạt động') : (item.consultant_status === 'leave' ? t('Nghỉ phép') : t('Nghỉ việc'));
                                     ownerStatusBadge = <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>{statusLabel}</span>;
                                   }
 
@@ -974,7 +976,7 @@ export const Settings = () => {
                                       <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                          <Avatar name={item.name || 'Không có tên'} size={32} />
+                                          <Avatar name={item.name || t('Không có tên')} size={32} />
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                             <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
                                             <div>{statusBadge}</div>
@@ -1080,7 +1082,7 @@ export const Settings = () => {
                     {/* File Upload Zone */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px dashed var(--color-border)', paddingBottom: '1.25rem' }}>
                       <div style={{ width: '100%' }}>
-                        <label className="form-label" style={{ fontWeight: 600 }}>Chọn file hoặc kéo thả (.xlsx, .xls, .csv)</label>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Chọn file hoặc kéo thả (.xlsx, .xls, .csv)')}</label>
                         <div style={{ position: 'relative', width: '100%' }}>
                           <input
                             type="file"
@@ -1213,7 +1215,7 @@ export const Settings = () => {
                         </h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                           <div>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Số Điện Thoại (Bắt buộc)</label>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Số Điện Thoại (Bắt buộc)')}</label>
                             <CustomSelect
                               options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={phoneCol}
@@ -1222,7 +1224,7 @@ export const Settings = () => {
                             />
                           </div>
                           <div>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Email (Tùy chọn)</label>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Email (Tùy chọn)')}</label>
                             <CustomSelect
                               options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={emailCol}
@@ -1231,7 +1233,7 @@ export const Settings = () => {
                             />
                           </div>
                           <div>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Cột Họ Tên (Tùy chọn)</label>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Họ Tên (Tùy chọn)')}</label>
                             <CustomSelect
                               options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={nameCol}
@@ -1241,7 +1243,7 @@ export const Settings = () => {
                           </div>
                           <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                              Cột Ngày (Tùy chọn)
+                              {t('Cột Ngày (Tùy chọn)')}
                             </label>
                             <CustomSelect
                               options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
@@ -1252,7 +1254,7 @@ export const Settings = () => {
                           </div>
                           <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                              Cột Sale phụ trách (Tùy chọn)
+                              {t('Cột Sale phụ trách (Tùy chọn)')}
                             </label>
                             <CustomSelect
                               options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
@@ -1263,7 +1265,7 @@ export const Settings = () => {
                           </div>
                         </div>
                         <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
-                          * Định dạng ngày được chấp nhận: <strong>dd-mm-yyyy</strong> (ví dụ: 20-05-2026) hoặc <strong>yyyy-mm-dd</strong>. Hệ thống sẽ tự động đưa về định dạng chuẩn của ngày và bỏ qua phần giờ để so khớp đối chiếu hợp lý.
+                          {t('* Định dạng ngày được chấp nhận:')} <strong>dd-mm-yyyy</strong> {t('(ví dụ: 20-05-2026) hoặc')} <strong>yyyy-mm-dd</strong>{t('. Hệ thống sẽ tự động đưa về định dạng chuẩn của ngày và bỏ qua phần giờ để so khớp đối chiếu hợp lý.')}
                         </p>
                       </div>
                     )}
@@ -1275,7 +1277,7 @@ export const Settings = () => {
                           <Shield size={14} color="var(--color-primary)" /> Quy tắc nhập dữ liệu vào CRM
                         </h4>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                          Tất cả dữ liệu ánh xạ lịch sử khi nhập <strong>luôn luôn chạy ở chế độ Đồng bộ ngầm (Silent Mode)</strong>. Hệ thống sẽ chỉ ghi nhận lịch sử và gán cho Sale sở hữu mà không phân bổ lại cho Sale khác, đồng thời hoàn toàn không gửi bất kỳ thông báo nhắc nhở nào để tránh gây phiền hà cho đội ngũ Sale.
+                          {t('Tất cả dữ liệu ánh xạ lịch sử khi nhập')} <strong>{t('luôn luôn chạy ở chế độ Đồng bộ ngầm (Silent Mode)')}</strong>{t('. Hệ thống sẽ chỉ ghi nhận lịch sử và gán cho Sale sở hữu mà không phân bổ lại cho Sale khác, đồng thời hoàn toàn không gửi bất kỳ thông báo nhắc nhở nào để tránh gây phiền hà cho đội ngũ Sale.')}
                         </div>
                       </div>
                     )}
@@ -1297,7 +1299,7 @@ export const Settings = () => {
                           cursor: checking || localRows.length === 0 ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        {checking ? <Activity size={16} className="spin" /> : "Chạy lọc trùng"}
+                        {checking ? <Activity size={16} className="spin" /> : t("Chạy lọc trùng")}
                       </button>
                       <button
                         type="button"
@@ -1349,7 +1351,7 @@ export const Settings = () => {
                     }}>
                       <span style={{ fontSize: '1rem' }}>💡</span>
                       <div>
-                        <strong>Cơ chế khớp trùng CRM:</strong> Công cụ đối chiếu thời gian thực bằng cách sử dụng chung một hàm nghiệp vụ với luồng xử lý Webhook và Google Sheets. Hệ thống chỉ đánh dấu Trùng lặp đối với Sale đang <strong>Hoạt động</strong>. Nếu Sale sở hữu đang <strong>Nghỉ phép</strong> hoặc <strong>Nghỉ việc</strong>, hệ thống tự động đánh dấu là lead được phép chia mới cho Sale khác.
+                        <strong>{t('Cơ chế khớp trùng CRM:')}</strong> {t('Công cụ đối chiếu thời gian thực bằng cách sử dụng chung một hàm nghiệp vụ với luồng xử lý Webhook và Google Sheets. Hệ thống chỉ đánh dấu Trùng lặp đối với Sale đang')} <strong>{t('Hoạt động')}</strong>{t('. Nếu Sale sở hữu đang')} <strong>{t('Nghỉ phép')}</strong> {t('hoặc')} <strong>{t('Nghỉ việc')}</strong>{t(', hệ thống tự động đánh dấu là lead được phép chia mới cho Sale khác.')}
                       </div>
                     </div>
                   </>
@@ -1436,10 +1438,10 @@ export const Settings = () => {
                                   />
                                 </th>
                                 <th style={{ ...thStyle, width: '50px' }}>STT</th>
-                                <th style={thStyle}>Khách hàng</th>
-                                <th style={thStyle}>Liên hệ</th>
-                                <th style={thStyle}>Sale Sở Hữu</th>
-                                <th style={thStyle}>Tương Tác Cuối</th>
+                                <th style={thStyle}>{t('Khách hàng')}</th>
+                                <th style={thStyle}>{t('Liên hệ')}</th>
+                                <th style={thStyle}>{t('Sale Sở Hữu')}</th>
+                                <th style={thStyle}>{t('Tương Tác Cuối')}</th>
                                 <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>Hành động</th>
                               </tr>
                             </thead>
@@ -1457,7 +1459,7 @@ export const Settings = () => {
                                   if (item.consultant_status) {
                                     const statusBg = item.consultant_status === 'active' ? '#e6f4ea' : (item.consultant_status === 'leave' ? '#fef3c7' : '#f1f5f9');
                                     const statusText = item.consultant_status === 'active' ? '#137333' : (item.consultant_status === 'leave' ? '#b06000' : '#5f6368');
-                                    const statusLabel = item.consultant_status === 'active' ? 'Hoạt động' : (item.consultant_status === 'leave' ? 'Nghỉ phép' : 'Nghỉ việc');
+                                    const statusLabel = item.consultant_status === 'active' ? t('Hoạt động') : (item.consultant_status === 'leave' ? t('Nghỉ phép') : t('Nghỉ việc'));
                                     ownerStatusBadge = <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: statusBg, color: statusText, fontWeight: 700, marginLeft: 6 }}>{statusLabel}</span>;
                                   }
 
@@ -1482,7 +1484,7 @@ export const Settings = () => {
                                       <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                          <Avatar name={item.name || 'Không có tên'} size={32} />
+                                          <Avatar name={item.name || t('Không có tên')} size={32} />
                                           <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
                                         </div>
                                       </td>
@@ -1516,7 +1518,7 @@ export const Settings = () => {
                                             handleDeleteHistory([item]);
                                           }}
                                           style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px' }}
-                                          title="Xóa bản ghi này"
+                                          title={t("Xóa bản ghi này")}
                                         >
                                           <Trash2 size={16} />
                                         </button>
@@ -1529,7 +1531,7 @@ export const Settings = () => {
                                   <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem 2rem', color: 'var(--color-text-muted)' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                                       <span style={{ fontSize: '1.5rem' }}>📋</span>
-                                      <span>Chưa có dữ liệu đối chiếu hoặc lịch sử nhập. Vui lòng bấm nút "+ Thêm mới" ở trên để bắt đầu.</span>
+                                      <span>{t('Chưa có dữ liệu đối chiếu hoặc lịch sử nhập. Vui lòng bấm nút "+ Thêm mới" ở trên để bắt đầu.')}</span>
                                     </div>
                                   </td>
                                 </tr>
@@ -1583,7 +1585,7 @@ export const Settings = () => {
                 </h3>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <label className="form-label">Chọn phương thức gửi</label>
+                  <label className="form-label">{t('Chọn phương thức gửi')}</label>
                   <CustomSelect
                     options={providerOptions}
                     value={provider}
@@ -1599,14 +1601,14 @@ export const Settings = () => {
 
                 {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
                 <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)</label>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
                   <input
                     className="form-input"
-                    placeholder="Ví dụ: https://sale.domation.net"
+                    placeholder={t("Ví dụ: https://sale.domation.net")}
                     value={frontendUrl}
                     onChange={e => setFrontendUrl(e.target.value)}
                   />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.')}</p>
                 </div>
 
                 {provider === 'appscript' && (
@@ -1616,7 +1618,7 @@ export const Settings = () => {
                     </h4>
 
                     <div style={{ marginBottom: '1rem' }}>
-                      <label className="form-label">Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)</label>
+                      <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
                       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
                         Mã dưới đây dùng để kích hoạt tính năng <strong>Gửi Email</strong> qua Google. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.
                       </p>
@@ -1627,7 +1629,7 @@ export const Settings = () => {
                           style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                           onClick={() => setShowInputScript(!showInputScript)}
                         >
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Xem mã Apps Script</span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Xem mã Apps Script')}</span>
                           {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
                         </div>
 
@@ -1667,7 +1669,7 @@ function doPost(e) {
                     </div>
 
                     <div>
-                      <label className="form-label">URL Webhook của Google Apps Script (doPost)</label>
+                      <label className="form-label">{t('URL Webhook của Google Apps Script (doPost)')}</label>
                       <input
                         className="form-input"
                         placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
@@ -1705,11 +1707,11 @@ function doPost(e) {
                     </div>
                     <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div>
-                        <label className="form-label">Email Người Gửi (From Email)</label>
+                        <label className="form-label">{t('Email Người Gửi (From Email)')}</label>
                         <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
                       </div>
                       <div>
-                        <label className="form-label">Tên Người Gửi (From Name)</label>
+                        <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
                         <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
                       </div>
                     </div>
@@ -1734,11 +1736,11 @@ function doPost(e) {
 
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Bot Token (Zalo cung cấp)</label>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (Zalo cung cấp)')}</label>
                     <input
                       type="password"
                       className="form-input"
-                      placeholder="Ví dụ: 12345689:abc-xyz"
+                      placeholder={t("Ví dụ: 12345689:abc-xyz")}
                       value={zaloBotToken}
                       onChange={e => setZaloBotToken(e.target.value)}
                     />
@@ -1933,10 +1935,10 @@ function doPost(e) {
                   <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Zap size={16} />
                   </span>
-                  Cấu hình Xử lý Fallback (Khi không khớp luật)
+                  {t('Cấu hình Xử lý Fallback (Khi không khớp luật)')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  Khi dữ liệu (leads) mới được đẩy vào hệ thống mà <strong>không khớp với bất kỳ quy luật định tuyến nào</strong>, hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.
+                  {t('Khi dữ liệu (leads) mới được đẩy vào hệ thống mà')} <strong>{t('không khớp với bất kỳ quy luật định tuyến nào')}</strong>{t(', hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.')}
                 </p>
 
                 {/* Selector for Fallback Type */}
@@ -2002,13 +2004,13 @@ function doPost(e) {
 
                 {fallbackType === 'round' ? (
                   <div style={{ animation: 'fadeIn 0.3s' }}>
-                    <label className="form-label">Chọn Vòng phân bổ mặc định</label>
+                    <label className="form-label">{t('Chọn Vòng phân bổ mặc định')}</label>
                     <CustomSelect
                       options={[
-                        { value: '', label: '-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --' },
+                        { value: '', label: t('-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --') },
                         ...rounds.map(r => ({
                           value: r.id.toString(),
-                          label: `${r.round_name} (${r.is_active ? 'Đang hoạt động' : 'Tạm dừng'})`
+                          label: `${r.round_name} (${r.is_active ? t('Đang hoạt động') : t('Tạm dừng')})`
                         }))
                       ]}
                       value={fallbackRoundId}
@@ -2019,10 +2021,10 @@ function doPost(e) {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
                     <div>
-                      <label className="form-label">Chọn tài khoản Admin nhận data</label>
+                      <label className="form-label">{t('Chọn tài khoản Admin nhận data')}</label>
                       <CustomSelect
                         options={[
-                          { value: '', label: '-- Chọn Admin nhận data --' },
+                          { value: '', label: t('-- Chọn Admin nhận data --') },
                           ...accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map(a => ({
                             value: a.id.toString(),
                             label: a.name,
@@ -2037,15 +2039,15 @@ function doPost(e) {
                       />
                     </div>
                     <div>
-                      <label className="form-label">Địa chỉ Email CC khi xảy ra Fallback</label>
+                      <label className="form-label">{t('Địa chỉ Email CC khi xảy ra Fallback')}</label>
                       <input
                         className="form-input"
-                        placeholder="Ví dụ: manager@company.com, admin@company.com"
+                        placeholder={t("Ví dụ: manager@company.com, admin@company.com")}
                         value={fallbackCcEmail}
                         onChange={e => setFallbackCcEmail(e.target.value)}
                       />
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                        Ngăn cách nhiều email bằng dấu phẩy. Hệ thống sẽ gửi bản sao thông báo data fallback về các email này.
+                        {t('Ngăn cách nhiều email bằng dấu phẩy. Hệ thống sẽ gửi bản sao thông báo data fallback về các email này.')}
                       </p>
                     </div>
                   </div>
@@ -2684,24 +2686,24 @@ function doPost(e) {
             }}>
               <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Send size={18} color="var(--color-primary)" /> Gửi Test Email
+                  <Send size={18} color="var(--color-primary)" /> {t('Gửi Test Email')}
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
-                  Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.
+                  {t('Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.')}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <CustomSelect
                     options={[
-                      { value: 'system', label: 'Test Hệ Thống (SMTP / AppScript)' },
-                      { value: 'assignment', label: 'Test Template Giao Data' },
-                      { value: 'zalo_sale', label: 'Test Welcome & Zalo (Sale)' },
-                      { value: 'zalo_admin', label: 'Test Welcome & Zalo (Admin)' },
-                      { value: 'ticket_admin', label: 'Test Thông báo Ticket (Admin)' },
-                      { value: 'ticket_sale_success', label: 'Test Duyệt Ticket thành công (Sale)' },
-                      { value: 'ticket_sale_fail', label: 'Test Từ chối Ticket (Sale)' },
-                      { value: 'admin_confirm', label: 'Test Xác nhận Email (Admin)' },
-                      { value: 'daily_report', label: 'Test Báo Cáo Tổng Kết Ngày' }
+                      { value: 'system', label: t('Test Hệ Thống (SMTP / AppScript)') },
+                      { value: 'assignment', label: t('Test Template Giao Data') },
+                      { value: 'zalo_sale', label: t('Test Welcome & Zalo (Sale)') },
+                      { value: 'zalo_admin', label: t('Test Welcome & Zalo (Admin)') },
+                      { value: 'ticket_admin', label: t('Test Thông báo Ticket (Admin)') },
+                      { value: 'ticket_sale_success', label: t('Test Duyệt Ticket thành công (Sale)') },
+                      { value: 'ticket_sale_fail', label: t('Test Từ chối Ticket (Sale)') },
+                      { value: 'admin_confirm', label: t('Test Xác nhận Email (Admin)') },
+                      { value: 'daily_report', label: t('Test Báo Cáo Tổng Kết Ngày') }
                     ]}
                     value={testType}
                     onChange={val => setTestType(val.toString())}
@@ -2711,7 +2713,7 @@ function doPost(e) {
 
                   <input
                     className="form-input"
-                    placeholder="Nhập email nhận test..."
+                    placeholder={t("Nhập email nhận test...")}
                     value={testEmail}
                     onChange={e => setTestEmail(e.target.value)}
                   />
@@ -2722,7 +2724,7 @@ function doPost(e) {
                     disabled={testing}
                   >
                     {testing ? <Activity size={16} className="spin" /> : <Send size={16} />}
-                    {testing ? "Đang gửi..." : "Gửi Email Test"}
+                    {testing ? t("Đang gửi...") : t("Gửi Email Test")}
                   </button>
                 </div>
               </div>

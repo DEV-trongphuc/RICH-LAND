@@ -3,6 +3,7 @@ import { ChevronDown, Search, Check } from 'lucide-react';
 import styles from './CustomSelect.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from './Avatar';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export interface SelectOption {
   value: string | number;
@@ -37,6 +38,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   direction = 'down',
   multiple = false
 }) => {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,8 +55,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
   const selectedOption = multiple ? null : options.find(opt => opt.value == value);
   const filtered = searchable ? options.filter(o => 
-    o.label.toLowerCase().includes(search.toLowerCase()) || 
-    (o.sublabel && o.sublabel.toLowerCase().includes(search.toLowerCase()))
+    t(o.label).toLowerCase().includes(search.toLowerCase()) || 
+    (o.sublabel && t(o.sublabel).toLowerCase().includes(search.toLowerCase()))
   ) : options;
 
   const isSelected = (val: string | number) => {
@@ -93,7 +95,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         return (
           <span className={styles.triggerContent}>
             {allOption?.icon && <span style={{ display: 'flex' }}>{allOption.icon}</span>}
-            {allOption ? allOption.label : placeholder}
+            {allOption ? t(allOption.label) : t(placeholder)}
           </span>
         );
       }
@@ -102,27 +104,27 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         return (
           <span className={styles.triggerContent}>
             {!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}
-            {selectedOpts[0].label}
+            {t(selectedOpts[0].label)}
           </span>
         );
       }
-      return <span className={styles.triggerContent}>Đã chọn ({selectedOpts.length})</span>;
+      return <span className={styles.triggerContent}>{t('Đã chọn')} ({selectedOpts.length})</span>;
     }
     return selectedOption ? (
       <span className={styles.triggerContent}>
-        {showAvatars && <Avatar src={selectedOption.avatar} name={selectedOption.label} size="sm" />}
+        {showAvatars && <Avatar src={selectedOption.avatar} name={t(selectedOption.label)} size="sm" />}
         {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span>{selectedOption.label}</span>
-          {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({selectedOption.sublabel})</span>}
+          <span>{t(selectedOption.label)}</span>
+          {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({t(selectedOption.sublabel)})</span>}
         </span>
       </span>
-    ) : placeholder;
+    ) : t(placeholder);
   };
 
   return (
     <div className={styles.wrapper} ref={containerRef} style={{ width }}>
-      {label && <label className={styles.label}>{label}</label>}
+      {label && <label className={styles.label}>{t(label)}</label>}
       <div 
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
         onClick={() => setIsOpen(!isOpen)}
@@ -153,7 +155,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <input 
                   type="text" 
                   autoFocus 
-                  placeholder="Tìm kiếm..." 
+                  placeholder={t("Tìm kiếm...")} 
                   value={search} 
                   onChange={e => setSearch(e.target.value)} 
                   onClick={e => e.stopPropagation()}
@@ -170,19 +172,19 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 >
                   <div className={styles.optionLabel}>
                     {showAvatars ? (
-                      <Avatar src={option.avatar} name={option.label} size="sm" />
+                      <Avatar src={option.avatar} name={t(option.label)} size="sm" />
                     ) : (
                       option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
                     )}
                     <div className={styles.optionText}>
-                      <span className={styles.optionMainLabel}>{option.label}</span>
-                      {option.sublabel && <span className={styles.optionSublabel}>{option.sublabel}</span>}
+                      <span className={styles.optionMainLabel}>{t(option.label)}</span>
+                      {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}
                     </div>
                   </div>
                   {isSelected(option.value) && <Check size={14} className={styles.checkIcon} />}
                 </div>
               )) : (
-                <div className={styles.empty}>Không tìm thấy</div>
+                <div className={styles.empty}>{t("Không tìm thấy")}</div>
               )}
             </div>
           </motion.div>

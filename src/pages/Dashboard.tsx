@@ -13,12 +13,14 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
 import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 import { Avatar } from '../components/ui/Avatar';
 
 export const Dashboard = () => {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
@@ -58,29 +60,36 @@ export const Dashboard = () => {
   const getComparisonLabel = (filter: string) => {
     switch (filter) {
       case 'Hôm nay':
-        return 'so với hôm qua';
+        return t('so với hôm qua');
       case 'Hôm qua':
-        return 'so với ngày trước đó';
+        return t('so với ngày trước đó');
       case 'Tuần này':
-        return 'so với tuần trước';
+        return t('so với tuần trước');
       case 'Tuần trước':
-        return 'so với tuần trước nữa';
+        return t('so với tuần trước nữa');
       case 'Tuần trước nữa':
-        return 'so với tuần trước đó';
+        return t('so với tuần trước đó');
       case '7 ngày qua':
-        return 'so với 7 ngày trước';
+        return t('so với 7 ngày trước');
       case '30 ngày qua':
-        return 'so với 30 ngày trước';
+        return t('so với 30 ngày trước');
       case 'Tháng này':
-        return 'so với tháng trước';
+        return t('so với tháng trước');
       case 'Tháng trước':
-        return 'so với tháng trước nữa';
+        return t('so với tháng trước nữa');
       default:
         if (filter.includes('đến')) {
-          return 'so với kỳ trước';
+          return t('so với kỳ trước');
         }
-        return 'so với kỳ trước';
+        return t('so với kỳ trước');
     }
+  };
+
+  const getDisplayDateFilterText = (filter: string) => {
+    if (filter.includes('đến')) {
+      return filter.replace(/\s*đến\s*/i, ` ${t('đến')} `);
+    }
+    return t(filter);
   };
 
   const fetchDashboard = async (signal?: AbortSignal) => {
@@ -209,7 +218,7 @@ export const Dashboard = () => {
         toast.error(json.message || 'Lỗi khi tải báo cáo thống kê');
       }
     } catch (e: any) {
-      toast.error('Lỗi kết nối: ' + e.message);
+      toast.error(t('Lỗi kết nối: ') + e.message);
     }
     setStatsLoading(false);
   };
@@ -226,7 +235,7 @@ export const Dashboard = () => {
     {
       id: 'total',
       statusValue: 'all',
-      label: 'TỔNG DATA TIẾP NHẬN',
+      label: t('TỔNG DATA TIẾP NHẬN'),
       value: stats?.total_today?.toLocaleString() || '0',
       icon: GitBranch,
       color: '#7c3aed', // Purple for Total Data
@@ -236,7 +245,7 @@ export const Dashboard = () => {
     {
       id: 'distributed',
       statusValue: 'assigned,compensation,rule_6_month,pending_work_hours',
-      label: 'ĐÃ CHIA VÒNG THÀNH CÔNG',
+      label: t('ĐÃ CHIA VÒNG THÀNH CÔNG'),
       value: stats?.distributed_today?.toLocaleString() || '0',
       icon: UserPlus,
       color: '#3b82f6', // Blue for Distributed
@@ -246,7 +255,7 @@ export const Dashboard = () => {
     {
       id: 'duplicates',
       statusValue: 'reminder',
-      label: 'BỊ TRÙNG LẶP (< 6 THÁNG)',
+      label: t('BỊ TRÙNG LẶP (< 6 THÁNG)'),
       value: stats?.duplicates?.toLocaleString() || '0',
       icon: AlertTriangle,
       color: '#f59e0b', // Amber/Yellow for Duplicates
@@ -256,7 +265,7 @@ export const Dashboard = () => {
     {
       id: 'errors',
       statusValue: 'error,blacklisted',
-      label: 'DATA LỖI / KHÔNG XÁC ĐỊNH',
+      label: t('DATA LỖI / KHÔNG XÁC ĐỊNH'),
       value: stats?.errors?.toLocaleString() || '0',
       icon: Zap,
       color: '#ef4444', // Red for Errors
@@ -267,15 +276,15 @@ export const Dashboard = () => {
 
 
   const dateOptions = [
-    { value: 'Hôm nay', label: 'Hôm nay' },
-    { value: 'Hôm qua', label: 'Hôm qua' },
-    { value: 'Tuần này', label: 'Tuần này' },
-    { value: 'Tuần trước', label: 'Tuần trước' },
-    { value: 'Tuần trước nữa', label: 'Tuần trước nữa' },
-    { value: '7 ngày qua', label: '7 ngày qua' },
-    { value: '30 ngày qua', label: '30 ngày qua' },
-    { value: 'Tháng này', label: 'Tháng này' },
-    { value: 'Tháng trước', label: 'Tháng trước' }
+    { value: 'Hôm nay', label: t('Hôm nay') },
+    { value: 'Hôm qua', label: t('Hôm qua') },
+    { value: 'Tuần này', label: t('Tuần này') },
+    { value: 'Tuần trước', label: t('Tuần trước') },
+    { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+    { value: '7 ngày qua', label: t('7 ngày qua') },
+    { value: '30 ngày qua', label: t('30 ngày qua') },
+    { value: 'Tháng này', label: t('Tháng này') },
+    { value: 'Tháng trước', label: t('Tháng trước') }
   ];
 
   const defaultFilters = ['Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
@@ -283,11 +292,11 @@ export const Dashboard = () => {
     dateOptions.push({ value: dateFilter, label: dateFilter });
   }
 
-  dateOptions.push({ value: 'Tùy chỉnh', label: 'Tùy chỉnh...' });
+  dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
 
   const handleCustomDateSubmit = () => {
-    if (!startDate || !endDate) return toast.error("Vui lòng chọn đầy đủ Từ ngày và Đến ngày");
-    if (new Date(startDate) > new Date(endDate)) return toast.error("Từ ngày không được lớn hơn Đến ngày");
+    if (!startDate || !endDate) return toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
+    if (new Date(startDate) > new Date(endDate)) return toast.error(t("Từ ngày không được lớn hơn Đến ngày"));
 
     // BUG-HIGH-1 fix: api.php expects format 'YYYY-MM-DD đến YYYY-MM-DD'
     // startDate/endDate from <input type="date"> are already in YYYY-MM-DD format
@@ -321,8 +330,8 @@ export const Dashboard = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Tổng quan Phân bổ Data</h1>
-          <p className="page-subtitle">Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.</p>
+          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>{t("Tổng quan Phân bổ Data")}</h1>
+          <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
         </div>
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
           <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
@@ -343,7 +352,7 @@ export const Dashboard = () => {
             className="btn outline"
             onClick={() => fetchDashboard()}
             disabled={loading}
-            title="Làm mới dữ liệu"
+            title={t("Làm mới dữ liệu")}
             style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
@@ -378,12 +387,12 @@ export const Dashboard = () => {
                 </div>
                 {card.id === 'distributed' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
-                    Đã chia: {stats?.distributed_assigned || 0} | Bù: {stats?.distributed_compensation || 0}
+                    {t('Đã chia')}: {stats?.distributed_assigned || 0} | {t('Bù')}: {stats?.distributed_compensation || 0}
                   </div>
                 )}
                 {card.id === 'errors' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
-                    {stats?.ticket_errors || 0} ticket / {stats?.blacklists || 0} blacklist
+                    {stats?.ticket_errors || 0} {t('ticket')} / {stats?.blacklists || 0} {t('blacklist')}
                   </div>
                 )}
               </div>
@@ -419,8 +428,8 @@ export const Dashboard = () => {
           <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Hiệu suất xử lý Data theo {displayChartMode === 'hour' ? 'giờ' : 'ngày'}</h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Biểu đồ thể hiện lưu lượng Data đổ về {dateFilter === 'Tùy chỉnh' ? 'trong khoảng thời gian đã chọn' : `trong ${dateFilter.toLowerCase()}`}.</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>{t('Biểu đồ thể hiện lưu lượng Data đổ về')} {dateFilter === 'Tùy chỉnh' ? t('trong khoảng thời gian đã chọn') : `${t('trong')} ${getDisplayDateFilterText(dateFilter).toLowerCase()}`}.</p>
               </div>
               {!isSingleDay && (
                 <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)' }}>
@@ -439,7 +448,7 @@ export const Dashboard = () => {
                       boxShadow: displayChartMode === 'day' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
                     }}
                   >
-                    Theo ngày
+                    {t('Theo ngày')}
                   </button>
                   <button
                     onClick={() => setChartMode('hour')}
@@ -456,7 +465,7 @@ export const Dashboard = () => {
                       boxShadow: displayChartMode === 'hour' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
                     }}
                   >
-                    Theo giờ
+                    {t('Theo giờ')}
                   </button>
                 </div>
               )}
@@ -472,7 +481,7 @@ export const Dashboard = () => {
                       return (
                         <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
                           <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Lưu lượng Data: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>{t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
                         </div>
                       );
                     }
@@ -485,18 +494,18 @@ export const Dashboard = () => {
               </ResponsiveContainer>
             ) : (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
-                Chưa có dữ liệu thống kê
+                {t('Chưa có dữ liệu thống kê')}
               </div>
             )}
           </div>
 
           <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Lịch sử giao Data gần đây</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('Lịch sử giao Data gần đây')}</h3>
               <span
                 style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer' }}
                 onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
-              >Xem tất cả</span>
+              >{t('Xem tất cả')}</span>
             </div>
             <div style={{ flex: 1, padding: '0.5rem', overflowY: 'auto', maxHeight: 260 }}>
               {recentLogs.length > 0 ? (
@@ -511,13 +520,13 @@ export const Dashboard = () => {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
                     >
-                      <Avatar src={log.assigned_to_avatar} name={log.assigned_to_name || 'Hệ thống'} size={32} />
+                      <Avatar src={log.assigned_to_avatar} name={log.assigned_to_name || t('Hệ thống')} size={32} />
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                          {log.assigned_to_name || 'Hệ thống'}
+                          {log.assigned_to_name || t('Hệ thống')}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {log.lead_name || 'Khách hàng'} • {new Date(log.created_at).toLocaleString('vi-VN')}
+                          {log.lead_name || t('Khách hàng')} • {new Date(log.created_at).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -528,24 +537,24 @@ export const Dashboard = () => {
                             }
                             switch (status) {
                               case 'assigned':
-                                return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: roundName || 'Đã chia' };
+                                return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: t(roundName || '') || t('Đã chia') };
                               case 'compensation':
-                                return { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', text: 'Data Bù' };
+                                return { bg: 'var(--color-primary-light)', color: 'var(--color-primary)', text: t('Data Bù') };
                               case 'pending_work_hours':
-                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Chờ giờ làm' };
+                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: t('Chờ giờ làm') };
                               case 'duplicate':
-                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Trùng lặp' };
+                                return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: t('Trùng lặp') };
                               case 'pending':
-                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Chờ chia' };
+                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: t('Chờ chia') };
                               case 'error':
                                 return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: 'Ticket' };
                               case 'silent':
-                                return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: 'Chỉ đồng bộ' };
+                                return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: t('Chỉ đồng bộ') };
                               case 'reminder':
                                 return {
                                   bg: theme === 'dark' ? 'rgba(219, 39, 119, 0.15)' : '#fce7f3',
                                   color: theme === 'dark' ? '#f472b6' : '#db2777',
-                                  text: 'Nhắc lại'
+                                  text: t('Nhắc lại')
                                 };
                               default:
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
@@ -563,7 +572,7 @@ export const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Không có data mới</div>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có data mới')}</div>
               )}
             </div>
           </div>
@@ -596,7 +605,7 @@ export const Dashboard = () => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <Users size={18} color="var(--color-primary)" /> Top Tư vấn viên nhận Data
+                  <Users size={18} color="var(--color-primary)" /> {t('Top Tư vấn viên nhận Data')}
                 </h3>
               </div>
               <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
@@ -617,14 +626,14 @@ export const Dashboard = () => {
                         <Avatar src={c.avatar} name={c.name} size={24} />
                         <span className="consultant-name" style={{ transition: 'color 0.2s ease' }}>{c.name}</span>
                       </span>
-                      <span style={{ color: 'var(--color-text)' }}>{c.data} lead</span>
+                      <span style={{ color: 'var(--color-text)' }}>{c.data} {t('lead')}</span>
                     </div>
                     <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 24 }}>
                       <div style={{ width: `${c.percent}%`, height: '100%', background: c.color, borderRadius: 4 }} />
                     </div>
                   </div>
                 )) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
                 )}
               </div>
             </div>
@@ -633,7 +642,7 @@ export const Dashboard = () => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <GitBranch size={18} color="#3b82f6" /> Tỷ lệ theo Vòng Phân Bổ
+                  <GitBranch size={18} color="#3b82f6" /> {t('Tỷ lệ theo Vòng Phân Bổ')}
                 </h3>
               </div>
               <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
@@ -641,13 +650,13 @@ export const Dashboard = () => {
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{r.round}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% tổng data</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t(r.round)}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% {t('tổng data')}</div>
                     </div>
                     <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{r.count}</div>
                   </div>
                 )) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
                 )}
               </div>
             </div>
@@ -659,7 +668,7 @@ export const Dashboard = () => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <GitBranch size={18} color="#8b5cf6" /> Tỷ lệ Nguồn Data
+                  <GitBranch size={18} color="#8b5cf6" /> {t('Tỷ lệ Nguồn Data')}
                 </h3>
               </div>
               <div style={{ flex: 1, minHeight: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -702,21 +711,21 @@ export const Dashboard = () => {
                         <div
                           key={index}
                           style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
-                          title={`${entry.name}: ${entry.value}`}
+                          title={`${t(entry.name)}: ${entry.value}`}
                         >
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
                           <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                            {entry.name}
+                            {t(entry.name)}
                           </span>
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
-                            {entry.value} data
+                            {entry.value} {t('data')}
                           </span>
                         </div>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu thống kê</div>
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
                 )}
               </div>
             </div>
@@ -725,7 +734,7 @@ export const Dashboard = () => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <CheckCircle size={18} color="#10b981" /> Thống kê lỗi Ticket (Được duyệt)
+                  <CheckCircle size={18} color="#10b981" /> {t('Thống kê lỗi Ticket (Được duyệt)')}
                 </h3>
               </div>
               <div style={{ flex: 1, minHeight: 260 }}>
@@ -760,13 +769,13 @@ export const Dashboard = () => {
                         contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         itemStyle={{ color: 'var(--color-success)', fontWeight: 600 }}
                       />
-                      <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name="Số lỗi được duyệt">
+                      <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name={t("Số lỗi được duyệt")}>
                         <LabelList dataKey="errors" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Chưa có TVV nào có lỗi được duyệt</div>
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>{t('Chưa có TVV nào có lỗi được duyệt')}</div>
                 )}
               </div>
             </div>
@@ -777,12 +786,12 @@ export const Dashboard = () => {
       <CustomModal
         isOpen={showDateModal}
         onClose={() => setShowDateModal(false)}
-        title="Tùy chỉnh thời gian"
+        title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
-            <label className="form-label">Từ ngày</label>
+            <label className="form-label">{t('Từ ngày')}</label>
             <input
               type="date"
               className="form-input"
@@ -791,7 +800,7 @@ export const Dashboard = () => {
             />
           </div>
           <div>
-            <label className="form-label">Đến ngày</label>
+            <label className="form-label">{t('Đến ngày')}</label>
             <input
               type="date"
               className="form-input"
@@ -800,8 +809,8 @@ export const Dashboard = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDateModal(false)}>Hủy</button>
-            <button className="btn primary" onClick={handleCustomDateSubmit}>Áp dụng</button>
+            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t('Hủy')}</button>
+            <button className="btn primary" onClick={handleCustomDateSubmit}>{t('Áp dụng')}</button>
           </div>
         </div>
       </CustomModal>
@@ -826,7 +835,7 @@ export const Dashboard = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                 <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
                 <div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>Báo cáo hiệu suất TVV</h3>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Báo cáo hiệu suất TVV')}</h3>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                     <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • {statsConsultant.email}
                   </p>
@@ -839,14 +848,14 @@ export const Dashboard = () => {
                 <div style={{ position: 'relative', zIndex: 100 }}>
                   <CustomSelect
                     options={[
-                      { value: 'this_month', label: 'Tháng này' },
-                      { value: 'today', label: 'Hôm nay' },
-                      { value: 'yesterday', label: 'Hôm qua' },
-                      { value: '7_days', label: '7 ngày qua' },
-                      { value: '30_days', label: '30 ngày qua' },
-                      { value: 'last_month', label: 'Tháng trước' },
-                      { value: 'all', label: 'Tất cả thời gian' },
-                      { value: 'custom', label: 'Tự chọn ngày...' }
+                      { value: 'this_month', label: t('Tháng này') },
+                      { value: 'today', label: t('Hôm nay') },
+                      { value: 'yesterday', label: t('Hôm qua') },
+                      { value: '7_days', label: t('7 ngày qua') },
+                      { value: '30_days', label: t('30 ngày qua') },
+                      { value: 'last_month', label: t('Tháng trước') },
+                      { value: 'all', label: t('Tất cả thời gian') },
+                      { value: 'custom', label: t('Tự chọn ngày...') }
                     ]}
                     value={statsDateMode}
                     onChange={val => setStatsDateMode(String(val))}
@@ -863,7 +872,7 @@ export const Dashboard = () => {
                       value={statsStartDate}
                       onChange={e => setStatsStartDate(e.target.value)}
                     />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>đến</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('đến')}</span>
                     <input
                       type="date"
                       className="form-input"
@@ -881,11 +890,11 @@ export const Dashboard = () => {
               {statsLoading && !statsData ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
                   <RefreshCw size={32} className="spin" color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Đang tải báo cáo...</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải báo cáo...')}</span>
                 </div>
               ) : !statsData ? (
                 <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>
-                  Không có dữ liệu thống kê.
+                  {t('Không có dữ liệu thống kê.')}
                 </div>
               ) : (
                 <>
@@ -899,43 +908,43 @@ export const Dashboard = () => {
                   {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thành công</div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Thành công')}</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
                         {statsData.summary.successful}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Data đã bàn giao</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Data đã bàn giao')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nhắc lại</div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Nhắc lại')}</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 4 }}>
                         {statsData.summary.reminder || 0}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Yêu cầu gọi lại</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Yêu cầu gọi lại')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lỗi</div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Lỗi')}</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
                         {statsData.summary.error || 0}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Trùng lặp / Lỗi chia</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Trùng lặp / Lỗi chia')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ</div>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tỷ lệ')}</div>
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
                         {statsData.summary.system_total_successful > 0
                           ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100)
                           : 0}%
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Thành công / Tổng của tất cả saleperson</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Thành công / Tổng của tất cả saleperson')}</div>
                     </div>
                   </div>
 
                   {/* Row 1: Daily trend bar chart (Full Width) */}
                   <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', width: '100%' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Lưu lượng nhận Data theo Ngày</h4>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Lưu lượng nhận Data theo Ngày')}</h4>
                     {statsData.by_date && statsData.by_date.length > 0 ? (
                       <div style={{ height: 180, width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -950,7 +959,7 @@ export const Dashboard = () => {
                             <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                             <YAxis domain={[0, (max: number) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
                             <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name="Data thành công">
+                            <Bar dataKey="count" fill="url(#statsDateGradient)" radius={[4, 4, 0, 0]} maxBarSize={30} name={t("Data thành công")}>
                               <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} />
                             </Bar>
                           </BarChart>
@@ -958,7 +967,7 @@ export const Dashboard = () => {
                       </div>
                     ) : (
                       <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                        Không có dữ liệu phân bổ theo ngày
+                        {t('Không có dữ liệu phân bổ theo ngày')}
                       </div>
                     )}
                   </div>
@@ -967,12 +976,12 @@ export const Dashboard = () => {
                   <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Donut chart for status ratio */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Trạng thái Data</h4>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Trạng thái Data')}</h4>
                       {(() => {
                         const statusChartData = [
-                          { name: 'Thành công', value: statsData.summary.successful, color: '#7c3aed' },
-                          { name: 'Nhắc lại', value: statsData.summary.reminder, color: '#f59e0b' },
-                          { name: 'Lỗi', value: statsData.summary.error, color: '#ef4444' }
+                          { name: t('Thành công'), value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: t('Nhắc lại'), value: statsData.summary.reminder, color: '#f59e0b' },
+                          { name: t('Lỗi'), value: statsData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
 
                         return statsData.summary.total > 0 && statusChartData.length > 0 ? (
@@ -1010,7 +1019,7 @@ export const Dashboard = () => {
                           </div>
                         ) : (
                           <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
-                            Không có dữ liệu lưu lượng
+                            {t('Không có dữ liệu lưu lượng')}
                           </div>
                         );
                       })()}
@@ -1018,7 +1027,7 @@ export const Dashboard = () => {
 
                     {/* Rounds breakdown chart */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Phân bổ theo Vòng (Round)</h4>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Phân bổ theo Vòng (Round)')}</h4>
                       {statsData.rounds.length > 0 ? (
                         <div style={{ height: 160, width: '100%' }}>
                           <ResponsiveContainer width="100%" height="100%">
@@ -1027,15 +1036,15 @@ export const Dashboard = () => {
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name="Thành công" />
-                              <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name="Nhắc lại" />
-                              <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name="Lỗi" />
+                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
+                              <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name={t("Nhắc lại")} />
+                              <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name={t("Lỗi")} />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
-                          Không có dữ liệu chia số theo vòng
+                          {t('Không có dữ liệu chia số theo vòng')}
                         </div>
                       )}
                     </div>
@@ -1045,7 +1054,7 @@ export const Dashboard = () => {
                   <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     {/* Source breakdown list */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ Nguồn Data (Chi tiết)</h4>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Nguồn Data (Chi tiết)')}</h4>
                       {statsData.by_source && statsData.by_source.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
                           {statsData.by_source.map((src: any, idx: number) => {
@@ -1055,8 +1064,8 @@ export const Dashboard = () => {
                             return (
                               <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{src.source}</span>
-                                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} data ({sourcePercent}%)</span>
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t(src.source)}</span>
+                                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
                                   <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
@@ -1067,36 +1076,36 @@ export const Dashboard = () => {
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1.5rem 0' }}>
-                          Không có dữ liệu nguồn data
+                          {t('Không có dữ liệu nguồn data')}
                         </div>
                       )}
                     </div>
 
                     {/* Tickets Reports statistics */}
                     <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Thống kê Ticket báo lỗi Data</h4>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Thống kê Ticket báo lỗi Data')}</h4>
                       {statsData.tickets ? (
                         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
                           <div style={{ background: 'var(--color-bg)', padding: '6px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
-                            <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>GỬI ĐI</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('GỬI ĐI')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginTop: 2 }}>{statsData.tickets.total}</div>
                           </div>
                           <div style={{ background: 'var(--color-success-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                            <div style={{ fontSize: '0.6rem', color: 'var(--color-success)', fontWeight: 700 }}>ĐÃ BÙ</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-success)', fontWeight: 700 }}>{t('ĐÃ BÙ')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 2 }}>{statsData.tickets.approved}</div>
                           </div>
                           <div style={{ background: 'var(--color-warning-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
-                            <div style={{ fontSize: '0.6rem', color: 'var(--color-warning)', fontWeight: 700 }}>ĐANG CHỜ</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-warning)', fontWeight: 700 }}>{t('ĐANG CHỜ')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 2 }}>{statsData.tickets.pending}</div>
                           </div>
                           <div style={{ background: 'var(--color-danger-light)', padding: '6px', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                            <div style={{ fontSize: '0.6rem', color: 'var(--color-danger)', fontWeight: 700 }}>TỪ CHỐI</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--color-danger)', fontWeight: 700 }}>{t('TỪ CHỐI')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 2 }}>{statsData.tickets.rejected}</div>
                           </div>
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '1rem 0' }}>
-                          Không có dữ liệu ticket
+                          {t('Không có dữ liệu ticket')}
                         </div>
                       )}
                     </div>
@@ -1107,7 +1116,7 @@ export const Dashboard = () => {
 
             {/* Footer */}
             <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-              <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>Đóng</button>
+              <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>{t('Đóng')}</button>
             </div>
           </div>
         </div>,

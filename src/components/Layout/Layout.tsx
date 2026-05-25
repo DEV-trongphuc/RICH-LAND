@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { QuickAddLeadModal } from '../QuickAddLeadModal';
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
@@ -54,7 +56,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         setCurrentPage(1);
       }
     } catch (err) {
-      console.error('Lỗi khi tải bản tin hoạt động:', err);
+      console.error('Error loading activity feed:', err);
     } finally {
       setIsFeedLoading(false);
     }
@@ -89,7 +91,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             }
           }
         })
-        .catch(err => console.error('Lỗi khi tải thông báo ticket:', err));
+        .catch(err => console.error('Error loading ticket notification:', err));
     }
   }, [user]);
 
@@ -157,7 +159,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <CustomModal
         isOpen={isTicketModalOpen}
         onClose={() => setIsTicketModalOpen(false)}
-        title="Thông báo Ticket mới"
+        title={t("Thông báo Ticket mới")}
         width={420}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem 0.5rem' }}>
@@ -176,11 +178,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
           
           <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-            Yêu cầu cần xử lý!
+            {t("Yêu cầu cần xử lý!")}
           </h3>
           
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-            Hệ thống ghi nhận đang có <strong style={{ color: 'var(--color-danger)', fontSize: '1rem' }}>{pendingTicketsCount}</strong> ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.
+            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-danger)', fontSize: '1rem' }}>{pendingTicketsCount}</strong> {t("ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.")}
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
@@ -189,14 +191,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               onClick={() => setIsTicketModalOpen(false)}
               style={{ flex: 1, height: 42, fontWeight: 600 }}
             >
-              Để sau
+              {t("Để sau")}
             </button>
             <button 
               className="btn primary" 
               onClick={handleViewTickets}
               style={{ flex: 1, height: 42, background: 'var(--color-primary)', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}
             >
-              Xem ngay
+              {t("Xem ngay")}
             </button>
           </div>
         </div>
@@ -206,7 +208,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <CustomModal
         isOpen={isActivityFeedOpen}
         onClose={() => setIsActivityFeedOpen(false)}
-        title="Bản tin hoạt động hệ thống"
+        title={t("Bản tin hoạt động hệ thống")}
         width={720}
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
@@ -221,7 +223,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', display: 'inline-block' }} />
-              Danh sách hoạt động và phân bổ gần đây nhất
+              {t("Danh sách hoạt động và phân bổ gần đây nhất")}
             </span>
             <button
               onClick={fetchFeed}
@@ -240,7 +242,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               }}
             >
               <RefreshCw size={14} className={isFeedLoading ? 'spin' : ''} />
-              Làm mới
+              {t("Làm mới")}
             </button>
           </div>
 
@@ -252,10 +254,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   const config = getActivityIcon(item);
                   const isExpanded = expandedFeedItem === item.id;
                   const entityName = item.type === 'distribution' 
-                    ? (item.consultant_name || 'Hệ thống')
+                    ? (item.consultant_name || t('Hệ thống'))
                     : (item.type === 'ticket'
-                        ? (item.consultant_name || 'Hệ thống')
-                        : (item.admin_name || 'Hệ thống'));
+                        ? (item.consultant_name || t('Hệ thống'))
+                        : (item.admin_name || t('Hệ thống')));
                   
                   return (
                     <div 
@@ -346,9 +348,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                                 }}
                               >
                                 {isExpanded ? (
-                                  <>Thu gọn <ChevronUp size={12} /></>
+                                  <>{t('Thu gọn')} <ChevronUp size={12} /></>
                                 ) : (
-                                  <>Chi tiết <ChevronDown size={12} /></>
+                                  <>{t('Chi tiết')} <ChevronDown size={12} /></>
                                 )}
                               </button>
                             )}
@@ -389,7 +391,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: 8 }}>
                 <Activity size={32} style={{ opacity: 0.5 }} />
-                <span style={{ fontSize: '0.875rem' }}>Không có hoạt động nào được ghi nhận gần đây.</span>
+                <span style={{ fontSize: '0.875rem' }}>{t('Không có hoạt động nào được ghi nhận gần đây.')}</span>
               </div>
             )}
           </div>
@@ -405,7 +407,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               borderTop: '1px solid var(--color-border-light)'
             }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, feedItems.length)} của {feedItems.length} hoạt động
+                {t('Hiển thị')} {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, feedItems.length)} {t('của')} {feedItems.length} {t('hoạt động')}
               </span>
               
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -422,7 +424,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     opacity: currentPage === 1 ? 0.5 : 1
                   }}
                 >
-                  Trước
+                  {t('Trước')}
                 </button>
                 
                 {(() => {
@@ -468,7 +470,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     opacity: currentPage === Math.ceil(feedItems.length / pageSize) ? 0.5 : 1
                   }}
                 >
-                  Sau
+                  {t('Sau')}
                 </button>
               </div>
             </div>

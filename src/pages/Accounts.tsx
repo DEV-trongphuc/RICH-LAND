@@ -8,8 +8,10 @@ import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const Accounts = () => {
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -46,11 +48,11 @@ export const Accounts = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn file hình ảnh hợp lệ.');
+      toast.error(t('Vui lòng chọn file hình ảnh hợp lệ.'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Kích thước ảnh không được vượt quá 5MB.');
+      toast.error(t('Kích thước ảnh không được vượt quá 5MB.'));
       return;
     }
 
@@ -66,12 +68,12 @@ export const Accounts = () => {
 
       if (res.success && res.url) {
         setFormData(prev => ({ ...prev, avatar: res.url }));
-        toast.success('Tải ảnh đại diện lên thành công!');
+        toast.success(t('Tải ảnh đại diện lên thành công!'));
       } else {
-        toast.error(res.message || 'Lỗi khi tải ảnh lên');
+        toast.error(res.message || t('Lỗi khi tải ảnh lên'));
       }
     } catch (err: any) {
-      toast.error('Lỗi kết nối: ' + err.message);
+      toast.error(`${t('Lỗi kết nối')}: ` + err.message);
     } finally {
       setIsUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -100,13 +102,13 @@ export const Accounts = () => {
         body: JSON.stringify({ account_id: editingAccount.id, message: quickMsgText })
       });
       if (res.success) {
-        toast.success(res.message || 'Đã gửi tin nhắn thành công!');
+        toast.success(res.message || t('Đã gửi tin nhắn thành công!'));
         setQuickMsgText('');
       } else {
-        toast.error(res.message || 'Lỗi khi gửi tin');
+        toast.error(res.message || t('Lỗi khi gửi tin'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     } finally {
       setIsSendingQuickMsg(false);
     }
@@ -114,7 +116,7 @@ export const Accounts = () => {
 
   const handleUnlinkZaloInModal = async () => {
     if (!editingAccount) return;
-    if (!window.confirm("Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?")) return;
+    if (!window.confirm(t("Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?"))) return;
     setIsUnlinking(true);
     try {
       const json = await fetchAPI('unlink_zalo', {
@@ -122,15 +124,15 @@ export const Accounts = () => {
         body: JSON.stringify({ id: editingAccount.id, type: 'account' })
       });
       if (json.success) {
-        toast.success('Đã hủy liên kết Zalo thành công!');
+        toast.success(t('Đã hủy liên kết Zalo thành công!'));
         setFormData(prev => ({ ...prev, zalo_chat_id: '' }));
         setEditingAccount((prev: any) => ({ ...prev, zalo_chat_id: null }));
         fetchAccounts();
       } else {
-        toast.error(json.message || 'Lỗi khi hủy liên kết');
+        toast.error(json.message || t('Lỗi khi hủy liên kết'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     } finally {
       setIsUnlinking(false);
     }
@@ -155,7 +157,7 @@ export const Accounts = () => {
       const json = await fetchAPI('get_admin_logs');
       if (json.success) setLogs(json.data);
     } catch (e: any) {
-      toast.error('Không thể tải nhật ký hoạt động: ' + e.message);
+      toast.error(`${t('Không thể tải nhật ký hoạt động')}: ` + e.message);
     }
     setLoadingLogs(false);
   };
@@ -171,7 +173,7 @@ export const Accounts = () => {
       const json = await fetchAPI('get_accounts');
       if (json.success) setAccounts(json.data);
     } catch (e: any) {
-      toast.error('Không thể tải dữ liệu: ' + e.message);
+      toast.error(`${t('Không thể tải dữ liệu')}: ` + e.message);
     }
     setLoading(false);
   };
@@ -196,13 +198,13 @@ export const Accounts = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.username || !formData.name) return toast.error('Vui lòng nhập đủ tên và username');
-    if (!editingAccount && !formData.password) return toast.error('Vui lòng nhập mật khẩu cho tài khoản mới');
+    if (!formData.username || !formData.name) return toast.error(t('Vui lòng nhập đủ tên và username'));
+    if (!editingAccount && !formData.password) return toast.error(t('Vui lòng nhập mật khẩu cho tài khoản mới'));
     // Email bắt buộc trừ Super Admin (id=1)
     const isSuperAdmin = Number(editingAccount?.id) === 1;
     if (!isSuperAdmin) {
-      if (!formData.email) return toast.error('Email là bắt buộc để đăng nhập');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return toast.error('Định dạng email không hợp lệ');
+      if (!formData.email) return toast.error(t('Email là bắt buộc để đăng nhập'));
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return toast.error(t('Định dạng email không hợp lệ'));
     }
     if (isSaving) return;
     
@@ -216,14 +218,14 @@ export const Accounts = () => {
         body: JSON.stringify(payload)
       });
       if (json.success) {
-        toast.success(editingAccount ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+        toast.success(editingAccount ? t('Cập nhật thành công!') : t('Thêm mới thành công!'));
         fetchAccounts();
         setModalOpen(false);
       } else {
-        toast.error(json.message || 'Lỗi khi lưu');
+        toast.error(json.message || t('Lỗi khi lưu'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     }
     setIsSaving(false);
   };
@@ -241,10 +243,10 @@ export const Accounts = () => {
           setConfirmOpen(true);
         }
       } else {
-        toast.error(json.message || 'Lỗi khi kiểm tra tài khoản');
+        toast.error(json.message || t('Lỗi khi kiểm tra tài khoản'));
       }
     } catch (e: any) {
-      toast.error('Lỗi kiểm tra: ' + e.message);
+      toast.error(`${t('Lỗi kiểm tra')}: ` + e.message);
     }
   };
 
@@ -254,13 +256,13 @@ export const Accounts = () => {
     try {
       const json = await fetchAPI(`delete_account&id=${deleteId}`);
       if (json.success) {
-        toast.success('Đã xóa thành công!');
+        toast.success(t('Đã xóa thành công!'));
         fetchAccounts();
       } else {
-        toast.error(json.message || 'Lỗi khi xóa');
+        toast.error(json.message || t('Lỗi khi xóa'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     }
     setIsDeleting(false);
     setConfirmOpen(false);
@@ -272,14 +274,14 @@ export const Accounts = () => {
     try {
       const json = await fetchAPI(`delete_account&id=${deleteId}&replacement_id=${replacementId}`);
       if (json.success) {
-        toast.success('Đã chuyển giao cấu hình và xóa tài khoản thành công!');
+        toast.success(t('Đã chuyển giao cấu hình và xóa tài khoản thành công!'));
         fetchAccounts();
         setShowReplacementModal(false);
       } else {
-        toast.error(json.message || 'Lỗi khi xóa');
+        toast.error(json.message || t('Lỗi khi xóa'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     }
     setIsDeleting(false);
   };
@@ -291,12 +293,12 @@ export const Accounts = () => {
         body: JSON.stringify({ id: accId })
       });
       if (json.success) {
-        toast.success('Đã gửi lại link xác thực. Vui lòng kiểm tra email.');
+        toast.success(t('Đã gửi lại link xác thực. Vui lòng kiểm tra email.'));
       } else {
-        toast.error(json.message || 'Lỗi khi gửi email');
+        toast.error(json.message || t('Lỗi khi gửi email'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     }
   };
 
@@ -311,14 +313,14 @@ export const Accounts = () => {
         body: JSON.stringify({ id: accId })
       });
       if (json.success) {
-        toast.success('Đã gửi lại email nhắc xác thực Zalo.');
+        toast.success(t('Đã gửi lại email nhắc xác thực Zalo.'));
         setZaloRemindedId(accId);
         setTimeout(() => setZaloRemindedId(null), 5000);
       } else {
-        toast.error(json.message || 'Lỗi khi gửi email');
+        toast.error(json.message || t('Lỗi khi gửi email'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(`${t('Lỗi')}: ` + e.message);
     }
     setZaloRemindingId(null);
   };
@@ -340,12 +342,12 @@ export const Accounts = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <UserCog size={28} color="var(--color-primary)" /> Quản lý Tài khoản
+            <UserCog size={28} color="var(--color-primary)" /> {t('Quản lý Tài khoản')}
           </h1>
-          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Quản trị hệ thống và phân quyền truy cập cho nhân viên.</p>
+          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{t('Quản trị hệ thống và phân quyền truy cập cho nhân viên.')}</p>
         </div>
         <button onClick={openAddModal} className="btn primary responsive-btn-full" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', fontSize: '0.875rem' }}>
-          <Plus size={18} /> <span>Thêm<span className="hide-on-mobile"> tài khoản</span></span>
+          <Plus size={18} /> <span>{t('Thêm')}<span className="hide-on-mobile"> {t('tài khoản')}</span></span>
         </button>
       </div>
 
@@ -369,7 +371,7 @@ export const Accounts = () => {
             flexShrink: 0
           }}
         >
-          <UserCog size={16} /> <span><span className="hide-on-mobile">Danh sách </span>Tài khoản</span>
+          <UserCog size={16} /> <span><span className="hide-on-mobile">{t('Danh sách')} </span>{t('Tài khoản')}</span>
         </button>
         <button 
           onClick={() => setActiveTab('logs')}
@@ -389,7 +391,7 @@ export const Accounts = () => {
             flexShrink: 0
           }}
         >
-          <History size={16} /> <span>Nhật ký<span className="hide-on-mobile"> hoạt động Admin</span></span>
+          <History size={16} /> <span>{t('Nhật ký')}<span className="hide-on-mobile"> {t('hoạt động Admin')}</span></span>
         </button>
       </div>
  
@@ -402,18 +404,18 @@ export const Accounts = () => {
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tên người dùng</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email đăng nhập</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Zalo Chat ID</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân quyền</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Hoạt động</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thao tác</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tên người dùng')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Email đăng nhập')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Zalo Chat ID')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân quyền')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Hoạt động')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Thao tác')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {accounts.map(acc => (
                     <tr key={acc.id} onClick={() => openEditModal(acc)} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }} className="table-row-hover">
-                      <td data-label="Tên người dùng" style={{ padding: '1rem 1.5rem' }}>
+                      <td data-label={t('Tên người dùng')} style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <Avatar src={acc.avatar} name={acc.name} size={36} />
                           <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
@@ -422,27 +424,27 @@ export const Accounts = () => {
                           </div>
                         </div>
                       </td>
-                      <td data-label="Email đăng nhập" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                      <td data-label={t('Email đăng nhập')} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Shield size={14} />
-                          <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có email</span>}</span>
+                          <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có email')}</span>}</span>
                           {acc.email && (
                             Number(acc.is_confirmed) === 1 ? (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Đã xác thực</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Đã xác thực')}</span>
                             ) : (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>Chưa xác thực</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Chưa xác thực')}</span>
                             )
                           )}
                         </div>
                         {acc.email && Number(acc.is_confirmed) === 0 && (
                           <div style={{ marginTop: 6, paddingLeft: 20 }}>
                             <button onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
-                              <Send size={12} style={{ marginRight: 4 }} /> Gửi lại link
+                              <Send size={12} style={{ marginRight: 4 }} /> {t('Gửi lại link')}
                             </button>
                           </div>
                         )}
                       </td>
-                      <td data-label="Zalo Chat ID" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                      <td data-label={t("Zalo Chat ID")} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                         {acc.zalo_chat_id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title={acc.zalo_chat_id}>
                             <span style={{ 
@@ -450,7 +452,7 @@ export const Accounts = () => {
                               padding: '4px 10px', borderRadius: 20, 
                               background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
                             }}>
-                              <MessageCircle size={14} fill="#0068ff" color="white" /> Đã liên kết
+                              <MessageCircle size={14} fill="#0068ff" color="white" /> {t('Đã liên kết')}
                             </span>
                           </div>
                         ) : (
@@ -460,38 +462,38 @@ export const Accounts = () => {
                               padding: '4px 10px', borderRadius: 20, 
                               background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
                             }}>
-                              Chưa liên kết
+                              {t('Chưa liên kết')}
                             </span>
                             {acc.email && (
                               zaloRemindedId === acc.id ? (
                                 <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                  <Check size={12} /> Đã nhắc
+                                  <Check size={12} /> {t('Đã nhắc')}
                                 </span>
                               ) : (
-                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title="Gửi email nhắc xác thực Zalo" disabled={zaloRemindingId === acc.id}>
-                                  {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? 'Đang gửi...' : 'Nhắc'}
+                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === acc.id}>
+                                  {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? t('Đang gửi...') : t('Nhắc')}
                                 </button>
                               )
                             )}
                           </div>
                         )}
                       </td>
-                      <td data-label="Phân quyền" style={{ padding: '1rem 1.5rem' }}>
+                      <td data-label={t('Phân quyền')} style={{ padding: '1rem 1.5rem' }}>
                         {getRoleBadge(acc.role)}
                       </td>
-                      <td data-label="Hoạt động" style={{ padding: '1rem 1.5rem' }}>
+                      <td data-label={t('Hoạt động')} style={{ padding: '1rem 1.5rem' }}>
                         {acc.last_login ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>Chưa đăng nhập</span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>{t('Chưa đăng nhập')}</span>
                         )}
                       </td>
-                      <td data-label="Thao tác" style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                      <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
-                          <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title="Sửa">
+                          <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title={t("Sửa")}>
                             <Edit3 size={16} />
                           </button>
                         </div>
@@ -505,9 +507,9 @@ export const Accounts = () => {
                           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                             <UserCog size={32} color="var(--color-text-muted)" />
                           </div>
-                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có tài khoản</h3>
-                          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.</p>
-                          <button className="btn primary" onClick={openAddModal}><Plus size={18}/> Thêm Tài khoản</button>
+                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có tài khoản')}</h3>
+                          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.')}</p>
+                          <button className="btn primary" onClick={openAddModal}><Plus size={18}/> {t('Thêm Tài khoản')}</button>
                         </div>
                       </td>
                     </tr>
@@ -527,10 +529,10 @@ export const Accounts = () => {
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Thời gian</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Người thực hiện</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Hành động</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>Chi tiết</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Người thực hiện')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Hành động')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Chi tiết')}</th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>IP Address</th>
                   </tr>
                 </thead>
@@ -540,38 +542,38 @@ export const Accounts = () => {
                       try {
                         const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
                         if (!details || Object.keys(details).length === 0) {
-                          return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Không có chi tiết</span>;
+                          return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Không có chi tiết')}</span>;
                         }
                         if (details.message && Object.keys(details).length === 1) {
                           return <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{details.message}</span>;
                         }
 
                         const KEY_LABELS: Record<string, string> = {
-                          round_id: 'Vòng (ID)',
-                          round_name: 'Tên vòng',
-                          compensations: 'Bù data',
-                          log_id: 'ID log',
-                          lead_id: 'ID lead',
-                          lead_name: 'Tên lead',
-                          phone: 'Số điện thoại',
-                          new_consultant_id: 'ID TVV mới',
-                          new_consultant_name: 'Tên TVV mới',
-                          is_duplicate: 'Trùng lặp',
-                          keys: 'Cấu hình thay đổi',
-                          id: 'ID',
-                          name: 'Tên hiển thị',
-                          email: 'Email đăng nhập',
-                          status: 'Trạng thái',
-                          target_round_id: 'Vòng chuyển hướng',
-                          logical_operator: 'Điều kiện logic',
-                          sheet_name: 'Tên trang tính',
-                          sheet_column: 'Cột trang tính',
-                          system_field: 'Trường hệ thống',
-                          connection_id: 'ID kết nối',
-                          message: 'Thông báo',
-                          admin_ids: 'Admin nhận thông báo',
-                          compensate_skipped: 'Bù cho người cũ',
-                          skipped_consultant_id: 'ID người cũ'
+                          round_id: t('Vòng (ID)'),
+                          round_name: t('Tên vòng'),
+                          compensations: t('Bù data'),
+                          log_id: t('ID log'),
+                          lead_id: t('ID lead'),
+                          lead_name: t('Tên lead'),
+                          phone: t('Số điện thoại'),
+                          new_consultant_id: t('ID TVV mới'),
+                          new_consultant_name: t('Tên TVV mới'),
+                          is_duplicate: t('Trùng lặp'),
+                          keys: t('Cấu hình thay đổi'),
+                          id: t('ID'),
+                          name: t('Tên hiển thị'),
+                          email: t('Email đăng nhập'),
+                          status: t('Trạng thái'),
+                          target_round_id: t('Vòng chuyển hướng'),
+                          logical_operator: t('Điều kiện logic'),
+                          sheet_name: t('Tên trang tính'),
+                          sheet_column: t('Cột trang tính'),
+                          system_field: t('Trường hệ thống'),
+                          connection_id: t('ID kết nối'),
+                          message: t('Thông báo'),
+                          admin_ids: t('Admin nhận thông báo'),
+                          compensate_skipped: t('Bù cho người cũ'),
+                          skipped_consultant_id: t('ID người cũ')
                         };
 
                         const renderValue = (key: string, val: any) => {
@@ -662,9 +664,9 @@ export const Accounts = () => {
 
                           if (typeof val === 'boolean') {
                             return val ? (
-                              <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>Có (Trùng)</span>
+                              <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Có (Trùng)')}</span>
                             ) : (
-                              <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>Không</span>
+                              <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Không')}</span>
                             );
                           }
 
@@ -673,8 +675,8 @@ export const Accounts = () => {
                           }
 
                           if (key === 'status') {
-                            if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Hoạt động</span>;
-                            if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Ngừng HĐ</span>;
+                            if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t('Hoạt động')}</span>;
+                            if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{t('Ngừng hoạt động')}</span>;
                             return <span>{String(val)}</span>;
                           }
 
@@ -726,22 +728,22 @@ export const Accounts = () => {
 
                     return (
                       <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
-                        <td data-label="Thời gian" style={{ padding: '1rem 1.5rem' }}>
+                        <td data-label={t('Thời gian')} style={{ padding: '1rem 1.5rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                           </div>
                         </td>
-                        <td data-label="Người thực hiện" style={{ padding: '1rem 1.5rem' }}>
+                        <td data-label={t('Người thực hiện')} style={{ padding: '1rem 1.5rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Avatar src={log.account_avatar} name={log.account_name || 'System'} size={28} />
                             <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                              {log.account_name || 'Hệ thống'}
+                              {log.account_name || t('Hệ thống')}
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>{log.account_email}</div>
                             </div>
                           </div>
                         </td>
-                        <td data-label="Hành động" style={{ padding: '1rem 1.5rem' }}>
+                        <td data-label={t('Hành động')} style={{ padding: '1rem 1.5rem' }}>
                           <span style={{
                             background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(124, 58, 237, 0.1)',
                             color: log.action === 'LOGIN' ? '#3b82f6' : 'var(--color-primary)',
@@ -753,7 +755,7 @@ export const Accounts = () => {
                             {log.action}
                           </span>
                         </td>
-                        <td data-label="Chi tiết" style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                        <td data-label={t('Chi tiết')} style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
                           {renderLogDetails(log.details)}
                         </td>
                         <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
@@ -766,7 +768,7 @@ export const Accounts = () => {
                     <tr>
                       <td colSpan={5}>
                         <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                          Chưa có lịch sử hoạt động nào được ghi lại.
+                          {t('Chưa có lịch sử hoạt động nào được ghi lại.')}
                         </div>
                       </td>
                     </tr>
@@ -779,7 +781,7 @@ export const Accounts = () => {
             {!loadingLogs && totalLogPages > 0 && (
               <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                  Hiển thị <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(logsPage - 1) * LOGS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(logsPage * LOGS_PER_PAGE, logs.length)}</span> trên <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{logs.length}</span>
+                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(logsPage - 1) * LOGS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(logsPage * LOGS_PER_PAGE, logs.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{logs.length}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button 
@@ -833,7 +835,7 @@ export const Accounts = () => {
         </div>
       )}
 
-      <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? "Sửa Tài khoản" : "Thêm Tài khoản Mới"} width="680px">
+      <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? t('Sửa Tài khoản') : t('Thêm Tài khoản Mới')} width="680px">
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Avatar Upload Area */}
           <div style={{ 
@@ -861,14 +863,14 @@ export const Accounts = () => {
                   fontSize: '0.75rem',
                   fontWeight: 600
                 }}>
-                  Tải...
+                  {t('Tải...')}
                 </div>
               )}
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                Ảnh đại diện
+                {t('Ảnh đại diện')}
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
@@ -878,7 +880,7 @@ export const Accounts = () => {
                   style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white', borderRadius: '6px' }}
                   disabled={isUploadingAvatar}
                 >
-                  <Camera size={12} style={{ marginRight: 4 }} /> Chọn ảnh
+                  <Camera size={12} style={{ marginRight: 4 }} /> {t('Chọn ảnh')}
                 </button>
                 {formData.avatar && (
                   <button
@@ -895,7 +897,7 @@ export const Accounts = () => {
                       borderRadius: '6px'
                     }}
                   >
-                    Xóa ảnh
+                    {t('Xóa ảnh')}
                   </button>
                 )}
               </div>
@@ -907,7 +909,7 @@ export const Accounts = () => {
                 style={{ display: 'none' }}
               />
               <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                Chấp nhận tệp ảnh JPG, PNG, WEBP (tối đa 5MB)
+                {t('Chấp nhận tệp ảnh JPG, PNG, WEBP (tối đa 5MB)')}
               </span>
             </div>
           </div>
@@ -919,17 +921,17 @@ export const Accounts = () => {
             gap: '1rem'
           }}>
             <div className="form-group">
-              <label className="form-label">Tên hiển thị <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <label className="form-label">{t('Tên hiển thị')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input
                 className="form-input"
-                placeholder="VD: Nguyễn Văn A"
+                placeholder={t('VD: Nguyễn Văn A')}
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(dùng nội bộ)</span></label>
+              <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(dùng nội bộ)')}</span></label>
               <input
                 className="form-input"
                 placeholder="VD: admin_nhansu"
@@ -940,8 +942,8 @@ export const Accounts = () => {
             </div>
             <div className="form-group">
               <label className="form-label">
-                Email đăng nhập {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
-                {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> (tùy chọn với Super Admin)</span>}
+                {t('Email đăng nhập')} {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
+                {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> {t('(tùy chọn với Super Admin)')}</span>}
               </label>
               <input
                 type="email"
@@ -954,7 +956,7 @@ export const Accounts = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>(tùy chọn)</span></label>
+              <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(tùy chọn)')}</span></label>
               <input
                 className="form-input"
                 placeholder="VD: 43521235123551"
@@ -963,14 +965,14 @@ export const Accounts = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">{editingAccount ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
+              <label className="form-label">{editingAccount ? t('Mật khẩu mới (Để trống nếu không đổi)') : t('Mật khẩu')} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
               <div style={{ position: 'relative' }}>
                 <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--color-text-muted)' }} />
                 <input 
                   type="password"
                   className="form-input" 
                   style={{ paddingLeft: 36 }}
-                  placeholder={editingAccount ? "Nhập để đổi mật khẩu mới" : "Tối thiểu 6 ký tự"} 
+                  placeholder={editingAccount ? t('Nhập để đổi mật khẩu mới') : t('Tối thiểu 6 ký tự')} 
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   required={!editingAccount}
@@ -978,12 +980,12 @@ export const Accounts = () => {
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Phân quyền <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <label className="form-label">{t('Phân quyền')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <CustomSelect 
                 options={[
-                  { value: 'admin', label: 'Admin (Toàn quyền)' },
-                  { value: 'assistant', label: 'Assistant (Trợ lý / Phân bổ Data)' },
-                  { value: 'viewer', label: 'Viewer (Chỉ xem Data)' }
+                  { value: 'admin', label: t('Admin (Toàn quyền)') },
+                  { value: 'assistant', label: t('Assistant (Trợ lý / Phân bổ Data)') },
+                  { value: 'viewer', label: t('Viewer (Chỉ xem Data)') }
                 ]}
                 value={formData.role}
                 onChange={val => setFormData({ ...formData, role: val.toString() })}
@@ -1005,7 +1007,7 @@ export const Accounts = () => {
               marginTop: '0.5rem'
             }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <MessageCircle size={14} fill="#3b82f6" color="white" /> Tính năng Zalo Bot
+                <MessageCircle size={14} fill="#3b82f6" color="white" /> {t('Tính năng Zalo Bot')}
               </span>
               
               {/* Quick Message Input & Button */}
@@ -1014,7 +1016,7 @@ export const Accounts = () => {
                   type="text"
                   className="form-input"
                   style={{ fontSize: '0.75rem', padding: '6px 10px', height: 'auto', flex: 1 }}
-                  placeholder="Nhập tin nhắn gửi nhanh..."
+                  placeholder={t('Nhập tin nhắn gửi nhanh...')}
                   value={quickMsgText}
                   onChange={e => setQuickMsgText(e.target.value)}
                 />
@@ -1049,13 +1051,13 @@ export const Accounts = () => {
                   gap: 4
                 }}
               >
-                {isUnlinking ? <RefreshCw size={12} className="spin" /> : <Link2Off size={14} />} Hủy liên kết Zalo
+                {isUnlinking ? <RefreshCw size={12} className="spin" /> : <Link2Off size={14} />} {t('Hủy liên kết Zalo')}
               </button>
             </div>
           )}
 
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-            💡 <strong>Lưu ý:</strong> Zalo Chat ID dùng để nhận thông báo khẩn qua Zalo Bot thay vì nhận Email.
+            💡 <strong>{t('Lưu ý:')}</strong> {t('Zalo Chat ID dùng để nhận thông báo khẩn qua Zalo Bot thay vì nhận Email.')}
           </div>
 
           {editingAccount && Number(editingAccount.id) !== 1 && (
@@ -1071,8 +1073,8 @@ export const Accounts = () => {
               gap: '1rem'
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-danger)' }}>Vùng nguy hiểm</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Xóa vĩnh viễn tài khoản quản trị này khỏi hệ thống.</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-danger)' }}>{t('Vùng nguy hiểm')}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Xóa vĩnh viễn tài khoản quản trị này khỏi hệ thống.')}</span>
               </div>
               <button
                 type="button"
@@ -1091,7 +1093,7 @@ export const Accounts = () => {
                   flexShrink: 0
                 }}
               >
-                <Trash2 size={14} /> Xóa tài khoản
+                <Trash2 size={14} /> {t('Xóa tài khoản')}
               </button>
             </div>
           )}
@@ -1107,9 +1109,9 @@ export const Accounts = () => {
             borderTop: '1px solid var(--color-border)',
             zIndex: 10
           }}>
-            <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1, borderRadius: '8px' }}>Hủy</button>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn ghost" style={{ flex: 1, borderRadius: '8px' }}>{t('Hủy')}</button>
             <button type="submit" className="btn primary" disabled={isSaving} style={{ flex: 1, borderRadius: '8px' }}>
-              {isSaving ? 'Đang lưu...' : 'Lưu Tài khoản'}
+              {isSaving ? t('Đang lưu...') : t('Lưu Tài khoản')}
             </button>
           </div>
         </form>
@@ -1119,9 +1121,9 @@ export const Accounts = () => {
         isOpen={confirmOpen} 
         onClose={() => setConfirmOpen(false)} 
         onConfirm={handleDelete} 
-        title="Xóa Tài khoản" 
-        message="Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này không thể hoàn tác và user sẽ không thể đăng nhập được nữa." 
-        confirmText="Xóa vĩnh viễn" 
+        title={t('Xóa Tài khoản')} 
+        message={t('Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này không thể hoàn tác và user sẽ không thể đăng nhập được nữa.')} 
+        confirmText={t('Xóa vĩnh viễn')} 
       />
 
 
@@ -1135,7 +1137,7 @@ export const Accounts = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-danger)' }}>
-                <Shield size={20} /> Yêu cầu Chuyển giao Vai trò
+                <Shield size={20} /> {t('Yêu cầu Chuyển giao Vai trò')}
               </h3>
               <button type="button" onClick={() => setShowReplacementModal(false)} style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <X size={20} />
@@ -1144,27 +1146,27 @@ export const Accounts = () => {
 
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-                Tài khoản này hiện đang đóng vai trò quan trọng trong hệ thống:
+                {t('Tài khoản này hiện đang đóng vai trò quan trọng trong hệ thống:')}
               </p>
               
               <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text)' }}>
                 {usageInfo?.usage.fallback && (
                   <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-danger)' }} />
-                    Đang nhận Lead mặc định (Fallback Admin)
+                    {t('Đang nhận Lead mặc định (Fallback Admin)')}
                   </li>
                 )}
                 {usageInfo?.usage.ticket && (
                   <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-danger)' }} />
-                    Đang đăng ký nhận thông báo Tickets
+                    {t('Đang đăng ký nhận thông báo Tickets')}
                   </li>
                 )}
               </ul>
 
               {usageInfo?.other_admins && usageInfo.other_admins.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Chọn Admin thay thế để chuyển giao cấu hình:</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Chọn Admin thay thế để chuyển giao cấu hình:')}</label>
                   <CustomSelect
                     options={usageInfo.other_admins.map((a: any) => ({
                       value: a.id,
@@ -1177,18 +1179,18 @@ export const Accounts = () => {
                     showAvatars={true}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Hệ thống sẽ tự động cập nhật cấu hình Fallback / Ticket sang Admin được chọn và thực hiện xóa tài khoản cũ.
+                    {t('Hệ thống sẽ tự động cập nhật cấu hình Fallback / Ticket sang Admin được chọn và thực hiện xóa tài khoản cũ.')}
                   </p>
                 </div>
               ) : (
                 <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, border: '1px dashed rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', fontSize: '0.8125rem', lineHeight: '1.4' }}>
-                  Không tìm thấy Admin khác trong hệ thống để thay thế. Vui lòng tạo một tài khoản Admin mới trước khi xóa tài khoản này.
+                  {t('Không tìm thấy Admin khác trong hệ thống để thay thế. Vui lòng tạo một tài khoản Admin mới trước khi xóa tài khoản này.')}
                 </div>
               )}
             </div>
 
             <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
-              <button type="button" className="btn outline" style={{ flex: 1 }} onClick={() => setShowReplacementModal(false)}>Hủy bỏ</button>
+              <button type="button" className="btn outline" style={{ flex: 1 }} onClick={() => setShowReplacementModal(false)}>{t('Hủy bỏ')}</button>
               <button
                 type="button"
                 className="btn primary"
@@ -1196,7 +1198,7 @@ export const Accounts = () => {
                 disabled={isDeleting || !replacementId}
                 onClick={handleDeleteWithReplacement}
               >
-                {isDeleting ? 'Đang xóa...' : 'Chuyển giao & Xóa'}
+                {isDeleting ? t('Đang xóa...') : t('Chuyển giao & Xóa')}
               </button>
             </div>
           </div>

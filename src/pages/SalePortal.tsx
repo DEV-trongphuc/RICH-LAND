@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 
@@ -21,6 +22,7 @@ export const SalePortal = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, token, login, logout } = useAuth();
+  const { t } = useLanguage();
 
   // Parse initial search query from email link
   const getInitialSearch = () => {
@@ -102,16 +104,16 @@ export const SalePortal = () => {
       const json = await res.json();
       if (json.success) {
         if (json.is_admin) {
-          setIsAdminMsg(json.message || 'Bạn là admin, để xem đầy đủ vui lòng truy cập link gốc production.');
+          setIsAdminMsg(json.message || t('Bạn là admin, để xem đầy đủ vui lòng truy cập link gốc production.'));
         } else {
           login(json.token, json.user);
-          toast.success(`Chào mừng ${json.user.name} quay trở lại!`);
+          toast.success(t('Chào mừng') + ` ${json.user.name} ` + t('quay trở lại!'));
         }
       } else {
-        setGoogleError(json.message || 'Xác thực tài khoản Google thất bại');
+        setGoogleError(json.message || t('Xác thực tài khoản Google thất bại'));
       }
     } catch (e) {
-      setGoogleError('Không thể kết nối đến máy chủ xác thực Google. Vui lòng thử lại.');
+      setGoogleError(t('Không thể kết nối đến máy chủ xác thực Google. Vui lòng thử lại.'));
     }
     setGoogleLoading(false);
   };
@@ -155,11 +157,11 @@ export const SalePortal = () => {
       if (json.success) {
         setData(json);
       } else {
-        toast.error(json.message || 'Không thể tải dữ liệu');
+        toast.error(json.message || t('Không thể tải dữ liệu'));
       }
     } catch (err: any) {
       if (err.message !== 'Unauthorized') {
-        toast.error('Lỗi tải dữ liệu: ' + err.message);
+        toast.error(t('Lỗi tải dữ liệu: ') + err.message);
       }
     }
     setLoading(false);
@@ -224,7 +226,7 @@ export const SalePortal = () => {
 
   const handleLogout = () => {
     logout();
-    toast.success('Đã đăng xuất tài khoản.');
+    toast.success(t('Đã đăng xuất tài khoản.'));
   };
 
   // Submit quick ticket
@@ -259,17 +261,17 @@ export const SalePortal = () => {
 
       if (json.success) {
         if (json.auto_approved) {
-          toast.success('Báo cáo lỗi đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT & ĐỀN BÙ thành công!', { duration: 6000 });
+          toast.success(t('Báo cáo lỗi đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT & ĐỀN BÙ thành công!'), { duration: 6000 });
         } else {
-          toast.success('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.');
+          toast.success(t('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.'));
         }
         setReportModalOpen(false);
         loadPortalData();
       } else {
-        toast.error(json.message || 'Gửi báo lỗi thất bại');
+        toast.error(json.message || t('Gửi báo lỗi thất bại'));
       }
     } catch (err) {
-      toast.error('Không thể kết nối máy chủ gửi báo lỗi');
+      toast.error(t('Không thể kết nối máy chủ gửi báo lỗi'));
     }
     setSubmittingReport(false);
   };
@@ -335,12 +337,12 @@ export const SalePortal = () => {
           </div>
 
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
-            CỔNG TƯ VẤN VIÊN
+            {t('CỔNG TƯ VẤN VIÊN')}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.925rem', marginTop: 6, lineHeight: 1.5 }}>
-            Vui lòng đăng nhập bằng tài khoản Google nhận mail để tra cứu danh sách khách hàng và quản lý tickets.
+            {t('Vui lòng đăng nhập bằng tài khoản Google nhận mail để tra cứu danh sách khách hàng và quản lý tickets.')}
           </p>
-
+ 
           <div style={{ margin: '2rem 0' }}>
             {isAdminMsg ? (
               <div style={{
@@ -350,7 +352,7 @@ export const SalePortal = () => {
               }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontWeight: 700 }}>
                   <ShieldAlert size={20} style={{ flexShrink: 0 }} />
-                  <span>Cảnh báo quản trị</span>
+                  <span>{t('Cảnh báo quản trị')}</span>
                 </div>
                 <span>{isAdminMsg}</span>
                 <button
@@ -364,7 +366,7 @@ export const SalePortal = () => {
                   onMouseOver={(e) => (e.currentTarget.style.background = '#b45309')}
                   onMouseOut={(e) => (e.currentTarget.style.background = '#d97706')}
                 >
-                  Vào trang Quản trị <ArrowUpRight size={14} />
+                  {t('Vào trang Quản trị')} <ArrowUpRight size={14} />
                 </button>
               </div>
             ) : user && !['sale', 'admin', 'assistant', 'viewer'].includes(user.role) ? (
@@ -375,9 +377,9 @@ export const SalePortal = () => {
               }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontWeight: 700 }}>
                   <ShieldAlert size={20} style={{ flexShrink: 0 }} />
-                  <span>Quyền truy cập bị từ chối</span>
+                  <span>{t('Quyền truy cập bị từ chối')}</span>
                 </div>
-                <span>Tài khoản hiện tại của bạn không có vai trò Tư vấn viên. Vui lòng chuyển sang tài khoản Gmail của Sale hoặc đăng xuất.</span>
+                <span>{t('Tài khoản hiện tại của bạn không có vai trò Tư vấn viên. Vui lòng chuyển sang tài khoản Gmail của Sale hoặc đăng xuất.')}</span>
                 <button
                   onClick={handleLogout}
                   style={{
@@ -385,15 +387,15 @@ export const SalePortal = () => {
                     padding: '8px 16px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
                   }}
                 >
-                  Đăng xuất tài khoản
+                  {t('Đăng xuất tài khoản')}
                 </button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
                 <div ref={googleBtnRef} style={{ minHeight: 44 }}></div>
-
-                {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>Đang kết nối Google API...</div>}
-
+ 
+                {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>{t('Đang kết nối Google API...')}</div>}
+ 
                 {googleError && (
                   <div style={{
                     padding: '0.75rem 1rem', background: 'var(--color-danger-light)', border: '1px solid var(--color-danger-light)',
@@ -407,9 +409,9 @@ export const SalePortal = () => {
               </div>
             )}
           </div>
-
+ 
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem', fontSize: '0.75rem', color: '#94a3b8' }}>
-            Hệ thống Quản lý Domation DATA &copy; 2026
+            {t('Hệ thống Quản lý Domation DATA')} &copy; 2026
           </div>
         </div>
         <style>{`
@@ -451,7 +453,7 @@ export const SalePortal = () => {
           <div>
             <h1 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, letterSpacing: '0.5px' }}>DOMATION PORTAL</h1>
             <span style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
-              Dành riêng cho TVV
+              {t('Dành riêng cho TVV')}
             </span>
           </div>
         </div>
@@ -474,7 +476,7 @@ export const SalePortal = () => {
             onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
             onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
           >
-            <LogOut size={16} /> Đăng xuất
+            <LogOut size={16} /> {t('Đăng xuất')}
           </button>
         </div>
       </header>
@@ -490,14 +492,14 @@ export const SalePortal = () => {
           padding: '1rem 1.5rem'
         }}>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>Tổng quan hiệu suất</h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>Thống kê & phân tích dựa trên bộ lọc được chọn.</p>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{t('Tổng quan hiệu suất')}</h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{t('Thống kê & phân tích dựa trên bộ lọc được chọn.')}</p>
           </div>
 
           <div className="portal-filters-list" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Round Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>VÒNG:</span>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('VÒNG:')}</span>
               <CustomSelect
                 options={[
                   { value: '', label: 'Tất cả vòng' },
@@ -512,7 +514,7 @@ export const SalePortal = () => {
             {/* Sale Filter (Only for non-sale roles) */}
             {user?.role !== 'sale' && data.consultants && (
               <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TƯ VẤN VIÊN:</span>
+                <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TƯ VẤN VIÊN:')}</span>
                 <CustomSelect
                   options={[
                     { value: '', label: 'Tất cả TVV' },
@@ -529,7 +531,7 @@ export const SalePortal = () => {
 
             {/* Date Mode Filter */}
             <div className="portal-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>THỜI GIAN:</span>
+              <span className="portal-filter-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('THỜI GIAN:')}</span>
               <CustomSelect
                 options={[
                   { value: 'all', label: 'Tất cả thời gian' },
@@ -563,7 +565,7 @@ export const SalePortal = () => {
                     fontSize: '0.85rem', outline: 'none'
                   }}
                 />
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>đến</span>
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{t('đến')}</span>
                 <input
                   type="date"
                   value={endDate}
@@ -589,7 +591,7 @@ export const SalePortal = () => {
               onMouseOver={(e) => (e.currentTarget.style.background = '#6d28d9')}
               onMouseOut={(e) => (e.currentTarget.style.background = '#7c3aed')}
             >
-              <Filter size={14} /> Áp dụng
+              <Filter size={14} /> {t('Áp dụng')}
             </button>
           </div>
         </div>
@@ -605,7 +607,7 @@ export const SalePortal = () => {
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>DATA KHÁCH HÀNG</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('DATA KHÁCH HÀNG')}</span>
               <div style={{ color: '#7c3aed', background: 'rgba(124,58,237,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <FileText size={18} />
               </div>
@@ -613,7 +615,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
               {data.stats.total_received}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tổng data được bàn giao</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Tổng data được bàn giao')}</span>
           </div>
 
           {/* Card 2: Tickets Total */}
@@ -622,7 +624,7 @@ export const SalePortal = () => {
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>BÁO CÁO TỔNG CỘNG</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('BÁO CÁO TỔNG CỘNG')}</span>
               <div style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <AlertCircle size={18} />
               </div>
@@ -630,7 +632,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
               {data.stats.tickets_total}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tổng số ticket đã gửi đi</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Tổng số ticket đã gửi đi')}</span>
           </div>
 
           {/* Card 3: Pending */}
@@ -639,7 +641,7 @@ export const SalePortal = () => {
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TICKET CHỜ DUYỆT</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TICKET CHỜ DUYỆT')}</span>
               <div style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <Clock size={18} />
               </div>
@@ -647,7 +649,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#f59e0b' }}>
               {data.stats.tickets_pending}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Đang chờ Admin xử lý</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Đang chờ Admin xử lý')}</span>
           </div>
 
           {/* Card 4: Approved */}
@@ -656,7 +658,7 @@ export const SalePortal = () => {
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>ĐÃ DUYỆT BÙ</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('ĐÃ DUYỆT BÙ')}</span>
               <div style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <CheckCircle2 size={18} />
               </div>
@@ -664,7 +666,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#10b981' }}>
               {data.stats.tickets_approved}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ticket hợp lệ & đã được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Ticket hợp lệ & đã được bù')}</span>
           </div>
 
           {/* Card 5: Rejected */}
@@ -673,7 +675,7 @@ export const SalePortal = () => {
             padding: '1.25rem', position: 'relative', overflow: 'hidden'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>TỪ CHỐI BÙ</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TỪ CHỐI BÙ')}</span>
               <div style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '6px', borderRadius: '8px' }}>
                 <XCircle size={18} />
               </div>
@@ -681,7 +683,7 @@ export const SalePortal = () => {
             <div className="portal-kpi-val" style={{ fontSize: '1.75rem', fontWeight: 800, margin: '8px 0 2px', color: '#ef4444' }}>
               {data.stats.tickets_rejected}
             </div>
-            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Ticket bị từ chối / Không được bù</span>
+            <span className="portal-kpi-subtext" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Ticket bị từ chối / Không được bù')}</span>
           </div>
         </section>
 
@@ -695,7 +697,7 @@ export const SalePortal = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
               <Clock3 size={18} color="#7c3aed" />
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ
+                {t('LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ')}
               </h3>
             </div>
             <div style={{ height: 260 }}>
@@ -709,7 +711,7 @@ export const SalePortal = () => {
                       return (
                         <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.8rem' }}>
                           <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{label}</div>
-                          <div style={{ color: '#7c3aed', marginTop: 2 }}>Số lượng data: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                          <div style={{ color: '#7c3aed', marginTop: 2 }}>{t('Số lượng data: ')}<span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
                         </div>
                       );
                     }
@@ -726,7 +728,7 @@ export const SalePortal = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
               <GitBranch size={18} color="#4f46e5" />
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                TỶ LỆ PHÂN BỔ THEO VÒNG (ROUND)
+                {t('TỶ LỆ PHÂN BỔ THEO VÒNG (ROUND)')}
               </h3>
             </div>
 
@@ -744,7 +746,7 @@ export const SalePortal = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}>
                         <span style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>{r.round_name}</span>
                         <span style={{ color: 'var(--color-text-muted)' }}>
-                          <strong>{r.count} data</strong> ({percentage}%)
+                          <strong>{r.count} {t('data')}</strong> ({percentage}%)
                         </span>
                       </div>
                       <div style={{ width: '100%', height: 8, background: 'var(--color-border-light)', borderRadius: 999 }}>
@@ -758,7 +760,7 @@ export const SalePortal = () => {
                 })
               ) : (
                 <div style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
-                  Chưa có dữ liệu phân bổ vòng chia
+                  {t('Chưa có dữ liệu phân bổ vòng chia')}
                 </div>
               )}
             </div>
@@ -776,7 +778,7 @@ export const SalePortal = () => {
             <Search size={18} style={{ position: 'absolute', left: 14, top: 11, color: '#94a3b8' }} />
             <input
               type="text"
-              placeholder="Tìm kiếm bằng SĐT hoặc Email khách hàng (Nhập từ khóa và bấm Tìm kiếm hoặc nhấn Enter)..."
+              placeholder={t("Tìm kiếm bằng SĐT hoặc Email khách hàng (Nhập từ khóa và bấm Tìm kiếm hoặc nhấn Enter)...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleSearchKeyPress}
@@ -808,7 +810,7 @@ export const SalePortal = () => {
             onMouseOver={(e) => (e.currentTarget.style.background = '#4338ca')}
             onMouseOut={(e) => (e.currentTarget.style.background = '#4f46e5')}
           >
-            <Search size={14} /> Tìm kiếm
+            <Search size={14} /> {t('Tìm kiếm')}
           </button>
         </section>
 
@@ -816,10 +818,10 @@ export const SalePortal = () => {
         <section className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-              DANH SÁCH DỮ LIỆU ĐƯỢC PHÂN BỔ
+              {t('DANH SÁCH DỮ LIỆU ĐƯỢC PHÂN BỔ')}
             </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'var(--color-border-light)', padding: '4px 10px', borderRadius: '20px', fontWeight: 600 }}>
-              Đang hiển thị {data.leads.length} dòng
+              {t('Đang hiển thị')} {data.leads.length} {t('dòng')}
             </span>
           </div>
 
@@ -830,16 +832,16 @@ export const SalePortal = () => {
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>KHÁCH HÀNG</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>LIÊN HỆ</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
                     {user?.role === 'sale' ? (
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>VÒNG</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('VÒNG')}</th>
                     ) : (
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>PHÂN BỔ CHO</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
                     )}
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>NGUỒN / PHÂN LOẠI</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>THỜI GIAN NHẬN</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>TICKET</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
+                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -863,9 +865,9 @@ export const SalePortal = () => {
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div
                           style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-                          title="Xem chi tiết"
+                          title={t("Xem chi tiết")}
                         >
-                          <Avatar name={lead.lead_name || 'Khách hàng'} size={32} />
+                          <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
                           <span
                             style={{
                               fontWeight: 700,
@@ -874,7 +876,7 @@ export const SalePortal = () => {
                             onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                             onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
                           >
-                            {lead.lead_name || 'Chưa cập nhật'}
+                            {lead.lead_name || t('Chưa cập nhật')}
                           </span>
                         </div>
                       </td>
@@ -900,20 +902,20 @@ export const SalePortal = () => {
                               fontSize: '0.75rem',
                               fontWeight: 700
                             }}>
-                              {lead.round_name || 'Mặc định'}
+                              {lead.round_name || t('Mặc định')}
                             </span>
                           </div>
                         </td>
                       ) : (
                         <td style={{ padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={lead.sale_avatar} name={lead.sale_name || 'Chưa nhận'} size="sm" />
+                            <Avatar src={lead.sale_avatar} name={lead.sale_name || t('Chưa nhận')} size="sm" />
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
-                                {lead.sale_name || 'Chưa nhận'}
+                                {lead.sale_name || t('Chưa nhận')}
                               </span>
                               <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                {lead.round_name || 'Mặc định'}
+                                {lead.round_name || t('Mặc định')}
                               </span>
                             </div>
                           </div>
@@ -949,7 +951,7 @@ export const SalePortal = () => {
                               fontWeight: 700,
                               marginTop: '2px'
                             }}>
-                              Data bù
+                              {t('Data bù')}
                             </span>
                           )}
                         </div>
@@ -961,7 +963,7 @@ export const SalePortal = () => {
                           {lead.report_status === 'pending' && (
                             <div
                               style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706' }}
-                              title="Ticket chờ duyệt (Bấm để xem chi tiết)"
+                              title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")}
                             >
                               <Clock size={16} />
                             </div>
@@ -969,7 +971,7 @@ export const SalePortal = () => {
                           {lead.report_status === 'approved' && (
                             <div
                               style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-success-light)', color: 'var(--color-success)' }}
-                              title="Ticket đã duyệt bù (Bấm để xem chi tiết)"
+                              title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")}
                             >
                               <CheckCircle2 size={16} />
                             </div>
@@ -979,7 +981,7 @@ export const SalePortal = () => {
                                 style={{
                                   display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-danger-light)', color: 'var(--color-danger)'
                                 }}
-                              title={`Ticket từ chối bù: ${lead.report_reject_reason || 'Không cung cấp'} (Bấm để xem chi tiết)`}
+                              title={`${t('Ticket từ chối bù:')} ${lead.report_reject_reason || t('Không cung cấp')} ${t('(Bấm để xem chi tiết)')}`}
                             >
                               <XCircle size={16} />
                             </div>
@@ -987,16 +989,16 @@ export const SalePortal = () => {
                           {!lead.report_status && (
                             <button
                               onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenReportModal(lead);
-                              }}
+                                  e.stopPropagation();
+                                  handleOpenReportModal(lead);
+                                }}
                               style={{
                                 background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none',
                                 borderRadius: '50%', width: '32px', height: '32px',
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer', transition: 'all 0.2s'
                               }}
-                              title="Gửi báo cáo lỗi data"
+                              title={t("Gửi báo cáo lỗi data")}
                               onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-danger)', e.currentTarget.style.color = '#ffffff')}
                               onMouseOut={(e) => (e.currentTarget.style.background = 'var(--color-danger-light)', e.currentTarget.style.color = 'var(--color-danger)')}
                             >
@@ -1012,7 +1014,7 @@ export const SalePortal = () => {
             ) : (
               <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
                 <AlertCircle size={32} style={{ margin: '0 auto 10px', display: 'block' }} />
-                <span>Không tìm thấy dữ liệu nào khớp với bộ lọc hiện tại.</span>
+                <span>{t('Không tìm thấy dữ liệu nào khớp với bộ lọc hiện tại.')}</span>
               </div>
             )}
           </div>
@@ -1024,24 +1026,24 @@ export const SalePortal = () => {
         <CustomModal
           isOpen={reportModalOpen}
           onClose={() => setReportModalOpen(false)}
-          title="BÁO CÁO LỖI DỮ LIỆU"
+          title={t("BÁO CÁO LỖI DỮ LIỆU")}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ background: 'var(--color-bg)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
               <div style={{ marginBottom: '6px' }}>
-                <strong>Tên Khách hàng:</strong> {selectedLead.lead_name}
+                <strong>{t('Tên Khách hàng:')}</strong> {selectedLead.lead_name}
               </div>
               <div style={{ marginBottom: '6px' }}>
-                <strong>Số điện thoại:</strong> <span style={{ color: '#d97706', fontWeight: 700 }}>{selectedLead.phone}</span>
+                <strong>{t('Số điện thoại:')}</strong> <span style={{ color: '#d97706', fontWeight: 700 }}>{selectedLead.phone}</span>
               </div>
               <div>
-                <strong>Vòng chia:</strong> {selectedLead.round_name || 'Mặc định'}
+                <strong>{t('Vòng chia:')}</strong> {selectedLead.round_name || t('Mặc định')}
               </div>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
-                Lý do báo lỗi (Chọn mẫu có sẵn)
+                {t('Lý do báo lỗi (Chọn mẫu có sẵn)')}
               </label>
               <select
                 value={reportReasonType}
@@ -1052,20 +1054,20 @@ export const SalePortal = () => {
                   color: 'var(--color-text)', outline: 'none', cursor: 'pointer'
                 }}
               >
-                <option value="Số điện thoại không đúng / Thuê bao">Số điện thoại không đúng / Thuê bao</option>
-                <option value="Khách hàng trùng lặp">Khách hàng trùng lặp (Đã được giao trước đó)</option>
-                <option value="Khách hàng không có nhu cầu / Spam">Khách hàng không có nhu cầu / Spam</option>
-                <option value="Sai dòng sản phẩm / Nhầm phân bổ">Sai dòng sản phẩm / Nhầm phân bổ</option>
-                <option value="Lý do khác (Vui lòng ghi chi tiết)">Lý do khác (Vui lòng ghi chi tiết ở dưới)</option>
+                <option value="Số điện thoại không đúng / Thuê bao">{t("Số điện thoại không đúng / Thuê bao")}</option>
+                <option value="Khách hàng trùng lặp">{t("Khách hàng trùng lặp (Đã được giao trước đó)")}</option>
+                <option value="Khách hàng không có nhu cầu / Spam">{t("Khách hàng không có nhu cầu / Spam")}</option>
+                <option value="Sai dòng sản phẩm / Nhầm phân bổ">{t("Sai dòng sản phẩm / Nhầm phân bổ")}</option>
+                <option value="Lý do khác (Vui lòng ghi chi tiết)">{t("Lý do khác (Vui lòng ghi chi tiết ở dưới)")}</option>
               </select>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
-                Mô tả chi tiết lỗi (Không bắt buộc)
+                {t('Mô tả chi tiết lỗi (Không bắt buộc)')}
               </label>
               <textarea
-                placeholder="Nhập thêm chi tiết lỗi hoặc dẫn chứng trùng lặp..."
+                placeholder={t("Nhập thêm chi tiết lỗi hoặc dẫn chứng trùng lặp...")}
                 value={reportDetails}
                 onChange={(e) => setReportDetails(e.target.value)}
                 style={{
@@ -1084,7 +1086,7 @@ export const SalePortal = () => {
                   padding: '10px 20px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
                 }}
               >
-                Hủy bỏ
+                {t('Hủy bỏ')}
               </button>
               <button
                 onClick={handleSubmitReport}
@@ -1095,7 +1097,7 @@ export const SalePortal = () => {
                   display: 'flex', alignItems: 'center', gap: '6px'
                 }}
               >
-                <Send size={16} /> {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo lỗi'}
+                <Send size={16} /> {submittingReport ? t('Đang gửi...') : t('Gửi báo cáo lỗi')}
               </button>
             </div>
           </div>
@@ -1107,31 +1109,31 @@ export const SalePortal = () => {
         <CustomModal
           isOpen={detailModalOpen}
           onClose={() => setDetailModalOpen(false)}
-          title="CHI TIẾT THÔNG TIN KHÁCH HÀNG"
+          title={t("CHI TIẾT THÔNG TIN KHÁCH HÀNG")}
           width="900px"
         >
           <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', fontSize: '0.9rem', minHeight: '380px' }}>
             {/* Cột trái: Thông tin khách hàng & Ghi chú */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Họ và tên:</span>
-                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{activeDetailLead.lead_name || 'Chưa cập nhật'}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Họ và tên:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{activeDetailLead.lead_name || t('Chưa cập nhật')}</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Số điện thoại:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Số điện thoại:')}</span>
                 <span style={{ fontWeight: 700, color: 'var(--score-warm)' }}>{activeDetailLead.phone}</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Email:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Email:')}</span>
                 <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.lead_email || '—'}</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Vòng chia:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Vòng chia:')}</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
-                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.round_name || 'Mặc định'}</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.round_name || t('Mặc định')}</span>
                   {activeDetailLead.status === 'compensation' && (
                     <span style={{
                       padding: '2px 8px',
@@ -1142,7 +1144,7 @@ export const SalePortal = () => {
                       fontWeight: 700,
                       marginTop: '2px'
                     }}>
-                      Data bù
+                      {t('Data bù')}
                     </span>
                   )}
                 </div>
@@ -1150,35 +1152,35 @@ export const SalePortal = () => {
 
               {user?.role !== 'sale' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Tư vấn viên:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên:')}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Avatar src={activeDetailLead.sale_avatar} name={activeDetailLead.sale_name || 'Chưa nhận'} size="sm" />
-                    <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.sale_name || 'Chưa nhận'}</span>
+                    <Avatar src={activeDetailLead.sale_avatar} name={activeDetailLead.sale_name || t('Chưa nhận')} size="sm" />
+                    <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{activeDetailLead.sale_name || t('Chưa nhận')}</span>
                   </div>
                 </div>
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Nguồn khách:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Nguồn khách:')}</span>
                 <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.source || 'N/A'}</span>
               </div>
 
               {activeDetailLead.type && (
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Phân loại:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Phân loại:')}</span>
                   <span style={{ color: 'var(--color-text)' }}>{activeDetailLead.type}</span>
                 </div>
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>Nhận lúc:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Nhận lúc:')}</span>
                 <span style={{ color: 'var(--color-text-light)' }}>
                   {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--color-bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border)', marginTop: '4px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Ghi chú đính kèm:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>{t('Ghi chú đính kèm:')}</span>
                 <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
                   {activeDetailLead.note
                     ? activeDetailLead.note
@@ -1186,8 +1188,8 @@ export const SalePortal = () => {
                         .split('\n')
                         .filter((line: string) => !/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(line.trim()))
                         .join('\n')
-                        .trim() || 'Không có ghi chú.'
-                    : 'Không có ghi chú.'}
+                        .trim() || t('Không có ghi chú.')
+                    : t('Không có ghi chú.')}
                 </span>
               </div>
 
@@ -1200,12 +1202,12 @@ export const SalePortal = () => {
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 4 }}>
                     <AlertCircle size={16} />
                     <span>
-                      Báo cáo lỗi: {activeDetailLead.report_status === 'approved' ? 'Đã duyệt bù' : activeDetailLead.report_status === 'pending' ? 'Chờ quản trị viên duyệt' : 'Đã bị từ chối'}
+                      {t('Báo cáo lỗi: ')}{activeDetailLead.report_status === 'approved' ? t('Đã duyệt bù') : activeDetailLead.report_status === 'pending' ? t('Chờ quản trị viên duyệt') : t('Đã bị từ chối')}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem' }}><strong>Lý do gửi:</strong> {activeDetailLead.report_reason || '—'}</div>
+                  <div style={{ fontSize: '0.8rem' }}><strong>{t('Lý do gửi:')}</strong> {activeDetailLead.report_reason || '—'}</div>
                   {activeDetailLead.report_status === 'rejected' && (
-                    <div style={{ fontSize: '0.8rem', marginTop: 4 }}><strong>Lý do từ chối:</strong> {activeDetailLead.report_reject_reason || 'Không cung cấp lý do.'}</div>
+                    <div style={{ fontSize: '0.8rem', marginTop: 4 }}><strong>{t('Lý do từ chối:')}</strong> {activeDetailLead.report_reject_reason || t('Không cung cấp lý do.')}</div>
                   )}
                 </div>
               )}
@@ -1213,7 +1215,7 @@ export const SalePortal = () => {
 
             {/* Cột phải: Lịch sử bàn giao & Nhắc lại */}
             <div className="portal-detail-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid var(--color-border)', paddingLeft: '1.5rem' }}>
-              <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>Lịch sử bàn giao &amp; Nhắc lại:</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>{t('Lịch sử bàn giao & Nhắc lại:')}</span>
               
               {loadingTimeline ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1235,7 +1237,7 @@ export const SalePortal = () => {
                         <div className="timeline-content" style={{ background: 'var(--color-bg)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
                             <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.85rem' }}>
-                              {item.status} {item.round_name ? `(${item.round_name})` : ''}
+                              {t(item.status)} {item.round_name ? `(${item.round_name})` : ''}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                               {new Date(item.received_at).toLocaleString('vi-VN')}
@@ -1244,7 +1246,7 @@ export const SalePortal = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                             <Avatar src={item.consultant_avatar} name={item.consultant_name} size={16} />
                             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
-                              <strong>Nhận bởi:</strong> {item.consultant_name || 'Chưa rõ'}
+                              <strong>{t('Nhận bởi:')}</strong> {item.consultant_name || t('Chưa rõ')}
                             </span>
                           </div>
                           {item.message && (
@@ -1259,7 +1261,7 @@ export const SalePortal = () => {
                 </div>
               ) : (
                 <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', padding: '8px' }}>
-                  Không có lịch sử nhắc lại trước đó.
+                  {t('Không có lịch sử nhắc lại trước đó.')}
                 </div>
               )}
             </div>
@@ -1273,7 +1275,7 @@ export const SalePortal = () => {
                 padding: '8px 24px', fontWeight: 700, cursor: 'pointer'
               }}
             >
-              Đóng lại
+              {t('Đóng lại')}
             </button>
           </div>
         </CustomModal>

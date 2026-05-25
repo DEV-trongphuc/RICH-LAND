@@ -8,6 +8,7 @@ import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { RoundCardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -24,9 +25,25 @@ const getColorForName = (name: string) => {
 };
 export const Rounds = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
+
+  const translateReason = (reasonStr: string) => {
+    if (!reasonStr) return reasonStr;
+    const match = reasonStr.match(/^([^(]+)(\s*\(Ghi chú:\s*.*\))?$/);
+    if (match) {
+      const base = match[1].trim();
+      const note = match[2] ? match[2] : '';
+      if (note) {
+        const noteText = note.replace(/^\s*\(Ghi chú:\s*/, '').replace(/\)\s*$/, '');
+        return `${t(base)} (${t('Ghi chú')}: ${noteText})`;
+      }
+      return t(base);
+    }
+    return t(reasonStr);
+  };
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -98,7 +115,7 @@ export const Rounds = () => {
       const json = await fetchAPI('get_consultants');
       if (json.success) setConsultants(json.data);
     } catch (e: any) {
-      console.error('Không thể tải tư vấn viên:', e.message);
+      console.error(t('Không thể tải tư vấn viên:'), e.message);
     }
   };
 
@@ -107,7 +124,7 @@ export const Rounds = () => {
       const json = await fetchAPI('get_rounds');
       if (json.success) setRounds(json.data);
     } catch (e: any) {
-      toast.error('Không thể tải dữ liệu: ' + e.message);
+      toast.error(t('Không thể tải dữ liệu: ') + e.message);
     }
     setLoading(false);
   };
@@ -152,14 +169,14 @@ export const Rounds = () => {
         body: JSON.stringify(payload)
       });
       if (res.success) {
-        toast.success('Đã cập nhật Bù Data!');
+        toast.success(t('Đã cập nhật Bù Data!'));
         fetchRounds();
         setCompModalOpen(false);
       } else {
-        toast.error(res.message || 'Có lỗi xảy ra');
+        toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsSavingComp(false);
   };
@@ -220,21 +237,21 @@ export const Rounds = () => {
         body: JSON.stringify({ id: reportId })
       });
       if (res.success) {
-        toast.success(action === 'approve' ? 'Đã duyệt đền bù Data!' : 'Đã từ chối báo cáo!');
+        toast.success(action === 'approve' ? t('Đã duyệt đền bù Data!') : t('Đã từ chối báo cáo!'));
         fetchReports(editingRound.id);
         fetchRounds(); // Refresh to get updated compensations count
       } else {
-        toast.error(res.message || 'Có lỗi xảy ra');
+        toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsActioning(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.round_name) return toast.error("Vui lòng nhập tên vòng");
+    if (!formData.round_name) return toast.error(t("Vui lòng nhập tên vòng"));
     if (isSaving) return;
 
     setIsSaving(true);
@@ -248,14 +265,14 @@ export const Rounds = () => {
       });
 
       if (json.success) {
-        toast.success(editingRound ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+        toast.success(editingRound ? t('Cập nhật thành công!') : t('Thêm mới thành công!'));
         fetchRounds();
         setModalOpen(false);
       } else {
-        toast.error(json.message || 'Lỗi khi lưu');
+        toast.error(json.message || t('Lỗi khi lưu'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsSaving(false);
   };
@@ -276,13 +293,13 @@ export const Rounds = () => {
     try {
       const json = await fetchAPI(`delete_round&id=${deleteId}`);
       if (json.success) {
-        toast.success('Đã xóa thành công!');
+        toast.success(t('Đã xóa thành công!'));
         fetchRounds();
       } else {
-        toast.error(json.message || 'Lỗi khi xóa');
+        toast.error(json.message || t('Lỗi khi xóa'));
       }
     } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
+      toast.error(t('Lỗi: ') + e.message);
     }
     setIsDeleting(false);
     setConfirmDeleteOpen(false);
@@ -305,10 +322,10 @@ export const Rounds = () => {
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Zap size={24} color="var(--color-primary)" />
-            Vòng Phân Bổ
+            {t("Vòng Phân Bổ")}
           </h1>
           <p className="page-subtitle">
-            Quản lý vòng xoay Round-Robin và điều phối Tư vấn viên
+            {t("Quản lý vòng xoay Round-Robin và điều phối Tư vấn viên")}
           </p>
         </div>
 
@@ -325,7 +342,7 @@ export const Rounds = () => {
                 fontWeight: viewMode === 'grid' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
               }}
             >
-              <LayoutGrid size={16} /> <span className="hide-on-mobile">Lưới</span>
+              <LayoutGrid size={16} /> <span className="hide-on-mobile">{t("Lưới")}</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -337,14 +354,14 @@ export const Rounds = () => {
                 fontWeight: viewMode === 'list' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
               }}
             >
-              <List size={16} /> <span className="hide-on-mobile">Danh sách</span>
+              <List size={16} /> <span className="hide-on-mobile">{t("Danh sách")}</span>
             </button>
           </div>
           <button className="btn outline" onClick={() => navigate('/fair-share')} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <Scale size={16} /> <span>Đối soát<span className="hide-on-mobile"> công bằng</span></span>
+            <Scale size={16} /> <span>{t("Đối soát")}<span className="hide-on-mobile"> {t("công bằng")}</span></span>
           </button>
           <button className="btn primary" onClick={openAddModal} style={{ flexShrink: 0 }}>
-            <Plus size={18} /> <span>Thêm<span className="hide-on-mobile"> Vòng</span></span>
+            <Plus size={18} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
           </button>
         </div>
       </div>
@@ -367,9 +384,9 @@ export const Rounds = () => {
               <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                 <Zap size={32} color="var(--color-text-muted)" />
               </div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có Vòng Phân Bổ</h3>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.</p>
-              <button className="btn primary" onClick={openAddModal}><Plus size={18} /> Thêm Vòng ngay</button>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t("Chưa có Vòng Phân Bổ")}</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}</p>
+              <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t("Thêm Vòng ngay")}</button>
             </div>
           ) : rounds.map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
@@ -403,14 +420,14 @@ export const Rounds = () => {
                           {r.round_name}
                           {r.is_fallback && (
                             <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                              Mặc định
+                              {t("Mặc định")}
                             </span>
                           )}
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {r.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
+                            {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
                           </span>
                         </div>
                       </div>
@@ -420,7 +437,7 @@ export const Rounds = () => {
                   <div style={{ flex: 1, marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
                       <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
-                        {consList.length} Thành viên
+                        {t('{count} Thành viên').replace('{count}', String(consList.length))}
                       </p>
                       {consList.length > 0 ? (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -454,7 +471,7 @@ export const Rounds = () => {
                           )}
                         </div>
                       ) : (
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có</p>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t("Chưa có")}</p>
                       )}
                     </div>
 
@@ -463,13 +480,13 @@ export const Rounds = () => {
                         <div style={{ padding: '0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Zap size={14} color="var(--color-warning)" style={{ fill: 'var(--color-warning)' }} />
                           <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
-                            Đang bù data: <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> (Còn {compensatedConsultant.count} lượt)
+                            {t('Đang bù data:')} <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> ({t('Còn {count} lượt').replace('{count}', String(compensatedConsultant.count))})
                           </span>
                         </div>
                         {r.next_assigned_name && (
                           <div style={{ paddingLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                              Lượt xoay tiếp theo: <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
+                              {t('Lượt xoay tiếp theo:')} <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
                             </span>
                           </div>
                         )}
@@ -478,7 +495,7 @@ export const Rounds = () => {
                       r.next_assigned_name && (
                         <div style={{ padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Zap size={14} color="var(--color-primary)" />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>{t('Sale lượt tới:')} {r.next_assigned_name}</span>
                         </div>
                       )
                     )}
@@ -486,10 +503,10 @@ export const Rounds = () => {
 
                   <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', gap: '0.75rem' }}>
                     <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
-                      <Edit3 size={13} /> Sửa
+                      <Edit3 size={13} /> {t("Sửa")}
                     </button>
                     <button className="btn primary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
-                      <Zap size={13} /> Bù Data
+                      <Zap size={13} /> {t("Bù Data")}
                     </button>
                     <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
                       <Trash2 size={14} />
@@ -511,14 +528,14 @@ export const Rounds = () => {
                     {r.round_name}
                     {r.is_fallback && (
                       <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                        Mặc định
+                        {t("Mặc định")}
                       </span>
                     )}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.is_active ? 'var(--color-success)' : 'var(--color-border)', display: 'inline-block' }} />
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                      {r.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
+                      {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
                     </span>
                   </div>
                 </div>
@@ -526,7 +543,7 @@ export const Rounds = () => {
                 <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
-                      {consList.length} Thành viên
+                      {t('{count} Thành viên').replace('{count}', String(consList.length))}
                     </p>
                     {consList.slice(0, 4).map((c: string, i: number) => {
                       const matchedCons = consultants.find(cons => cons.name === c);
@@ -560,12 +577,12 @@ export const Rounds = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Zap size={12} color="var(--color-warning)" style={{ fill: 'var(--color-warning)' }} />
                         <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
-                          Đang bù data: <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> (Còn {compensatedConsultant.count} lượt)
+                          {t('Đang bù data:')} <span style={{ fontWeight: 700 }}>{compensatedConsultant.name}</span> ({t('Còn {count} lượt').replace('{count}', String(compensatedConsultant.count))})
                         </span>
                       </div>
                       {r.next_assigned_name && (
                         <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500, paddingLeft: 16 }}>
-                          Lượt xoay tiếp theo: <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
+                          {t('Lượt xoay tiếp theo:')} <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
                         </span>
                       )}
                     </div>
@@ -573,7 +590,7 @@ export const Rounds = () => {
                     r.next_assigned_name && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Zap size={12} color="var(--color-primary)" />
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>Sale lượt tới: {r.next_assigned_name}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>{t('Sale lượt tới:')} {r.next_assigned_name}</span>
                       </div>
                     )
                   )}
@@ -581,10 +598,10 @@ export const Rounds = () => {
 
                 <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.75rem' }}>
                   <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem' }}>
-                    <Edit3 size={16} /> Sửa
+                    <Edit3 size={16} /> {t("Sửa")}
                   </button>
                   <button onClick={() => openCompModal(r)} className="btn primary" style={{ flex: 1, padding: '0.625rem' }}>
-                    <Zap size={16} /> Bù Data
+                    <Zap size={16} /> {t("Bù Data")}
                   </button>
                   <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline danger" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
                     <Trash2 size={16} />
@@ -606,7 +623,7 @@ export const Rounds = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>
-                {editingRound ? 'Cập nhật Vòng Phân Bổ' : 'Thêm Vòng Phân Bổ mới'}
+                {editingRound ? t('Cập nhật Vòng Phân Bổ') : t('Thêm Vòng Phân Bổ mới')}
               </h3>
               <button type="button" onClick={() => setModalOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <X size={20} />
@@ -615,15 +632,15 @@ export const Rounds = () => {
 
             {editingRound && (
               <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', padding: '0 1.25rem', gap: '2rem', flexShrink: 0 }}>
-                <button type="button" onClick={() => setActiveTab('config')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'config' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'config' ? 600 : 500, cursor: 'pointer' }}>Cấu hình chung</button>
+                <button type="button" onClick={() => setActiveTab('config')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'config' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'config' ? 600 : 500, cursor: 'pointer' }}>{t("Cấu hình chung")}</button>
                 <button type="button" onClick={() => setActiveTab('reports')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'reports' ? '2px solid var(--color-danger)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'reports' ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: activeTab === 'reports' ? 600 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Data Lỗi & Đền Bù
+                  {t("Data Lỗi & Đền Bù")}
                   {reports.filter(r => r.status === 'pending').length > 0 && (
                     <span style={{ background: 'var(--color-danger)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 10 }}>{reports.filter(r => r.status === 'pending').length}</span>
                   )}
                 </button>
                 <button type="button" onClick={() => setActiveTab('active_logs')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'active_logs' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'active_logs' ? 600 : 500, cursor: 'pointer' }}>
-                  Log bù chủ động
+                  {t("Log bù chủ động")}
                 </button>
               </div>
             )}
@@ -635,10 +652,10 @@ export const Rounds = () => {
                   {/* LEFT COLUMN */}
                   <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
                     <div className="form-group">
-                      <label className="form-label">Tên Vòng <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <label className="form-label">{t("Tên Vòng")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <input
                         className="form-input"
-                        placeholder="VD: Vòng 1 — Form Đăng Ký"
+                        placeholder={t("VD: Vòng 1 — Form Đăng Ký")}
                         value={formData.round_name}
                         onChange={e => setFormData({ ...formData, round_name: e.target.value })}
                         required
@@ -647,18 +664,18 @@ export const Rounds = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Email CC khi chia Data</label>
+                      <label className="form-label">{t("Email CC khi chia Data")}</label>
                       <input
                         className="form-input"
-                        placeholder="VD: giamdoc@domation.vn, quanly@domation.vn"
+                        placeholder={t("VD: giamdoc@domation.vn, quanly@domation.vn")}
                         value={formData.cc_emails}
                         onChange={e => setFormData({ ...formData, cc_emails: e.target.value })}
                       />
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Phân tách các email bằng dấu phẩy (,). Các email này sẽ nhận thông báo mỗi khi có Data rơi vào vòng này.</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t("Phân tách các email bằng dấu phẩy (,). Các email này sẽ nhận thông báo mỗi khi có Data rơi vào vòng này.")}</p>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> Trạng thái Vòng</label>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t("Trạng thái Vòng")}</label>
                       <div style={{ marginTop: 8 }}>
                         <ToggleSwitch
                           checked={formData.is_active === 1}
@@ -669,7 +686,7 @@ export const Rounds = () => {
 
                     {formData.selected_users.length > 0 && (
                       <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> Chọn Sale bắt đầu / kế tiếp (Tuỳ chọn)</label>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> {t("Chọn Sale bắt đầu / kế tiếp (Tuỳ chọn)")}</label>
                         <div ref={startSaleDropdownRef} style={{ position: 'relative' }}>
                           <div
                             className="form-input"
@@ -680,7 +697,7 @@ export const Rounds = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 {(() => {
                                   const c = consultants.find(x => Number(x.id) === formData.starting_consultant_id);
-                                  if (!c) return '-- Mặc định (Theo thứ tự thêm vào) --';
+                                  if (!c) return t('-- Mặc định (Theo thứ tự thêm vào) --');
                                   return (
                                     <>
                                       <Avatar src={c.avatar} name={c.name} size={20} />
@@ -690,7 +707,7 @@ export const Rounds = () => {
                                 })()}
                               </div>
                             ) : (
-                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>-- Mặc định (Theo thứ tự thêm vào) --</span>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('-- Mặc định (Theo thứ tự thêm vào) --')}</span>
                             )}
                             <span style={{ transform: showStartSaleDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-text-muted)', display: 'inline-block', fontSize: '0.75rem' }}>▼</span>
                           </div>
@@ -707,7 +724,7 @@ export const Rounds = () => {
                                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                                 onMouseLeave={e => e.currentTarget.style.background = formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent'}
                               >
-                                -- Mặc định (Theo thứ tự thêm vào) --
+                                {t('-- Mặc định (Theo thứ tự thêm vào) --')}
                               </div>
                               {formData.selected_users.map(id => {
                                 const c = consultants.find(x => Number(x.id) === Number(id));
@@ -733,7 +750,7 @@ export const Rounds = () => {
                           )}
                         </div>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                          Người được chọn sẽ là người nhận Data tiếp theo của vòng này.
+                          {t("Người được chọn sẽ là người nhận Data tiếp theo của vòng này.")}
                         </p>
                       </div>
                     )}
@@ -741,7 +758,7 @@ export const Rounds = () => {
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                          <Zap size={14} color="var(--color-primary)" /> Đặt làm Vòng phân bổ mặc định (Fallback)
+                          <Zap size={14} color="var(--color-primary)" /> {t("Đặt làm Vòng phân bổ mặc định (Fallback)")}
                         </label>
                         <div
                           className={`custom-toggle ${formData.is_fallback ? 'active' : ''}`}
@@ -749,7 +766,7 @@ export const Rounds = () => {
                         />
                       </div>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                        Nếu dữ liệu mới không khớp bất kỳ quy luật chia nào, hệ thống sẽ tự động phân phối vào vòng này. Chỉ có duy nhất 1 vòng được đặt làm mặc định.
+                        {t("Nếu dữ liệu mới không khớp bất kỳ quy luật chia nào, hệ thống sẽ tự động phân phối vào vòng này. Chỉ có duy nhất 1 vòng được đặt làm mặc định.")}
                       </p>
                     </div>
                   </div>
@@ -758,14 +775,14 @@ export const Rounds = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0, flex: 1 }}>
                     {/* Custom Multi-Select with Avatars */}
                     <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> Chọn Tư vấn viên vào vòng này</label>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t("Chọn Tư vấn viên vào vòng này")}</label>
 
                       {/* Search Input Box */}
                       <div style={{ position: 'relative' }}>
                         <input
                           className="form-input"
                           style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                          placeholder="Tìm kiếm và chọn Tư vấn viên..."
+                          placeholder={t("Tìm kiếm và chọn Tư vấn viên...")}
                           value={searchUser}
                           onChange={e => setSearchUser(e.target.value)}
                           onFocus={() => setShowDropdown(true)}
@@ -798,7 +815,7 @@ export const Rounds = () => {
                                 <Avatar src={user.avatar} name={user.name} size={28} />
                                 <div style={{ flex: 1 }}>
                                   <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>{user.name}</p>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email} • {user.status === 'active' ? 'Đang nhận data' : 'Không nhận data'}</p>
+                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email} • {user.status === 'active' ? t('Đang nhận data') : t('Không nhận data')}</p>
                                 </div>
                                 {isSelected && <Check size={16} color="var(--color-primary)" />}
                               </div>
@@ -806,7 +823,7 @@ export const Rounds = () => {
                           })}
                           {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).length === 0 && (
                             <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                              Không tìm thấy tư vấn viên nào
+                              {t("Không tìm thấy tư vấn viên nào")}
                             </div>
                           )}
                         </div>
@@ -816,7 +833,7 @@ export const Rounds = () => {
                     {/* Selected Consultants List Block */}
                     {formData.selected_users.length > 0 && (
                       <div className="custom-scrollbar modal-form-selected-list" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>Tư vấn viên đã chọn ({formData.selected_users.length}):</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{t("Tư vấn viên đã chọn ({count}):").replace('{count}', String(formData.selected_users.length))}</div>
                         {formData.selected_users.map(userId => {
                           const user = consultants.find(c => Number(c.id) === userId);
                           if (!user) return null;
@@ -833,7 +850,7 @@ export const Rounds = () => {
                                     {user.name}
                                     {editingRound?.compensations?.[user.id] > 0 && (
                                       <span className="badge danger" style={{ marginLeft: 8, fontSize: '0.65rem', padding: '2px 6px' }}>
-                                        Nợ bù: {editingRound.compensations[user.id]}
+                                        {t("Nợ bù: {count}").replace('{count}', String(editingRound.compensations[user.id]))}
                                       </span>
                                     )}
                                   </div>
@@ -859,7 +876,7 @@ export const Rounds = () => {
                               <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
                                 {/* Row 1: Data per turn */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Nhận</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nhận")}</span>
                                   <input
                                     type="number"
                                     min="1"
@@ -868,7 +885,7 @@ export const Rounds = () => {
                                     onChange={e => setFormData({ ...formData, data_per_turns: { ...formData.data_per_turns, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
                                     style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: theme === 'dark' ? '#34d399' : '#059669', fontWeight: 700, background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5' }}
                                   />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Data liên tiếp mỗi lượt, sau mỗi</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Data liên tiếp mỗi lượt, sau mỗi")}</span>
                                   <input
                                     type="number"
                                     min="1"
@@ -877,7 +894,7 @@ export const Rounds = () => {
                                     onChange={e => setFormData({ ...formData, ratios: { ...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
                                     style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
                                   />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>vòng</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng")}</span>
                                 </div>
                               </div>
                             </div>
@@ -889,21 +906,21 @@ export const Rounds = () => {
                 </div>
 
                 <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
-                  <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>Hủy bỏ</button>
+                  <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>{t("Hủy bỏ")}</button>
                   <button type="submit" className="btn primary" disabled={isSaving}>
-                    {isSaving ? 'Đang lưu...' : (editingRound ? 'Cập nhật' : 'Thêm mới')}
+                    {isSaving ? t('Đang lưu...') : (editingRound ? t('Cập nhật') : t('Thêm mới'))}
                   </button>
                 </div>
               </form>
             ) : activeTab === 'reports' ? (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
                 {loadingReports ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu báo cáo...</div>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu báo cáo...")}</div>
                 ) : reports.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
                     <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Chưa có báo cáo lỗi nào</p>
-                    <p style={{ fontSize: '0.875rem' }}>Các BÁO CÁO DATA của vòng này sẽ xuất hiện tại đây.</p>
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>{t("Chưa có báo cáo lỗi nào")}</p>
+                    <p style={{ fontSize: '0.875rem' }}>{t("Các BÁO CÁO DATA của vòng này sẽ xuất hiện tại đây.")}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -940,15 +957,15 @@ export const Rounds = () => {
                               </div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                                 <Avatar src={r.consultant_avatar} name={r.consultant_name} size={16} />
-                                <span>Sale: <strong>{r.consultant_name}</strong></span>
+                                <span>{t('Sale:')} <strong>{r.consultant_name}</strong></span>
                               </div>
                             </div>
 
                             <div style={{ color: '#ef4444', fontWeight: 500, fontSize: '0.8125rem', flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: '2px', borderLeft: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', paddingLeft: '0.75rem' }}>
-                              <div><span style={{ fontWeight: 600 }}>Lý do:</span> {r.reason}</div>
+                              <div><span style={{ fontWeight: 600 }}>{t('Lý do:')}</span> {translateReason(r.reason)}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <Clock size={11} />
-                                <span>Báo cáo: {new Date(r.created_at).toLocaleString('vi-VN')}</span>
+                                <span>{t('Báo cáo:')} {new Date(r.created_at).toLocaleString('vi-VN')}</span>
                               </div>
                             </div>
                           </div>
@@ -963,7 +980,7 @@ export const Rounds = () => {
                                   className="btn primary sm"
                                   style={{ background: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.75rem', height: 'auto', boxShadow: 'none' }}
                                 >
-                                  {isActioning === r.id ? 'Đang xử lý...' : 'Duyệt & Đền Bù'}
+                                  {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
                                 </button>
                                 <button
                                   onClick={() => handleReportAction(r.id, 'reject')}
@@ -971,7 +988,7 @@ export const Rounds = () => {
                                   className="btn outline sm"
                                   style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '6px 12px', fontSize: '0.75rem', height: 'auto', boxShadow: 'none' }}
                                 >
-                                  Từ chối
+                                  {t('Từ chối')}
                                 </button>
                               </div>
                             ) : (
@@ -988,7 +1005,7 @@ export const Rounds = () => {
                                   borderRadius: '6px',
                                   border: r.status === 'approved' ? (theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #bbf7d0') : (theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1')
                                 }}>
-                                  {r.status === 'approved' ? <><Check size={12} /> Đã duyệt đền bù</> : <><X size={12} /> Đã từ chối</>}
+                                  {r.status === 'approved' ? <><Check size={12} /> {t('Đã duyệt đền bù')}</> : <><X size={12} /> {t('Đã từ chối')}</>}
                                 </div>
                                 {r.resolved_by && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
@@ -1014,52 +1031,102 @@ export const Rounds = () => {
             ) : (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
                 {loadingActiveLogs ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Đang tải dữ liệu log...</div>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu log...")}</div>
                 ) : activeLogs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
                     <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>Chưa có log bù chủ động nào</p>
-                    <p style={{ fontSize: '0.875rem' }}>Lịch sử bù data thủ công của vòng này sẽ xuất hiện tại đây.</p>
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>{t("Chưa có log bù chủ động nào")}</p>
+                    <p style={{ fontSize: '0.875rem' }}>{t("Lịch sử bù data thủ công của vòng này sẽ xuất hiện tại đây.")}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {activeLogs.map(log => (
-                      <div key={log.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0.625rem 1rem',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '8px',
-                        background: 'var(--color-bg)',
-                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                        gap: '1rem',
-                        flexWrap: 'wrap'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Avatar src={log.admin_avatar} name={log.admin_name} size={24} />
-                            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{log.admin_name}</span>
-                          </div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                            đã bù <strong style={{ color: 'var(--color-primary)', fontSize: '1rem' }}>+{log.amount}</strong> data cho Sale
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Avatar src={log.consultant_avatar} name={log.consultant_name} size={24} />
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{log.consultant_name}</span>
-                          </div>
-                          {log.reason && (
-                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', borderLeft: '1px solid var(--color-border)', paddingLeft: '0.75rem', flex: 1, minWidth: 150 }}>
-                              <span style={{ fontWeight: 600 }}>Lý do:</span> {log.reason}
+                    {activeLogs.map(log => {
+                      return (
+                        <div 
+                          key={log.id} 
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 18px',
+                            border: '1px solid var(--color-border-light)',
+                            borderRadius: '12px',
+                            background: theme === 'dark' ? 'rgba(59, 130, 246, 0.02)' : 'rgba(59, 130, 246, 0.01)',
+                            boxShadow: 'var(--shadow-sm)',
+                            gap: '1rem',
+                            flexWrap: 'wrap',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', padding: '4px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
+                              <Avatar src={log.admin_avatar} name={log.admin_name} size={20} />
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.8125rem' }}>{log.admin_name}</span>
                             </div>
-                          )}
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>{t('đã bù')}</span>
+                              <span style={{ 
+                                background: 'var(--color-primary-light)', 
+                                color: 'var(--color-primary)', 
+                                padding: '2px 8px', 
+                                borderRadius: '6px', 
+                                fontWeight: 800, 
+                                fontSize: '0.875rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                boxShadow: 'inset 0 0 0 1px rgba(59, 130, 246, 0.1)'
+                              }}>
+                                +{log.amount}
+                              </span>
+                              <span>{t('data cho Sale')}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', padding: '4px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
+                              <Avatar src={log.consultant_avatar} name={log.consultant_name} size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.8125rem' }}>{log.consultant_name}</span>
+                            </div>
+                            {log.reason && (
+                              <div style={{ 
+                                fontSize: '0.775rem', 
+                                color: 'var(--color-text-muted)', 
+                                borderLeft: '2px solid var(--color-border)', 
+                                paddingLeft: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{t('Lý do:')}</span> 
+                                <span style={{ fontStyle: 'italic' }}>{translateReason(log.reason)}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.725rem', 
+                            color: 'var(--color-text-muted)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 4, 
+                            flexShrink: 0,
+                            background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--color-border-light)'
+                          }}>
+                            <Clock size={11} style={{ opacity: 0.7 }} />
+                            <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                          <Clock size={12} />
-                          <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1080,9 +1147,9 @@ export const Rounds = () => {
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg)' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Zap size={20} color="var(--color-primary)" /> Quản lý Bù Data
+                  <Zap size={20} color="var(--color-primary)" /> {t("Quản lý Bù Data")}
                 </h2>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>Vòng: <strong>{compRound.round_name}</strong></div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t("Vòng:")} <strong>{compRound.round_name}</strong></div>
               </div>
               <button onClick={() => setCompModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <X size={20} />
@@ -1092,7 +1159,7 @@ export const Rounds = () => {
             {/* Modal Body */}
             <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, background: 'transparent' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Danh sách Tư vấn viên trong vòng</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{t("Danh sách Tư vấn viên trong vòng")}</div>
                 {compRound.consultant_ids ? compRound.consultant_ids.split(',').map((idStr: string) => {
                   const id = parseInt(idStr, 10);
                   const user = consultants.find(c => Number(c.id) === id);
@@ -1135,7 +1202,7 @@ export const Rounds = () => {
                         <div style={{ marginTop: '0.5rem', width: '100%', animation: 'slideUp 0.15s ease-out' }}>
                           <input
                             type="text"
-                            placeholder="Nhập lý do bù chủ động (tùy chọn)..."
+                            placeholder={t("Nhập lý do bù chủ động (tùy chọn)...")}
                             value={compReasons[id] || ''}
                             onChange={(e) => setCompReasons({ ...compReasons, [id]: e.target.value })}
                             style={{
@@ -1164,9 +1231,9 @@ export const Rounds = () => {
 
             {/* Modal Footer */}
             <div style={{ padding: '1.25rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="btn outline" onClick={() => setCompModalOpen(false)}>Hủy bỏ</button>
+              <button type="button" className="btn outline" onClick={() => setCompModalOpen(false)}>{t("Hủy bỏ")}</button>
               <button type="button" className="btn primary" onClick={handleSaveComp} disabled={isSavingComp}>
-                {isSavingComp ? 'Đang lưu...' : 'Cập nhật Bù Data'}
+                {isSavingComp ? t('Đang lưu...') : t('Cập nhật Bù Data')}
               </button>
             </div>
           </div>
@@ -1185,9 +1252,9 @@ export const Rounds = () => {
         isOpen={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
-        title="Cảnh báo Xóa Vòng Phân Bổ"
-        message="Bạn có chắc chắn muốn xóa vòng này không? Lưu ý: Việc xóa vòng phân bổ sẽ ảnh hưởng trực tiếp đến các Rule định tuyến đang trỏ đến vòng này!"
-        confirmText="Xóa vĩnh viễn"
+        title={t("Cảnh báo Xóa Vòng Phân Bổ")}
+        message={t("Bạn có chắc chắn muốn xóa vòng này không? Lưu ý: Việc xóa vòng phân bổ sẽ ảnh hưởng trực tiếp đến các Rule định tuyến đang trỏ đến vòng này!")}
+        confirmText={t("Xóa vĩnh viễn")}
       />
     </div>
   );

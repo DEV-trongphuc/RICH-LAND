@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, Lock, Mail, Share2, Bell, BarChart3 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const Login = () => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,10 +27,10 @@ export const Login = () => {
         login(json.token, json.user);
         navigate('/');
       } else {
-        setError(json.message || 'Đăng nhập Google thất bại');
+        setError(t(json.message) || t('Đăng nhập Google thất bại'));
       }
     } catch {
-      setError('Không thể kết nối đến máy chủ xác thực Google. Vui lòng thử lại.');
+      setError(t('Không thể kết nối đến máy chủ xác thực Google. Vui lòng thử lại.'));
     }
     setLoading(false);
   };
@@ -82,10 +84,10 @@ export const Login = () => {
         login(json.token, json.user);
         navigate('/');
       } else {
-        setError(json.message || 'Đăng nhập thất bại');
+        setError(t(json.message) || t('Đăng nhập thất bại'));
       }
     } catch {
-      setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.');
+      setError(t('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'));
     }
     setLoading(false);
   };
@@ -131,25 +133,25 @@ export const Login = () => {
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '100px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '1.5rem' }}>
               <span style={{ display: 'flex', width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>HỆ THỐNG AUTO CHIA DATA LOGIC</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>{t("HỆ THỐNG AUTO CHIA DATA LOGIC")}</span>
             </div>
             <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
               DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
             </h1>
             <p style={{ fontSize: '1.125rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: 480 }}>
-              Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.
+              {t("Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.")}
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'linear-gradient(to right, rgba(0,104,255,0.1), rgba(0,104,255,0.02))', padding: '16px', borderRadius: '16px', border: '1px solid rgba(0,104,255,0.3)', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,104,255,0.15)' }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, background: '#0068ff', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderBottomLeftRadius: '12px', letterSpacing: '0.5px' }}>NỔI BẬT</div>
+              <div style={{ position: 'absolute', top: 0, right: 0, background: '#0068ff', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderBottomLeftRadius: '12px', letterSpacing: '0.5px' }}>{t("NỔI BẬT")}</div>
               <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(0,104,255,0.6)', boxShadow: '0 4px 16px rgba(0,104,255,0.4)', marginTop: '2px' }}>
                 <img src="https://s120-ava-talk.zadn.vn/0/1/e/7/1/120/e932faecd85ad36444b8a9d41eb73bb7.jpg" alt="Zalo Bot" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ paddingTop: '2px' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '6px', color: '#60a5fa' }}>Tích Hợp Zalo Bot</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5 }}>Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '6px', color: '#60a5fa' }}>{t("Tích Hợp Zalo Bot")}</h3>
+                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.")}</p>
               </div>
             </div>
 
@@ -158,8 +160,8 @@ export const Login = () => {
                 <Share2 size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Chia Data Thông Minh</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Tự động phân bổ data theo vòng lặp, xử lý chống trùng lặp và đền bù data lỗi chính xác 100%.</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Chia Data Thông Minh")}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Tự động phân bổ data theo vòng lặp, xử lý chống trùng lặp và đền bù data lỗi chính xác 100%.")}</p>
               </div>
             </div>
 
@@ -168,8 +170,8 @@ export const Login = () => {
                 <Bell size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Thông Báo Email Tức Thì</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Gửi email cảnh báo data trùng lặp, data mới, và thông báo kết quả duyệt ticket ngay lập tức.</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Thông Báo Email Tức Thì")}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Gửi email cảnh báo data trùng lặp, data mới, và thông báo kết quả duyệt ticket ngay lập tức.")}</p>
               </div>
             </div>
 
@@ -178,8 +180,8 @@ export const Login = () => {
                 <BarChart3 size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>Báo Cáo & Thống Kê</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>Báo cáo thống kê tự động gửi hàng ngày theo khung giờ tùy chọn, đo lường chính xác hiệu suất Sale và chất lượng Data.</p>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Báo Cáo & Thống Kê")}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Báo cáo thống kê tự động gửi hàng ngày theo khung giờ tùy chọn, đo lường chính xác hiệu suất Sale và chất lượng Data.")}</p>
               </div>
             </div>
           </div>
@@ -207,8 +209,8 @@ export const Login = () => {
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>Đăng Nhập</h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4 }}>Vui lòng đăng nhập để tiếp tục</p>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>{t("Đăng Nhập")}</h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4 }}>{t("Vui lòng đăng nhập để tiếp tục")}</p>
         </div>
 
         {error && (
@@ -223,7 +225,7 @@ export const Login = () => {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label className="form-label">Email đăng nhập</label>
+            <label className="form-label">{t("Email đăng nhập")}</label>
             <div style={{ position: 'relative' }}>
               <Mail size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
               <input
@@ -232,7 +234,7 @@ export const Login = () => {
                 style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="VD: ten@domation.net"
+                placeholder={t("VD: ten@domation.net")}
                 autoComplete="email"
                 required
               />
@@ -240,7 +242,7 @@ export const Login = () => {
           </div>
 
           <div>
-            <label className="form-label">Mật khẩu</label>
+            <label className="form-label">{t("Mật khẩu")}</label>
             <div style={{ position: 'relative' }}>
               <Lock size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
               <input 
@@ -249,7 +251,7 @@ export const Login = () => {
                 style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu"
+                placeholder={t("Nhập mật khẩu")}
                 autoComplete="current-password"
                 required
               />
@@ -262,13 +264,13 @@ export const Login = () => {
             style={{ width: '100%', padding: '0 1.5rem', height: 48, marginTop: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             disabled={loading}
           >
-            {loading ? 'Đang xác thực...' : <><LogIn size={18} /> Đăng nhập</>}
+            {loading ? t('Đang xác thực...') : <><LogIn size={18} /> {t("Đăng nhập")}</>}
           </button>
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-          <span style={{ padding: '0 0.75rem', fontWeight: 500 }}>Hoặc đăng nhập bằng</span>
+          <span style={{ padding: '0 0.75rem', fontWeight: 500 }}>{t("Hoặc đăng nhập bằng")}</span>
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
         </div>
 
