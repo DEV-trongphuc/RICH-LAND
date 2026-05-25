@@ -193,6 +193,7 @@ export const DataList = () => {
 
   useEffect(() => {
     fetchConsultants();
+    fetchAccounts();
     fetchRounds();
   }, []);
 
@@ -215,6 +216,7 @@ export const DataList = () => {
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
+  const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
   const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
@@ -284,6 +286,26 @@ export const DataList = () => {
     } catch (e: any) {
       console.error(e.message);
     }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const json = await fetchAPI('get_accounts');
+      if (json.success) {
+        setAllAccounts(json.data);
+      }
+    } catch (e: any) {
+      console.error(e.message);
+    }
+  };
+
+  const getUserAvatarByName = (name: string) => {
+    if (!name || name === 'Hệ thống') return undefined;
+    const acc = allAccounts.find(a => (a.name || a.username) === name);
+    if (acc?.avatar) return acc.avatar;
+    const cons = consultants.find(c => c.name === name);
+    if (cons?.avatar) return cons.avatar;
+    return undefined;
   };
 
   const fetchRounds = async () => {
@@ -1321,6 +1343,17 @@ export const DataList = () => {
                             const coreError = msgParts[0] || '';
                             const actionReason = msgParts[1] || '';
 
+                            let cleanReason = actionReason.trim();
+                            let reasonLabel = isApproved ? 'Lý do duyệt:' : 'Lý do từ chối:';
+
+                            if (cleanReason.startsWith('Lý do duyệt:')) {
+                              reasonLabel = 'Lý do duyệt:';
+                              cleanReason = cleanReason.replace(/^Lý do duyệt:/, '').trim();
+                            } else if (cleanReason.startsWith('Lý do từ chối:')) {
+                              reasonLabel = 'Lý do từ chối:';
+                              cleanReason = cleanReason.replace(/^Lý do từ chối:/, '').trim();
+                            }
+
                             return (
                               <div key={index} style={{
                                 background: colors.gradient,
@@ -1385,7 +1418,7 @@ export const DataList = () => {
                                       border: theme === 'dark' ? '1px dashed rgba(255, 255, 255, 0.08)' : '1px dashed rgba(0, 0, 0, 0.05)',
                                       marginTop: 2
                                     }}>
-                                      <strong>Lý do từ chối / Duyệt:</strong> {actionReason.trim()}
+                                      <strong>{reasonLabel}</strong> {cleanReason}
                                     </div>
                                   )}
                                 </div>
@@ -1401,7 +1434,7 @@ export const DataList = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar name={displayAdmin} size={16} />
+                                    <Avatar src={getUserAvatarByName(displayAdmin)} name={displayAdmin} size={16} />
                                     <span>Xử lý bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>
@@ -1518,7 +1551,7 @@ export const DataList = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar name={parsed.admin} size={16} />
+                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
                                     <span>Chặn bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
                                   </div>
                                   <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>•</span>

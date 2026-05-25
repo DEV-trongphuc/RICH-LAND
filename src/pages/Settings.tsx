@@ -2026,7 +2026,8 @@ function doPost(e) {
                           ...accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map(a => ({
                             value: a.id.toString(),
                             label: a.name,
-                            sublabel: a.email
+                            sublabel: a.email,
+                            avatar: a.avatar
                           }))
                         ]}
                         value={fallbackAdminId}

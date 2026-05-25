@@ -1263,7 +1263,7 @@ export const RuleSettings = () => {
                     }}>
                       <div style={{ flexShrink: 0 }}>
                         {simulateResult.consultant ? (
-                          <Avatar name={simulateResult.consultant.name} size={36} />
+                          <Avatar src={simulateResult.consultant.avatar} name={simulateResult.consultant.name} size={36} />
                         ) : (
                           <div style={{
                             background: 'var(--color-surface)',

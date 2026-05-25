@@ -161,6 +161,7 @@ export const Tickets = () => {
   const [stats, setStats] = useState<any>({ pending: 0, approved: 0, rejected: 0, all: 0 });
   const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
   const [allConsultants, setAllConsultants] = useState<any[]>([]);
+  const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [reassignConsultantId, setReassignConsultantId] = useState<string>('');
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -298,6 +299,14 @@ export const Tickets = () => {
       })
       .catch(err => console.error('Lỗi tải danh sách TVV:', err));
 
+    fetchAPI('get_accounts')
+      .then(res => {
+        if (res.success && res.data) {
+          setAllAccounts(res.data);
+        }
+      })
+      .catch(err => console.error('Lỗi tải danh sách tài khoản:', err));
+
     fetchAPI('get_rounds')
       .then(res => {
         if (res.success && res.data) {
@@ -314,6 +323,15 @@ export const Tickets = () => {
       })
       .catch(err => console.error('Lỗi tải nguồn kết nối:', err));
   }, []);
+
+  const getUserAvatarByName = (name: string) => {
+    if (!name || name === 'Hệ thống') return undefined;
+    const acc = allAccounts.find(a => (a.name || a.username) === name);
+    if (acc?.avatar) return acc.avatar;
+    const cons = allConsultants.find(c => c.name === name);
+    if (cons?.avatar) return cons.avatar;
+    return undefined;
+  };
 
 
 
@@ -1417,6 +1435,17 @@ export const Tickets = () => {
                             const coreError = msgParts[0] || '';
                             const actionReason = msgParts[1] || '';
 
+                            let cleanReason = actionReason.trim();
+                            let reasonLabel = isApproved ? 'Lý do duyệt:' : 'Lý do từ chối:';
+
+                            if (cleanReason.startsWith('Lý do duyệt:')) {
+                              reasonLabel = 'Lý do duyệt:';
+                              cleanReason = cleanReason.replace(/^Lý do duyệt:/, '').trim();
+                            } else if (cleanReason.startsWith('Lý do từ chối:')) {
+                              reasonLabel = 'Lý do từ chối:';
+                              cleanReason = cleanReason.replace(/^Lý do từ chối:/, '').trim();
+                            }
+
                             return (
                               <div key={index} style={{ 
                                 background: colors.gradient, 
@@ -1481,7 +1510,7 @@ export const Tickets = () => {
                                       border: theme === 'dark' ? '1px dashed var(--color-border)' : '1px dashed rgba(0, 0, 0, 0.05)',
                                       marginTop: 2
                                     }}>
-                                      <strong>Lý do từ chối / Duyệt:</strong> {actionReason.trim()}
+                                      <strong>{reasonLabel}</strong> {cleanReason}
                                     </div>
                                   )}
                                 </div>
@@ -1497,7 +1526,7 @@ export const Tickets = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar name={displayAdmin} size={16} />
+                                    <Avatar src={getUserAvatarByName(displayAdmin)} name={displayAdmin} size={16} />
                                     <span>Xử lý bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{displayAdmin}</strong></span>
                                   </div>
                                   <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
@@ -1614,7 +1643,7 @@ export const Tickets = () => {
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar name={parsed.admin} size={16} />
+                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
                                     <span>Chặn bởi: <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
                                   </div>
                                   <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
@@ -2360,6 +2389,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       transition: 'all 0.2s'
                     }}
                   >
+                    <Avatar src={acc.avatar} name={acc.name} size={36} />
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>
