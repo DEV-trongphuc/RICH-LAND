@@ -115,6 +115,73 @@ export const Dashboard = () => {
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [dateFilter, chartMode]);
 
+  const syncDateFilterToModal = (filter: string) => {
+    let mode = 'this_month';
+    let start = '';
+    let end = '';
+
+    if (filter === 'Hôm nay') {
+      mode = 'today';
+    } else if (filter === 'Hôm qua') {
+      mode = 'yesterday';
+    } else if (filter === '7 ngày qua') {
+      mode = '7_days';
+    } else if (filter === '30 ngày qua') {
+      mode = '30_days';
+    } else if (filter === 'Tháng này') {
+      mode = 'this_month';
+    } else if (filter === 'Tháng trước') {
+      mode = 'last_month';
+    } else if (filter === 'Tuần này') {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + distanceToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      mode = 'custom';
+      start = monday.toISOString().split('T')[0];
+      end = sunday.toISOString().split('T')[0];
+    } else if (filter === 'Tuần trước') {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const prevMonday = new Date(now);
+      prevMonday.setDate(now.getDate() + distanceToMonday - 7);
+      const prevSunday = new Date(prevMonday);
+      prevSunday.setDate(prevMonday.getDate() + 6);
+
+      mode = 'custom';
+      start = prevMonday.toISOString().split('T')[0];
+      end = prevSunday.toISOString().split('T')[0];
+    } else if (filter === 'Tuần trước nữa') {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const prev2Monday = new Date(now);
+      prev2Monday.setDate(now.getDate() + distanceToMonday - 14);
+      const prev2Sunday = new Date(prev2Monday);
+      prev2Sunday.setDate(prev2Monday.getDate() + 6);
+
+      mode = 'custom';
+      start = prev2Monday.toISOString().split('T')[0];
+      end = prev2Sunday.toISOString().split('T')[0];
+    } else {
+      const match = filter.match(/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/i);
+      if (match) {
+        mode = 'custom';
+        start = match[1];
+        end = match[2];
+      }
+    }
+
+    setStatsDateMode(mode);
+    setStatsStartDate(start);
+    setStatsEndDate(end);
+  };
+
   const fetchConsultantStats = async (consId: number, mode: string, start?: string, end?: string) => {
     setStatsLoading(true);
     try {
@@ -521,6 +588,7 @@ export const Dashboard = () => {
                     style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
                     onClick={() => {
                       setStatsConsultant(c);
+                      syncDateFilterToModal(dateFilter);
                       setStatsModalOpen(true);
                     }}
                   >
