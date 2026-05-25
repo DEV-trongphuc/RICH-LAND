@@ -763,10 +763,17 @@ export const DataList = () => {
               { value: 'duplicate', label: 'Trùng lặp' },
               { value: 'rule_6_month', label: 'Quy định 6 tháng' },
               { value: 'silent', label: 'Chỉ đồng bộ' },
-              { value: 'error', label: 'Ticket' }
+              { value: 'error', label: 'Ticket' },
+              { value: 'blacklisted', label: 'Blacklist' }
             ]}
-            value={statusFilter}
-            onChange={val => updateParams('status', val.toString())}
+            value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
+            onChange={val => {
+              const nextVal = Array.isArray(val)
+                ? (val.includes('all') ? 'all' : val.join(','))
+                : val.toString();
+              updateParams('status', nextVal);
+            }}
+            multiple={true}
             width={170}
           />
         </div>

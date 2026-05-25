@@ -1052,8 +1052,17 @@ switch ($action) {
         $isFilteringActive = false;
 
         if (isset($_GET['status']) && $_GET['status'] !== 'all') {
-            $status = $conn->real_escape_string($_GET['status']);
-            $extraCondition .= " AND dl.status = '$status'";
+            $statusInput = $_GET['status'];
+            if (strpos($statusInput, ',') !== false) {
+                $statuses = explode(',', $statusInput);
+                $escapedStatuses = array_map(function($s) use ($conn) {
+                    return "'" . $conn->real_escape_string(trim($s)) . "'";
+                }, $statuses);
+                $extraCondition .= " AND dl.status IN (" . implode(',', $escapedStatuses) . ")";
+            } else {
+                $status = $conn->real_escape_string($statusInput);
+                $extraCondition .= " AND dl.status = '$status'";
+            }
             $isFilteringActive = true;
         }
         if (isset($_GET['exclude_status'])) {
@@ -1429,7 +1438,15 @@ switch ($action) {
         $sqlFilters = "";
         $isFilteringActive = false;
         if ($statusFilter !== 'all') {
-            $sqlFilters .= " AND dl.status = '" . $conn->real_escape_string($statusFilter) . "'";
+            if (strpos($statusFilter, ',') !== false) {
+                $statuses = explode(',', $statusFilter);
+                $escapedStatuses = array_map(function($s) use ($conn) {
+                    return "'" . $conn->real_escape_string(trim($s)) . "'";
+                }, $statuses);
+                $sqlFilters .= " AND dl.status IN (" . implode(',', $escapedStatuses) . ")";
+            } else {
+                $sqlFilters .= " AND dl.status = '" . $conn->real_escape_string($statusFilter) . "'";
+            }
             $isFilteringActive = true;
         }
         if ($consultantFilter !== 'all') {

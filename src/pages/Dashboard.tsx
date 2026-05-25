@@ -128,7 +128,7 @@ export const Dashboard = () => {
     },
     {
       id: 'duplicates',
-      statusValue: 'duplicate',
+      statusValue: 'reminder',
       label: 'BỊ TRÙNG LẶP (< 6 THÁNG)',
       value: stats?.duplicates?.toLocaleString() || '0',
       icon: AlertTriangle,
@@ -138,7 +138,7 @@ export const Dashboard = () => {
     },
     {
       id: 'errors',
-      statusValue: 'error',
+      statusValue: 'error,blacklisted',
       label: 'DATA LỖI / KHÔNG XÁC ĐỊNH',
       value: stats?.errors?.toLocaleString() || '0',
       icon: Zap,
