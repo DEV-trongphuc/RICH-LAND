@@ -247,6 +247,7 @@ function getTicketNotifyAdmins($conn) {
 }
 
 switch ($action) {
+
     case 'get_zalo_send_logs':
         $logFile = __DIR__ . '/zalo_send_log.txt';
         if (file_exists($logFile)) {
@@ -983,6 +984,8 @@ switch ($action) {
             'consultants' => $consultantsList,
             'vacation_mode' => $vacationMode,
             'lead_recall_minutes' => $leadRecallMinutes,
+            'below_standard_fallback_round_id' => (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id'),
+            'below_standard_fallback_round_ids' => getAllFallbackRoundIds($conn),
             'duplicate_check_months' => (int) get_system_setting($conn, 'duplicate_check_months') ?: 6,
             'report_error_reasons' => get_normalized_report_error_reasons($conn),
             'is_allowed_to_report' => true,
@@ -3337,6 +3340,13 @@ switch ($action) {
             break;
         }
 
+        require_once __DIR__ . '/webhook_logic.php';
+        $fallbackRoundIds = getAllFallbackRoundIds($conn);
+        if (in_array((int)$round_id, $fallbackRoundIds)) {
+            echo json_encode(['success' => false, 'message' => 'Không thể báo cáo lỗi cho dữ liệu dưới chuẩn.']);
+            break;
+        }
+
 
 
         // SECURITY: Verify ownership — lead must truly belong to this consultant in this round
@@ -5007,38 +5017,159 @@ switch ($action) {
                 throw new Exception("Lead không tồn tại hoặc đã được xử lý trước đó.");
             }
 
-            $adminNote = "\n[Từ chối AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
-            $note = $lead['note'] . $adminNote;
-
-            $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ? WHERE id = ?");
-            $upd->bind_param("si", $note, $lead_id);
-            $upd->execute();
-            $upd->close();
-
-            $logMsg = "Từ chối bởi Admin: " . $reason;
-            $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
-            $chkLog->bind_param("i", $lead_id);
-            $chkLog->execute();
-            $logRow = $chkLog->get_result()->fetch_assoc();
-            $chkLog->close();
-
-            if ($logRow) {
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'rejected', message = ?, received_at = NOW() WHERE id = ?");
-                $updLog->bind_param("si", $logMsg, $logRow['id']);
-                $updLog->execute();
-                $updLog->close();
+            $config = getScreenerConfigForRound($conn, $lead['target_round_id']);
+            $bsFallbackEnabled = 0;
+            $bsFallbackRoundId = 0;
+            if ($config) {
+                $bsFallbackEnabled = !empty($config['below_standard_fallback_enabled']) ? 1 : 0;
+                $bsFallbackRoundId = !empty($config['below_standard_fallback_round_id']) ? (int) $config['below_standard_fallback_round_id'] : 0;
             } else {
-                logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
+                $bsFallbackEnabled = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
+                $bsFallbackRoundId = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
             }
 
-            logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
-                'lead_id' => $lead_id,
-                'name' => $lead['name'],
-                'phone' => $lead['phone'],
-                'reason' => $reason
-            ]);
-            $conn->commit();
-            triggerTwoWaySync($conn, $lead_id);
+            if ($bsFallbackEnabled === 1 && $bsFallbackRoundId > 0) {
+                // Route to fallback round!
+                $targetRoundId = $bsFallbackRoundId;
+                $assignedConsultantId = null;
+                $status = 'unassigned';
+                $message = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.';
+
+                $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+                if ($assignResult) {
+                    $assignedConsultantId = $assignResult['id'];
+                    $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                    $message = $assignResult['is_compensation'] 
+                        ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
+                        : 'Được phân bổ tự động qua vòng xoay.';
+
+                    // Check work hours
+                    $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                    $whStmt->bind_param("i", $assignedConsultantId);
+                    $whStmt->execute();
+                    $whRes = $whStmt->get_result();
+                    if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                        $whStart = $whRow['work_start_time'] ?? '00:00';
+                        $whEnd = $whRow['work_end_time'] ?? '23:59';
+                        $workSchedule = $whRow['work_schedule'] ?? null;
+                        $currentTime = date('H:i');
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                            $status = 'pending_work_hours';
+                            $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                        }
+                    }
+                    $whStmt->close();
+                } else {
+                    $status = 'pending';
+                    $message = 'No active consultants in this round.';
+                }
+
+                $adminNote = "\n[Xác nhận dưới chuẩn - Fallback]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
+                $note = $lead['note'] . $adminNote;
+
+                $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed' WHERE id = ?");
+                $upd->bind_param("iisi", $targetRoundId, $assignedConsultantId, $note, $lead_id);
+                $upd->execute();
+                $upd->close();
+
+                $logMsg = $message . " (Admin xác nhận dưới chuẩn & Fallback)";
+                $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                $chkLog->bind_param("i", $lead_id);
+                $chkLog->execute();
+                $logRow = $chkLog->get_result()->fetch_assoc();
+                $chkLog->close();
+
+                if ($logRow) {
+                    $updLog = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ?, message = ?, received_at = NOW() WHERE id = ?");
+                    $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundId, $status, $logMsg, $logRow['id']);
+                    $updLog->execute();
+                    $updLog->close();
+                } else {
+                    logDistribution($conn, $lead_id, $assignedConsultantId, $targetRoundId, $status, $logMsg, false);
+                }
+
+                logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
+                    'lead_id' => $lead_id,
+                    'name' => $lead['name'],
+                    'phone' => $lead['phone'],
+                    'reason' => $reason . " (Fallback to round " . $targetRoundId . ")"
+                ]);
+
+                $conn->commit();
+                triggerTwoWaySync($conn, $lead_id);
+
+                // Notifications
+                try {
+                    if ($assignedConsultantId && ($status === 'assigned' || $status === 'compensation')) {
+                        $ccEmails = '';
+                        $roundName = 'Vòng dưới chuẩn';
+                        $stmtQ = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+                        if ($stmtQ) {
+                            $stmtQ->bind_param("i", $targetRoundId);
+                            $stmtQ->execute();
+                            $rData = $stmtQ->get_result()->fetch_assoc();
+                            if ($rData) {
+                                $ccEmails = $rData['cc_emails'] ?? '';
+                                $roundName = $rData['round_name'] ?? 'Vòng dưới chuẩn';
+                            }
+                            $stmtQ->close();
+                        }
+                        
+                        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                        if ($stmtC) {
+                            $stmtC->bind_param("i", $assignedConsultantId);
+                            $stmtC->execute();
+                            $c = $stmtC->get_result()->fetch_assoc();
+                            $stmtC->close();
+                            if ($c) {
+                                require_once __DIR__ . '/mailer.php';
+                                require_once __DIR__ . '/zalo_bot.php';
+                                try {
+                                    sendLeadAssignedEmailToSale($c['email'], $c['name'], $lead['name'], $lead['phone'], $note, $lead['source'], $ccEmails, $roundName, $lead_id, $assignedConsultantId, $targetRoundId);
+                                } catch (Exception $e) {}
+                                try {
+                                    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $lead['name'], $lead['phone'], $note, $lead['source'], $roundName, $lead_id, $targetRoundId, $lead['email'], $lead['type']);
+                                } catch (Exception $e) {}
+                            }
+                        }
+                    }
+                } catch (Exception $notifyEx) {
+                    error_log("Error sending notifications after reject_held_lead with fallback: " . $notifyEx->getMessage());
+                }
+            } else {
+                $adminNote = "\n[Từ chối AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
+                $note = $lead['note'] . $adminNote;
+
+                $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ? WHERE id = ?");
+                $upd->bind_param("si", $note, $lead_id);
+                $upd->execute();
+                $upd->close();
+
+                $logMsg = "Từ chối bởi Admin: " . $reason;
+                $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                $chkLog->bind_param("i", $lead_id);
+                $chkLog->execute();
+                $logRow = $chkLog->get_result()->fetch_assoc();
+                $chkLog->close();
+
+                if ($logRow) {
+                    $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'rejected', message = ?, received_at = NOW() WHERE id = ?");
+                    $updLog->bind_param("si", $logMsg, $logRow['id']);
+                    $updLog->execute();
+                    $updLog->close();
+                } else {
+                    logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
+                }
+
+                logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
+                    'lead_id' => $lead_id,
+                    'name' => $lead['name'],
+                    'phone' => $lead['phone'],
+                    'reason' => $reason
+                ]);
+                $conn->commit();
+                triggerTwoWaySync($conn, $lead_id);
+            }
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -9487,7 +9618,19 @@ switch ($action) {
                     $aiScreenerResult = evaluateScreener($conn, $assignedRoundId, $screenerData);
                 }
 
-                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
+                $isSubstandardAutoApprove = false;
+                if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
+                    $bsFallbackEnabled = (int) ($aiScreenerResult['below_standard_fallback_enabled'] ?? 0);
+                    $bsAutoApprove = (int) ($aiScreenerResult['below_standard_auto_approve'] ?? 0);
+                    $bsFallbackRoundId = (int) ($aiScreenerResult['below_standard_fallback_round_id'] ?? 0);
+
+                    if ($bsFallbackEnabled === 1 && $bsAutoApprove === 1 && $bsFallbackRoundId > 0) {
+                        $assignedRoundId = $bsFallbackRoundId;
+                        $isSubstandardAutoApprove = true;
+                    }
+                }
+
+                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
                     $conn->begin_transaction();
                     $inTransaction = true;
                     if ($crmCheckResult['leadExists']) {

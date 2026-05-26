@@ -8,7 +8,7 @@ import {
   ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus, 
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, 
   Phone, Mail, Clock, Tag, XCircle, 
-  ExternalLink, Check, Shield, Save, Sparkles, X,
+  ExternalLink, Check, Shield, Save, Sparkles, X, Settings,
   BarChart2
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -124,6 +124,9 @@ interface AIScreenerConfig {
   ai_rules: string;
   manual_action: 'hold' | 'skip';
   manual_rules: any[];
+  below_standard_fallback_enabled?: boolean;
+  below_standard_fallback_round_id?: number | '';
+  below_standard_auto_approve?: boolean;
 }
 
 export const Gatekeeper = () => {
@@ -435,12 +438,12 @@ export const Gatekeeper = () => {
         body: JSON.stringify({ lead_id: currentLeadId, reason: heldActionReason })
       });
       if (res.success) {
-        toast.success(t('Đã từ chối lead thành công!'));
+        toast.success(t('Đã xác nhận dưới chuẩn thành công!'));
         setHeldActionReason('');
         fetchHeldLeads();
         window.dispatchEvent(new Event('ticket-resolved'));
       } else {
-        toast.error(res.message || t('Lỗi khi từ chối lead'));
+        toast.error(res.message || t('Lỗi khi xác nhận dưới chuẩn'));
       }
     } catch (e: any) {
       toast.error(t('Lỗi kết nối: ') + e.message);
@@ -477,10 +480,35 @@ export const Gatekeeper = () => {
 
   // ── Config Action Handlers ──
   const handleSaveConfig = async () => {
+    // Validate each config card's fallback settings
+    for (const cfg of aiScreenerConfigs) {
+      if (cfg.below_standard_fallback_enabled) {
+        if (!cfg.below_standard_fallback_round_id) {
+          toast.error(t("Vui lòng chọn Vòng phân bổ fallback cho nhóm: ") + (cfg.name || t("Chưa đặt tên")));
+          return;
+        }
+        if (cfg.rounds.includes(Number(cfg.below_standard_fallback_round_id))) {
+          toast.error(t("Vòng fallback không được nằm trong các vòng áp dụng của nhóm: ") + (cfg.name || t("Chưa đặt tên")));
+          return;
+        }
+        // Fallback round cannot be selected in the screened rounds of ANY config
+        const isSelectedInConfigs = aiScreenerConfigs.some(c => 
+          c.rounds.includes(Number(cfg.below_standard_fallback_round_id))
+        );
+        if (isSelectedInConfigs) {
+          toast.error(t("Vòng fallback không được trùng với các vòng đang bật bộ lọc AI ở bất kỳ nhóm nào."));
+          return;
+        }
+      }
+    }
+
     setSavingSettings(true);
     const payload = {
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
       ai_screener_configs: aiScreenerConfigs,
+      ai_screener_below_standard_fallback_enabled: aiScreenerConfigs.length > 0 && aiScreenerConfigs[0].below_standard_fallback_enabled ? '1' : '0',
+      ai_screener_below_standard_fallback_round_id: aiScreenerConfigs.length > 0 && aiScreenerConfigs[0].below_standard_fallback_round_id ? String(aiScreenerConfigs[0].below_standard_fallback_round_id) : '',
+      ai_screener_below_standard_auto_approve: aiScreenerConfigs.length > 0 && aiScreenerConfigs[0].below_standard_auto_approve ? '1' : '0',
       // Retain old settings keys for backward compatibility using first config
       ai_screener_rounds: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].rounds.join(',') : '',
       ai_screener_rules: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].ai_rules : '',
@@ -550,6 +578,31 @@ export const Gatekeeper = () => {
 
           <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
+          {/* Settings Button */}
+          <button
+            onClick={() => {
+              fetchSettings();
+              setIsSettingsModalOpen(true);
+            }}
+            title={t("Cấu hình quy tắc")}
+            style={{
+              padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)', cursor: 'pointer',
+              color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: '0.8125rem', fontWeight: 700, transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
+          >
+            <Settings size={14} color="var(--color-primary)" /> {t('Cấu hình quy tắc')}
+          </button>
+
+          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
           {/* Lọc AI Toggle */}
           <div 
             onClick={() => {
@@ -605,13 +658,6 @@ export const Gatekeeper = () => {
               }} />
             </div>
           </div>
-
-          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
-
-          {/* Status Badge */}
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-            {t('Tổng cộng:')} {heldLeadsTotalCount} {t('đang tạm giữ')}
-          </span>
 
         </div>
 
@@ -1211,11 +1257,20 @@ export const Gatekeeper = () => {
                             setHeldActionModalOpen('blacklist');
                           }}
                           className="btn outline sm" 
-                          style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}
-                          title={t("Đưa khách hàng vào danh sách đen & Hủy lead")}
+                          style={{ 
+                            color: 'var(--color-danger)', 
+                            borderColor: 'var(--color-danger)', 
+                            boxShadow: 'none',
+                            padding: '0 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: '32px',
+                            height: '32px'
+                          }}
+                          title={t("Đưa khách hàng vào danh sách đen & Xác nhận dưới chuẩn (Blacklist)")}
                         >
-                          <ShieldAlert size={13} style={{ marginRight: 4 }} />
-                          {t('Chặn & Blacklist')}
+                          <ShieldAlert size={14} />
                         </button>
                         <button 
                           onClick={() => {
@@ -1225,9 +1280,9 @@ export const Gatekeeper = () => {
                           }}
                           className="btn outline sm" 
                           style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}
-                          title={t("Không duyệt và hủy lead")}
+                          title={t("Không duyệt và đánh dấu dưới chuẩn")}
                         >
-                          {t('Hủy lead')}
+                          {t('Xác nhận dưới chuẩn')}
                         </button>
                         <button 
                           onClick={() => handleOpenApproveHeldLead(l)}
@@ -1348,6 +1403,8 @@ export const Gatekeeper = () => {
                       </div>
                     </div>
                   </div>
+
+
 
                   {aiScreenerEnabled && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
@@ -1551,7 +1608,7 @@ export const Gatekeeper = () => {
                                          return availableRounds.map((r: any) => {
                                            const roundId = Number(r.id);
                                            // Check if selected in another config
-                                           const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId));
+                                           const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
 
                                            return (
                                              <button
@@ -1853,6 +1910,84 @@ export const Gatekeeper = () => {
                               </div>
                             )}
 
+                            {/* Section: Substandard Lead Fallback Settings (per branch) */}
+                            <div style={{ 
+                              borderTop: '1px dashed var(--color-border)', 
+                              paddingTop: '1.25rem', 
+                              marginTop: '0.5rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1rem'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <ToggleSwitch
+                                  checked={!!config.below_standard_fallback_enabled}
+                                  onChange={checked => {
+                                    const updated = [...aiScreenerConfigs];
+                                    updated[index].below_standard_fallback_enabled = checked;
+                                    setAiScreenerConfigs(updated);
+                                  }}
+                                />
+                                <div>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {t('Fallback lead dưới chuẩn vào vòng khác')}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                    {t('Nếu bật, lead dưới chuẩn thuộc nhóm này sẽ được chuyển vào một vòng chỉ định thay vì hủy bỏ.')}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {config.below_standard_fallback_enabled && (
+                                <div style={{ 
+                                  display: 'grid', 
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                                  gap: '1.5rem', 
+                                  paddingLeft: '3.25rem', 
+                                  alignItems: 'start',
+                                  animation: 'fadeIn 0.15s ease-out' 
+                                }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                      {t('Vòng nhận lead dưới chuẩn (Fallback Round)')}
+                                    </label>
+                                    <CustomSelect
+                                      options={[
+                                        { value: '', label: `-- ${t('Chọn Vòng phân bổ fallback')} --` },
+                                        ...rounds.map((r: any) => ({ value: String(r.id), label: r.round_name }))
+                                      ]}
+                                      value={config.below_standard_fallback_round_id ? String(config.below_standard_fallback_round_id) : ''}
+                                      onChange={val => {
+                                        const updated = [...aiScreenerConfigs];
+                                        updated[index].below_standard_fallback_round_id = val ? Number(val) : '';
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                      width="100%"
+                                    />
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: '22px' }}>
+                                    <ToggleSwitch
+                                      checked={!!config.below_standard_auto_approve}
+                                      onChange={checked => {
+                                        const updated = [...aiScreenerConfigs];
+                                        updated[index].below_standard_auto_approve = checked;
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                    />
+                                    <div>
+                                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        {t('Tự động duyệt lead dưới chuẩn (Không tạm giữ)')}
+                                      </div>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
+                                        {t('Nếu bật, data dưới chuẩn sẽ được chuyển thẳng đến vòng fallback mà không đưa vào hàng chờ.')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
                           </div>
                         );
                       })}
@@ -1977,7 +2112,7 @@ export const Gatekeeper = () => {
                     <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
                   </li>
                   <li>
-                    <strong>{t('Hủy lead:')}</strong> {t('Hệ thống loại bỏ lead này khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
+                    <strong>{t('Xác nhận dưới chuẩn:')}</strong> {t('Hệ thống đánh dấu lead này dưới chuẩn và loại bỏ khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
                   </li>
                   <li>
                     <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
@@ -2447,12 +2582,12 @@ export const Gatekeeper = () => {
       <CustomModal
         isOpen={heldActionModalOpen === 'reject'}
         onClose={() => setHeldActionModalOpen(null)}
-        title={t("Từ chối & Hủy Lead")}
+        title={t("Xác nhận dưới chuẩn")}
         width="450px"
       >
         <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            {t("Vui lòng nhập lý do hủy bỏ lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
+            {t("Vui lòng nhập lý do xác nhận dưới chuẩn cho lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
           </p>
 
           <div>
@@ -2475,9 +2610,9 @@ export const Gatekeeper = () => {
               className="btn primary" 
               onClick={handleRejectHeldLeadSubmit}
               disabled={!heldActionReason.trim() || actionLoading}
-              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+              style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)' }}
             >
-              {actionLoading ? t("Đang hủy...") : t("Từ chối lead")}
+              {actionLoading ? t("Đang xử lý...") : t("Xác nhận dưới chuẩn")}
             </button>
           </div>
         </div>
@@ -2716,7 +2851,7 @@ export const Gatekeeper = () => {
                     style={{ width: '100%', height: 46, borderColor: 'var(--color-warning)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
                   >
                     <XCircle size={18} />
-                    {t("Từ chối & Hủy Lead")}
+                    {t("Xác nhận dưới chuẩn")}
                   </button>
 
                   <button

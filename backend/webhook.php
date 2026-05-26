@@ -444,7 +444,30 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
 $aiScreenerResult = evaluateScreener($conn, $targetRoundId, $data);
 
-if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
+$isSubstandardAutoApprove = false;
+if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
+    $bsFallbackEnabled = (int) ($aiScreenerResult['below_standard_fallback_enabled'] ?? 0);
+    $bsAutoApprove = (int) ($aiScreenerResult['below_standard_auto_approve'] ?? 0);
+    $bsFallbackRoundId = (int) ($aiScreenerResult['below_standard_fallback_round_id'] ?? 0);
+
+    if ($bsFallbackEnabled === 1 && $bsAutoApprove === 1 && $bsFallbackRoundId > 0) {
+        $targetRoundId = $bsFallbackRoundId;
+        $isSubstandardAutoApprove = true;
+        // Update roundName for the logs
+        $rQuery = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ? LIMIT 1");
+        if ($rQuery) {
+            $rQuery->bind_param("i", $targetRoundId);
+            $rQuery->execute();
+            $rRes = $rQuery->get_result()->fetch_assoc();
+            if ($rRes) {
+                $roundName = $rRes['round_name'];
+            }
+            $rQuery->close();
+        }
+    }
+}
+
+if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
     $conn->begin_transaction();
     try {
         if ($crmCheckResult['leadExists']) {

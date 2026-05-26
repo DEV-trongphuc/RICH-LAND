@@ -1926,16 +1926,25 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
                 $manualRules = $config['manual_rules'] ?? [];
                 $manualRulesJson = json_encode($manualRules);
 
+                $result = null;
                 if ($mode === 'manual') {
-                    return runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
+                    $result = runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
                 } else if ($mode === 'ai') {
-                    return runAIScreener($conn, $leadData, $aiRules);
+                    $result = runAIScreener($conn, $leadData, $aiRules);
                 } else if ($mode === 'hybrid') {
                     $manualResult = runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
                     if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
-                        return $manualResult;
+                        $result = $manualResult;
+                    } else {
+                        $result = runAIScreener($conn, $leadData, $aiRules);
                     }
-                    return runAIScreener($conn, $leadData, $aiRules);
+                }
+
+                if ($result) {
+                    $result['below_standard_fallback_enabled'] = !empty($config['below_standard_fallback_enabled']) ? 1 : 0;
+                    $result['below_standard_fallback_round_id'] = !empty($config['below_standard_fallback_round_id']) ? (int) $config['below_standard_fallback_round_id'] : 0;
+                    $result['below_standard_auto_approve'] = !empty($config['below_standard_auto_approve']) ? 1 : 0;
+                    return $result;
                 }
                 break;
             }
@@ -1960,16 +1969,25 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
         $normalizedOldRounds = array_map('intval', $oldRounds);
         if (in_array((int) $targetRoundId, $normalizedOldRounds)) {
             $mode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
+            $result = null;
             if ($mode === 'manual') {
-                return runManualScreener($conn, $leadData);
+                $result = runManualScreener($conn, $leadData);
             } else if ($mode === 'ai') {
-                return runAIScreener($conn, $leadData);
+                $result = runAIScreener($conn, $leadData);
             } else if ($mode === 'hybrid') {
                 $manualResult = runManualScreener($conn, $leadData);
                 if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
-                    return $manualResult;
+                    $result = $manualResult;
+                } else {
+                    $result = runAIScreener($conn, $leadData);
                 }
-                return runAIScreener($conn, $leadData);
+            }
+
+            if ($result) {
+                $result['below_standard_fallback_enabled'] = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
+                $result['below_standard_fallback_round_id'] = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
+                $result['below_standard_auto_approve'] = (int) get_system_setting($conn, 'ai_screener_below_standard_auto_approve');
+                return $result;
             }
         }
     }
@@ -1979,22 +1997,93 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
 
 function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $roundName, $email = '', $source = '', $type = '', $note = '')
 {
-    $admins = getTicketNotifyAdmins($conn);
+    // 1. Fetch system setting config for daily report admins and query full account objects
+    $adminsJson = get_system_setting($conn, 'daily_report_admins');
+    $adminIds = json_decode($adminsJson, true);
+    $admins = [];
+
+    if (is_array($adminIds) && !empty($adminIds)) {
+        $adminIds = array_map('intval', $adminIds);
+        $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+        $types = str_repeat('i', count($adminIds));
+        $adminStmt = $conn->prepare("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+        if ($adminStmt) {
+            $adminStmt->bind_param($types, ...$adminIds);
+            $adminStmt->execute();
+            $adminRes = $adminStmt->get_result();
+            if ($adminRes) {
+                while ($row = $adminRes->fetch_assoc()) {
+                    $admins[] = $row;
+                }
+            }
+            $adminStmt->close();
+        }
+    } else {
+        // Fallback: role = 'admin' OR id = 1
+        $adminRes = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+        if ($adminRes) {
+            while ($row = $adminRes->fetch_assoc()) {
+                $admins[] = $row;
+            }
+        }
+    }
+
     if (empty($admins)) {
         return false;
     }
 
-    // Include mailer and zalo_bot dependencies
-    require_once __DIR__ . '/mailer.php';
-    require_once __DIR__ . '/zalo_bot.php';
-
     $botToken = get_system_setting($conn, 'zalo_bot_token');
-    $zaloChatIds = [];
+    $secret = get_system_setting($conn, 'zalo_webhook_secret') ?: 'ZaloHeldLeadSaltSecret_2026';
+
+    // 2. Build backend API URL dynamically
+    $frontendUrl = get_system_setting($conn, 'frontend_url');
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $frontendUrl = $proto . '://' . $host;
+    }
+    $frontendUrl = rtrim($frontendUrl, '/');
+    
+    // Default API URL
+    $apiUrl = $frontendUrl . '/api.php';
+    
+    // Check if running on localhost dev (to resolve Vite dev server mapping to PHP port)
+    if (strpos($frontendUrl, 'localhost:5173') !== false || strpos($frontendUrl, 'localhost:5174') !== false || strpos($frontendUrl, 'localhost:3000') !== false) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $self = $_SERVER['PHP_SELF'] ?? '';
+        if (!empty($self) && strpos($host, 'localhost:5173') === false && strpos($host, 'localhost:5174') === false) {
+            $dir = str_replace('\\', '/', dirname($self));
+            $dir = rtrim($dir, '/');
+            $apiUrl = $proto . '://' . $host . $dir . '/api.php';
+        } else {
+            $apiUrl = 'http://localhost/backend/api.php';
+        }
+    } else {
+        // Production or direct HTTP request
+        $self = $_SERVER['PHP_SELF'] ?? '';
+        if (!empty($self)) {
+            $dir = str_replace('\\', '/', dirname($self));
+            $dir = rtrim($dir, '/');
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? '';
+            if (!empty($host)) {
+                $apiUrl = $proto . '://' . $host . $dir . '/api.php';
+            }
+        } else {
+            // CLI/Cron production fallback
+            $currentDir = str_replace('\\', '/', __DIR__);
+            if (strpos($currentDir, '/backend') !== false && strpos($frontendUrl, '/backend') === false && strpos($frontendUrl, 'sale_data') === false) {
+                $apiUrl = $frontendUrl . '/backend/api.php';
+            }
+        }
+    }
 
     foreach ($admins as $admin) {
-        // 1. Send Email Notification
+        // Send email
         if (!empty($admin['email'])) {
             try {
+                require_once __DIR__ . '/mailer.php';
                 sendHeldLeadEmailToAdmin(
                     $admin['email'],
                     $admin['name'],
@@ -2012,35 +2101,70 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
             }
         }
 
-        // 2. Gather Zalo Chat IDs
-        if (!empty($admin['zalo_chat_id'])) {
-            $zaloChatIds[] = $admin['zalo_chat_id'];
-        }
-    }
-
-    // 3. Send Zalo Notification
-    if (!empty($botToken) && !empty($zaloChatIds)) {
-        $zaloMsg = "🔔 [ CẢNH BÁO DATA DƯỚI CHUẨN ] 🔔\n"
-            . "━━━━━━━━━━━━━━━━━━━━━\n"
-            . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
-            . "👤 THÔNG TIN KHÁCH HÀNG:\n"
-            . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
-            . "  • Số ĐT: " . (!empty($phone) ? $phone : "Không có") . "\n"
-            . "  • Vòng phân bổ dự kiến: " . (!empty($roundName) ? $roundName : "Không rõ") . "\n"
-            . "  • Nguồn: " . (!empty($source) ? $source : "Không có") . "\n\n"
-            . "🤖 ĐÁNH GIÁ AI:\n"
-            . "  " . $aiReason . "\n\n"
-            . "👉 Vui lòng đăng nhập hệ thống để phê duyệt/từ chối.\n"
-            . "━━━━━━━━━━━━━━━━━━━━━";
-        try {
-            sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg);
-        } catch (Exception $e) {
-            error_log("Error sending Zalo alerts to admins: " . $e->getMessage());
+        // Send Zalo Notification
+        if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
+            $zaloMsg = "🔔 [ CẢNH BÁO DATA DƯỚI CHUẨN ] 🔔\n"
+                . "━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
+                . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+                . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
+                . "  • Số ĐT: " . (!empty($phone) ? $phone : "Không có") . "\n"
+                . "  • Email: " . (!empty($email) ? $email : "Không có") . "\n"
+                . "  • Loại data: " . (!empty($type) ? $type : "Không có") . "\n"
+                . "  • Nguồn: " . (!empty($source) ? $source : "Không có") . "\n"
+                . "  • Vòng phân bổ dự kiến: " . (!empty($roundName) ? $roundName : "Không rõ") . "\n"
+                . "  • Ghi chú: " . (!empty($note) ? $note : "Không có") . "\n\n"
+                . "🤖 ĐÁNH GIÁ AI:\n"
+                . "  " . $aiReason . "\n\n"
+                . "⚡ LỆNH DUYỆT NHANH (ZALO):\n"
+                . "  👉 Duyệt lead: Soạn `/duyet " . $leadId . "`\n"
+                . "  👉 Từ chối lead: Soạn `/tuchoi " . $leadId . " [lý do]`\n"
+                . "━━━━━━━━━━━━━━━━━━━━━";
+            try {
+                require_once __DIR__ . '/zalo_bot.php';
+                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+            } catch (Exception $e) {
+                error_log("Error sending Zalo alert to admin " . $admin['name'] . ": " . $e->getMessage());
+            }
         }
     }
 
     return true;
 }
 
+function getScreenerConfigForRound($conn, $roundId)
+{
+    $configsJson = get_system_setting($conn, 'ai_screener_configs');
+    $configs = json_decode($configsJson, true);
+    if (is_array($configs) && !empty($configs)) {
+        foreach ($configs as $config) {
+            $rounds = $config['rounds'] ?? [];
+            $normalizedRounds = array_map('intval', $rounds);
+            if (in_array((int) $roundId, $normalizedRounds)) {
+                return $config;
+            }
+        }
+    }
+    return null;
+}
 
-
+function getAllFallbackRoundIds($conn)
+{
+    $configsJson = get_system_setting($conn, 'ai_screener_configs');
+    $configs = json_decode($configsJson, true);
+    $roundIds = [];
+    if (is_array($configs)) {
+        foreach ($configs as $config) {
+            if (!empty($config['below_standard_fallback_enabled']) && !empty($config['below_standard_fallback_round_id'])) {
+                $roundIds[] = (int) $config['below_standard_fallback_round_id'];
+            }
+        }
+    }
+    // Legacy global setting compatibility
+    $globalFallbackEnabled = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
+    $globalFallbackRoundId = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
+    if ($globalFallbackEnabled === 1 && $globalFallbackRoundId > 0) {
+        $roundIds[] = $globalFallbackRoundId;
+    }
+    return array_unique($roundIds);
+}

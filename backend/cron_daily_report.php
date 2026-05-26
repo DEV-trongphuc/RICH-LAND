@@ -177,6 +177,29 @@ function runDailyReportCron($conn) {
             $stmtBlocked->close();
         }
         
+        // 3.7 Lấy số data bị AI tạm giữ và dưới chuẩn trong kỳ báo cáo
+        $totalHeldByAI = 0;
+        $totalBelowStandard = 0;
+        
+        $stmtScreenerStats = $conn->prepare("
+            SELECT 
+                SUM(CASE WHEN status = 'pending_approval' THEN 1 ELSE 0 END) as held_count,
+                SUM(CASE WHEN status IN ('pending_approval', 'rejected', 'blacklisted') THEN 1 ELSE 0 END) as below_std_count
+            FROM leads
+            WHERE created_at >= ?
+              AND created_at <= ?
+        ");
+        if ($stmtScreenerStats) {
+            $stmtScreenerStats->bind_param("ss", $startTimestamp, $endTimestamp);
+            $stmtScreenerStats->execute();
+            $resScreenerStats = $stmtScreenerStats->get_result();
+            if ($resScreenerStats && $row = $resScreenerStats->fetch_assoc()) {
+                $totalHeldByAI = (int)($row['held_count'] ?? 0);
+                $totalBelowStandard = (int)($row['below_std_count'] ?? 0);
+            }
+            $stmtScreenerStats->close();
+        }
+        
         // 4. Lấy danh sách Admin nhận báo cáo
         // Ưu tiên danh sách đã được cấu hình; nếu chưa có thì gửi cho tất cả admin + super admin
         $adminIds = [];
@@ -225,6 +248,9 @@ function runDailyReportCron($conn) {
             }
             $msg .= "------------------------------\n";
             $msg .= $saleStats . "\n";
+            $msg .= "🤖 AI PRE-SCREENER (GÁC CỔNG):\n";
+            $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
+            $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n\n";
             $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
             if ($totalTicket > 0) {
                 $msg .= "  • Tổng ticket phát sinh: $totalTicket ⚠️\n";
@@ -262,7 +288,9 @@ function runDailyReportCron($conn) {
                         $approvedTicket,
                         $rejectedTicket,
                         $pendingTicket,
-                        $totalBlocked
+                        $totalBlocked,
+                        $totalHeldByAI,
+                        $totalBelowStandard
                     );
                 }
             }

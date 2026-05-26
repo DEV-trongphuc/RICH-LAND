@@ -1194,7 +1194,19 @@ foreach ($connections as $connItem) {
                 ];
                 $aiScreenerResult = evaluateScreener($conn, $targetRoundId, $screenerData);
 
-                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
+                $isSubstandardAutoApprove = false;
+                if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
+                    $bsFallbackEnabled = (int) ($aiScreenerResult['below_standard_fallback_enabled'] ?? 0);
+                    $bsAutoApprove = (int) ($aiScreenerResult['below_standard_auto_approve'] ?? 0);
+                    $bsFallbackRoundId = (int) ($aiScreenerResult['below_standard_fallback_round_id'] ?? 0);
+
+                    if ($bsFallbackEnabled === 1 && $bsAutoApprove === 1 && $bsFallbackRoundId > 0) {
+                        $targetRoundId = $bsFallbackRoundId;
+                        $isSubstandardAutoApprove = true;
+                    }
+                }
+
+                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
                     $conn->begin_transaction();
                     try {
                         if ($crmCheckResult['leadExists']) {
