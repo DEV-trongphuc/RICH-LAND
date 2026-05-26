@@ -395,7 +395,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
                 border: '1px solid rgba(0, 0, 0, 0.08)',
                 display: 'block' 
               }} 
-              alt={languagesList.find(l => l.code === language)?.name || 'Tiếng Việt'} 
+              alt={t(languagesList.find(l => l.code === language)?.name || 'Tiếng Việt')} 
             />
             <ChevronDown 
               size={12} 

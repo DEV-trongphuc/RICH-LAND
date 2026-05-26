@@ -1408,7 +1408,7 @@ export const Rounds = () => {
                   );
                 }) : (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                    Chưa có thành viên nào trong vòng này
+                    {t("Chưa có thành viên nào trong vòng này")}
                   </div>
                 )}
               </div>

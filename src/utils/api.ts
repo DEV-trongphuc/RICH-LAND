@@ -1,5 +1,23 @@
 const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
 import { processMockRequest } from './mockEngine';
+import { en, ja, zh } from './translations';
+
+function getTranslatedError(key: string, replacements?: Record<string, string | number>): string {
+  const lang = localStorage.getItem('domation_lang') || 'vi';
+  if (lang === 'vi') return key;
+  let translated = key;
+  if (lang === 'en') translated = en[key] || key;
+  if (lang === 'ja') translated = ja[key] || key;
+  if (lang === 'zh') translated = zh[key] || key;
+  
+  if (replacements) {
+    Object.entries(replacements).forEach(([k, v]) => {
+      translated = translated.replace(`{${k}}`, String(v));
+    });
+  }
+  return translated;
+}
+
 
 // BUG-11 fix: Guard against multiple concurrent 401 redirects
 let _isRedirectingToLogin = false;
@@ -58,17 +76,22 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
         }
         // Do not retry 4xx errors
         if (response.status >= 400 && response.status < 500) {
-          throw new Error(json.message || 'Lỗi dữ liệu phía người dùng');
+          throw new Error(json.message || getTranslatedError('Lỗi dữ liệu phía người dùng'));
         }
         // If 5xx, we throw to trigger retry
-        throw new Error(json.message || `Lỗi kết nối máy chủ (${response.status})`);
+        throw new Error(json.message || getTranslatedError('Lỗi kết nối máy chủ ({status})', { status: response.status }));
       }
 
       return json;
     } catch (err: any) {
       lastError = err;
       const isNetworkError = err instanceof TypeError && err.message === 'Failed to fetch';
-      const isServerError = err instanceof Error && err.message.includes('Lỗi kết nối máy chủ');
+      const isServerError = err instanceof Error && (
+        err.message.includes('Lỗi kết nối máy chủ') ||
+        err.message.includes('Server connection error') ||
+        err.message.includes('サーバー接続エラー') ||
+        err.message.includes('服务器连接错误')
+      );
       
       // Retry ONLY on pure network drops or 5xx server errors
       if (!isNetworkError && !isServerError) {
@@ -118,12 +141,12 @@ export async function fetchPublicAPI(action: string, options: RequestInit = {}) 
   try {
     json = await response.json();
   } catch {
-    throw new Error('Lỗi kết nối máy chủ (không phải JSON)');
+    throw new Error(getTranslatedError('Lỗi kết nối máy chủ (không phải JSON)'));
   }
 
   // Never redirect — just throw with server message
   if (!response.ok) {
-    throw new Error(json?.message || `Lỗi máy chủ (${response.status})`);
+    throw new Error(json?.message || getTranslatedError('Lỗi máy chủ ({status})', { status: response.status }));
   }
 
   return json;

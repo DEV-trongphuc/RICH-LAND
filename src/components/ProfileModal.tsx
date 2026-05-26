@@ -60,7 +60,7 @@ export const ProfileModal = () => {
             setActivityLogs(res.data || []);
           }
         } catch (err) {
-          console.error('Lỗi khi tải lịch sử hoạt động:', err);
+          console.error(t('Lỗi khi tải lịch sử hoạt động:'), err);
         } finally {
           setLoadingLogs(false);
         }

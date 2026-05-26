@@ -1,3 +1,4 @@
+
 import { MOCK_DB } from './mockDataDb';
 
 // Utility to simulate network latency
@@ -41,13 +42,13 @@ export const processMockRequest = async (action: string, payload?: any): Promise
 
     case 'get_consultants':
       return { success: true, data: MOCK_DB.consultants };
-      
+
     case 'get_rounds':
       return { success: true, data: MOCK_DB.rounds };
-      
+
     case 'get_reports':
       return { success: true, data: MOCK_DB.tickets };
-      
+
     case 'get_rules':
       return { success: true, data: MOCK_DB.rules };
 
@@ -56,13 +57,13 @@ export const processMockRequest = async (action: string, payload?: any): Promise
 
     case 'get_mappings':
       return { success: true, data: MOCK_DB.mappings };
-      
+
     case 'get_integrations':
       return { success: true, data: MOCK_DB.integrations };
-      
+
     case 'get_settings':
       return { success: true, data: MOCK_DB.settings };
-      
+
     case 'get_accounts':
       return { success: true, data: MOCK_DB.accounts };
 
@@ -128,10 +129,10 @@ export const processMockRequest = async (action: string, payload?: any): Promise
       return { success: true, message: 'Đã từ chối (Demo)' };
 
     case 'preview_routing':
-      return { 
-        success: true, 
-        round_id: 1, 
-        consultant: { consultant_id: 1, name: 'Hải Đăng', round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads' } 
+      return {
+        success: true,
+        round_id: 1,
+        consultant: { consultant_id: 1, name: 'Hải Đăng', round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads' }
       };
 
     case 'manual_insert_lead':
