@@ -185,7 +185,7 @@ export const SalePortal = () => {
         body: JSON.stringify({ id: user?.consultant_id })
       });
       if (json.success) {
-        toast.success(t('Đã thay đổi chế độ nghỉ phép nhanh'));
+        toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
         setPortalVacationMode(Boolean(Number(json.vacation_mode)));
       } else {
         toast.error(json.message || t('Lỗi thay đổi trạng thái'));
@@ -520,7 +520,7 @@ export const SalePortal = () => {
           {user?.role === 'sale' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '6px 12px', marginRight: '0.5rem' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: !portalVacationMode ? '#10b981' : '#f59e0b' }}>
-                {!portalVacationMode ? t('Nhận data') : t('Nghỉ phép nhanh')}
+                {!portalVacationMode ? t('Nhận data') : t('Tạm ngưng')}
               </span>
               <ToggleSwitch
                 checked={!portalVacationMode}

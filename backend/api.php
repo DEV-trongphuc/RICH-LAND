@@ -2257,6 +2257,7 @@ switch ($action) {
         $data = [];
         $roundIds = [];
         while ($row = $res->fetch_assoc()) {
+            $row['is_active'] = (int) $row['is_active'];
             $row['is_fallback'] = ((int) $row['id'] === $fbRoundId);
             $cIds = $row['consultant_ids'] ? explode(',', $row['consultant_ids']) : [];
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];

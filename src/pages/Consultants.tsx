@@ -161,7 +161,7 @@ export const Consultants = () => {
         body: JSON.stringify({ id })
       });
       if (json.success) {
-        toast.success(t('Đã thay đổi chế độ nghỉ phép nhanh'));
+        toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
         setUsers(prev => prev.map(u => u.id === id ? { ...u, vacation_mode: json.vacation_mode } : u));
       } else {
         toast.error(json.message || t('Lỗi thay đổi trạng thái'));
@@ -553,7 +553,7 @@ export const Consultants = () => {
                           Number(u.vacation_mode) ? (
                             <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                              {t('Nghỉ phép nhanh')}
+                              {t('Tạm ngưng')}
                             </span>
                           ) : (
                             <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
@@ -955,9 +955,6 @@ export const Consultants = () => {
                             setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
                           }}
                         />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: !Boolean(Number(editingUser.vacation_mode)) ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                          {!Boolean(Number(editingUser.vacation_mode)) ? t('Nhận data') : t('Nghỉ phép nhanh')}
-                        </span>
                       </div>
                     </div>
                   )}

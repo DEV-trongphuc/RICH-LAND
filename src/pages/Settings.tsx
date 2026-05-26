@@ -2129,7 +2129,7 @@ function doPost(e) {
                         { value: '', label: t('-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --') },
                         ...rounds.map(r => ({
                           value: r.id.toString(),
-                          label: `${r.round_name} (${r.is_active ? t('Đang hoạt động') : t('Tạm dừng')})`
+                          label: `${r.round_name} (${Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')})`
                         }))
                       ]}
                       value={fallbackRoundId}

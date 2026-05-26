@@ -432,11 +432,11 @@ export const Rounds = () => {
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                           <span 
-                            className={`pulse-dot ${r.is_active ? 'active' : 'inactive'}`} 
+                            className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
                             style={{ width: 6, height: 6, display: 'inline-block' }} 
                           />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
+                            {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
                           </span>
                         </div>
                       </div>
@@ -628,11 +628,11 @@ export const Rounds = () => {
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <span 
-                      className={`pulse-dot ${r.is_active ? 'active' : 'inactive'}`} 
+                      className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
                       style={{ width: 8, height: 8, display: 'inline-block' }} 
                     />
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                      {r.is_active ? t('Đang hoạt động') : t('Tạm dừng')}
+                      {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
                     </span>
                   </div>
                 </div>
