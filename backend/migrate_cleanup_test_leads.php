@@ -2,13 +2,22 @@
 require_once __DIR__ . '/db_connect.php';
 header("Content-Type: text/plain; charset=utf-8");
 
+// Security Check: Require secret key if accessed via HTTP
+if (php_sapi_name() !== 'cli') {
+    $secret = $_GET['secret'] ?? '';
+    if ($secret !== 'Ideas@812') {
+        http_response_code(403);
+        die("Forbidden: Access denied.\n");
+    }
+}
+
 $confirm = isset($_GET['confirm']) && $_GET['confirm'] === '1';
 
 if ($confirm) {
     echo "=== RUNNING IN CONFIRM MODE: ACTUAL DELETION ===\n\n";
 } else {
     echo "=== RUNNING IN PREVIEW MODE: DRY RUN (NO DELETIONS) ===\n";
-    echo "To confirm and execute the deletion, please access this page with ?confirm=1\n\n";
+    echo "To confirm and execute the deletion, please access this page with ?secret=Ideas@812&confirm=1\n\n";
 }
 
 // 1. Fetch all test leads except "Test nha bà con"
@@ -117,6 +126,6 @@ if ($confirm) {
     }
 } else {
     echo "PREVIEW COMPLETED. No database changes were made.\n";
-    echo "To confirm, please call: https://open.domation.net/sale_data/migrate_cleanup_test_leads.php?confirm=1\n";
+    echo "To confirm, please call: https://open.domation.net/sale_data/migrate_cleanup_test_leads.php?secret=Ideas@812&confirm=1\n";
 }
 ?>
