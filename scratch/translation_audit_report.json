@@ -2181,7 +2181,7 @@
         },
         {
           "line": 687,
-          "text": ", lineHeight: 1.6, margin: 0 }}>\r\n              {t(\"Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (sử dụng Gemini AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.\")}\r\n            </p>\r\n          </div>\r\n          <button\r\n            onClick={() => setIsDynamicFlowExpanded(!isDynamicFlowExpanded)}\r\n            style={{\r\n              padding:",
+          "text": ", lineHeight: 1.6, margin: 0 }}>\r\n              {t(\"Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (DOMATION AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.\")}\r\n            </p>\r\n          </div>\r\n          <button\r\n            onClick={() => setIsDynamicFlowExpanded(!isDynamicFlowExpanded)}\r\n            style={{\r\n              padding:",
           "type": "string_literal"
         },
         {

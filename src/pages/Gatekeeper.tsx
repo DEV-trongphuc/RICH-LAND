@@ -4,10 +4,10 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
-import { 
-  ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus, 
-  CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, 
-  Phone, Mail, Clock, Tag, XCircle, 
+import {
+  ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus,
+  CheckCircle, AlertTriangle, ChevronLeft, ChevronRight,
+  Phone, Mail, Clock, Tag, XCircle,
   ExternalLink, Check, Shield, Save, Sparkles, X, Settings,
   BarChart2
 } from 'lucide-react';
@@ -66,7 +66,7 @@ const parseNote = (noteText: string) => {
   const cleanLines: string[] = [];
   const errorNotes: string[] = [];
   const blacklistNotes: string[] = [];
-  
+
   lines.forEach(line => {
     const trimmed = line.trim();
     if (/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(trimmed)) {
@@ -85,7 +85,7 @@ const parseNote = (noteText: string) => {
       cleanLines.push(line);
     }
   });
-  
+
   return {
     cleanNote: cleanLines.join('\n').trim(),
     errorNotes,
@@ -172,7 +172,7 @@ export const Gatekeeper = () => {
   const [previewedConsultant, setPreviewedConsultant] = useState<any>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
-  
+
   // Custom Settings & Guide Modal
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
@@ -342,7 +342,7 @@ export const Gatekeeper = () => {
                   ? JSON.parse(res.data.ai_screener_manual_rules)
                   : res.data.ai_screener_manual_rules;
                 if (Array.isArray(parsedRules)) oldManualRules = parsedRules;
-              } catch {}
+              } catch { }
             }
             configsArray = [{
               id: 'config_' + Date.now(),
@@ -430,7 +430,7 @@ export const Gatekeeper = () => {
     try {
       const res = await fetchAPI('approve_held_lead', {
         method: 'POST',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           lead_id: currentLeadId,
           round_id: selectedApproveRoundId
         })
@@ -516,7 +516,7 @@ export const Gatekeeper = () => {
           return;
         }
         // Fallback round cannot be selected in the screened rounds of ANY config
-        const isSelectedInConfigs = aiScreenerConfigs.some(c => 
+        const isSelectedInConfigs = aiScreenerConfigs.some(c =>
           c.rounds.includes(Number(cfg.below_standard_fallback_round_id))
         );
         if (isSelectedInConfigs) {
@@ -562,7 +562,7 @@ export const Gatekeeper = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      
+
       {/* ── Page Header ── */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div>
@@ -572,14 +572,11 @@ export const Gatekeeper = () => {
             </span>
             {t('Bộ Lọc AI (Pre-screener)')}
           </h1>
-          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {t('Đánh giá chất lượng lead tự động trước khi phân bổ. Giữ lại lead rác, lead kém chất lượng để tối ưu hóa hiệu suất của Đội ngũ TVV.')}
-          </p>
         </div>
 
         {/* Header Actions */}
         <div className="mobile-flex-wrap" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          
+
           {/* Guide Button */}
           <button
             onClick={() => setIsGuideModalOpen(true)}
@@ -630,15 +627,15 @@ export const Gatekeeper = () => {
           <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
           {/* Lọc AI Toggle */}
-          <div 
+          <div
             onClick={() => {
               fetchSettings();
               setIsSettingsModalOpen(true);
             }}
             title={t("Cấu hình quy tắc lọc AI")}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
               gap: 8,
               cursor: 'pointer',
               padding: '4px 8px',
@@ -656,11 +653,11 @@ export const Gatekeeper = () => {
               if (label) label.style.color = 'var(--color-text-muted)';
             }}
           >
-            <span 
+            <span
               className="auto-approve-label"
-              style={{ 
-                fontSize: '0.8rem', 
-                fontWeight: 700, 
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
                 color: 'var(--color-text-muted)',
                 transition: 'color 0.2s',
                 textDecoration: 'underline',
@@ -669,7 +666,7 @@ export const Gatekeeper = () => {
             >
               {t('Lọc AI')}
             </span>
-            <div 
+            <div
               style={{
                 width: 36, height: 20, borderRadius: 10,
                 background: aiScreenerEnabled ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
@@ -709,7 +706,7 @@ export const Gatekeeper = () => {
               {t("Bộ Lọc AI Pre-screener hoạt động thế nào?")}
             </h4>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
-              {t("Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (sử dụng Gemini AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.")}
+              {t("Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (DOMATION AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.")}
             </p>
           </div>
           <button
@@ -846,7 +843,7 @@ export const Gatekeeper = () => {
                     )}
                   </div>
                 </div>
-                
+
                 {aiScreenerEnabled ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
                     <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
@@ -1077,7 +1074,7 @@ export const Gatekeeper = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
                     {t('Sau khi đánh giá xong, Lead sẽ được phân luồng xử lý:')}
@@ -1102,7 +1099,7 @@ export const Gatekeeper = () => {
       {/* ── Main content card showing held queue ── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', minHeight: '500px' }}>
 
-        
+
         {/* Filter bar */}
         <div className="responsive-filter-row" style={{
           display: 'flex', gap: 12, padding: '14px 18px',
@@ -1150,7 +1147,7 @@ export const Gatekeeper = () => {
                 <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
               </button>
             </div>
-            
+
             {/* Date Select + Stats Button */}
             <div className="mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: 180 }}>
               <div style={{ position: 'relative', width: '100%' }} className="mobile-flex-1">
@@ -1167,7 +1164,7 @@ export const Gatekeeper = () => {
                   width="100%"
                 />
               </div>
-              
+
               <button
                 onClick={() => setIsStatsModalOpen(true)}
                 className="btn primary mobile-only"
@@ -1270,8 +1267,8 @@ export const Gatekeeper = () => {
               </thead>
               <tbody>
                 {heldLeads.map((l: any) => (
-                  <tr 
-                    key={l.id} 
+                  <tr
+                    key={l.id}
                     onClick={() => {
                       setSelectedLead({
                         id: l.id,
@@ -1327,16 +1324,16 @@ export const Gatekeeper = () => {
                     </td>
                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <button 
+                        <button
                           onClick={() => {
                             setActioningHeldLead(l);
                             setHeldActionReason('');
                             setHeldActionModalOpen('blacklist');
                           }}
-                          className="btn outline sm" 
-                          style={{ 
-                            color: 'var(--color-danger)', 
-                            borderColor: 'var(--color-danger)', 
+                          className="btn outline sm"
+                          style={{
+                            color: 'var(--color-danger)',
+                            borderColor: 'var(--color-danger)',
                             boxShadow: 'none',
                             padding: '0 8px',
                             display: 'inline-flex',
@@ -1349,24 +1346,24 @@ export const Gatekeeper = () => {
                         >
                           <ShieldAlert size={14} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => {
                             setActioningHeldLead(l);
                             setHeldActionReason('');
                             setHeldActionModalOpen('reject');
                           }}
-                          className="btn outline sm" 
+                          className="btn outline sm"
                           style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}
                           title={t("Không duyệt và đánh dấu dưới chuẩn")}
                         >
                           {t('Xác nhận dưới chuẩn')}
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleOpenApproveHeldLead(l)}
-                          className="btn primary sm" 
-                          style={{ 
-                            background: '#10b981', 
-                            borderColor: '#10b981', 
+                          className="btn primary sm"
+                          style={{
+                            background: '#10b981',
+                            borderColor: '#10b981',
                             boxShadow: 'none',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1393,7 +1390,7 @@ export const Gatekeeper = () => {
               {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, heldLeadsTotalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{heldLeadsTotalCount}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button 
+              <button
                 onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
                 disabled={currentPage === 1}
                 style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
@@ -1414,23 +1411,23 @@ export const Gatekeeper = () => {
                   }
                   const pageNum = startPage + i;
                   return (
-                     <button
-                       key={pageNum}
-                       onClick={() => updateParams('page', pageNum.toString())}
-                       style={{ 
-                         width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
-                         border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                         background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                         color: currentPage === pageNum ? 'white' : 'var(--color-text)',
-                         cursor: 'pointer'
-                       }}
-                     >
-                       {pageNum}
-                     </button>
+                    <button
+                      key={pageNum}
+                      onClick={() => updateParams('page', pageNum.toString())}
+                      style={{
+                        width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                        border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                        background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                        color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {pageNum}
+                    </button>
                   );
                 })}
               </div>
-              <button 
+              <button
                 onClick={() => updateParams('page', String(Math.min(currentPage + 1, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE))))}
                 disabled={currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE)}
                 style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
@@ -1485,17 +1482,17 @@ export const Gatekeeper = () => {
 
                   {aiScreenerEnabled && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
-                      
+
                       {/* Configuration Cards List */}
                       {aiScreenerConfigs.map((config: AIScreenerConfig, index: number) => {
                         return (
-                          <div 
-                            key={config.id} 
-                            style={{ 
-                              border: '1px solid var(--color-border)', 
-                              borderRadius: '12px', 
-                              padding: '1.25rem', 
-                              position: 'relative', 
+                          <div
+                            key={config.id}
+                            style={{
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '12px',
+                              padding: '1.25rem',
+                              position: 'relative',
                               background: 'var(--color-surface)',
                               boxShadow: 'var(--shadow-sm)',
                               display: 'flex',
@@ -1546,220 +1543,220 @@ export const Gatekeeper = () => {
                                 <Trash2 size={16} />
                               </button>
                             </div>
-                             {/* Section 1: Choose Rounds (Tags Select with Dropdown) */}
-                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
-                               <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                 {t('Chọn các vòng áp dụng cho nhóm này')}
-                               </label>
-                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                                 {/* Display already selected rounds */}
-                                 {config.rounds.map((roundId: number) => {
-                                   const r = rounds.find((x: any) => Number(x.id) === roundId);
-                                   if (!r) return null;
-                                   return (
-                                     <span
-                                       key={roundId}
-                                       style={{
-                                         display: 'inline-flex',
-                                         alignItems: 'center',
-                                         gap: '6px',
-                                         padding: '5px 12px',
-                                         borderRadius: '9999px',
-                                         fontSize: '0.8125rem',
-                                         fontWeight: 600,
-                                         border: '1px solid rgba(124, 58, 237, 0.25)',
-                                         background: 'rgba(124, 58, 237, 0.08)',
-                                         color: '#a78bfa',
-                                         boxShadow: '0 2px 8px rgba(124, 58, 237, 0.05)',
-                                         transition: 'all 0.2s ease'
-                                       }}
-                                     >
-                                       <Tag size={12} style={{ opacity: 0.8 }} />
-                                       {r.round_name}
-                                       <button
-                                         type="button"
-                                         onClick={() => {
-                                           const updated = [...aiScreenerConfigs];
-                                           updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
-                                           setAiScreenerConfigs(updated);
-                                         }}
-                                         style={{
-                                           border: 'none',
-                                           background: 'rgba(255, 255, 255, 0.06)',
-                                           color: 'var(--color-text-muted)',
-                                           cursor: 'pointer',
-                                           display: 'inline-flex',
-                                           alignItems: 'center',
-                                           justifyContent: 'center',
-                                           padding: '2px',
-                                           borderRadius: '50%',
-                                           marginLeft: '4px',
-                                           outline: 'none',
-                                           transition: 'all 0.15s ease'
-                                         }}
-                                         onMouseEnter={(e) => {
-                                           e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-                                           e.currentTarget.style.color = 'var(--color-danger)';
-                                         }}
-                                         onMouseLeave={(e) => {
-                                           e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                                           e.currentTarget.style.color = 'var(--color-text-muted)';
-                                         }}
-                                       >
-                                         <X size={10} />
-                                       </button>
-                                     </span>
-                                   );
-                                 })}
+                            {/* Section 1: Choose Rounds (Tags Select with Dropdown) */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
+                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                {t('Chọn các vòng áp dụng cho nhóm này')}
+                              </label>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                {/* Display already selected rounds */}
+                                {config.rounds.map((roundId: number) => {
+                                  const r = rounds.find((x: any) => Number(x.id) === roundId);
+                                  if (!r) return null;
+                                  return (
+                                    <span
+                                      key={roundId}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '5px 12px',
+                                        borderRadius: '9999px',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 600,
+                                        border: '1px solid rgba(124, 58, 237, 0.25)',
+                                        background: 'rgba(124, 58, 237, 0.08)',
+                                        color: '#a78bfa',
+                                        boxShadow: '0 2px 8px rgba(124, 58, 237, 0.05)',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                    >
+                                      <Tag size={12} style={{ opacity: 0.8 }} />
+                                      {r.round_name}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...aiScreenerConfigs];
+                                          updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
+                                          setAiScreenerConfigs(updated);
+                                        }}
+                                        style={{
+                                          border: 'none',
+                                          background: 'rgba(255, 255, 255, 0.06)',
+                                          color: 'var(--color-text-muted)',
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          padding: '2px',
+                                          borderRadius: '50%',
+                                          marginLeft: '4px',
+                                          outline: 'none',
+                                          transition: 'all 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                          e.currentTarget.style.color = 'var(--color-danger)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                          e.currentTarget.style.color = 'var(--color-text-muted)';
+                                        }}
+                                      >
+                                        <X size={10} />
+                                      </button>
+                                    </span>
+                                  );
+                                })}
 
-                                 {/* Plus Button to add more rounds */}
-                                 <div style={{ position: 'relative' }}>
-                                   <button
-                                     type="button"
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       setActiveRoundsDropdown(activeRoundsDropdown === config.id ? null : config.id);
-                                     }}
-                                     style={{
-                                       display: 'inline-flex',
-                                       alignItems: 'center',
-                                       gap: '6px',
-                                       padding: '5px 12px',
-                                       borderRadius: '9999px',
-                                       fontSize: '0.8125rem',
-                                       fontWeight: 600,
-                                       border: '1px dashed var(--color-primary-light)',
-                                       background: 'rgba(124, 58, 237, 0.02)',
-                                       color: 'var(--color-primary)',
-                                       cursor: 'pointer',
-                                       transition: 'all 0.2s ease',
-                                       outline: 'none',
-                                       boxShadow: 'var(--shadow-sm)'
-                                     }}
-                                     onMouseEnter={(e) => {
-                                       e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
-                                       e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                       e.currentTarget.style.transform = 'translateY(-0.5px)';
-                                     }}
-                                     onMouseLeave={(e) => {
-                                       e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
-                                       e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                                       e.currentTarget.style.transform = 'none';
-                                     }}
-                                   >
-                                     <Plus size={12} />
-                                     <span>{t('Thêm vòng')}</span>
-                                   </button>
+                                {/* Plus Button to add more rounds */}
+                                <div style={{ position: 'relative' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveRoundsDropdown(activeRoundsDropdown === config.id ? null : config.id);
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      padding: '5px 12px',
+                                      borderRadius: '9999px',
+                                      fontSize: '0.8125rem',
+                                      fontWeight: 600,
+                                      border: '1px dashed var(--color-primary-light)',
+                                      background: 'rgba(124, 58, 237, 0.02)',
+                                      color: 'var(--color-primary)',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s ease',
+                                      outline: 'none',
+                                      boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                      e.currentTarget.style.transform = 'translateY(-0.5px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                                      e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                      e.currentTarget.style.transform = 'none';
+                                    }}
+                                  >
+                                    <Plus size={12} />
+                                    <span>{t('Thêm vòng')}</span>
+                                  </button>
 
-                                   {/* Dropdown Menu */}
-                                   {activeRoundsDropdown === config.id && (
-                                     <div 
-                                       onClick={(e) => e.stopPropagation()}
-                                       style={{
-                                         position: 'absolute',
-                                         top: 'calc(100% + 6px)',
-                                         left: 0,
-                                         zIndex: 55,
-                                         minWidth: '220px',
-                                         background: 'var(--color-surface)',
-                                         border: '1px solid rgba(124, 58, 237, 0.15)',
-                                         borderRadius: '12px',
-                                         boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
-                                         maxHeight: '220px',
-                                         overflowY: 'auto',
-                                         padding: '6px'
-                                       }}
-                                     >
-                                       {(() => {
-                                         // Filter rounds that are NOT selected in this config
-                                         const availableRounds = rounds.filter((r: any) => !config.rounds.includes(Number(r.id)));
-                                         
-                                         if (availableRounds.length === 0) {
-                                           return (
-                                             <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                                               {t('Không còn vòng nào khả dụng')}
-                                             </div>
-                                           );
-                                         }
+                                  {/* Dropdown Menu */}
+                                  {activeRoundsDropdown === config.id && (
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        position: 'absolute',
+                                        top: 'calc(100% + 6px)',
+                                        left: 0,
+                                        zIndex: 55,
+                                        minWidth: '220px',
+                                        background: 'var(--color-surface)',
+                                        border: '1px solid rgba(124, 58, 237, 0.15)',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
+                                        maxHeight: '220px',
+                                        overflowY: 'auto',
+                                        padding: '6px'
+                                      }}
+                                    >
+                                      {(() => {
+                                        // Filter rounds that are NOT selected in this config
+                                        const availableRounds = rounds.filter((r: any) => !config.rounds.includes(Number(r.id)));
 
-                                         return availableRounds.map((r: any) => {
-                                           const roundId = Number(r.id);
-                                           // Check if selected in another config
-                                           const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
+                                        if (availableRounds.length === 0) {
+                                          return (
+                                            <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                                              {t('Không còn vòng nào khả dụng')}
+                                            </div>
+                                          );
+                                        }
 
-                                           return (
-                                             <button
-                                               key={roundId}
-                                               type="button"
-                                               disabled={selectedElsewhere}
-                                               onClick={() => {
-                                                 const updated = [...aiScreenerConfigs];
-                                                 updated[index].rounds = [...config.rounds, roundId];
-                                                 setAiScreenerConfigs(updated);
-                                                 setActiveRoundsDropdown(null);
-                                               }}
-                                               style={{
-                                                 width: '100%',
-                                                 padding: '10px 14px',
-                                                 fontSize: '0.8125rem',
-                                                 fontWeight: 550,
-                                                 textAlign: 'left',
-                                                 border: 'none',
-                                                 background: 'transparent',
-                                                 color: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-text)',
-                                                 opacity: selectedElsewhere ? 0.4 : 1,
-                                                 cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
-                                                 borderRadius: '8px',
-                                                 display: 'flex',
-                                                 alignItems: 'center',
-                                                 justifyContent: 'space-between',
-                                                 gap: '10px',
-                                                 transition: 'all 0.15s ease',
-                                                 outline: 'none'
-                                               }}
-                                               onMouseEnter={(e) => {
-                                                 if (!selectedElsewhere) {
-                                                   e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
-                                                   e.currentTarget.style.color = 'var(--color-primary)';
-                                                 }
-                                               }}
-                                               onMouseLeave={(e) => {
-                                                 if (!selectedElsewhere) {
-                                                   e.currentTarget.style.background = 'transparent';
-                                                   e.currentTarget.style.color = 'var(--color-text)';
-                                                 }
-                                               }}
-                                             >
-                                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
-                                                 {r.round_name}
-                                               </span>
-                                               {selectedElsewhere && (
-                                                 <span style={{
-                                                   fontSize: '0.6875rem',
-                                                   color: 'var(--color-danger)',
-                                                   background: 'rgba(239, 68, 68, 0.08)',
-                                                   padding: '2px 6px',
-                                                   borderRadius: '4px',
-                                                   fontWeight: 600,
-                                                   flexShrink: 0,
-                                                   display: 'flex',
-                                                   alignItems: 'center',
-                                                   gap: '4px'
-                                                 }}>
-                                                   <Shield size={10} />
-                                                   {t('Nhóm khác')}
-                                                 </span>
-                                               )}
-                                             </button>
-                                           );
-                                         });
-                                       })()}
-                                     </div>
-                                   )}
-                                 </div>
-                               </div>
-                             </div>
+                                        return availableRounds.map((r: any) => {
+                                          const roundId = Number(r.id);
+                                          // Check if selected in another config
+                                          const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
+
+                                          return (
+                                            <button
+                                              key={roundId}
+                                              type="button"
+                                              disabled={selectedElsewhere}
+                                              onClick={() => {
+                                                const updated = [...aiScreenerConfigs];
+                                                updated[index].rounds = [...config.rounds, roundId];
+                                                setAiScreenerConfigs(updated);
+                                                setActiveRoundsDropdown(null);
+                                              }}
+                                              style={{
+                                                width: '100%',
+                                                padding: '10px 14px',
+                                                fontSize: '0.8125rem',
+                                                fontWeight: 550,
+                                                textAlign: 'left',
+                                                border: 'none',
+                                                background: 'transparent',
+                                                color: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                                opacity: selectedElsewhere ? 0.4 : 1,
+                                                cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '10px',
+                                                transition: 'all 0.15s ease',
+                                                outline: 'none'
+                                              }}
+                                              onMouseEnter={(e) => {
+                                                if (!selectedElsewhere) {
+                                                  e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                                  e.currentTarget.style.color = 'var(--color-primary)';
+                                                }
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                if (!selectedElsewhere) {
+                                                  e.currentTarget.style.background = 'transparent';
+                                                  e.currentTarget.style.color = 'var(--color-text)';
+                                                }
+                                              }}
+                                            >
+                                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
+                                                {r.round_name}
+                                              </span>
+                                              {selectedElsewhere && (
+                                                <span style={{
+                                                  fontSize: '0.6875rem',
+                                                  color: 'var(--color-danger)',
+                                                  background: 'rgba(239, 68, 68, 0.08)',
+                                                  padding: '2px 6px',
+                                                  borderRadius: '4px',
+                                                  fontWeight: 600,
+                                                  flexShrink: 0,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px'
+                                                }}>
+                                                  <Shield size={10} />
+                                                  {t('Nhóm khác')}
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        });
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
 
 
                             {/* Section 2: Choose Mode */}
@@ -1794,7 +1791,7 @@ export const Gatekeeper = () => {
                                 )}
                                 {config.mode === 'ai' && (
                                   <span>
-                                    {t('Chế độ AI: Sử dụng Gemini AI để đánh giá theo yêu cầu cấu hình dưới.')}
+                                    {t('Chế độ AI: DOMATION AI để đánh giá theo yêu cầu cấu hình dưới.')}
                                   </span>
                                 )}
                               </div>
@@ -2005,9 +2002,9 @@ export const Gatekeeper = () => {
                             )}
 
                             {/* Section: Substandard Lead Fallback Settings (per branch) */}
-                            <div style={{ 
-                              borderTop: '1px dashed var(--color-border)', 
-                              paddingTop: '1.25rem', 
+                            <div style={{
+                              borderTop: '1px dashed var(--color-border)',
+                              paddingTop: '1.25rem',
                               marginTop: '0.5rem',
                               display: 'flex',
                               flexDirection: 'column',
@@ -2033,13 +2030,13 @@ export const Gatekeeper = () => {
                               </div>
 
                               {config.below_standard_fallback_enabled && (
-                                <div style={{ 
-                                  display: 'grid', 
-                                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                                  gap: '1.5rem', 
-                                  paddingLeft: '3.25rem', 
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                                  gap: '1.5rem',
+                                  paddingLeft: '3.25rem',
                                   alignItems: 'start',
-                                  animation: 'fadeIn 0.15s ease-out' 
+                                  animation: 'fadeIn 0.15s ease-out'
                                 }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
@@ -2235,29 +2232,29 @@ export const Gatekeeper = () => {
       </CustomModal>
 
       {/* Custom Date Picker Modal */}
-      <CustomModal 
-        isOpen={showDateModal} 
-        onClose={() => setShowDateModal(false)} 
+      <CustomModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
         title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">{t("Từ ngày")}</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
             />
           </div>
           <div>
             <label className="form-label">{t("Đến ngày")}</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -2275,7 +2272,7 @@ export const Gatekeeper = () => {
         width="1000px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
-          
+
           {/* Header/Subtitle containing selected Date Filter */}
           <div style={{
             display: 'flex',
@@ -2676,8 +2673,8 @@ export const Gatekeeper = () => {
             <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
               {t("Hủy bỏ")}
             </button>
-            <button 
-              className="btn primary" 
+            <button
+              className="btn primary"
               onClick={handleApproveHeldLeadSubmit}
               disabled={previewLoadingId !== null || actionLoading}
               style={{ background: '#10b981', borderColor: '#10b981' }}
@@ -2716,8 +2713,8 @@ export const Gatekeeper = () => {
             <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
               {t("Hủy bỏ")}
             </button>
-            <button 
-              className="btn primary" 
+            <button
+              className="btn primary"
               onClick={handleRejectHeldLeadSubmit}
               disabled={!heldActionReason.trim() || actionLoading}
               style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)' }}
@@ -2756,8 +2753,8 @@ export const Gatekeeper = () => {
             <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
               {t("Hủy bỏ")}
             </button>
-            <button 
-              className="btn primary" 
+            <button
+              className="btn primary"
               onClick={handleBlacklistHeldLeadSubmit}
               disabled={!heldActionReason.trim() || actionLoading}
               style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
@@ -2780,7 +2777,7 @@ export const Gatekeeper = () => {
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'transparent' }}>
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
-              
+
               {/* Cột Trái: Chi Tiết */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -2852,17 +2849,17 @@ export const Gatekeeper = () => {
                       )}
 
                       {/* Clean Note Card */}
-                      <div style={{ 
-                        background: 'var(--color-warning-light)', 
+                      <div style={{
+                        background: 'var(--color-warning-light)',
                         border: '1px solid var(--color-warning-light)',
-                        padding: '1.25rem', 
+                        padding: '1.25rem',
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
                         boxShadow: 'none'
                       }}
-                      className="premium-alert-card"
+                        className="premium-alert-card"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{
@@ -2878,13 +2875,13 @@ export const Gatekeeper = () => {
                           </div>
                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t("Ghi chú & Phân loại")}</span>
                         </div>
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
-                          
+
                           <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t("Nội dung ghi chú:")}</span>
                             <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
@@ -2937,7 +2934,7 @@ export const Gatekeeper = () => {
               <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2rem' }}>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem' }}>{t("Xử lý phê duyệt")}</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  
+
                   <button
                     onClick={() => {
                       setSelectedLead(null);
@@ -2977,7 +2974,7 @@ export const Gatekeeper = () => {
                     <ShieldAlert size={18} />
                     {t("Chặn số & Blacklist")}
                   </button>
-                  
+
                   <div style={{
                     marginTop: '1rem', padding: '1rem',
                     background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px solid var(--color-border)',
