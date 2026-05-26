@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Avatar } from '../ui/Avatar';
@@ -18,7 +18,7 @@ const languagesList = [
   { code: 'zh', name: '简体中文', flag: cnFlag }
 ] as const;
 
-export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => void }) => {
+export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedClick: () => void; onMenuClick?: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -173,6 +173,29 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
       zIndex: 40
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+        {/* Mobile menu trigger */}
+        <button 
+          onClick={onMenuClick}
+          style={{
+            width: 36,
+            height: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-light)',
+            borderRadius: 8,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            transition: 'color 0.2s',
+            outline: 'none',
+            display: 'none'
+          }}
+          className="mobile-menu-btn"
+          title={t("Menu")}
+        >
+          <Menu size={24} />
+        </button>
+
         {/* Keyboard Shortcuts Trigger Button */}
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
@@ -190,6 +213,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             transition: 'color 0.2s',
             outline: 'none'
           }}
+          className="responsive-hide-mobile"
           title={t("Bảng phím tắt điều hướng nhanh (?)")}
           onMouseEnter={e => {
             e.currentTarget.style.color = 'var(--color-primary)';
@@ -219,7 +243,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             width: 320,
             maxWidth: '100%'
           }} 
-          className="responsive-search-box"
+          className="responsive-search-box responsive-hide-mobile"
         >
           <Search size={16} />
           <span className="responsive-hide-mobile">{t("Tìm kiếm toàn hệ thống...")}</span>

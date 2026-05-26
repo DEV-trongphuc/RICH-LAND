@@ -554,7 +554,7 @@ export const Gatekeeper = () => {
         </div>
 
         {/* Header Actions */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="mobile-flex-wrap" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           
           {/* Guide Button */}
           <button
@@ -576,7 +576,7 @@ export const Gatekeeper = () => {
             <Sparkles size={14} color="var(--color-primary)" /> {t('Hướng dẫn')}
           </button>
 
-          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
           {/* Settings Button */}
           <button
@@ -601,7 +601,7 @@ export const Gatekeeper = () => {
             <Settings size={14} color="var(--color-primary)" /> {t('Cấu hình quy tắc')}
           </button>
 
-          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
           {/* Lọc AI Toggle */}
           <div 
@@ -1088,19 +1088,19 @@ export const Gatekeeper = () => {
             <Filter size={14} />
             <span>{t('Bộ lọc')}</span>
           </div>
-          <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
 
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
+          <div className="mobile-stack" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
             <input
               type="text"
               value={heldLeadsSearch}
               onChange={e => setHeldLeadsSearch(e.target.value)}
               placeholder={t("Tìm kiếm Tên, SĐT, Email...")}
-              className="form-input"
+              className="form-input mobile-w-full"
               style={{ height: 44, fontSize: '0.85rem', width: '100%', maxWidth: 350, borderRadius: 'var(--radius-lg)', padding: '0 1rem' }}
             />
             
-            <div style={{ position: 'relative', width: 180 }}>
+            <div className="mobile-w-full" style={{ position: 'relative', width: 180 }}>
               <CustomSelect
                 options={dateOptions}
                 value={dateFilter}
@@ -1115,11 +1115,59 @@ export const Gatekeeper = () => {
               />
             </div>
 
+            {/* Mobile filter buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem', width: '100%', justifyContent: 'space-between', alignItems: 'center' }} className="mobile-only">
+              <button
+                onClick={fetchHeldLeads}
+                disabled={heldLeadsLoading}
+                title={t("Làm mới")}
+                className="btn outline"
+                style={{
+                  padding: 0,
+                  borderRadius: 'var(--radius-lg)',
+                  borderColor: 'var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-muted)',
+                  cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 44,
+                  height: 44,
+                  flexShrink: 0
+                }}
+              >
+                <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+              <button
+                onClick={() => setIsStatsModalOpen(true)}
+                className="btn primary"
+                style={{
+                  height: 44,
+                  fontSize: '0.825rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  flex: 1,
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                  border: 'none',
+                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                  color: '#fff',
+                  fontWeight: 600
+                }}
+              >
+                <BarChart2 size={15} />
+                <span>{t('Thống kê')}</span>
+              </button>
+            </div>
+
+            {/* Desktop filter buttons */}
             <button
               onClick={fetchHeldLeads}
               disabled={heldLeadsLoading}
               title={t("Làm mới")}
-              className="btn outline"
+              className="btn outline hide-on-mobile"
               style={{
                 padding: 0,
                 borderRadius: 'var(--radius-lg)',
@@ -1140,7 +1188,7 @@ export const Gatekeeper = () => {
 
             <button
               onClick={() => setIsStatsModalOpen(true)}
-              className="btn primary"
+              className="btn primary hide-on-mobile"
               style={{
                 height: 44,
                 fontSize: '0.825rem',

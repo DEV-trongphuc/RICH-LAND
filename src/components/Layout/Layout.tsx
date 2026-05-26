@@ -187,6 +187,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
         <Header 
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}
+          onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 
         <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: '2rem 3rem', position: 'relative', zIndex: 10 }}>

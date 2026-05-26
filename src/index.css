@@ -20,6 +20,9 @@
   .responsive-sidebar.responsive-sidebar-open {
     transform: translateX(0);
   }
+  .mobile-menu-btn {
+    display: flex !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -59,7 +62,6 @@
   
   .responsive-height-auto { height: auto !important; }
   
-  .mobile-only { display: block !important; }
   .hide-on-mobile { display: none !important; }
 
   /* --- NEW MOBILE FIXES --- */
@@ -87,6 +89,7 @@
   }
   .mobile-w-full {
     width: 100% !important;
+    max-width: none !important;
   }
   
   .mobile-round-actions {
@@ -261,7 +264,9 @@
 }
 
 
-.mobile-only { display: none; }
+@media (min-width: 769px) {
+  .mobile-only { display: none !important; }
+}
 
 .responsive-sidebar-overlay {
   position: fixed;
