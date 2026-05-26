@@ -2306,38 +2306,40 @@ th.col-check {
 [data-tooltip]::before {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 125%;
+  bottom: 130%;
   left: 50%;
   transform: translate(-50%, 8px) scale(0.8);
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.95);
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #ffffff;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.2), 0 4px 12px -2px rgba(15, 23, 42, 0.1);
   z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 [data-tooltip]::after {
   content: '';
   position: absolute;
-  bottom: 125%;
+  bottom: 130%;
   left: 50%;
   transform: translate(-50%, 14px) scale(0.8);
   border-width: 5px 5px 0;
   border-style: solid;
-  border-color: rgba(15, 23, 42, 0.95) transparent transparent;
+  border-color: rgba(15, 23, 42, 0.96) transparent transparent;
   display: block;
   width: 0;
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
   z-index: 1000;
 }
 [data-tooltip]:hover::before {
@@ -2350,10 +2352,11 @@ th.col-check {
 }
 
 [data-theme="dark"] [data-tooltip]::before {
-  background: rgba(243, 244, 246, 0.98);
-  color: #111827;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 [data-theme="dark"] [data-tooltip]::after {
-  border-color: rgba(243, 244, 246, 0.98) transparent transparent;
+  border-color: rgba(255, 255, 255, 0.98) transparent transparent;
 }

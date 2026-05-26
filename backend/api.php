@@ -2171,6 +2171,7 @@ switch ($action) {
             $row['ratios'] = [];
             $row['data_per_turns'] = [];
             $row['compensations'] = [];
+            $row['consultant_lead_counts'] = [];
 
             $data[$row['id']] = $row;
             $roundIds[] = $row['id'];
@@ -2242,6 +2243,7 @@ switch ($action) {
                     $rawCounts[] = $assignedCount;
                     $normalizedCounts[] = $assignedCount * $ratio;
                     $totalLeads += $assignedCount;
+                    $data[$rId]['consultant_lead_counts'][$cId] = $assignedCount;
                 }
 
                 $data[$rId]['total_leads'] = $totalLeads;

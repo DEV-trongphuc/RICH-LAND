@@ -510,7 +510,11 @@ export const Rounds = () => {
                                 <span
                                   key={i}
                                   className="avatar-stack-item"
-                                  data-tooltip={c}
+                                  data-tooltip={(() => {
+                                    const cId = consIds[consList.indexOf(c)];
+                                    const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                                    return `${c} • ${leadCount}`;
+                                  })()}
                                   style={{
                                     marginLeft: i === 0 ? 0 : -8,
                                     position: 'relative',
@@ -699,7 +703,11 @@ export const Rounds = () => {
                         <span
                           key={i}
                           className="avatar-stack-item"
-                          data-tooltip={c}
+                          data-tooltip={(() => {
+                            const cId = consIds[consList.indexOf(c)];
+                            const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                            return `${c} • ${leadCount}`;
+                          })()}
                           style={{
                             marginLeft: i > 0 ? -12 : 0,
                             position: 'relative',
