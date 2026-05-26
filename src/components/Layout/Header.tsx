@@ -441,33 +441,129 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
           )}
         </div>
 
-        <div 
-          onClick={handleProfileClick}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.625rem',
-            paddingLeft: '0.875rem',
-            borderLeft: '1px solid var(--color-border)',
-            cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
-            padding: '4px 8px',
-            borderRadius: '6px',
-            transition: 'background 0.2s'
-          }}
-          onMouseEnter={e => {
-            if (user?.role === 'admin' || user?.role === 'assistant') {
-              e.currentTarget.style.background = 'var(--color-bg)';
-            }
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent';
-          }}
+        <div
+          onMouseEnter={() => setIsProfileMenuOpen(true)}
+          onMouseLeave={() => setIsProfileMenuOpen(false)}
+          style={{ position: 'relative' }}
         >
-          <Avatar src={user?.avatar} name={user?.name} size={32} />
-          <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{getRoleLabel(user?.role)}</span>
+          <div 
+            onClick={handleProfileClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.625rem',
+              paddingLeft: '0.875rem',
+              borderLeft: '1px solid var(--color-border)',
+              cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              transition: 'background 0.2s',
+              background: isProfileMenuOpen ? 'var(--color-bg)' : 'transparent'
+            }}
+          >
+            <Avatar src={user?.avatar} name={user?.name} size={32} />
+            <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{getRoleLabel(user?.role)}</span>
+            </div>
           </div>
+
+          {isProfileMenuOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              padding: '4px',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              minWidth: '150px',
+              zIndex: 50
+            }}>
+              {(user?.role === 'admin' || user?.role === 'assistant') && (
+                <button
+                  onClick={handleProfileClick}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <User size={14} />
+                  {t('Thông tin')}
+                </button>
+              )}
+
+              <a
+                href="https://zalo.me/0378859736"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: 'none',
+                  background: 'transparent',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text)',
+                  fontSize: '0.8125rem',
+                  textAlign: 'left',
+                  textDecoration: 'none',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
+                {t('Báo lỗi')}
+              </a>
+
+              <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: 'none',
+                  background: 'transparent',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--color-danger)',
+                  fontSize: '0.8125rem',
+                  textAlign: 'left',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <LogOut size={14} />
+                {t('Đăng xuất')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
