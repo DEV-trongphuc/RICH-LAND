@@ -15,6 +15,7 @@ export const en: Record<string, string> = {
   "Chức năng chính": "Main Features",
   "Hồ sơ & Đổi mật khẩu": "Profile & Password",
   "Đăng xuất": "Logout",
+  "Thông tin": "Profile",
 
   // Header / Top bar
   "Bảng phím tắt điều hướng nhanh (?)": "Quick Navigation Shortcuts (?)",
@@ -1791,6 +1792,7 @@ export const ja: Record<string, string> = {
   "Chức năng chính": "主な機能",
   "Hồ sơ & Đổi mật khẩu": "プロフィールとパスワードの変更",
   "Đăng xuất": "サインアウト",
+  "Thông tin": "プロフィール",
   "Bảng phím tắt điều hướng nhanh (?)": "クイック ナビゲーション ショートカット パネル (?)",
   "Tìm kiếm toàn hệ thống...": "システム全体の検索...",
   "Bản tin hoạt động hệ thống": "システム運用速報",
@@ -3517,6 +3519,7 @@ export const zh: Record<string, string> = {
   "Chức năng chính": "主要功能",
   "Hồ sơ & Đổi mật khẩu": "个人资料和更改密码",
   "Đăng xuất": "登出",
+  "Thông tin": "个人信息",
   "Bảng phím tắt điều hướng nhanh (?)": "快速导航快捷面板（？）",
   "Tìm kiếm toàn hệ thống...": "全系统搜索...",
   "Bản tin hoạt động hệ thống": "系统运行公告",
