@@ -412,7 +412,9 @@ export const DataList = () => {
             lead.status === 'compensation' ? t('Data Bù') :
               lead.status === 'pending' ? t('Chờ chia') :
                 lead.status === 'silent' ? t('Chỉ đồng bộ') :
-                  lead.status === 'reminder' ? t('Nhắc lại') : lead.status,
+                  lead.status === 'reminder' ? t('Nhắc lại') :
+                    lead.status === 'pending_approval' ? t('Chờ duyệt') :
+                      lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
           lead.source || '',
           lead.note || '',
           lead.created_at
@@ -480,6 +482,8 @@ export const DataList = () => {
       case 'rule_6_month': return <span className="badge cold">{t('Quy định 6 tháng')}</span>;
       case 'silent': return <span className="badge cold">{t('Chỉ đồng bộ')}</span>;
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
+      case 'pending_approval': return <span className="badge warning">{t('Chờ duyệt')}</span>;
+      case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
       default: return null;
     }
   };
@@ -820,7 +824,9 @@ export const DataList = () => {
               { value: 'rule_6_month', label: t('Quy định 6 tháng') },
               { value: 'silent', label: t('Chỉ đồng bộ') },
               { value: 'error', label: t('Ticket') },
-              { value: 'blacklisted', label: t('Blacklist') }
+              { value: 'blacklisted', label: t('Blacklist') },
+              { value: 'pending_approval', label: t('Chờ duyệt') },
+              { value: 'rejected', label: t('Dưới chuẩn') }
             ]}
             value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
             onChange={val => {
@@ -1823,12 +1829,12 @@ export const DataList = () => {
               </div>
             </label>
 
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'flex-start', 
-              gap: '8px', 
-              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer', 
-              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1 
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
+              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
             }}>
               <input
                 type="radio"

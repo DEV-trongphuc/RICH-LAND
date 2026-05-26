@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2 } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -27,6 +27,8 @@ type Lead = {
   resolved_by?: string | null;
   resolved_at?: string | null;
   last_activity_at?: string | null;
+  ai_screener_status?: string;
+  ai_evaluation?: string;
 };
 
 const maskPhone = (phone: string) => {
@@ -165,6 +167,25 @@ export const Tickets = () => {
   const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
   const [allConsultants, setAllConsultants] = useState<any[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
+
+  // Main tab state: 'tickets' (Khiếu nại từ Sale) or 'ai_screener' (AI Gác Cổng)
+  const [mainTab, setMainTab] = useState<'tickets' | 'ai_screener'>('tickets');
+
+  // AI Screener held leads states
+  const [heldLeads, setHeldLeads] = useState<any[]>([]);
+  const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
+  const [heldLeadsLoading, setHeldLeadsLoading] = useState<boolean>(false);
+  const [heldLeadsTotalCount, setHeldLeadsTotalCount] = useState<number>(0);
+  const [heldLeadsSearch, setHeldLeadsSearch] = useState<string>('');
+
+  // Next consultant preview state
+  const [previewedConsultant, setPreviewedConsultant] = useState<any>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<number | null>(null);
+
+  // Held lead action modals
+  const [heldActionModalOpen, setHeldActionModalOpen] = useState<'approve' | 'reject' | 'blacklist' | null>(null);
+  const [actioningHeldLead, setActioningHeldLead] = useState<any | null>(null);
+  const [heldActionReason, setHeldActionReason] = useState<string>('');
   const [reassignConsultantId, setReassignConsultantId] = useState<string>('');
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -281,9 +302,141 @@ export const Tickets = () => {
     setLoading(false);
   };
 
+  const fetchHeldLeads = async () => {
+    setHeldLeadsLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.set('page', String(currentPage));
+      queryParams.set('pageSize', String(ITEMS_PER_PAGE));
+      if (heldLeadsSearch) queryParams.set('search', heldLeadsSearch);
+      if (dateFilter) queryParams.set('date', dateFilter);
+
+      const res = await fetchAPI(`get_held_leads&${queryParams.toString()}`);
+      if (res.success) {
+        setHeldLeads(res.data || []);
+        setHeldLeadsTotalCount(res.total_count ?? 0);
+        setHeldLeadsCount(res.stats?.pending ?? (res.total_count ?? 0));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi tải dữ liệu AI Gác Cổng: ') + e.message);
+    }
+    setHeldLeadsLoading(false);
+  };
+
+  const fetchHeldLeadsCountOnly = async () => {
+    try {
+      const res = await fetchAPI(`get_held_leads&pageSize=1&date=all`);
+      if (res.success) {
+        setHeldLeadsCount(res.total_count ?? 0);
+      }
+    } catch (e) {
+      console.error('Error fetching held leads count:', e);
+    }
+  };
+
+  const handleOpenApproveHeldLead = async (lead: any) => {
+    setActioningHeldLead(lead);
+    setHeldActionModalOpen('approve');
+    setPreviewLoadingId(lead.id);
+    setPreviewedConsultant(null);
+    try {
+      const res = await fetchAPI(`preview_held_lead_assignment&lead_id=${lead.id}`);
+      if (res.success) {
+        setPreviewedConsultant(res.consultant);
+      } else {
+        toast.error(res.message || t('Lỗi tải thông tin Sale tiếp nhận.'));
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+    setPreviewLoadingId(null);
+  };
+
+  const handleApproveHeldLeadSubmit = async () => {
+    if (!actioningHeldLead) return;
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setLoading(true);
+    try {
+      const res = await fetchAPI('approve_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId })
+      });
+      if (res.success) {
+        toast.success(t('Đã duyệt và phân bổ lead thành công!'));
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi duyệt lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleRejectHeldLeadSubmit = async () => {
+    if (!actioningHeldLead || !heldActionReason.trim()) {
+      toast.error(t('Vui lòng nhập lý do từ chối.'));
+      return;
+    }
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setLoading(true);
+    try {
+      const res = await fetchAPI('reject_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId, reason: heldActionReason })
+      });
+      if (res.success) {
+        toast.success(t('Đã từ chối lead thành công!'));
+        setHeldActionReason('');
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi từ chối lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleBlacklistHeldLeadSubmit = async () => {
+    if (!actioningHeldLead || !heldActionReason.trim()) {
+      toast.error(t('Vui lòng nhập lý do chặn.'));
+      return;
+    }
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setLoading(true);
+    try {
+      const res = await fetchAPI('blacklist_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId, reason: heldActionReason })
+      });
+      if (res.success) {
+        toast.success(t('Đã chặn số và đưa vào Blacklist thành công!'));
+        setHeldActionReason('');
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi chặn lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    fetchReports();
-  }, [searchParams]);
+    if (mainTab === 'ai_screener') {
+      fetchHeldLeads();
+    } else {
+      fetchReports();
+      fetchHeldLeadsCountOnly();
+    }
+  }, [searchParams, mainTab, heldLeadsSearch]);
 
   useEffect(() => {
     fetchAPI('get_settings')
@@ -579,479 +732,900 @@ export const Tickets = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
+            {mainTab === 'ai_screener' ? (
+              <>
+                <ShieldAlert size={28} color="var(--color-primary)" /> {t('AI Gác Cổng')}
+              </>
+            ) : (
+              <>
+                <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
+              </>
+            )}
           </h1>
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {t('Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên')}
+            {mainTab === 'ai_screener' 
+              ? t('Xét duyệt các liên hệ bị tạm giữ bởi bộ lọc AI đánh giá chất lượng')
+              : t('Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên')
+            }
           </p>
         </div>
-        <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {FILTER_TABS.map(tab => (
-            <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
-              {t(tab.label)} {`(${stats[tab.key]})`}
-            </button>
-          ))}
-          <button onClick={fetchReports} disabled={loading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            title={t("Thiết lập thông báo Ticket")}
-            style={{
-              padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-primary)',
-              background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
-              color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 5,
-              fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s'
-            }}
-          >
-            <Settings2 size={14} /> {t('Cài đặt thông báo')}
-          </button>
-
-          <div style={{
-            background: pendingCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: pendingCount > 0 ? 'var(--color-danger)' : '#10b981',
-            padding: '8px 16px', borderRadius: 20, fontSize: '0.875rem', fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4
-          }}>
-            {pendingCount > 0 ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
-            {pendingCount} {t('chờ duyệt')}
-          </div>
-        </div>
-
-        {/* Mobile Actions (Dropdown + Icons) */}
-        <div className="mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-            {/* Status Dropdown */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <CustomSelect
-                options={FILTER_TABS.map(tab => ({
-                  value: tab.key,
-                  label: `${t(tab.label)} (${stats[tab.key] || 0})`,
-                  icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
-                }))}
-                value={activeFilter}
-                onChange={val => updateParams('status', val.toString())}
-                width="100%"
-              />
-            </div>
-            
-            {/* Filter Toggle Button (Icon only) */}
-            <button
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
-              style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid',
-                borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
-                background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
-              }}
-            >
-              <Filter size={16} />
-            </button>
-
-            {/* Reload Button */}
-            <button
-              onClick={fetchReports}
-              disabled={loading}
-              title={t("Làm mới")}
-              style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text-muted)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
-              }}
-            >
+        
+        {mainTab === 'tickets' ? (
+          <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {FILTER_TABS.map(tab => (
+              <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
+                {t(tab.label)} {`(${stats[tab.key]})`}
+              </button>
+            ))}
+            <button onClick={fetchReports} disabled={loading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
               <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
             </button>
-
-            {/* Settings Button */}
             <button
               onClick={() => setShowSettingsModal(true)}
               title={t("Thiết lập thông báo Ticket")}
               style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid var(--color-primary)',
-                background: 'rgba(124,58,237,0.08)',
-                color: 'var(--color-primary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
+                padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-primary)',
+                background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
+                color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 5,
+                fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s'
               }}
             >
-              <Settings2 size={16} />
+              <Settings2 size={14} /> {t('Cài đặt thông báo')}
             </button>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Filter bar: Sale + Date ── */}
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{
-        display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
-        padding: '14px 18px',
-        background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
-        border: '1px solid rgba(124,58,237,0.15)',
-        borderRadius: 16,
-        backdropFilter: 'blur(8px)',
-        boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
-          <Filter size={14} />
-          <span>{t('Bộ lọc')}</span>
-        </div>
-
-        <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
-
-        {/* Sale filter */}
-        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <CustomSelect
-            options={[
-              { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
-              ...consultantOptions.map(name => {
-                const matched = allConsultants.find(c => c.name === name);
-                return {
-                  value: name,
-                  label: name,
-                  avatar: matched?.avatar || ''
-                };
-              })
-            ]}
-            value={saleFilter}
-            onChange={val => updateParams('consultant', val.toString())}
-            showAvatars={true}
-            searchable={true}
-            width={200}
-          />
-        </div>
-
-        {/* Date Filter */}
-        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
-          <CustomSelect
-            options={dateOptions}
-            value={dateFilter}
-            onChange={val => {
-              if (val === 'Tùy chỉnh') {
-                setShowDateModal(true);
-                return;
-              }
-              updateParams('date', val.toString());
-            }}
-            width="100%"
-          />
-        </div>
-
-        {/* Clear filters */}
-        {hasActiveFilters && (
-          <button onClick={() => {
-            setSearchParams(prev => {
-              prev.delete('consultant');
-              prev.delete('date');
-              prev.delete('page');
-              return prev;
-            }, { replace: true });
-          }}
-            style={{
-              fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
-              border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
-              color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4,
-              boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
-              transition: 'all 0.15s'
+            <div style={{
+              background: pendingCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+              color: pendingCount > 0 ? 'var(--color-danger)' : '#10b981',
+              padding: '8px 16px', borderRadius: 20, fontSize: '0.875rem', fontWeight: 700,
+              display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4
             }}>
-            ✕ {t('Xóa lọc')}
-          </button>
-        )}
-
-        <div className="mobile-ml-0" style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}>
-          {/* Auto duyệt Toggle */}
-          <div 
-            onClick={() => setShowAutoApproveModal(true)}
-            title={t("Cấu hình quy tắc tự động duyệt")}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 8,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 8,
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-text-muted)';
-            }}
-          >
-            <span 
-              className="auto-approve-label"
-              style={{ 
-                fontSize: '0.8rem', 
-                fontWeight: 700, 
-                color: 'var(--color-text-muted)',
-                transition: 'color 0.2s',
-                textDecoration: 'underline',
-                textDecorationStyle: 'dotted'
-              }}
-            >
-              {t('Auto duyệt')}
-            </span>
-            <div 
-              style={{
-                width: 36, height: 20, borderRadius: 10,
-                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
-                position: 'relative', transition: 'background 0.2s',
-                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
-              }} />
+              {pendingCount > 0 ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+              {pendingCount} {t('chờ duyệt')}
             </div>
-          </div>
-
-          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
-
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-            {t('Tổng cộng:')} {totalCount} {t('tickets')}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Table ── */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <TableSkeleton rows={4} cols={5} />
-        ) : filteredReports.length === 0 ? (
-          <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-              <CheckCircle size={40} color="#10b981" />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-              {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
-            </h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
-              {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
-            </p>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Tư vấn viên')}</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Vòng phân bổ')}</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do lỗi')}</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>{t('Thao tác')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredReports.map(r => (
-                  <tr 
-                    key={r.id} 
-                    onClick={() => {
-                      setSelectedLead({
-                        id: r.log_id || 0,
-                        name: r.lead_name,
-                        phone: r.lead_phone,
-                        email: r.lead_email || '-',
-                        source: r.lead_source || '-',
-                        status: r.log_status || 'assigned',
-                        assigned_to_name: r.consultant_name,
-                        assigned_to_avatar: r.consultant_avatar,
-                        round_name: r.round_name || '-',
-                        created_at: r.log_received_at || r.created_at,
-                        type: r.lead_type || '-',
-                        note: r.lead_note || '',
-                        report_status: r.status,
-                        resolved_by: r.resolved_by,
-                        resolved_at: r.resolved_at,
-                        last_activity_at: r.last_activity_at
-                      });
-                    }}
-                    style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
-                    className="lead-row"
-                  >
-                    <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
-                        <Avatar name={r.lead_name} size={36} />
-                        <div>
-                          <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
-                            <span>{r.lead_phone}</span>
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
-                            {new Date(r.created_at).toLocaleString('vi-VN')}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
-                      </div>
-                    </td>
-                    <td style={{ padding: '1.25rem 1.5rem' }}>
-                      {r.round_name && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
-                          <Zap size={12} /> {r.round_name}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '1.25rem 1.5rem' }}>
-                      <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
-                        <div style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                          background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
-                          color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
-                        }}>
-                          {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
-                        </div>
-                        {r.status === 'rejected' && r.reject_reason && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                            {t('Lý do:')} {r.reject_reason}
-                          </div>
-                        )}
-                        {r.status === 'approved' && r.approval_reason && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                            {t('Lý do:')} {r.approval_reason}
-                          </div>
-                        )}
-                      </div>
-                      {r.status !== 'pending' && (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
-                          <span>
-                            {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
-                          </span>
-                          {r.resolved_at && (
-                            <>
-                              <span style={{ opacity: 0.5 }}>•</span>
-                              <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {r.status === 'pending' ? (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {r.zalo_chat_id && (
-                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                              <Bell size={14} />
-                            </button>
-                          )}
-                          <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
-                            {t('Từ chối')}
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
-                            {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                          {r.zalo_chat_id && (
-                            <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                              <Bell size={14} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={fetchHeldLeads} disabled={heldLeadsLoading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: heldLeadsLoading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+              <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+            <div style={{
+              background: heldLeadsCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+              color: heldLeadsCount > 0 ? 'var(--color-danger)' : '#10b981',
+              padding: '8px 16px', borderRadius: 20, fontSize: '0.875rem', fontWeight: 700,
+              display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4
+            }}>
+              {heldLeadsCount > 0 ? <ShieldAlert size={16} /> : <CheckCircle size={16} />}
+              {heldLeadsCount} {t('đang tạm giữ')}
+            </div>
           </div>
         )}
 
-        {/* Pagination */}
-        {!loading && totalPages > 0 && (
-          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button 
-                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
-                disabled={currentPage === 1}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let startPage = 1;
-                  if (totalPages > 5) {
-                    if (currentPage > 3) {
-                      startPage = currentPage - 2;
-                      if (startPage + 4 > totalPages) {
-                        startPage = totalPages - 4;
-                      }
-                    }
-                  }
-                  const pageNum = startPage + i;
-                  return (
-                     <button
-                       key={pageNum}
-                       onClick={() => updateParams('page', pageNum.toString())}
-                       style={{ 
-                         width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
-                         border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                         background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                         color: currentPage === pageNum ? 'white' : 'var(--color-text)',
-                         cursor: 'pointer'
-                       }}
-                     >
-                       {pageNum}
-                     </button>
-                  );
-                })}
+        {/* Mobile Actions (Dropdown + Icons) */}
+        {mainTab === 'tickets' ? (
+          <div className="mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+              {/* Status Dropdown */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <CustomSelect
+                  options={FILTER_TABS.map(tab => ({
+                    value: tab.key,
+                    label: `${t(tab.label)} (${stats[tab.key] || 0})`,
+                    icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
+                  }))}
+                  value={activeFilter}
+                  onChange={val => updateParams('status', val.toString())}
+                  width="100%"
+                />
               </div>
-              <button 
-                onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+              
+              {/* Filter Toggle Button (Icon only) */}
+              <button
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
+                style={{
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid',
+                  borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
+                  background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0
+                }}
               >
-                <ChevronRight size={16} />
+                <Filter size={16} />
+              </button>
+
+              {/* Reload Button */}
+              <button
+                onClick={fetchReports}
+                disabled={loading}
+                title={t("Làm mới")}
+                style={{
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-muted)',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0
+                }}
+              >
+                <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                title={t("Thiết lập thông báo Ticket")}
+                style={{
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-primary)',
+                  background: 'rgba(124,58,237,0.08)',
+                  color: 'var(--color-primary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0
+                }}
+              >
+                <Settings2 size={16} />
               </button>
             </div>
           </div>
+        ) : (
+          <div className="mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+              <input
+                type="text"
+                value={heldLeadsSearch}
+                onChange={e => setHeldLeadsSearch(e.target.value)}
+                placeholder={t("Tìm kiếm khách hàng...")}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)'
+                }}
+              />
+              <button
+                onClick={fetchHeldLeads}
+                disabled={heldLeadsLoading}
+                title={t("Làm mới")}
+                style={{
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-muted)',
+                  cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0
+                }}
+              >
+                <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Segmented Tab Switcher ── */}
+      <div className="mobile-filter-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)' }}>
+        <button
+          type="button"
+          onClick={() => setMainTab('tickets')}
+          style={{
+            padding: '0.75rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            background: 'transparent',
+            border: 'none',
+            borderBottom: mainTab === 'tickets' ? '2px solid var(--color-primary)' : '2px solid transparent',
+            color: mainTab === 'tickets' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+        >
+          <TicketIcon size={16} />
+          {t('Khiếu nại từ Sale')}
+          {pendingCount > 0 && (
+            <span style={{
+              background: 'var(--color-danger)',
+              color: 'white',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: '10px',
+              marginLeft: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1
+            }}>
+              {pendingCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab('ai_screener')}
+          style={{
+            padding: '0.75rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            background: 'transparent',
+            border: 'none',
+            borderBottom: mainTab === 'ai_screener' ? '2px solid var(--color-primary)' : '2px solid transparent',
+            color: mainTab === 'ai_screener' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+        >
+          <ShieldAlert size={16} />
+          {t('AI Gác Cổng (Dưới chuẩn)')}
+          {heldLeadsCount > 0 && (
+            <span style={{
+              background: 'var(--color-danger)',
+              color: 'white',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: '10px',
+              marginLeft: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1
+            }}>
+              {heldLeadsCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {mainTab === 'tickets' ? (
+        /* ── Filter bar: Sale + Date ── */
+        <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{
+          display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
+          padding: '14px 18px',
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
+          border: '1px solid rgba(124,58,237,0.15)',
+          borderRadius: 16,
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
+            <Filter size={14} />
+            <span>{t('Bộ lọc')}</span>
+          </div>
+
+          <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+
+          {/* Sale filter */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <CustomSelect
+              options={[
+                { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
+                ...consultantOptions.map(name => {
+                  const matched = allConsultants.find(c => c.name === name);
+                  return {
+                    value: name,
+                    label: name,
+                    avatar: matched?.avatar || ''
+                  };
+                })
+              ]}
+              value={saleFilter}
+              onChange={val => updateParams('consultant', val.toString())}
+              showAvatars={true}
+              searchable={true}
+              width={200}
+            />
+          </div>
+
+          {/* Date Filter */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={val => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                updateParams('date', val.toString());
+              }}
+              width="100%"
+            />
+          </div>
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button onClick={() => {
+              setSearchParams(prev => {
+                prev.delete('consultant');
+                prev.delete('date');
+                prev.delete('page');
+                return prev;
+              }, { replace: true });
+            }}
+              style={{
+                fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
+                border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
+                color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+                boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
+                transition: 'all 0.15s'
+              }}>
+              ✕ {t('Xóa lọc')}
+            </button>
+          )}
+
+          <div className="mobile-ml-0" style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            {/* Auto duyệt Toggle */}
+            <div 
+              onClick={() => setShowAutoApproveModal(true)}
+              title={t("Cấu hình quy tắc tự động duyệt")}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 8,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-text-muted)';
+              }}
+            >
+              <span 
+                className="auto-approve-label"
+                style={{ 
+                  fontSize: '0.8rem', 
+                  fontWeight: 700, 
+                  color: 'var(--color-text-muted)',
+                  transition: 'color 0.2s',
+                  textDecoration: 'underline',
+                  textDecorationStyle: 'dotted'
+                }}
+              >
+                {t('Auto duyệt')}
+              </span>
+              <div 
+                style={{
+                  width: 36, height: 20, borderRadius: 10,
+                  background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                  position: 'relative', transition: 'background 0.2s',
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+                }} />
+              </div>
+            </div>
+
+            <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+              {t('Tổng cộng:')} {totalCount} {t('tickets')}
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* ── Filter bar: AI Screener ── */
+        <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{
+          display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
+          padding: '14px 18px',
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(99,102,241,0.04) 100%)',
+          border: '1px solid rgba(16,185,129,0.15)',
+          borderRadius: 16,
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 2px 12px rgba(16,185,129,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontWeight: 700, fontSize: '0.8rem' }}>
+            <Filter size={14} />
+            <span>{t('Bộ lọc AI')}</span>
+          </div>
+
+          <div style={{ width: 1, height: 20, background: 'rgba(16,185,129,0.2)', margin: '0 4px' }} />
+
+          {/* Search box */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 250 }}>
+            <input
+              type="text"
+              value={heldLeadsSearch}
+              onChange={e => setHeldLeadsSearch(e.target.value)}
+              placeholder={t("Tìm tên, SĐT, Email...")}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                outline: 'none',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.target.style.borderColor = '#10b981'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+            />
+          </div>
+
+          {/* Date Filter */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={val => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                updateParams('date', val.toString());
+              }}
+              width="100%"
+            />
+          </div>
+
+          <div className="mobile-ml-0" style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
+              {t('Tạm giữ:')} {heldLeadsTotalCount} {t('khách hàng')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Table / Held leads list ── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {mainTab === 'tickets' ? (
+          <>
+            {loading ? (
+              <TableSkeleton rows={4} cols={5} />
+            ) : filteredReports.length === 0 ? (
+              <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                  <CheckCircle size={40} color="#10b981" />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+                  {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
+                </h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
+                  {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
+                </p>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Tư vấn viên')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Vòng phân bổ')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do lỗi')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>{t('Thao tác')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredReports.map(r => (
+                      <tr 
+                        key={r.id} 
+                        onClick={() => {
+                          setSelectedLead({
+                            id: r.log_id || 0,
+                            name: r.lead_name,
+                            phone: r.lead_phone,
+                            email: r.lead_email || '-',
+                            source: r.lead_source || '-',
+                            status: r.log_status || 'assigned',
+                            assigned_to_name: r.consultant_name,
+                            assigned_to_avatar: r.consultant_avatar,
+                            round_name: r.round_name || '-',
+                            created_at: r.log_received_at || r.created_at,
+                            type: r.lead_type || '-',
+                            note: r.lead_note || '',
+                            report_status: r.status,
+                            resolved_by: r.resolved_by,
+                            resolved_at: r.resolved_at,
+                            last_activity_at: r.last_activity_at
+                          });
+                        }}
+                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                        className="lead-row"
+                      >
+                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
+                            <Avatar name={r.lead_name} size={36} />
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
+                                <span>{r.lead_phone}</span>
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                                {new Date(r.created_at).toLocaleString('vi-VN')}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                            <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
+                          {r.round_name && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                              <Zap size={12} /> {r.round_name}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
+                          <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
+                            <div style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                              background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
+                              color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                            }}>
+                              {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                            </div>
+                            {r.status === 'rejected' && r.reject_reason && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                                {t('Lý do:')} {r.reject_reason}
+                              </div>
+                            )}
+                            {r.status === 'approved' && r.approval_reason && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                                {t('Lý do:')} {r.approval_reason}
+                              </div>
+                            )}
+                          </div>
+                          {r.status !== 'pending' && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
+                              <span>
+                                {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
+                              </span>
+                              {r.resolved_at && (
+                                <>
+                                  <span style={{ opacity: 0.5 }}>•</span>
+                                  <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {r.status === 'pending' ? (
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {r.zalo_chat_id && (
+                                <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                  <Bell size={14} />
+                                </button>
+                              )}
+                              <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                                {t('Từ chối')}
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                                {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                              {r.zalo_chat_id && (
+                                <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                  <Bell size={14} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && totalPages > 0 && (
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                    disabled={currentPage === 1}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let startPage = 1;
+                      if (totalPages > 5) {
+                        if (currentPage > 3) {
+                          startPage = currentPage - 2;
+                          if (startPage + 4 > totalPages) {
+                            startPage = totalPages - 4;
+                          }
+                        }
+                      }
+                      const pageNum = startPage + i;
+                      return (
+                         <button
+                           key={pageNum}
+                           onClick={() => updateParams('page', pageNum.toString())}
+                           style={{ 
+                             width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                             border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                             background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                             color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                             cursor: 'pointer'
+                           }}
+                         >
+                           {pageNum}
+                         </button>
+                      );
+                    })}
+                  </div>
+                  <button 
+                    onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── AI Screener Held Leads Queue ── */
+          <>
+            {heldLeadsLoading ? (
+              <TableSkeleton rows={4} cols={5} />
+            ) : heldLeads.length === 0 ? (
+              <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                  <CheckCircle size={40} color="#10b981" />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+                  {heldLeadsSearch ? t('Không tìm thấy liên hệ nào') : t('Không có liên hệ nào đang tạm giữ')}
+                </h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
+                  {heldLeadsSearch ? t('Thử đổi từ khóa tìm kiếm.') : t('Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.')}
+                </p>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 180, minWidth: 180, whiteSpace: 'nowrap' }}>{t('Vòng phân bổ dự kiến')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do AI tạm giữ')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280 }}>{t('Thao tác')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {heldLeads.map(l => (
+                      <tr 
+                        key={l.id} 
+                        onClick={() => {
+                          setSelectedLead({
+                            id: l.id,
+                            name: l.name,
+                            phone: l.phone,
+                            email: l.email || '-',
+                            source: l.source || '-',
+                            status: l.status,
+                            assigned_to_name: '-',
+                            round_name: l.round_name || '-',
+                            created_at: l.created_at,
+                            type: l.type || '-',
+                            note: l.note || '',
+                            ai_screener_status: l.ai_screener_status,
+                            ai_evaluation: l.ai_evaluation
+                          });
+                        }}
+                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                        className="lead-row"
+                      >
+                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar name={l.name} size={36} />
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{l.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{l.phone}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                                {new Date(l.created_at).toLocaleString('vi-VN')}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', width: 180, minWidth: 180 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                            <Zap size={12} /> {l.round_name || '-'}
+                          </div>
+                        </td>
+                         <td style={{ padding: '1.25rem 1.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {l.ai_screener_status === 'error' ? (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
+                              </span>
+                            ) : (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <ShieldAlert size={12} /> {t('Dưới chuẩn (AI Held)')}
+                              </span>
+                            )}
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
+                              <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <button 
+                              onClick={() => {
+                                setActioningHeldLead(l);
+                                setHeldActionReason('');
+                                setHeldActionModalOpen('blacklist');
+                              }}
+                              className="btn outline sm" 
+                              style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}
+                              title={t("Đưa khách hàng vào danh sách đen & Hủy lead")}
+                            >
+                              <ShieldAlert size={13} style={{ marginRight: 4 }} />
+                              {t('Chặn & Blacklist')}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setActioningHeldLead(l);
+                                setHeldActionReason('');
+                                setHeldActionModalOpen('reject');
+                              }}
+                              className="btn outline sm" 
+                              style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border)', boxShadow: 'none' }}
+                              title={t("Không duyệt và hủy lead")}
+                            >
+                              {t('Hủy lead')}
+                            </button>
+                            <button 
+                              onClick={() => handleOpenApproveHeldLead(l)}
+                              className="btn primary sm" 
+                              style={{ 
+                                background: '#10b981', 
+                                borderColor: '#10b981', 
+                                boxShadow: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                              title={t("Xem thử AI sẽ giao cho ai và Phê duyệt")}
+                            >
+                              <Check size={14} />
+                              {t('Duyệt giao')}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination for AI Screener */}
+            {!heldLeadsLoading && heldLeadsTotalCount > ITEMS_PER_PAGE && (
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, heldLeadsTotalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{heldLeadsTotalCount}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                    disabled={currentPage === 1}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Array.from({ length: Math.min(5, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE)) }, (_, i) => {
+                      const totalHeldPages = Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE);
+                      let startPage = 1;
+                      if (totalHeldPages > 5) {
+                        if (currentPage > 3) {
+                          startPage = currentPage - 2;
+                          if (startPage + 4 > totalHeldPages) {
+                            startPage = totalHeldPages - 4;
+                          }
+                        }
+                      }
+                      const pageNum = startPage + i;
+                      return (
+                         <button
+                           key={pageNum}
+                           onClick={() => updateParams('page', pageNum.toString())}
+                           style={{ 
+                             width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                             border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                             background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                             color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                             cursor: 'pointer'
+                           }}
+                         >
+                           {pageNum}
+                         </button>
+                      );
+                    })}
+                  </div>
+                  <button 
+                    onClick={() => updateParams('page', String(Math.min(currentPage + 1, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE))))}
+                    disabled={currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
       <TicketSettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
@@ -1085,6 +1659,147 @@ export const Tickets = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
             <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* ── AI Screener: Approve Held Lead Modal ── */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'approve'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Phê duyệt & Phân bổ Lead")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
+          </p>
+
+          <div style={{
+            padding: '1.25rem',
+            background: 'linear-gradient(to bottom right, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02))',
+            border: '1px solid rgba(16, 185, 129, 0.15)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            {previewLoadingId !== null ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>{t("Đang tính toán Sale tiếp theo...")}</span>
+              </div>
+            ) : previewedConsultant ? (
+              <>
+                <Avatar src={previewedConsultant.avatar} name={previewedConsultant.name} size={40} />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                    {previewedConsultant.name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Đang hoạt động trong vòng:")} <strong>{actioningHeldLead?.round_name}</strong>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: 600 }}>
+                {t("Không tìm thấy Sale hợp lệ trong vòng để nhận lead này.")}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleApproveHeldLeadSubmit}
+              disabled={previewLoadingId !== null}
+              style={{ background: '#10b981', borderColor: '#10b981' }}
+            >
+              {t("Xác nhận duyệt")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* ── AI Screener: Reject Held Lead Modal ── */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'reject'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Từ chối & Hủy Lead")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Vui lòng nhập lý do hủy bỏ lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
+          </p>
+
+          <div>
+            <label className="form-label">{t("Lý do từ chối")}</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              value={heldActionReason}
+              onChange={e => setHeldActionReason(e.target.value)}
+              placeholder={t("Ví dụ: Khách hàng không có nhu cầu thật, sai số...")}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleRejectHeldLeadSubmit}
+              disabled={!heldActionReason.trim()}
+              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+            >
+              {t("Từ chối lead")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* ── AI Screener: Blacklist Held Lead Modal ── */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'blacklist'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Chặn & Đưa vào Blacklist")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Xác nhận chặn số điện thoại này. Số điện thoại sẽ bị lưu vào danh sách đen (Global Exclusion Contacts) để tự động từ chối trong tương lai.")}
+          </p>
+
+          <div>
+            <label className="form-label">{t("Lý do chặn blacklist")}</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              value={heldActionReason}
+              onChange={e => setHeldActionReason(e.target.value)}
+              placeholder={t("Ví dụ: Số ảo phá hoại, spam, đối thủ cạnh tranh...")}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleBlacklistHeldLeadSubmit}
+              disabled={!heldActionReason.trim()}
+              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+            >
+              {t("Xác nhận chặn")}
+            </button>
           </div>
         </div>
       </CustomModal>
@@ -1299,6 +2014,7 @@ export const Tickets = () => {
                       {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Quy định 6 tháng")}</span>}
                       {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Chỉ đồng bộ")}</span>}
                       {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>{t("Blacklist")}</span>}
+                      {selectedLead.status === 'pending_approval' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Gác Cổng")}</span>}
                     </div>
                   </div>
                 </div>
@@ -1307,6 +2023,32 @@ export const Tickets = () => {
                   const { cleanNote, errorNotes, blacklistNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
+                      {/* AI Screener Evaluation Details */}
+                      {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && (
+                        <div style={{
+                          marginBottom: '1.25rem',
+                          padding: '1.25rem',
+                          background: selectedLead.ai_screener_status === 'error'
+                            ? 'linear-gradient(to bottom right, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))'
+                            : 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02))',
+                          border: selectedLead.ai_screener_status === 'error'
+                            ? '1px solid rgba(245, 158, 11, 0.15)'
+                            : '1px solid rgba(239, 68, 68, 0.15)',
+                          borderRadius: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem' }}>
+                            {selectedLead.ai_screener_status === 'error' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
+                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Gác Cổng') : t('AI Gác Cổng Tạm Giữ')}</span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+                            <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Error Notes (Approved / Rejected) */}
                       {errorNotes.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>

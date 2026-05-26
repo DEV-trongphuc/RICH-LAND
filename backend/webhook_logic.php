@@ -1598,5 +1598,246 @@ function triggerTwoWaySync($conn, $leadId) {
     return false;
 }
 
+function runAIScreener($conn, $leadData) {
+    // 1. Check if AI screener is enabled
+    $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
+    if ($enabled !== 1) {
+        return ['status' => 'skipped', 'reason' => 'AI Screener is disabled.'];
+    }
+
+    $apiKey = get_system_setting($conn, 'gemini_api_key');
+    $model = get_system_setting($conn, 'gemini_model') ?: 'gemini-2.5-flash-lite';
+
+    if (empty($apiKey)) {
+        return ['status' => 'error', 'reason' => 'Gemini API Key is not configured.'];
+    }
+
+    $aiRules = get_system_setting($conn, 'ai_screener_rules');
+
+    // 2. Format details and prompt
+    $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên quy tắc/tiêu chí của quản trị viên.\n\n"
+            . "QUY TẮC ĐÁNH GIÁ CỦA QUẢN TRỊ VIÊN:\n" . $aiRules . "\n\n"
+            . "THÔNG TIN KHÁCH HÀNG:\n"
+            . "Họ tên: " . ($leadData['name'] ?? '') . "\n"
+            . "Số điện thoại: " . ($leadData['phone'] ?? '') . "\n"
+            . "Email: " . ($leadData['email'] ?? '') . "\n"
+            . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
+            . "Loại data: " . ($leadData['type'] ?? '') . "\n"
+            . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
+            . "HƯỚNG DẪN ĐÁNH GIÁ CHẶT CHẼ & CHUYÊN NGHIỆP:\n"
+            . "1. Tuyệt đối KHÔNG sử dụng các ký tự Latinh mặc định trong địa chỉ Email (ví dụ: gmail.com, yahoo.com, tên email viết tắt), Số điện thoại, hay Nguồn để đánh giá đạt tiêu chuẩn ngoại ngữ/tiếng Anh.\n"
+            . "2. Việc khách hàng có tên hay email viết không dấu (chữ Latin) là bình thường đối với mọi khách hàng tại Việt Nam, điều này KHÔNG chứng minh khách hàng có nhu cầu học hoặc biết tiếng Anh.\n"
+            . "3. Hãy tập trung phân tích kỹ trường 'Ghi chú' và 'Loại data' để xác định nhu cầu thực sự, trình độ, hoặc mong muốn học tập/giao tiếp liên quan đến quy tắc của quản trị viên.\n"
+            . "4. Nếu trường 'Ghi chú' và 'Loại data' trống hoặc không đề cập đến ngoại ngữ/tiếng Anh trong khi quy tắc yêu cầu tiếng Anh, hãy đánh giá là \"failed\" và tự viết một câu giải thích đa dạng, tự nhiên và lịch sự dựa trên hồ sơ khách hàng (ví dụ: \"Thông tin đăng ký chưa ghi nhận mong muốn học ngoại ngữ\", \"Hệ thống tạm giữ do hồ sơ chưa thể hiện nhu cầu học tiếng Anh\", \"Khách hàng chưa cung cấp thông tin về trình độ tiếng Anh trong phiếu đăng ký\").\n"
+            . "5. Nếu trường 'Ghi chú' chứa thông tin phủ định (ví dụ: 'không học', 'không biết', 'tiếng Anh: không', 'tiếng Anh: không có'), hãy đánh giá là \"failed\" và tự viết một câu nhận định chuyên nghiệp, tự nhiên mô tả thực tế thông tin của khách (ví dụ: \"Khách hàng xác nhận không có nhu cầu học tiếng Anh trong ghi chú\", \"Thông tin ghi chú ghi nhận khách không đáp ứng tiêu chuẩn tiếng Anh\", \"Khách ghi chú không có mong muốn học tiếng Anh nên hệ thống tạm giữ\").\n\n"
+            . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
+            . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn (cần tạm giữ phê duyệt).\n"
+            . "- reason: giải thích một cách chuyên nghiệp, khách quan, tự nhiên và đa dạng bằng tiếng Việt (ví dụ: \"Khách hàng có mong muốn học IELTS nâng cao, đáp ứng tiêu chuẩn\", \"Khách hàng xác nhận không có nhu cầu học tiếng Anh trong ghi chú\", \"Hệ thống tạm giữ do hồ sơ chưa thể hiện nhu cầu học tiếng Anh\").";
+
+    $payload = [
+        'contents' => [
+            [
+                'parts' => [
+                    ['text' => $prompt]
+                ]
+            ]
+        ],
+        'generationConfig' => [
+            'responseMimeType' => 'application/json'
+        ]
+    ];
+
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+
+    // 3. Make cURL POST request
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || $httpCode !== 200) {
+        $errDetail = !empty($curlErr) ? $curlErr : "HTTP " . $httpCode;
+        return ['status' => 'error', 'reason' => "Lỗi kết nối Gemini API: " . $errDetail];
+    }
+
+    $resJson = json_decode($response, true);
+    $rawText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    if (empty($rawText)) {
+        return ['status' => 'error', 'reason' => 'Gemini API returned an empty response.'];
+    }
+
+    // Clean markdown code blocks if any
+    $cleanText = trim($rawText);
+    if (preg_match('/^```json\s*([\s\S]*?)\s*```$/i', $cleanText, $m)) {
+        $cleanText = trim($m[1]);
+    } else if (preg_match('/^```\s*([\s\S]*?)\s*```$/', $cleanText, $m)) {
+        $cleanText = trim($m[1]);
+    }
+
+    $data = json_decode($cleanText, true);
+    if (!$data || !isset($data['status']) || !isset($data['reason'])) {
+        return ['status' => 'error', 'reason' => 'Không thể phân tích kết quả JSON trả về từ Gemini: ' . substr($rawText, 0, 100)];
+    }
+
+    $status = strtolower(trim($data['status']));
+    if ($status !== 'passed' && $status !== 'failed') {
+        $status = 'passed'; // Fallback to passed on invalid status code
+    }
+
+    return [
+        'status' => $status,
+        'reason' => trim($data['reason'])
+    ];
+}
+
+function runManualScreener($conn, $leadData) {
+    // 1. Check if AI/Manual pre-screener is enabled
+    $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
+    if ($enabled !== 1) {
+        return ['status' => 'skipped', 'reason' => 'Screener is disabled.'];
+    }
+
+    $manualRulesJson = get_system_setting($conn, 'ai_screener_manual_rules');
+    $manualAction = get_system_setting($conn, 'ai_screener_manual_action') ?: 'hold';
+
+    $branches = json_decode($manualRulesJson, true);
+    if (!is_array($branches) || empty($branches)) {
+        return ['status' => 'passed', 'reason' => 'Không cấu hình bộ lọc thủ công (mặc định Đạt chuẩn).'];
+    }
+
+    $source = $leadData['source'] ?? '';
+    $type = $leadData['type'] ?? '';
+    $connId = isset($leadData['connection_id']) ? $leadData['connection_id'] : null;
+
+    $isMatch = false;
+    $matchedDetails = [];
+
+    foreach ($branches as $branch) {
+        $branchMatch = true;
+        $conds = $branch['conditions'] ?? [];
+        if (empty($conds)) {
+            continue;
+        }
+
+        $branchDetails = [];
+        foreach ($conds as $cond) {
+            $col = $cond['col'] ?? '';
+            $op = $cond['op'] ?? '';
+            $val = $cond['val'] ?? '';
+
+            if (!evaluateSingleCondition($leadData, $source, $type, $col, $op, $val, $connId)) {
+                $branchMatch = false;
+                break;
+            }
+            $branchDetails[] = "$col " . str_replace('_', ' ', $op) . " '$val'";
+        }
+
+        if ($branchMatch) {
+            $isMatch = true;
+            $matchedDetails = $branchDetails;
+            break;
+        }
+    }
+
+    if ($isMatch) {
+        $detailStr = implode(' AND ', $matchedDetails);
+        if ($manualAction === 'hold') {
+            return [
+                'status' => 'failed',
+                'reason' => 'Khớp điều kiện bộ lọc thủ công (Tạm giữ): ' . $detailStr
+            ];
+        } else {
+            return [
+                'status' => 'passed',
+                'reason' => 'Khớp điều kiện bộ lọc thủ công (Đạt chuẩn): ' . $detailStr
+            ];
+        }
+    } else {
+        if ($manualAction === 'hold') {
+            return [
+                'status' => 'passed',
+                'reason' => 'Không khớp bất kỳ điều kiện bộ lọc thủ công nào (Mặc định Đạt chuẩn).'
+            ];
+        } else {
+            return [
+                'status' => 'failed',
+                'reason' => 'Không khớp điều kiện bộ lọc thủ công để được phân bổ (Mặc định Tạm giữ).'
+            ];
+        }
+    }
+}
+
+function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $roundName, $email = '', $source = '', $type = '', $note = '') {
+    $admins = getTicketNotifyAdmins($conn);
+    if (empty($admins)) {
+        return false;
+    }
+
+    // Include mailer and zalo_bot dependencies
+    require_once __DIR__ . '/mailer.php';
+    require_once __DIR__ . '/zalo_bot.php';
+
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    $zaloChatIds = [];
+
+    foreach ($admins as $admin) {
+        // 1. Send Email Notification
+        if (!empty($admin['email'])) {
+            try {
+                sendHeldLeadEmailToAdmin(
+                    $admin['email'],
+                    $admin['name'],
+                    $name,
+                    $phone,
+                    $aiReason,
+                    $roundName,
+                    $email,
+                    $source,
+                    $type,
+                    $note
+                );
+            } catch (Exception $e) {
+                error_log("Error sending held lead email to admin " . $admin['name'] . ": " . $e->getMessage());
+            }
+        }
+
+        // 2. Gather Zalo Chat IDs
+        if (!empty($admin['zalo_chat_id'])) {
+            $zaloChatIds[] = $admin['zalo_chat_id'];
+        }
+    }
+
+    // 3. Send Zalo Notification
+    if (!empty($botToken) && !empty($zaloChatIds)) {
+        $zaloMsg = "🔔 [ CẢNH BÁO DATA DƯỚI CHUẨN ] 🔔\n"
+                 . "━━━━━━━━━━━━━━━━━━━━━\n"
+                 . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
+                 . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+                 . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
+                 . "  • Số ĐT: " . (!empty($phone) ? $phone : "Không có") . "\n"
+                 . "  • Vòng phân bổ dự kiến: " . (!empty($roundName) ? $roundName : "Không rõ") . "\n"
+                 . "  • Nguồn: " . (!empty($source) ? $source : "Không có") . "\n\n"
+                 . "🤖 ĐÁNH GIÁ AI:\n"
+                 . "  " . $aiReason . "\n\n"
+                 . "👉 Vui lòng đăng nhập hệ thống để phê duyệt/từ chối.\n"
+                 . "━━━━━━━━━━━━━━━━━━━━━";
+        try {
+            sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg);
+        } catch (Exception $e) {
+            error_log("Error sending Zalo alerts to admins: " . $e->getMessage());
+        }
+    }
+
+    return true;
+}
+
 
 

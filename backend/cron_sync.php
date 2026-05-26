@@ -1182,6 +1182,72 @@ foreach ($connections as $connItem) {
                     continue;
                 }
 
+                // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
+                $aiScreenerResult = null;
+                $aiScreenerEnabled = (int)get_system_setting($conn, 'ai_screener_enabled');
+                if ($aiScreenerEnabled === 1) {
+                    $screenerRounds = get_system_setting($conn, 'ai_screener_rounds');
+                    $enabledRounds = !empty(trim($screenerRounds)) ? array_map('intval', explode(',', $screenerRounds)) : [];
+                    if ((int)$targetRoundId > 0 && in_array((int)$targetRoundId, $enabledRounds)) {
+                        $screenerData = [
+                            'phone' => $phone,
+                            'email' => $email,
+                            'name' => $name,
+                            'source' => $source,
+                            'type' => $type,
+                            'note' => $note
+                        ];
+                        $screenerMode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
+                        if ($screenerMode === 'manual') {
+                            $aiScreenerResult = runManualScreener($conn, $screenerData);
+                        } else {
+                            $aiScreenerResult = runAIScreener($conn, $screenerData);
+                        }
+                    }
+                }
+
+                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
+                    $conn->begin_transaction();
+                    try {
+                        if ($crmCheckResult['isDuplicate']) {
+                            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connItem['id'], null, $name);
+                        } else {
+                            $leadId = insertLead($conn, $rowData, null, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                        }
+                        
+                        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
+                        $updHeld->bind_param("issi", $targetRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                        $updHeld->execute();
+                        $updHeld->close();
+                        
+                        $logMsg = $aiScreenerResult['status'] === 'error' ? "Lỗi kết nối AI (đồng bộ hệ thống): " . $aiScreenerResult['reason'] : "Tạm giữ bởi AI (đồng bộ hệ thống): " . $aiScreenerResult['reason'];
+                        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', $logMsg, false);
+                        
+                        // Record hash so we don't process this row again on next cron run
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                        
+                        // Post-commit: trigger live write-back
+                        triggerTwoWaySync($conn, $leadId);
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                        logSync("Transaction failed for held row: " . $txE->getMessage());
+                        continue;
+                    }
+                    
+                    // Background notifications to admins (outside transaction)
+                    try {
+                        sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiScreenerResult['reason'], $roundName, $email, $source, $type, $note);
+                    } catch (Exception $notifyEx) {
+                        logSync("Error during cron sync AI screener notifications: " . $notifyEx->getMessage());
+                    }
+                    
+                    continue;
+                }
+
                 // --- 3. Round-Robin Assignment & 4. Process Lead (Unified Transaction) ---
                 $conn->begin_transaction();
                 try {
@@ -1229,6 +1295,15 @@ foreach ($connections as $connItem) {
                     } else {
                         $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                     }
+                    
+                    // Save AI screening result if evaluated
+                    if ($aiScreenerResult) {
+                        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+                        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                        $updAi->execute();
+                        $updAi->close();
+                    }
+
                     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage, false);
                     
                     // Record hash so we don't process this row again on next cron run

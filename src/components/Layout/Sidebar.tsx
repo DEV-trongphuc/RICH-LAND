@@ -32,10 +32,23 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     if (user?.role !== 'admin') return;
     const fetchPending = async () => {
       try {
-        const res = await fetchAPI('get_reports');
-        if (res.success) {
-          setPendingTickets(res.data.filter((r: any) => r.status === 'pending').length);
+        const [resReports, resHeld] = await Promise.all([
+          fetchAPI('get_reports&status=pending'),
+          fetchAPI('get_held_leads&pageSize=1&date=all')
+        ]);
+        
+        let countReports = 0;
+        let countHeld = 0;
+        
+        if (resReports.success) {
+          countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
         }
+        
+        if (resHeld.success) {
+          countHeld = resHeld.total_count ?? 0;
+        }
+        
+        setPendingTickets(countReports + countHeld);
       } catch { /* silent */ }
     };
     fetchPending();

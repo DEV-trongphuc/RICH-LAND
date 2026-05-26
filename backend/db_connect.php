@@ -123,7 +123,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 122) {
+        if ($dbVer >= 126) {
             $runMigration = false;
         }
     }
@@ -144,7 +144,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 122) {
+                    if ($dbVer >= 126) {
                         $runMigration = false;
                     }
                 }
@@ -612,7 +612,40 @@ if ($runMigration) {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('report_error_reasons', '[\"Sai số điện thoại / Số ảo\",\"Trùng của tôi (Trùng Saleperson)\",\"Trùng của người khác (Saleperson khác đã chăm)\",\"Spam ảo / Junk lead\",\"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('report_error_allowed_roles', 'sale,admin,assistant')");
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '122') ON DUPLICATE KEY UPDATE setting_value = '122'");
+    // Auto-migrate: Version 123 - AI Pre-screener and Gatekeeper Approval Queue
+    $chkColStatus = $conn->query("SHOW COLUMNS FROM leads LIKE 'status'");
+    if ($chkColStatus && $chkColStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN status VARCHAR(50) DEFAULT 'active' COMMENT 'Trạng thái lead (active, pending_approval, rejected, blacklisted)'");
+    }
+    $chkColTR = $conn->query("SHOW COLUMNS FROM leads LIKE 'target_round_id'");
+    if ($chkColTR && $chkColTR->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN target_round_id INT NULL COMMENT 'Vòng xoay phân bổ dự kiến'");
+    }
+    $chkColAIS = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_screener_status'");
+    if ($chkColAIS && $chkColAIS->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_screener_status VARCHAR(50) DEFAULT 'not_screened' COMMENT 'Đánh giá AI (passed, failed, skipped, error)'");
+    }
+    $chkColAIE = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_evaluation'");
+    if ($chkColAIE && $chkColAIE->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_evaluation TEXT NULL COMMENT 'Chi tiết đánh giá của AI'");
+    }
+
+    $chkFkTR = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_target_round_id'");
+    if ($chkFkTR && $chkFkTR->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD INDEX `idx_target_round_id` (`target_round_id`)");
+    }
+
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_enabled', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_rules', 'Tiếng Anh: Đạt chuẩn (đã học tiếng Anh, có nền tảng tốt, có thể giao tiếp cơ bản, có chứng chỉ tiếng Anh như IELTS, TOEIC, v.v.).\\nKhông đạt chuẩn (không có tiếng Anh, mất gốc hoàn toàn, không muốn học tiếng Anh, v.v.). Nếu ghi chú thể hiện rõ ràng là không học tiếng Anh hoặc mất gốc hoàn toàn thì đánh giá là Không đạt chuẩn.')");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_model', 'gemini-2.5-flash-lite') ON DUPLICATE KEY UPDATE setting_value = IF(setting_value = 'gemini-2.5-flash', 'gemini-2.5-flash-lite', setting_value)");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_rounds', '')");
+
+    // Auto-migrate: Version 126 - Dual mode AI & Manual pre-screening settings
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_mode', 'ai')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_manual_rules', '[]')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_manual_action', 'hold')");
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '126') ON DUPLICATE KEY UPDATE setting_value = '126'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

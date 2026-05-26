@@ -185,11 +185,13 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
         $lines = explode("\n", $normalizedNote);
         foreach ($lines as $line) {
             $line = trim($line);
-            if (empty($line)) continue;
-            
+            if (empty($line))
+                continue;
+
             // Match custom fields key-value
-            if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
-                && strlen(trim($matches[1])) <= 40 
+            if (
+                (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                && strlen(trim($matches[1])) <= 40
                 && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
             ) {
                 $cKey = htmlspecialchars(trim($matches[1]));
@@ -284,11 +286,11 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
                     <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">Loại Data:</td>
                     <td style="padding: 8px 0; color: #0f172a; vertical-align: top;">' . htmlspecialchars($type) . '</td>
                 </tr>
-                ' : '') . 
-                $roundRow . 
-                $customFieldsHtml . '
+                ' : '') .
+        $roundRow .
+        $customFieldsHtml . '
             </table>
-        </div>' . $historyBlock . 
+        </div>' . $historyBlock .
         $noteBlock . '
         
         <div style="text-align: center;">
@@ -309,39 +311,39 @@ function formatCustomTemplateToTable($renderedTemplate)
     $normalized = str_replace(["\r\n", "\r"], "\n", $renderedTemplate);
     $lines = explode("\n", $normalized);
     $rowsHtml = '';
-    
+
     foreach ($lines as $line) {
         $trimmed = trim($line);
         if ($trimmed === '') {
             $rowsHtml .= '<tr><td colspan="2" style="height: 6px; line-height: 6px; font-size: 1px;">&nbsp;</td></tr>';
             continue;
         }
-        
+
         // Clean leading bullet points: "-", "*", "•", "–", "+", etc. and leading spaces
         $cleanLine = preg_replace('/^[\s\-\*\•\–\+\x{2022}\x{2013}]+/u', '', $trimmed);
         $cleanLine = trim($cleanLine);
-        
+
         // Clean trailing <br /> or <br> tags at the end of the line
         $cleanLine = preg_replace('/<br\s*\/?>\s*$/i', '', $cleanLine);
         $cleanLine = trim($cleanLine);
-        
+
         if (empty($cleanLine)) {
             continue;
         }
-        
+
         // Find if there is a colon
         $colonPos = strpos($cleanLine, ':');
         if ($colonPos !== false) {
             $key = trim(substr($cleanLine, 0, $colonPos));
             $val = trim(substr($cleanLine, $colonPos + 1));
-            
+
             if ($val === '') {
                 // If it is a redundant header like "Thông tin Khách hàng", skip it to avoid duplicate header in mail layout
                 $lowerKey = rtrim(mb_strtolower($key, 'UTF-8'), ':.');
                 if ($lowerKey === 'thông tin khách hàng' || $lowerKey === 'thông tin chi tiết khách hàng' || $lowerKey === 'thông tin chi tiết' || $lowerKey === 'thông tin liên hệ') {
                     continue;
                 }
-                
+
                 // Treated as subheader
                 $rowsHtml .= '
                 <tr>
@@ -352,27 +354,27 @@ function formatCustomTemplateToTable($renderedTemplate)
                 $lowerKey = mb_strtolower($key, 'UTF-8');
                 $valStyle = 'padding: 6px 0; font-weight: 500; color: #0f172a; vertical-align: top;';
                 $formattedVal = $val;
-                
+
                 // Bold name
                 if (
-                    strpos($lowerKey, 'họ tên') !== false || 
-                    strpos($lowerKey, 'họ và tên') !== false || 
-                    strpos($lowerKey, 'tên kh') !== false || 
-                    $lowerKey === 'tên' || 
+                    strpos($lowerKey, 'họ tên') !== false ||
+                    strpos($lowerKey, 'họ và tên') !== false ||
+                    strpos($lowerKey, 'tên kh') !== false ||
+                    $lowerKey === 'tên' ||
                     $lowerKey === 'name'
                 ) {
                     $valStyle = 'padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;';
                 }
-                
+
                 // Color phone numbers
                 if (
-                    strpos($lowerKey, 'điện thoại') !== false || 
-                    strpos($lowerKey, 'sđt') !== false || 
+                    strpos($lowerKey, 'điện thoại') !== false ||
+                    strpos($lowerKey, 'sđt') !== false ||
                     strpos($lowerKey, 'phone') !== false
                 ) {
                     $valStyle = 'padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;';
                 }
-                
+
                 // Color email and make it a mailto link
                 $cleanEmail = strip_tags($val);
                 if (
@@ -382,7 +384,7 @@ function formatCustomTemplateToTable($renderedTemplate)
                     $valStyle = 'padding: 6px 0; font-weight: 500; vertical-align: top;';
                     $formattedVal = '<a href="mailto:' . $cleanEmail . '" style="color: #3b82f6; text-decoration: underline;">' . $val . '</a>';
                 }
-                
+
                 $rowsHtml .= '
                 <tr>
                     <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">' . $key . ':</td>
@@ -396,14 +398,14 @@ function formatCustomTemplateToTable($renderedTemplate)
             if ($lowerLine === 'thông tin khách hàng' || $lowerLine === 'thông tin chi tiết khách hàng' || $lowerLine === 'thông tin chi tiết' || $lowerLine === 'thông tin liên hệ') {
                 continue;
             }
-            
+
             $rowsHtml .= '
             <tr>
                 <td colspan="2" style="padding: 6px 0; color: #0f172a; font-size: 14px; line-height: 1.5; vertical-align: top;">' . $cleanLine . '</td>
             </tr>';
         }
     }
-    
+
     return '<table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">' . $rowsHtml . '</table>';
 }
 
@@ -425,7 +427,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
-                $connectionId = (int)($row['connection_id'] ?? 0);
+                $connectionId = (int) ($row['connection_id'] ?? 0);
             }
         }
     } else {
@@ -439,7 +441,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
-                $connectionId = (int)($row['connection_id'] ?? 0);
+                $connectionId = (int) ($row['connection_id'] ?? 0);
             }
         }
     }
@@ -484,18 +486,20 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             $lines = explode("\n", $leadNote);
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (empty($line)) continue;
-                
+                if (empty($line))
+                    continue;
+
                 $matchedPlaceholder = false;
                 // Matches [Custom Key]: Value or Custom Key: Value
-                if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                if (
+                    (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
                     && strlen(trim($matches[1])) <= 40
                     && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
                 ) {
                     $cKey = trim($matches[1]);
                     $cVal = trim($matches[2]);
                     $lowerKey = strtolower($cKey);
-                    
+
                     // Only treat as placeholder if it is actually used in the custom template
                     if (strpos(strtolower($emailTemplate), '{' . $lowerKey . '}') !== false) {
                         $replacements['{' . $lowerKey . '}'] = htmlspecialchars($cVal);
@@ -503,7 +507,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                         $matchedPlaceholder = true;
                     }
                 }
-                
+
                 if (!$matchedPlaceholder) {
                     $actualNote .= htmlspecialchars($line) . "\n";
                 }
@@ -535,9 +539,11 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             $lines = explode("\n", $leadNote);
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (empty($line)) continue;
+                if (empty($line))
+                    continue;
                 // Matches [Custom Key]: Value or Custom Key: Value
-                if ((preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
+                if (
+                    (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
                     && strlen(trim($matches[1])) <= 40
                     && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
                 ) {
@@ -593,8 +599,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                     <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
                     <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $actualNote . '</td>
                 </tr>
-                ' : '') . 
-                $customFieldsHtml . '
+                ' : '') .
+            $customFieldsHtml . '
             </table>';
     }
 
@@ -639,7 +645,6 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         </div>
 
         <div style="text-align: center; margin-top: 24px;">
-            <p style="color: #ef4444; font-weight: 700; font-size: 15px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.5px;">Báo cáo Data</p>
             <p style="color: #64748b; font-size: 14px; margin: 0 0 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
             <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
                 BÁO CÁO DATA
@@ -706,6 +711,75 @@ function sendTicketNotificationToAdmins(
         . '</div>';
 
     sendEmailNotification($toEmail, $subject, '🎫 Có Ticket Mới Cần Xử Lý!', $content, $ccEmailString);
+}
+
+/**
+ * sendHeldLeadEmailToAdmin
+ * Gui email thong bao cho admin khi co lead bi AI tam giu (AI Gatekeeper)
+ */
+function sendHeldLeadEmailToAdmin(
+    string $toEmail,
+    string $toAdminName,
+    string $leadName,
+    string $leadPhone,
+    string $aiReason,
+    string $roundName = '',
+    string $leadEmail = '',
+    string $leadSource = '',
+    string $leadType = '',
+    string $leadNote = ''
+) {
+    $subject = '🤖 AI Gatekeeper: Dữ liệu tạm giữ cần phê duyệt — ' . $leadName;
+    $roundStr = !empty($roundName) ? htmlspecialchars($roundName) : 'Không rõ';
+    $fReason = nl2br(htmlspecialchars($aiReason));
+    $fLead = htmlspecialchars($leadName ?: 'Khách hàng ẩn danh');
+    $fPhone = htmlspecialchars($leadPhone ?: 'Không có');
+    $fAdmin = htmlspecialchars($toAdminName);
+    $fEmail = htmlspecialchars($leadEmail ?: 'Không có');
+    $fSource = htmlspecialchars($leadSource ?: 'Không có');
+    $fType = htmlspecialchars($leadType ?: 'Không có');
+    $fNote = nl2br(htmlspecialchars($leadNote ?: 'Không có'));
+
+    // Lấy frontend_url từ settings
+    global $conn;
+    $frontendUrl = '';
+    if (isset($conn) && $conn) {
+        $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+        if ($urlRes && $urlRes->num_rows > 0) {
+            $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+        }
+    }
+    if (empty($frontendUrl)) {
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+    }
+    $approvalUrl = $frontendUrl . "/tickets?tab=ai";
+
+    $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Hệ thống vừa tiếp nhận dữ liệu khách hàng mới và bị trợ lý AI tạm giữ do đánh giá <strong>DƯỚI CHUẨN</strong>.</p>'
+        . '<div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">DATA CHỜ PHÊ DUYỆT (AI GATEKEEPER)</span></div>'
+        . '<div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-left:4px solid #eab308;padding:24px;margin:0 0 24px;border-radius:0 12px 12px 0;">'
+        . '<p style="color:#0f172a;font-size:15px;margin:0 0 16px;font-weight:700;border-bottom:1px solid #fde68a;padding-bottom:10px;">Chi tiết Khách hàng</p>'
+        . '<table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;">'
+        . '<tr><td style="padding:7px 0;font-weight:600;width:160px;color:#64748b;vertical-align:top;">Vòng phân bổ dự kiến:</td><td style="padding:7px 0;font-weight:700;color:#7c3aed;vertical-align:top;">' . $roundStr . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Tên khách hàng:</td><td style="padding:7px 0;font-weight:700;color:#0f172a;vertical-align:top;">' . $fLead . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Số điện thoại:</td><td style="padding:7px 0;font-weight:700;color:#d97706;vertical-align:top;">' . $fPhone . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Email khách hàng:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fEmail . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Nguồn Data:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fSource . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Loại Data:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;">' . $fType . '</td></tr>'
+        . '<tr><td style="padding:7px 0;font-weight:600;color:#64748b;vertical-align:top;">Ghi Chú Gốc:</td><td style="padding:7px 0;color:#0f172a;vertical-align:top;line-height:1.5;">' . $fNote . '</td></tr>'
+        . '</table>'
+        . '</div>'
+        . '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:20px 24px;border-radius:0 12px 12px 0;margin-bottom:28px;">'
+        . '<p style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">Đánh giá / Nhận diện của AI</p>'
+        . '<p style="color:#0f172a;font-size:15px;line-height:1.7;margin:0;font-weight:500;">' . $fReason . '</p>'
+        . '</div>'
+        . '<div style="text-align:center;">'
+        . '<p style="color:#64748b;font-size:14px;margin-bottom:12px;">Vui lòng đăng nhập hệ thống phê duyệt để tiếp tục phân bổ hoặc huỷ/chặn số điện thoại này.</p>'
+        . '<a href="' . $approvalUrl . '" style="display:inline-block;background-color:#7c3aed;color:white;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:bold;font-size:15px;box-shadow:0 4px 6px -1px rgba(124,58,237,0.2);">XỬ LÝ DUYỆT TRÊN HỆ THỐNG</a>'
+        . '</div>';
+
+    sendEmailNotification($toEmail, $subject, '🤖 AI Gatekeeper: Data Chờ Phê Duyệt!', $content);
 }
 
 /**
@@ -986,15 +1060,18 @@ function sendDailyReportEmailToAdmins(
     sendEmailNotification($adminEmail, $subject, 'Báo Cáo Hàng Ngày', $content, '');
 }
 
-function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '') {
-    if (empty($consultantEmail)) return;
-    if (empty($time)) $time = date('H:i:s d/m/Y');
+function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '')
+{
+    if (empty($consultantEmail))
+        return;
+    if (empty($time))
+        $time = date('H:i:s d/m/Y');
 
     $subject = "[Domation DATA] Thông báo Bù Data Chủ Động - Vòng: $roundName";
     $title = "BẠN VỪA ĐƯỢC BÙ DATA CHỦ ĐỘNG";
-    
+
     $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
-    
+
     $content = '
         <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border-left: 4px solid #4f46e5; margin-bottom: 24px;">
             <p style="margin: 0; font-size: 14px; color: #3730a3;"><strong>THÔNG BÁO TỪ HỆ THỐNG</strong></p>
@@ -1002,7 +1079,7 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
                 Xin chào <strong>' . htmlspecialchars($consultantName) . '</strong>,
             </p>
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
-                Admin <strong>' . htmlspecialchars($adminName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int)$amount . ' data</strong> cho bạn tại vòng: <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
+                Admin <strong>' . htmlspecialchars($adminName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int) $amount . ' data</strong> cho bạn tại vòng: <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
             </p>
             ' . $reasonStr . '
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
@@ -1014,15 +1091,18 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
     sendEmailNotification($consultantEmail, $subject, $title, $content, '');
 }
 
-function sendActiveCompensationEmailToAdmins($adminEmail, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '') {
-    if (empty($adminEmail)) return;
-    if (empty($time)) $time = date('H:i:s d/m/Y');
+function sendActiveCompensationEmailToAdmins($adminEmail, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '')
+{
+    if (empty($adminEmail))
+        return;
+    if (empty($time))
+        $time = date('H:i:s d/m/Y');
 
     $subject = "[Domation DATA] Báo cáo Bù Data Chủ Động — $consultantName";
     $title = "BÁO CÁO BÙ DATA CHỦ ĐỘNG";
-    
+
     $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
-    
+
     $content = '
         <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #64748b; margin-bottom: 24px;">
             <p style="margin: 0; font-size: 14px; color: #475569;"><strong>BÁO CÁO HỆ THỐNG</strong></p>
@@ -1030,7 +1110,7 @@ function sendActiveCompensationEmailToAdmins($adminEmail, $adminName, $consultan
                 Xin chào <strong>' . htmlspecialchars($adminName) . '</strong>,
             </p>
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #334155;">
-                Quản trị viên <strong>' . htmlspecialchars($operatorName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int)$amount . ' data</strong> cho tư vấn viên <strong>' . htmlspecialchars($consultantName) . '</strong> tại vòng <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
+                Quản trị viên <strong>' . htmlspecialchars($operatorName) . '</strong> vừa thực hiện bù chủ động thêm <strong>' . (int) $amount . ' data</strong> cho tư vấn viên <strong>' . htmlspecialchars($consultantName) . '</strong> tại vòng <strong>' . htmlspecialchars($roundName) . '</strong> vào lúc <strong>' . htmlspecialchars($time) . '</strong>.
             </p>
             ' . $reasonStr . '
         </div>

@@ -441,6 +441,71 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     exit();
 }
 
+// --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
+$aiScreenerResult = null;
+$aiScreenerEnabled = (int)get_system_setting($conn, 'ai_screener_enabled');
+if ($aiScreenerEnabled === 1) {
+    $screenerRounds = get_system_setting($conn, 'ai_screener_rounds');
+    $enabledRounds = !empty(trim($screenerRounds)) ? array_map('intval', explode(',', $screenerRounds)) : [];
+    if ((int)$targetRoundId > 0 && in_array((int)$targetRoundId, $enabledRounds)) {
+        $screenerMode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
+        if ($screenerMode === 'manual') {
+            $aiScreenerResult = runManualScreener($conn, $data);
+        } else {
+            $aiScreenerResult = runAIScreener($conn, $data);
+        }
+    }
+}
+
+if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
+    $conn->begin_transaction();
+    try {
+        if ($crmCheckResult['isDuplicate']) {
+            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
+        } else {
+            $leadId = insertLead($conn, $data, null, $phone, $email, $name, $source, $type, $note, $connectionId);
+        }
+        
+        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
+        $updHeld->bind_param("issi", $targetRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+        $updHeld->execute();
+        $updHeld->close();
+        
+        $logMsg = $aiScreenerResult['status'] === 'error' ? "Lỗi kết nối AI: " . $aiScreenerResult['reason'] : "Tạm giữ bởi AI: " . $aiScreenerResult['reason'];
+        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', $logMsg, false);
+        $conn->commit();
+        
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        exit();
+    }
+    
+    // Background notifications to admins (outside transaction)
+    try {
+        sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiScreenerResult['reason'], $roundName, $email, $source, $type, $note);
+    } catch (Exception $notifyEx) {
+        error_log("Error during AI screener notifications: " . $notifyEx->getMessage());
+    }
+    
+    // Release advisory lock
+    if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
+        $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+        if ($relStmt) {
+            $relStmt->bind_param("s", $lockKey);
+            $relStmt->execute();
+            $relStmt->close();
+        }
+        $lockReleased = true;
+    }
+    
+    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Gác Cổng: " . $aiScreenerResult['reason']]);
+    exit();
+}
+
 // --- 3. Round-Robin Assignment & 4. Process new Lead and Log Distribution (Unified Transaction) ---
 $conn->begin_transaction();
 try {
@@ -488,6 +553,15 @@ try {
     } else {
         $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);
     }
+    
+    // Save AI screening result if evaluated
+    if ($aiScreenerResult) {
+        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+        $updAi->execute();
+        $updAi->close();
+    }
+
     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
     $conn->commit();
     if (!empty($leadId)) {
