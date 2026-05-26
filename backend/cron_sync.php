@@ -1190,7 +1190,9 @@ foreach ($connections as $connItem) {
                         if ($assignResult) {
                             $assignedConsultantId = $assignResult['id'];
                             $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                            $cronMessage = $assignResult['is_compensation'] ? 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).' : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
+                            $cronMessage = $assignResult['is_compensation'] 
+                                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (đồng bộ hệ thống).' : 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).') 
+                                : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
 
                             // Check working hours
                             $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -1362,6 +1364,14 @@ runDailyReportCron($conn);
 // --- Chạy Báo cáo Tuần nếu đã đến giờ ---
 require_once __DIR__ . '/cron_weekly_report.php';
 runWeeklyReportCron($conn);
+
+// --- Chạy hàng đợi đồng bộ 2 chiều (Sync Queue Worker) ---
+try {
+    require_once __DIR__ . '/cron_queue_worker.php';
+    processSyncQueue($conn);
+} catch (Exception $queueEx) {
+    logSync("Error running sync queue from cron_sync: " . $queueEx->getMessage());
+}
 
 $conn->close();
 

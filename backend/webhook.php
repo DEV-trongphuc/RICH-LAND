@@ -449,7 +449,9 @@ try {
         if ($assignResult) {
             $assignedConsultantId = $assignResult['id'];
             $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-            $message = $assignResult['is_compensation'] ? 'Được phân bổ đền bù lượt lỗi.' : 'Được phân bổ tự động qua vòng xoay.';
+            $message = $assignResult['is_compensation'] 
+                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
+                : 'Được phân bổ tự động qua vòng xoay.';
 
             // Check working hours
             $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");

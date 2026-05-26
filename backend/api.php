@@ -8672,6 +8672,7 @@ switch ($action) {
                 
                 $consultantId = $override_consultant_id;
                 $isComp = false;
+                $isStarvation = false;
 
                 if (!$consultantId && $assignedRoundId) {
                     // Compute it naturally INSIDE transaction block for row-level locking consistency
@@ -8679,6 +8680,7 @@ switch ($action) {
                     if ($assignResult) {
                         $consultantId = $assignResult['id'];
                         $isComp = $assignResult['is_compensation'];
+                        $isStarvation = isset($assignResult['is_starvation']) ? true : false;
                     }
                 }
 
@@ -8807,6 +8809,9 @@ switch ($action) {
 
                 } else if ($consultantId) {
                     $status = $isComp ? 'compensation' : 'assigned';
+                    $logMsg = $isComp 
+                        ? ($isStarvation ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
+                        : 'Được phân bổ tự động qua vòng xoay.';
                     
                     // Check working hours
                     $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");

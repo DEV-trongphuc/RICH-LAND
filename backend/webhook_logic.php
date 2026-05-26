@@ -586,8 +586,8 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
         
         if ($isMatch) {
             $inject = [];
-            if (isset($matchedBranch['inject']) && !empty($matchedBranch['inject']['enabled']) && !empty($matchedBranch['inject']['fields'])) {
-                foreach ($matchedBranch['inject']['fields'] as $f) {
+            if ($matchedBranch && !empty($matchedBranch['inject']) && is_array($matchedBranch['inject'])) {
+                foreach ($matchedBranch['inject'] as $f) {
                     if (!empty($f['col'])) {
                         $inject[$f['col']] = $f['val'];
                     }
@@ -619,19 +619,44 @@ function getNextConsultantInRound($conn, $roundId) {
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
     
-    // 2. Get active consultants with ALL rules (include data_per_turn, current_turn_remaining), excluding those on active leave
-    $cStmt = $conn->prepare("
-        SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
-               rc.data_per_turn, rc.current_turn_remaining
-        FROM round_consultants rc 
-        JOIN consultants c ON rc.consultant_id = c.id 
-        WHERE rc.round_id = ? 
-          AND rc.is_active = 1 
-          AND c.status = 'active' 
-          AND c.vacation_mode = 0 
-          AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
-        ORDER BY c.id ASC
-    ");
+    // Load starvation prevention settings
+    $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
+    $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
+    if ($starvationMaxPerHour <= 0) {
+        $starvationMaxPerHour = 5;
+    }
+
+    // 2. Get active consultants with ALL rules
+    if ($starvationEnabled === 1) {
+        // Query ALL active consultants (include vacation_mode / leave so we can process and skip them)
+        $cStmt = $conn->prepare("
+            SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+                   rc.data_per_turn, rc.current_turn_remaining, rc.skipped_credit,
+                   c.vacation_mode, c.leave_start, c.leave_end, c.work_start_time, c.work_end_time, c.work_schedule
+            FROM round_consultants rc 
+            JOIN consultants c ON rc.consultant_id = c.id 
+            WHERE rc.round_id = ? 
+              AND rc.is_active = 1 
+              AND c.status = 'active'
+            ORDER BY c.id ASC
+        ");
+    } else {
+        // Original query: exclude vacation mode and leave
+        $cStmt = $conn->prepare("
+            SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+                   rc.data_per_turn, rc.current_turn_remaining, 0 as skipped_credit,
+                   c.vacation_mode, c.leave_start, c.leave_end, c.work_start_time, c.work_end_time, c.work_schedule
+            FROM round_consultants rc 
+            JOIN consultants c ON rc.consultant_id = c.id 
+            WHERE rc.round_id = ? 
+              AND rc.is_active = 1 
+              AND c.status = 'active' 
+              AND c.vacation_mode = 0 
+              AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
+            ORDER BY c.id ASC
+        ");
+    }
+    
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
@@ -644,16 +669,50 @@ function getNextConsultantInRound($conn, $roundId) {
     
     $consultants = [];
     $compensatedConsultant = null;
+    $starvationConsultant = null;
     $midTurnConsultant = null;  // Consultant who is mid-turn (current_turn_remaining > 0)
+    
+    $today = date('Y-m-d');
+    $currentTime = date('H:i');
     
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
-        // Priority 1: Compensation (error data replacement)
-        if (empty($compensatedConsultant) && intval($row['compensation_count']) > 0) {
+        
+        // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
+        $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
+        $isAvailable = !$isOnVacation;
+        
+        // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
+        if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
-        // Priority 2: Mid-turn (has remaining data_per_turn slots)
-        if (empty($midTurnConsultant) && intval($row['current_turn_remaining']) > 0) {
+        
+        // Priority 2: Starvation Prevention (skipped_credit) - only if available (not on vacation), enabled, within hourly limit, and currently on shift
+        if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+            // Count starvation leads received in last hour
+            $logStmt = $conn->prepare("
+                SELECT COUNT(*) as cnt 
+                FROM distribution_logs 
+                WHERE assigned_to = ? 
+                  AND status = 'compensation' 
+                  AND message LIKE '%(Starvation Prevention)%' 
+                  AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            ");
+            if ($logStmt) {
+                $logStmt->bind_param("i", $row['id']);
+                $logStmt->execute();
+                $logRes = $logStmt->get_result()->fetch_assoc();
+                $logStmt->close();
+                $hourlyCount = (int)($logRes['cnt'] ?? 0);
+                if ($hourlyCount < $starvationMaxPerHour) {
+                    $starvationConsultant = $row;
+                }
+            }
+        }
+        
+        // Priority 3: Mid-turn - only if available
+        if (empty($compensatedConsultant) && empty($starvationConsultant) && empty($midTurnConsultant) && $isAvailable && intval($row['current_turn_remaining']) > 0) {
             $midTurnConsultant = $row;
         }
     }
@@ -666,12 +725,21 @@ function getNextConsultantInRound($conn, $roundId) {
         $compStmt->execute();
         $compStmt->close();
         if (isset($cStmt)) $cStmt->close();
-        // Note: Do NOT update last_assigned_consultant_id here. 
-        // Compensation is an out-of-band assignment and shouldn't disrupt the normal round-robin order.
         return ['id' => $nextId, 'is_compensation' => true];
     }
 
-    // === PRIORITY 2: MID-TURN — Đang trong lượt nhận nhiều data, tiếp tục giao cho họ ===
+    // === PRIORITY 2: STARVATION PREVENTION — Bù lượt thiếu do nghỉ phép/ngoài giờ ===
+    if ($starvationConsultant) {
+        $nextId = $starvationConsultant['id'];
+        $starvStmt = $conn->prepare("UPDATE round_consultants SET skipped_credit = skipped_credit - 1, skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
+        $starvStmt->bind_param("ii", $roundId, $nextId);
+        $starvStmt->execute();
+        $starvStmt->close();
+        if (isset($cStmt)) $cStmt->close();
+        return ['id' => $nextId, 'is_compensation' => true, 'is_starvation' => true];
+    }
+
+    // === PRIORITY 3: MID-TURN — Đang trong lượt nhận nhiều data, tiếp tục giao cho họ ===
     if ($midTurnConsultant) {
         $nextId = $midTurnConsultant['id'];
         // Decrement remaining counter
@@ -680,11 +748,10 @@ function getNextConsultantInRound($conn, $roundId) {
         $midStmt->execute();
         $midStmt->close();
         if (isset($cStmt)) $cStmt->close();
-        // Note: do NOT update last_assigned here — keeps position for proper round-robin next turn
         return ['id' => $nextId, 'is_compensation' => false];
     }
     
-    // === PRIORITY 3: ROUND-ROBIN — Find next consultant by receive_ratio ===
+    // === PRIORITY 4: ROUND-ROBIN — Find next consultant by receive_ratio ===
     $nextIdx = 0;
     if ($lastAssignedId) {
         foreach ($consultants as $i => $c) {
@@ -697,38 +764,53 @@ function getNextConsultantInRound($conn, $roundId) {
     
     $startIdx = $nextIdx;
     $chosenConsultant = null;
+    $skippedConsultants = [];
     
     $skipResetStmt = $conn->prepare("UPDATE round_consultants SET skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
     $skipIncrStmt  = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
+    
     do {
         $candidate = $consultants[$nextIdx];
-        $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
-        $skipCount = (int)($candidate['skip_count'] ?? 0);
         
-        if ($ratio == 1 || $skipCount >= $ratio - 1) {
-            $chosenConsultant = $candidate;
-            $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
-            $skipResetStmt->execute();
-            break;
+        // Check availability (only vacation/leave counts as unavailable for skipping)
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
+        $isAvailable = !$isOnVacation;
+        
+        if ($isAvailable) {
+            $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
+            $skipCount = (int)($candidate['skip_count'] ?? 0);
+            
+            if ($ratio == 1 || $skipCount >= $ratio - 1) {
+                $chosenConsultant = $candidate;
+                $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
+                $skipResetStmt->execute();
+                break;
+            } else {
+                $skipIncrStmt->bind_param("ii", $roundId, $candidate['id']);
+                $skipIncrStmt->execute();
+                $nextIdx = ($nextIdx + 1) % count($consultants);
+            }
         } else {
-            $skipIncrStmt->bind_param("ii", $roundId, $candidate['id']);
-            $skipIncrStmt->execute();
+            // Unavailable: skipped
+            if ($starvationEnabled === 1) {
+                $skippedConsultants[] = (int)$candidate['id'];
+            }
             $nextIdx = ($nextIdx + 1) % count($consultants);
         }
     } while ($nextIdx != $startIdx);
     
-    // Fallback: everyone is skipped simultaneously → pick start
+    // Fallback: everyone is skipped or offline simultaneously
     if (!$chosenConsultant) {
         $chosenConsultant = $consultants[$startIdx];
         $skipResetStmt->bind_param("ii", $roundId, $chosenConsultant['id']);
         $skipResetStmt->execute();
+        $skippedConsultants = []; // Reset skipped list
     }
     
     $nextId    = $chosenConsultant['id'];
     $dataPerTurn = max(1, (int)($chosenConsultant['data_per_turn'] ?? 1));
     
     // If data_per_turn > 1, set current_turn_remaining = dataPerTurn - 1
-    // (minus 1 because this call already counts as the first assignment)
     if ($dataPerTurn > 1) {
         $setTurnStmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = ? WHERE round_id = ? AND consultant_id = ?");
         $remaining = $dataPerTurn - 1;
@@ -742,6 +824,19 @@ function getNextConsultantInRound($conn, $roundId) {
     $updStmt->bind_param("ii", $nextId, $roundId);
     $updStmt->execute();
     $updStmt->close();
+    
+    // Increment skipped_credit for bypassed/skipped consultants
+    if (!empty($skippedConsultants) && $starvationEnabled === 1) {
+        $placeholders = implode(',', array_fill(0, count($skippedConsultants), '?'));
+        $stmtSkip = $conn->prepare("UPDATE round_consultants SET skipped_credit = skipped_credit + 1 WHERE round_id = ? AND consultant_id IN ($placeholders)");
+        if ($stmtSkip) {
+            $bindParams = array_merge([$roundId], $skippedConsultants);
+            $types = 'i' . str_repeat('i', count($skippedConsultants));
+            $stmtSkip->bind_param($types, ...$bindParams);
+            $stmtSkip->execute();
+            $stmtSkip->close();
+        }
+    }
     
     if (isset($skipResetStmt)) $skipResetStmt->close();
     if (isset($skipIncrStmt)) $skipIncrStmt->close();
@@ -905,19 +1000,40 @@ function simulateNextConsultantInRound($conn, $roundId) {
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
     
-    // 2. Get active consultants with ALL rules, excluding those on active leave
-    $cStmt = $conn->prepare("
-        SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
-               rc.data_per_turn, rc.current_turn_remaining, c.name, c.zalo_chat_id, c.email, c.avatar
-        FROM round_consultants rc 
-        JOIN consultants c ON rc.consultant_id = c.id 
-        WHERE rc.round_id = ? 
-          AND rc.is_active = 1 
-          AND c.status = 'active' 
-          AND c.vacation_mode = 0 
-          AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
-        ORDER BY c.id ASC
-    ");
+    $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
+    $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
+    if ($starvationMaxPerHour <= 0) {
+        $starvationMaxPerHour = 5;
+    }
+
+    // 2. Get active consultants
+    if ($starvationEnabled === 1) {
+        $cStmt = $conn->prepare("
+            SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+                   rc.data_per_turn, rc.current_turn_remaining, rc.skipped_credit, c.name, c.zalo_chat_id, c.email, c.avatar,
+                   c.vacation_mode, c.leave_start, c.leave_end, c.work_start_time, c.work_end_time, c.work_schedule
+            FROM round_consultants rc 
+            JOIN consultants c ON rc.consultant_id = c.id 
+            WHERE rc.round_id = ? 
+              AND rc.is_active = 1 
+              AND c.status = 'active'
+            ORDER BY c.id ASC
+        ");
+    } else {
+        $cStmt = $conn->prepare("
+            SELECT c.id, rc.receive_ratio, rc.skip_count, rc.compensation_count, 
+                   rc.data_per_turn, rc.current_turn_remaining, 0 as skipped_credit, c.name, c.zalo_chat_id, c.email, c.avatar,
+                   c.vacation_mode, c.leave_start, c.leave_end, c.work_start_time, c.work_end_time, c.work_schedule
+            FROM round_consultants rc 
+            JOIN consultants c ON rc.consultant_id = c.id 
+            WHERE rc.round_id = ? 
+              AND rc.is_active = 1 
+              AND c.status = 'active' 
+              AND c.vacation_mode = 0 
+              AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
+            ORDER BY c.id ASC
+        ");
+    }
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
@@ -929,16 +1045,49 @@ function simulateNextConsultantInRound($conn, $roundId) {
     
     $consultants = [];
     $compensatedConsultant = null;
+    $starvationConsultant = null;
     $midTurnConsultant = null;
+    
+    $today = date('Y-m-d');
+    $currentTime = date('H:i');
     
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
+        
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
+        $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
+        $isAvailable = !$isOnVacation;
+        
         // Priority 1: Compensation
-        if (empty($compensatedConsultant) && intval($row['compensation_count']) > 0) {
+        if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
-        // Priority 2: Mid-turn
-        if (empty($midTurnConsultant) && intval($row['current_turn_remaining']) > 0) {
+        
+        // Priority 2: Starvation (only if on shift)
+        if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+            // Count starvation leads in last hour
+            $logStmt = $conn->prepare("
+                SELECT COUNT(*) as cnt 
+                FROM distribution_logs 
+                WHERE assigned_to = ? 
+                  AND status = 'compensation' 
+                  AND message LIKE '%(Starvation Prevention)%' 
+                  AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            ");
+            if ($logStmt) {
+                $logStmt->bind_param("i", $row['id']);
+                $logStmt->execute();
+                $logRes = $logStmt->get_result()->fetch_assoc();
+                $logStmt->close();
+                $hourlyCount = (int)($logRes['cnt'] ?? 0);
+                if ($hourlyCount < $starvationMaxPerHour) {
+                    $starvationConsultant = $row;
+                }
+            }
+        }
+        
+        // Priority 3: Mid-turn
+        if (empty($compensatedConsultant) && empty($starvationConsultant) && empty($midTurnConsultant) && $isAvailable && intval($row['current_turn_remaining']) > 0) {
             $midTurnConsultant = $row;
         }
     }
@@ -949,12 +1098,17 @@ function simulateNextConsultantInRound($conn, $roundId) {
         return $compensatedConsultant;
     }
 
-    // === PRIORITY 2: MID-TURN ===
+    // === PRIORITY 2: STARVATION ===
+    if ($starvationConsultant) {
+        return $starvationConsultant;
+    }
+
+    // === PRIORITY 3: MID-TURN ===
     if ($midTurnConsultant) {
         return $midTurnConsultant;
     }
     
-    // === PRIORITY 3: ROUND-ROBIN ===
+    // === PRIORITY 4: ROUND-ROBIN ===
     $nextIdx = 0;
     if ($lastAssignedId) {
         foreach ($consultants as $i => $c) {
@@ -973,15 +1127,23 @@ function simulateNextConsultantInRound($conn, $roundId) {
     
     do {
         $candidate = $simulatedConsultants[$nextIdx];
-        $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
-        $skipCount = (int)($candidate['skip_count'] ?? 0);
         
-        if ($ratio == 1 || $skipCount >= $ratio - 1) {
-            $chosenConsultant = $candidate;
-            break;
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
+        $isAvailable = !$isOnVacation;
+        
+        if ($isAvailable) {
+            $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
+            $skipCount = (int)($candidate['skip_count'] ?? 0);
+            
+            if ($ratio == 1 || $skipCount >= $ratio - 1) {
+                $chosenConsultant = $candidate;
+                break;
+            } else {
+                // locally increment skip_count
+                $simulatedConsultants[$nextIdx]['skip_count'] = $skipCount + 1;
+                $nextIdx = ($nextIdx + 1) % count($simulatedConsultants);
+            }
         } else {
-            // locally increment skip_count
-            $simulatedConsultants[$nextIdx]['skip_count'] = $skipCount + 1;
             $nextIdx = ($nextIdx + 1) % count($simulatedConsultants);
         }
     } while ($nextIdx != $startIdx);
@@ -1159,7 +1321,7 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
 /**
  * Gửi thông báo đồng bộ 2 chiều (write-back) ngược về Google Sheets thông qua Web App Apps Script
  */
-function triggerTwoWaySync($conn, $leadId) {
+function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
     if (empty($leadId)) return false;
 
     // 1. Lấy thông tin chi tiết của Lead, Connection liên kết, và Vòng chia số
@@ -1179,18 +1341,24 @@ function triggerTwoWaySync($conn, $leadId) {
         LEFT JOIN consultants c ON l.assigned_to = c.id
         WHERE l.id = ? LIMIT 1
     ");
-    if (!$stmt) return false;
+    if (!$stmt) {
+        $errorMsg = "Prepare statement failed";
+        return false;
+    }
     $stmt->bind_param("i", $leadId);
     $stmt->execute();
     $res = $stmt->get_result();
     if ($res->num_rows === 0) {
         $stmt->close();
+        $errorMsg = "Lead not found";
         return false;
     }
     $lead = $res->fetch_assoc();
     $stmt->close();
 
     $syncSuccess = false;
+    $connectionSynced = false;
+    $connectionSuccess = true;
 
     // A. Đồng bộ riêng cho Connection liên kết (nếu có cấu hình và đang hoạt động)
     if (!empty($lead['connection_id']) && 
@@ -1198,6 +1366,7 @@ function triggerTwoWaySync($conn, $leadId) {
         !empty($lead['google_script_url']) && 
         !empty($lead['conn_is_active'])) {
         
+        $connectionSynced = true;
         // 2. Lấy danh sách mapping của Connection này
         $mapStmt = $conn->prepare("SELECT sheet_column, system_field FROM field_mappings WHERE connection_id = ?");
         if ($mapStmt) {
@@ -1272,8 +1441,15 @@ function triggerTwoWaySync($conn, $leadId) {
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
                     curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
                     
-                    curl_exec($ch);
+                    $response = curl_exec($ch);
                     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    if ($response === false) {
+                        $connectionSuccess = false;
+                        $errorMsg = "Connection cURL error: " . curl_error($ch);
+                    } elseif ($httpCode !== 200) {
+                        $connectionSuccess = false;
+                        $errorMsg = "Connection HTTP status code $httpCode. Response: " . substr($response, 0, 150);
+                    }
                     curl_close($ch);
 
                     if ($httpCode === 200) {
@@ -1289,7 +1465,11 @@ function triggerTwoWaySync($conn, $leadId) {
     $masterUrl = get_system_setting($conn, 'master_google_script_url');
     $masterSheetName = get_system_setting($conn, 'master_sheet_name');
 
+    $masterSuccess = true;
+    $masterSynced = false;
+
     if ($masterEnabled && !empty($masterUrl)) {
+        $masterSynced = true;
         // Tạo payload Master
         $masterPayload = [
             'sheet_name' => $masterSheetName,
@@ -1325,8 +1505,15 @@ function triggerTwoWaySync($conn, $leadId) {
         curl_setopt($chM, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
         
-        curl_exec($chM);
+        $responseM = curl_exec($chM);
         $httpCodeMaster = curl_getinfo($chM, CURLINFO_HTTP_CODE);
+        if ($responseM === false) {
+            $masterSuccess = false;
+            $errorMsg = ($errorMsg ? $errorMsg . " | " : "") . "Master cURL error: " . curl_error($chM);
+        } elseif ($httpCodeMaster !== 200) {
+            $masterSuccess = false;
+            $errorMsg = ($errorMsg ? $errorMsg . " | " : "") . "Master HTTP status code $httpCodeMaster. Response: " . substr($responseM, 0, 150);
+        }
         curl_close($chM);
 
         if ($httpCodeMaster === 200) {
@@ -1334,7 +1521,81 @@ function triggerTwoWaySync($conn, $leadId) {
         }
     }
 
-    return $syncSuccess;
+    // Trả về true nếu tất cả các luồng đồng bộ được cấu hình đều thành công
+    $finalSuccess = true;
+    if ($connectionSynced && !$connectionSuccess) {
+        $finalSuccess = false;
+    }
+    if ($masterSynced && !$masterSuccess) {
+        $finalSuccess = false;
+    }
+    if (!$connectionSynced && !$masterSynced) {
+        $finalSuccess = false;
+    }
+
+    return $finalSuccess;
+}
+
+/**
+ * Đẩy yêu cầu đồng bộ 2 chiều vào database queue (Outbox Pattern)
+ */
+function triggerTwoWaySync($conn, $leadId) {
+    if (empty($leadId)) return false;
+
+    // Check if sync is configured & active for this lead/connection or master sync to avoid useless queue growth
+    $stmt = $conn->prepare("
+        SELECT l.connection_id,
+               sc.two_way_sync, sc.google_script_url, sc.is_active as conn_is_active
+        FROM leads l
+        LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+        WHERE l.id = ? LIMIT 1
+    ");
+    if (!$stmt) return false;
+    $stmt->bind_param("i", $leadId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($res->num_rows === 0) {
+        $stmt->close();
+        return false;
+    }
+    $lead = $res->fetch_assoc();
+    $stmt->close();
+
+    $needsSync = false;
+    if (!empty($lead['connection_id']) && 
+        !empty($lead['two_way_sync']) && 
+        !empty($lead['google_script_url']) && 
+        !empty($lead['conn_is_active'])) {
+        $needsSync = true;
+    }
+
+    $masterEnabled = (int) get_system_setting($conn, 'master_two_way_sync');
+    $masterUrl = get_system_setting($conn, 'master_google_script_url');
+    if ($masterEnabled && !empty($masterUrl)) {
+        $needsSync = true;
+    }
+
+    if (!$needsSync) {
+        return false;
+    }
+
+    // Thêm hoặc cập nhật yêu cầu đồng bộ vào hàng đợi sync_queue
+    $queueStmt = $conn->prepare("
+        INSERT INTO sync_queue (lead_id, connection_id, status, attempts, next_retry_at)
+        VALUES (?, ?, 'pending', 0, NOW())
+        ON DUPLICATE KEY UPDATE 
+            status = 'pending',
+            attempts = 0,
+            next_retry_at = NOW()
+    ");
+    if ($queueStmt) {
+        $connId = !empty($lead['connection_id']) ? (int)$lead['connection_id'] : null;
+        $queueStmt->bind_param("ii", $leadId, $connId);
+        $queueStmt->execute();
+        $queueStmt->close();
+        return true;
+    }
+    return false;
 }
 
 

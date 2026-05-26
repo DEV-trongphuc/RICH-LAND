@@ -115,6 +115,8 @@ export const Settings = () => {
   const [fallbackRoundId, setFallbackRoundId] = useState('');
   const [duplicateCheckMonths, setDuplicateCheckMonths] = useState(6);
   const [reassignIfOwnerInactive, setReassignIfOwnerInactive] = useState(true);
+  const [starvationPreventionEnabled, setStarvationPreventionEnabled] = useState(false);
+  const [starvationMaxLeadsPerHour, setStarvationMaxLeadsPerHour] = useState(3);
 
   // Fallback direct Admin + CC config
   const [fallbackType, setFallbackType] = useState('round');
@@ -277,6 +279,12 @@ export const Settings = () => {
         if (json.data.global_exclusion_contacts) setExclusionContacts(json.data.global_exclusion_contacts);
         if (json.data.duplicate_check_months) setDuplicateCheckMonths(Number(json.data.duplicate_check_months));
         setReassignIfOwnerInactive(json.data.reassign_if_owner_inactive === undefined || json.data.reassign_if_owner_inactive === '1' || json.data.reassign_if_owner_inactive === 1);
+        if (json.data.starvation_prevention_enabled !== undefined) {
+          setStarvationPreventionEnabled(json.data.starvation_prevention_enabled === '1' || json.data.starvation_prevention_enabled === 1);
+        }
+        if (json.data.starvation_max_leads_per_hour !== undefined) {
+          setStarvationMaxLeadsPerHour(Number(json.data.starvation_max_leads_per_hour));
+        }
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
         if (json.data.ticket_auto_approve_rules) {
@@ -341,6 +349,8 @@ export const Settings = () => {
       global_exclusion_contacts: exclusionContacts,
       duplicate_check_months: duplicateCheckMonths,
       reassign_if_owner_inactive: reassignIfOwnerInactive ? '1' : '0',
+      starvation_prevention_enabled: starvationPreventionEnabled ? 1 : 0,
+      starvation_max_leads_per_hour: starvationMaxLeadsPerHour,
       ticket_auto_approve_enabled: ticketAutoApproveEnabled ? 1 : 0,
       ticket_auto_approve_keywords: ticketAutoApproveKeywords,
       ticket_auto_approve_rules: ticketAutoApproveRules,
@@ -2300,6 +2310,53 @@ function doPost(e) {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Cấu hình Bù Lượt Thiếu (Fairness Starvation Prevention) */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Activity size={16} />
+                  </span>
+                  {t('Cấu hình Bù Lượt Thiếu (Fairness Starvation Prevention)')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Khi Sale nghỉ phép hoặc ngoài giờ làm việc, hệ thống sẽ bỏ qua lượt của họ. Khi họ quay lại ca trực, cơ chế này sẽ ưu tiên bù lượt cho họ (giới hạn theo giờ để tránh dồn dập).')}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <ToggleSwitch
+                      checked={starvationPreventionEnabled}
+                      onChange={setStarvationPreventionEnabled}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Kích hoạt Bù Lượt Thiếu')}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                        {t('Tự động tích lũy và ưu tiên bù lượt cho Sale khi quay lại ca trực (mặc định TẮT)')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {starvationPreventionEnabled && (
+                    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', animation: 'fadeIn 0.3s' }}>
+                      <label className="form-label">{t('Số lượt bù tối đa mỗi giờ (Để tránh dồn dập)')}</label>
+                      <div style={{ position: 'relative', width: 200 }}>
+                        <input
+                          type="number"
+                          min={1}
+                          className="form-input"
+                          value={starvationMaxLeadsPerHour}
+                          onChange={e => setStarvationMaxLeadsPerHour(Math.max(1, Number(e.target.value)))}
+                          style={{ paddingRight: 90 }}
+                        />
+                        <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>{t('Lead/giờ')}</span>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                        {t('Giới hạn tối đa số lượng leads bù cho mỗi Sale trong vòng 1 giờ để tránh dồn dập quá tải')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

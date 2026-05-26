@@ -68,7 +68,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 120) {
+        if ($dbVer >= 121) {
             $runMigration = false;
         }
     }
@@ -527,7 +527,33 @@ if ($runMigration) {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_two_way_sync', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_google_script_url', '')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_sheet_name', '')");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '120') ON DUPLICATE KEY UPDATE setting_value = '120'");
+    
+    // Auto-migrate: Version 121 - sync_queue table
+    $conn->query("CREATE TABLE IF NOT EXISTS sync_queue (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        lead_id INT UNIQUE,
+        connection_id INT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        attempts INT DEFAULT 0,
+        next_retry_at DATETIME,
+        last_error TEXT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+        FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Auto-migrate: Version 121 - skipped_credit column
+    $chkColSK = $conn->query("SHOW COLUMNS FROM round_consultants LIKE 'skipped_credit'");
+    if ($chkColSK && $chkColSK->num_rows === 0) {
+        $conn->query("ALTER TABLE round_consultants ADD COLUMN skipped_credit INT DEFAULT 0 COMMENT 'Lượt bù tích lũy do ngoài giờ/nghỉ phép'");
+    }
+
+    // Auto-migrate: Version 121 - default starvation prevention settings
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('starvation_prevention_enabled', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('starvation_max_leads_per_hour', '5')");
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '121') ON DUPLICATE KEY UPDATE setting_value = '121'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

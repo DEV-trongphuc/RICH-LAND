@@ -1645,4 +1645,13 @@ export const en: Record<string, string> = {
   "Sale phụ trách (Trùng số nhắc lại)": "Assigned Sale (Recall duplicate)",
   "Theo Kết nối": "By Connection",
   "Theo Nguồn Lead": "By Lead Source",
+
+  // Fairness Starvation Prevention
+  "Cấu hình Bù Lượt Thiếu (Fairness Starvation Prevention)": "Fairness Starvation Prevention Config",
+  "Khi Sale nghỉ phép hoặc ngoài giờ làm việc, hệ thống sẽ bỏ qua lượt của họ. Khi họ quay lại ca trực, cơ chế này sẽ ưu tiên bù lượt cho họ (giới hạn theo giờ để tránh dồn dập).": "When a sales rep is on leave or outside working hours, the system skips their turn. Upon their return, this mechanism prioritizes compensating their skipped turns (capped per hour to avoid spikes).",
+  "Kích hoạt Bù Lượt Thiếu": "Enable Starvation Prevention",
+  "Tự động tích lũy và ưu tiên bù lượt cho Sale khi quay lại ca trực (mặc định TẮT)": "Automatically accumulate and prioritize compensating skipped turns when they return on-duty (Default OFF)",
+  "Số lượt bù tối đa mỗi giờ (Để tránh dồn dập)": "Max Compensations Per Hour (To prevent spikes)",
+  "Giới hạn tối đa số lượng leads bù cho mỗi Sale trong vòng 1 giờ để tránh dồn dập quá tải": "Maximum number of compensated leads a representative can receive within a single hour to prevent overload",
+  "Lead/giờ": "Leads/hour",
 };
