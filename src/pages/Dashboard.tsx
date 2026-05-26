@@ -58,6 +58,16 @@ export const Dashboard = () => {
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const getComparisonLabel = (filter: string) => {
     switch (filter) {
       case 'Hôm nay':
@@ -482,7 +492,13 @@ export const Dashboard = () => {
               <ResponsiveContainer width="100%" height={260}>
                 <ComposedChart data={stats.chartData} margin={{ left: -10, right: 5, top: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <XAxis 
+                    dataKey="time" 
+                    tick={{ fontSize: isMobile ? 8 : 11, fill: 'var(--color-text-light)' }} 
+                    axisLine={false} 
+                    tickLine={false}
+                    interval={isMobile ? 'preserveStartEnd' : 'preserveEnd'} 
+                  />
                   <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
                   <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
@@ -806,11 +822,11 @@ export const Dashboard = () => {
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fill: 'var(--color-text)', fontWeight: 500 }}
-                        interval={0}
-                        angle={-12}
+                        tick={{ fontSize: isMobile ? 8 : 10, fill: 'var(--color-text)', fontWeight: 500 }}
+                        interval={isMobile ? 1 : 0}
+                        angle={isMobile ? -25 : -12}
                         textAnchor="end"
-                        height={40}
+                        height={isMobile ? 50 : 40}
                       />
                       <YAxis
                         allowDecimals={false}

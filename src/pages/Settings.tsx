@@ -1033,7 +1033,7 @@ export const Settings = () => {
                         </div>
 
                         {/* Table View */}
-                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
+                        <div className="responsive-table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
                           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                             <thead>
                               <tr style={{ background: 'var(--color-bg)' }}>
@@ -1506,7 +1506,7 @@ export const Settings = () => {
                         </div>
 
                         {/* Table View */}
-                        <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
+                        <div className="responsive-table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', maxHeight: '550px', overflowY: 'auto', background: 'var(--color-surface)' }}>
                           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                             <thead>
                               <tr style={{ background: 'var(--color-bg)' }}>
@@ -2439,6 +2439,7 @@ function doPost(e) {
                     {reportErrorReasons.map((item, index) => (
                       <div
                         key={index}
+                        className="mobile-stack"
                         style={{
                           display: 'flex',
                           gap: '1rem',
@@ -2452,7 +2453,7 @@ function doPost(e) {
                         }}
                       >
                         {/* Reason Column */}
-                        <div style={{ width: '260px', flexShrink: 0 }}>
+                        <div className="mobile-w-full" style={{ width: '260px', flexShrink: 0 }}>
                           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {t('Lý do báo lỗi')}
                           </div>
@@ -3231,7 +3232,7 @@ function doPost(e) {
             <div style={{ background: 'var(--color-bg)', padding: '10px 16px', fontSize: '0.8rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
               {t('Xem trước 5 dòng dữ liệu đầu tiên:')}
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="responsive-table-wrap" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>

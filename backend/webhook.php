@@ -515,7 +515,7 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
     // Release advisory lock
     releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     
-    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Gác Cổng: " . $aiScreenerResult['reason']]);
+    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Pre-screener: " . $aiScreenerResult['reason']]);
     exit();
 }
 

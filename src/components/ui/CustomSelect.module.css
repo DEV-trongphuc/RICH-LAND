@@ -33,10 +33,21 @@
   background: #f8fafc;
 }
 
+:global([data-theme="dark"]) .trigger:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
 .trigger.open {
   border-color: var(--color-primary);
   background: white;
   box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+:global([data-theme="dark"]) .trigger.open {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
 }
 
 .triggerContent {
@@ -85,6 +96,12 @@
   flex-direction: column;
 }
 
+:global([data-theme="dark"]) .dropdown {
+  background: var(--color-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(99, 102, 241, 0.08);
+}
+
 .searchBox {
   display: flex;
   align-items: center;
@@ -92,6 +109,11 @@
   border-bottom: 1px solid var(--color-border-light);
   gap: 0.75rem;
   background: #f8fafc;
+}
+
+:global([data-theme="dark"]) .searchBox {
+  background: var(--color-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .searchIcon {
@@ -130,6 +152,10 @@
 
 .option:hover {
   background: #f1f5f9;
+}
+
+:global([data-theme="dark"]) .option:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .optionSelected {
@@ -187,8 +213,14 @@
   background: #e2e8f0;
   border-radius: 10px;
 }
+:global([data-theme="dark"]) .list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
 .list::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
+}
+:global([data-theme="dark"]) .list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
 }
 
 @media (max-width: 768px) {

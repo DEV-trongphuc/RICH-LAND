@@ -2,15 +2,17 @@
 require_once 'db_connect.php';
 require_once 'zalo_bot.php';
 
-function runDailyReportCron($conn) {
+function runDailyReportCron($conn)
+{
     // --- PREVENT CONCURRENT EXECUTION ---
     $lockFile = __DIR__ . '/cron_daily_report.lock';
     $lockFp = fopen($lockFile, 'w');
     if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
-        if ($lockFp) fclose($lockFp);
+        if ($lockFp)
+            fclose($lockFp);
         return; // Already running
     }
-    
+
     // 0. Auto-resume consultants whose leave has ended
     $conn->query("
         UPDATE consultants 
@@ -27,7 +29,8 @@ function runDailyReportCron($conn) {
     }
 
     $reportTime = $settings['zalo_daily_report_time'] ?? '17:00';
-    if (empty($reportTime)) $reportTime = '17:00';
+    if (empty($reportTime))
+        $reportTime = '17:00';
     $lastRunDate = $settings['last_daily_report_date'] ?? '';
     $botToken = $settings['zalo_bot_token'] ?? '';
 
@@ -53,7 +56,7 @@ function runDailyReportCron($conn) {
         $stmtTs->bind_param("s", $endTimestamp);
         $stmtTs->execute();
         $stmtTs->close();
-        
+
         // 2. Dùng cửa sổ thời gian từ lần chạy báo cáo trước đến nay để tránh bỏ sót hoặc trùng lặp data
         $stmtData = $conn->prepare("
             SELECT c.id, c.name, dl.status, COUNT(*) as cnt
@@ -67,11 +70,11 @@ function runDailyReportCron($conn) {
         $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
         $stmtData->execute();
         $resData = $stmtData->get_result();
-        
+
         $saleData = [];
         if ($resData) {
             while ($row = $resData->fetch_assoc()) {
-                $cId = (int)$row['id'];
+                $cId = (int) $row['id'];
                 if (!isset($saleData[$cId])) {
                     $saleData[$cId] = [
                         'name' => $row['name'],
@@ -84,7 +87,7 @@ function runDailyReportCron($conn) {
                     ];
                 }
                 $status = $row['status'];
-                $saleData[$cId][$status] = (int)$row['cnt'];
+                $saleData[$cId][$status] = (int) $row['cnt'];
             }
         }
         $stmtData->close();
@@ -101,7 +104,7 @@ function runDailyReportCron($conn) {
         }
 
         // Sort descending by normal_total, then reminder_total
-        usort($saleList, function($a, $b) {
+        usort($saleList, function ($a, $b) {
             if ($b['normal_total'] !== $a['normal_total']) {
                 return $b['normal_total'] <=> $a['normal_total'];
             }
@@ -115,7 +118,7 @@ function runDailyReportCron($conn) {
         foreach ($saleList as $saleItem) {
             $normalTotal = $saleItem['normal_total'];
             $reminderTotal = $saleItem['reminder_total'];
-            
+
             if ($reminderTotal > 0) {
                 $total = $normalTotal + $reminderTotal;
                 $saleStats .= "  👤 " . $saleItem['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
@@ -124,7 +127,7 @@ function runDailyReportCron($conn) {
                 $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
                 $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $normalTotal . " data</li>";
             }
-            
+
             $totalData += $normalTotal;
             $totalReminder += $reminderTotal;
         }
@@ -132,7 +135,7 @@ function runDailyReportCron($conn) {
             $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
             $saleStatsHtml = "<li>Kỳ báo cáo này chưa chia data nào.</li>";
         }
-        
+
         // 3. Lấy số ticket trong kỳ báo cáo (cùng cửa sổ với data)
         $stmtTicket = $conn->prepare("
             SELECT COUNT(*) as total,
@@ -151,13 +154,13 @@ function runDailyReportCron($conn) {
         $rejectedTicket = 0;
         $pendingTicket = 0;
         if ($resTicket && $row = $resTicket->fetch_assoc()) {
-            $totalTicket = (int)$row['total'];
-            $approvedTicket = (int)($row['approved_count'] ?? 0);
-            $rejectedTicket = (int)($row['rejected_count'] ?? 0);
-            $pendingTicket = (int)($row['pending_count'] ?? 0);
+            $totalTicket = (int) $row['total'];
+            $approvedTicket = (int) ($row['approved_count'] ?? 0);
+            $rejectedTicket = (int) ($row['rejected_count'] ?? 0);
+            $pendingTicket = (int) ($row['pending_count'] ?? 0);
         }
         $stmtTicket->close();
-        
+
         // 3.5 Lấy số data bị chặn trong kỳ báo cáo (blacklist)
         $totalBlocked = 0;
         $stmtBlocked = $conn->prepare("
@@ -172,15 +175,15 @@ function runDailyReportCron($conn) {
             $stmtBlocked->execute();
             $resBlocked = $stmtBlocked->get_result();
             if ($resBlocked && $row = $resBlocked->fetch_assoc()) {
-                $totalBlocked = (int)$row['total'];
+                $totalBlocked = (int) $row['total'];
             }
             $stmtBlocked->close();
         }
-        
+
         // 3.7 Lấy số data bị AI tạm giữ và dưới chuẩn trong kỳ báo cáo
         $totalHeldByAI = 0;
         $totalBelowStandard = 0;
-        
+
         $stmtScreenerStats = $conn->prepare("
             SELECT 
                 SUM(CASE WHEN status = 'pending_approval' THEN 1 ELSE 0 END) as held_count,
@@ -194,12 +197,12 @@ function runDailyReportCron($conn) {
             $stmtScreenerStats->execute();
             $resScreenerStats = $stmtScreenerStats->get_result();
             if ($resScreenerStats && $row = $resScreenerStats->fetch_assoc()) {
-                $totalHeldByAI = (int)($row['held_count'] ?? 0);
-                $totalBelowStandard = (int)($row['below_std_count'] ?? 0);
+                $totalHeldByAI = (int) ($row['held_count'] ?? 0);
+                $totalBelowStandard = (int) ($row['below_std_count'] ?? 0);
             }
             $stmtScreenerStats->close();
         }
-        
+
         // 4. Lấy danh sách Admin nhận báo cáo
         // Ưu tiên danh sách đã được cấu hình; nếu chưa có thì gửi cho tất cả admin + super admin
         $adminIds = [];
@@ -229,11 +232,12 @@ function runDailyReportCron($conn) {
                 $admins[] = $row;
             }
         }
-        if (isset($adminStmt)) $adminStmt->close();
-        
+        if (isset($adminStmt))
+            $adminStmt->close();
+
         if (count($admins) > 0) {
             require_once 'mailer.php';
-            
+
             // Tạo nội dung cảnh báo cửa sổ thời gian
             $windowStart = date('H:i d/m/Y', strtotime($startTimestamp));
             $windowEnd = date('H:i d/m/Y', strtotime($endTimestamp));
@@ -248,7 +252,7 @@ function runDailyReportCron($conn) {
             }
             $msg .= "------------------------------\n";
             $msg .= $saleStats . "\n";
-            $msg .= "🤖 AI PRE-SCREENER (GÁC CỔNG):\n";
+            $msg .= "🤖 AI PRE-SCREENER:\n";
             $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
             $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n\n";
             $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
@@ -263,7 +267,7 @@ function runDailyReportCron($conn) {
             $msg .= "-------------------\n";
             $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
             $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
-            
+
             // Collect all Admin Zalo chat IDs for parallel batch execution
             $adminChatIds = [];
             foreach ($admins as $adm) {
@@ -274,7 +278,7 @@ function runDailyReportCron($conn) {
             if (!empty($botToken) && !empty($adminChatIds)) {
                 sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
             }
-            
+
             foreach ($admins as $adm) {
                 // Gửi Email
                 if (!empty($adm['email'])) {

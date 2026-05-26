@@ -328,7 +328,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
   };
 
   return (
-    <div className={`chatbot-parent ${isOpen ? 'is-open' : 'is-closed'}`} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+    <div className={`chatbot-parent ${isOpen ? 'is-open' : 'is-closed'}`} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95 }}>
       {/* CSS Styles injection */}
       <style>{`
         :root {
@@ -346,6 +346,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-border: rgba(0, 0, 0, 0.04);
           --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
           --chatbot-input-bg: rgba(248, 250, 252, 0.7);
+          --chatbot-btn-bg: #ffffff;
+          --chatbot-btn-border: #4f46e5;
         }
         [data-theme="dark"] {
           --chatbot-window-bg: rgba(26, 26, 36, 0.75);
@@ -362,6 +364,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-border: rgba(255, 255, 255, 0.04);
           --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           --chatbot-input-bg: rgba(15, 15, 20, 0.5);
+          --chatbot-btn-bg: #121826;
+          --chatbot-btn-border: #6366f1;
         }
         
         .pulse-chatbot {
@@ -529,7 +533,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           width: 52,
           height: 52,
           borderRadius: '50%',
-          background: 'white',
+          background: 'var(--chatbot-btn-bg)',
           padding: 0,
           cursor: 'pointer',
           border: 'none',
@@ -570,8 +574,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             height: '100%',
             borderRadius: '50%',
             objectFit: 'cover',
-            border: '3px solid #4f46e5',
-            background: 'white',
+            border: '3px solid var(--chatbot-btn-border)',
+            background: 'var(--chatbot-btn-bg)',
             display: 'block'
           }}
         />

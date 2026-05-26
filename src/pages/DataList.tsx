@@ -594,11 +594,11 @@ export const DataList = () => {
               alignItems: 'center',
               padding: '2px 4px',
               borderRadius: '4px',
-              background: '#f5f3ff',
-              color: '#7c3aed',
+              background: theme === 'dark' ? 'var(--color-primary-light)' : '#f5f3ff',
+              color: theme === 'dark' ? 'var(--color-primary)' : '#7c3aed',
               fontSize: '0.6875rem',
               fontWeight: 600,
-              border: '1px solid #ddd6fe'
+              border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe'
             }} title={t("Ticket lỗi")}>
               <span>Ticket:</span>
               <strong>{dayData.ticket_total}</strong>
@@ -611,10 +611,11 @@ export const DataList = () => {
               alignItems: 'center',
               padding: '2px 4px',
               borderRadius: '4px',
-              background: '#fce7f3',
-              color: '#db2777',
+              background: theme === 'dark' ? 'rgba(236, 72, 153, 0.15)' : '#fce7f3',
+              color: theme === 'dark' ? '#f472b6' : '#db2777',
               fontSize: '0.6875rem',
-              fontWeight: 600
+              fontWeight: 600,
+              border: theme === 'dark' ? '1px solid rgba(236, 72, 153, 0.25)' : 'none'
             }} title={t("Nhắc lại")}>
               <span>{t('Nhắc')}:</span>
               <strong>{dayData.reminder}</strong>
@@ -757,7 +758,7 @@ export const DataList = () => {
       </div>
 
       {/* Mobile Filter Toggle */}
-      <div className="mobile-only" style={{ marginBottom: '1rem' }}>
+      <div className="filter-mobile-only" style={{ marginBottom: '1rem' }}>
         <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
           <Filter size={16} /> {showMobileFilters ? t('Ẩn bộ lọc') : t('Hiện bộ lọc')}
         </button>
@@ -765,7 +766,7 @@ export const DataList = () => {
 
       {/* Filters */}
       <div
-        className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`}
+        className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`}
         style={{
           display: viewMode === 'calendar' ? 'none' : 'flex',
           gap: '0.75rem',
@@ -2365,16 +2366,13 @@ export const DataList = () => {
           transition: background-color 0.15s ease;
         }
         .premium-table tr:hover {
-          background-color: rgba(124, 58, 237, 0.02);
+          background-color: var(--color-primary-light);
         }
         .modal-tab-button {
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .modal-tab-button:hover {
           color: var(--color-primary) !important;
-        }
-        [data-theme="dark"] .premium-table tr:hover {
-          background-color: rgba(124, 58, 237, 0.05);
         }
       `}</style>
     </div>

@@ -624,7 +624,7 @@ export const Tickets = () => {
         </div>
       </div>
 
-        <div className="mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+        <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
             {/* Status Dropdown */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -710,7 +710,7 @@ export const Tickets = () => {
           </div>
         </div>
 
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'hide-on-mobile' : ''}`} style={{
+      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
           display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
           padding: '14px 18px',
           background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
@@ -870,7 +870,7 @@ export const Tickets = () => {
                 </p>
               </div>
             ) : (
-              <div className="table-wrap">
+              <div className="table-wrap mobile-card-table">
                 <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
@@ -908,7 +908,7 @@ export const Tickets = () => {
                         style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
                         className="lead-row"
                       >
-                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                        <td data-label={t('Thông tin Lead')} style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
                             <Avatar name={r.lead_name} size={36} />
                             <div>
@@ -922,19 +922,19 @@ export const Tickets = () => {
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                        <td data-label={t('Tư vấn viên')} style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                             <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
                           </div>
                         </td>
-                        <td style={{ padding: '1.25rem 1.5rem' }}>
+                        <td data-label={t('Vòng phân bổ')} style={{ padding: '1.25rem 1.5rem' }}>
                           {r.round_name && (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
                               <Zap size={12} /> {r.round_name}
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '1.25rem 1.5rem' }}>
+                        <td data-label={t('Lý do lỗi')} style={{ padding: '1.25rem 1.5rem' }}>
                           <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
                             <div style={{
@@ -971,7 +971,7 @@ export const Tickets = () => {
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td className="col-actions" data-label={t('Thao tác')} style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {r.status === 'pending' ? (
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                               {r.zalo_chat_id && (
@@ -1304,7 +1304,7 @@ export const Tickets = () => {
                       {selectedLead.status === 'rule_6_month' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Quy định 6 tháng")}</span>}
                       {selectedLead.status === 'silent' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>{t("Chỉ đồng bộ")}</span>}
                       {selectedLead.status === 'blacklisted' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>{t("Blacklist")}</span>}
-                      {selectedLead.status === 'pending_approval' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Gác Cổng")}</span>}
+                      {selectedLead.status === 'pending_approval' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Pre-screener")}</span>}
                     </div>
                   </div>
                 </div>
@@ -1331,7 +1331,7 @@ export const Tickets = () => {
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem' }}>
                             {selectedLead.ai_screener_status === 'error' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
-                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Gác Cổng') : t('AI Gác Cổng Tạm Giữ')}</span>
+                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}</span>
                           </div>
                           <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
                             <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}

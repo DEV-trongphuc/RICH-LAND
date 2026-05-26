@@ -2128,10 +2128,10 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
         $frontendUrl = $proto . '://' . $host;
     }
     $frontendUrl = rtrim($frontendUrl, '/');
-    
+
     // Default API URL
     $apiUrl = $frontendUrl . '/api.php';
-    
+
     // Check if running on localhost dev (to resolve Vite dev server mapping to PHP port)
     if (strpos($frontendUrl, 'localhost:5173') !== false || strpos($frontendUrl, 'localhost:5174') !== false || strpos($frontendUrl, 'localhost:3000') !== false) {
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -2189,7 +2189,7 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
         // Send Zalo Notification
         if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
             $zaloMsg = "🔔 [ CẢNH BÁO DATA DƯỚI CHUẨN ] 🔔\n"
-                . "━━━━━━━━━━━━━━━━━━━━━\n"
+                . "━━━━━━━━\n"
                 . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
                 . "👤 THÔNG TIN KHÁCH HÀNG:\n"
                 . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
@@ -2204,7 +2204,7 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
                 . "⚡ LỆNH DUYỆT NHANH (ZALO):\n"
                 . "  👉 Duyệt lead: Soạn `/duyet " . $leadId . "`\n"
                 . "  👉 Từ chối lead: Soạn `/tuchoi " . $leadId . " [lý do]`\n"
-                . "━━━━━━━━━━━━━━━━━━━━━";
+                . "━━━━━━━━";
             try {
                 require_once __DIR__ . '/zalo_bot.php';
                 sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);

@@ -1249,7 +1249,7 @@ export const FairShareAudit = () => {
               {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} width="100%" height={56} style={{ marginBottom: 8 }} />)}
             </div>
           ) : activeData?.consultants && activeData.consultants.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }} className="audit-premium-table">
+            <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', textAlign: 'left' }} className="audit-premium-table">
               <thead>
                 <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{

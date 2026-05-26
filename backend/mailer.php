@@ -1037,10 +1037,10 @@ function sendDailyReportEmailToAdmins(
 
          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
              <div style="padding: 16px 20px; background: #faf5ff; border-bottom: 1px solid #f3e8ff;">
-                 <h3 style="margin: 0; color: #6b21a8; font-size: 16px;">AI Pre-screener / Lọc Gác Cổng</h3>
+                 <h3 style="margin: 0; color: #6b21a8; font-size: 16px;">AI Pre-screener</h3>
              </div>
              <div style="padding: 20px;">
-                 <p style="margin: 0 0 10px 0; color: #334155;">Thống kê bộ lọc AI gác cổng hôm nay:</p>
+                 <p style="margin: 0 0 10px 0; color: #334155;">Thống kê bộ lọc AI Pre-screener hôm nay:</p>
                  <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.6;">
                      <li>Số lead bị AI tạm giữ (chờ duyệt): <strong>' . $totalHeldByAI . '</strong></li>
                      <li>Số lead dưới chuẩn (tạm giữ, hủy & blacklist): <strong>' . $totalBelowStandard . '</strong></li>

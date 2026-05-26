@@ -301,7 +301,7 @@ export const Gatekeeper = () => {
         }
       }
     } catch (e: any) {
-      toast.error(t('Lỗi tải dữ liệu AI Gác Cổng: ') + e.message);
+      toast.error(t('Lỗi tải dữ liệu AI Pre-screener: ') + e.message);
     }
     setHeldLeadsLoading(false);
   };
@@ -682,7 +682,7 @@ export const Gatekeeper = () => {
           </div>
           <div style={{ flex: 1 }}>
             <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4, marginTop: 0 }}>
-              {t("Bộ Lọc AI Gác Cổng hoạt động thế nào?")}
+              {t("Bộ Lọc AI Pre-screener hoạt động thế nào?")}
             </h4>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
               {t("Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (sử dụng Gemini AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.")}
@@ -1449,7 +1449,7 @@ export const Gatekeeper = () => {
                     />
                     <div>
                       <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                        {t('Kích hoạt AI Gác Cổng (Pre-screener Gatekeeper)')}
+                        {t('Kích hoạt AI Pre-screener (Pre-screener Gatekeeper)')}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
                         {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động.')}
@@ -1741,7 +1741,7 @@ export const Gatekeeper = () => {
                             {/* Section 2: Choose Mode */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                {t('Chế độ Lọc Gác Cổng')}
+                                {t('Chế độ Lọc Pre-screener')}
                               </label>
                               <CustomSelect
                                 options={[
@@ -2419,7 +2419,7 @@ export const Gatekeeper = () => {
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.01)'
                 }}>
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="responsive-table-wrap" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
@@ -2759,7 +2759,7 @@ export const Gatekeeper = () => {
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
                     <div>
-                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Gác Cổng")}</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Pre-screener")}</span>
                     </div>
                   </div>
                 </div>
@@ -2786,7 +2786,7 @@ export const Gatekeeper = () => {
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem' }}>
                             {selectedLead.ai_screener_status === 'error' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
-                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Gác Cổng') : t('AI Gác Cổng Tạm Giữ')}</span>
+                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}</span>
                           </div>
                           <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
                             <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}

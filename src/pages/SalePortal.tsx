@@ -894,7 +894,7 @@ export const SalePortal = () => {
             </span>
           </div>
 
-          <div className="table-wrap responsive-table-wrap" style={{ overflowX: 'auto' }}>
+          <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ overflowX: 'auto' }}>
             {loading ? (
               <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
@@ -931,7 +931,7 @@ export const SalePortal = () => {
                       onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)')}
                     >
                       {/* KHÁCH HÀNG */}
-                      <td style={{ padding: '1rem 1.25rem' }}>
+                      <td data-label={t('KHÁCH HÀNG')} style={{ padding: '1rem 1.25rem' }}>
                         <div
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}
                         >
@@ -1012,7 +1012,7 @@ export const SalePortal = () => {
                       </td>
 
                       {/* LIÊN HỆ */}
-                      <td style={{ padding: '1rem 1.25rem' }}>
+                      <td data-label={t('LIÊN HỆ')} style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <span style={{ color: '#d97706', fontWeight: 700 }}>{lead.phone}</span>
                           <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{lead.lead_email || '—'}</span>
@@ -1021,7 +1021,7 @@ export const SalePortal = () => {
 
                       {/* VÒNG / PHÂN BỔ CHO */}
                       {user?.role === 'sale' ? (
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td data-label={t('VÒNG')} style={{ padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             <span style={{
                               display: 'inline-flex',
@@ -1037,7 +1037,7 @@ export const SalePortal = () => {
                           </div>
                         </td>
                       ) : (
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td data-label={t('PHÂN BỔ CHO')} style={{ padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Avatar src={lead.sale_avatar} name={lead.sale_name || t('Chưa nhận')} size="sm" />
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1053,7 +1053,7 @@ export const SalePortal = () => {
                       )}
 
                       {/* NGUỒN / PHÂN LOẠI */}
-                      <td style={{ padding: '1rem 1.25rem' }}>
+                      <td data-label={t('NGUỒN / PHÂN LOẠI')} style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <span style={{ color: '#475569', fontSize: '0.8rem', fontWeight: 500 }}>
                             {lead.source || 'N/A'}
@@ -1067,7 +1067,7 @@ export const SalePortal = () => {
                       </td>
 
                       {/* THỜI GIAN NHẬN */}
-                      <td style={{ padding: '1rem 1.25rem' }}>
+                      <td data-label={t('THỜI GIAN NHẬN')} style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: '#64748b' }}>
                           <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : 'N/A'}</span>
                           {lead.status === 'compensation' && (
@@ -1088,7 +1088,7 @@ export const SalePortal = () => {
                       </td>
 
                       {/* TICKET (Trạng thái / Báo lỗi) */}
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                      <td className="col-actions" data-label={t('TICKET')} style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           {lead.report_status === 'pending' && (
                             <div

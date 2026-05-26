@@ -16,6 +16,7 @@
     left: 0;
     height: 100vh;
     transform: translateX(-100%);
+    z-index: 1000 !important; /* Ensure mobile drawer is always on top of sticky page elements */
   }
   .responsive-sidebar.responsive-sidebar-open {
     transform: translateX(0);
@@ -23,6 +24,30 @@
   .mobile-menu-btn {
     display: flex !important;
   }
+  .row-actions {
+    opacity: 1 !important;
+  }
+  .mobile-filter-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    justify-content: flex-start !important;
+  }
+  .mobile-filter-tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .mobile-filter-tabs::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+  }
+}
+
+/* Global Touch Scrolling for Table Containers */
+.table-wrap, .responsive-table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important; /* Premium momentum touch scrolling on mobile/tablet */
 }
 
 @media (max-width: 768px) {
@@ -97,22 +122,6 @@
   
   .mobile-round-actions {
     flex-wrap: wrap !important;
-  }
-  
-  .mobile-filter-tabs {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-    justify-content: flex-start !important;
-  }
-  .mobile-filter-tabs::-webkit-scrollbar {
-    height: 4px;
-  }
-  .mobile-filter-tabs::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 4px;
   }
 
   /* --- NEW MOBILE AUDIT FIXES --- */
@@ -276,7 +285,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  z-index: 15;
+  z-index: 990 !important; /* Stand behind mobile sidebar drawer (1000) but in front of sticky page elements */
 }
 
 /* ================================================
@@ -340,35 +349,35 @@
 
 [data-theme="dark"] {
   /* Brand & Layout Backgrounds */
-  --color-bg: #090d16;             /* Deeper pitch-dark space color */
-  --color-surface: #111827;        /* Crisp slate gray, clearly standing out from bg */
-  --sidebar-bg: #080c14;           /* Slightly darker than main bg for clean separation */
+  --color-bg: #0b0f19;             /* Premium cosmic space background */
+  --color-surface: #121826;        /* Slate dark surface, standing out beautifully from bg */
+  --sidebar-bg: #080b13;           /* Ultra dark sidebar for neat left column separation */
   --sidebar-hover: rgba(255, 255, 255, 0.06);
   --sidebar-active: rgba(99, 102, 241, 0.85); /* Premium indigo theme active */
 
   /* High Contrast Borders */
-  --color-border: rgba(255, 255, 255, 0.10);       /* Enhanced border contrast */
-  --color-border-light: rgba(255, 255, 255, 0.05); /* Finer divider border */
+  --color-border: rgba(255, 255, 255, 0.08);       /* Clean refined border */
+  --color-border-light: rgba(255, 255, 255, 0.04); /* Finer separator line */
 
-  /* Optimized Typography Contrast (Satisfies WCAG AAA/AA specs) */
-  --color-text: #f9fafb;           /* Pure crisp slate-white for maximum legibility */
-  --color-text-light: #d1d5db;     /* High contrast body text */
-  --color-text-muted: #9ca3af;     /* Highly legible Slate 400 for subtext and captions */
+  /* Optimized Typography Contrast (WCAG AA compliant) */
+  --color-text: #f9fafb;           /* Pure white for maximum screen reading comfort */
+  --color-text-light: #d1d5db;     /* Slate-300 high contrast body text */
+  --color-text-muted: #9ca3af;     /* Slate-400 for secondary text and descriptions */
 
   /* Rich Color Accent */
-  --color-primary: #6366f1;        /* Brilliant indigo-500 accent color */
+  --color-primary: #6366f1;        /* Indigo-500 accent color */
   --color-primary-hover: #4f46e5;  /* Deep indigo-600 */
-  --color-primary-light: rgba(99, 102, 241, 0.14); /* Visually strong active hover highlight */
+  --color-primary-light: rgba(99, 102, 241, 0.15); /* Strong active highlight */
 
-  /* Optimized Semantic Badges/Alerts Contrast */
-  --color-success: #10b981;        /* True emerald green */
-  --color-success-light: rgba(16, 185, 129, 0.12);
-  --color-warning: #f59e0b;        /* Pure warning amber */
-  --color-warning-light: rgba(245, 158, 11, 0.12);
-  --color-danger: #ef4444;         /* Rich red danger */
-  --color-danger-light: rgba(239, 68, 68, 0.12);
-  --color-info: #3b82f6;           /* Ocean blue info */
-  --color-info-light: rgba(59, 130, 246, 0.12);
+  /* Optimized Semantic Badges/Alerts Contrast for dark background reading */
+  --color-success: #34d399;        /* Emerald-400 for vibrant and high-legibility green */
+  --color-success-light: rgba(52, 211, 153, 0.14);
+  --color-warning: #fbbf24;        /* Amber-400 warm yellow */
+  --color-warning-light: rgba(251, 191, 36, 0.14);
+  --color-danger: #f87171;         /* Red-400 soft coral red */
+  --color-danger-light: rgba(248, 113, 113, 0.14);
+  --color-info: #60a5fa;           /* Blue-400 sky blue */
+  --color-info-light: rgba(96, 165, 250, 0.14);
 
   /* Temperature Score colors optimized for dark theme reading */
   --score-hot: #f87171;
@@ -376,6 +385,14 @@
   --score-neutral: #fbbf24;
   --score-cool: #60a5fa;
   --score-cold: #9ca3af;
+
+  /* Colored Glow Shadows for Dark Theme Elevation */
+  --shadow-xs: 0 1px 2px rgba(99, 102, 241, 0.03);
+  --shadow-sm: 0 2px 4px rgba(99, 102, 241, 0.03), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px -2px rgba(99, 102, 241, 0.04), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 24px -4px rgba(99, 102, 241, 0.06), 0 4px 12px -4px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 20px 32px -4px rgba(99, 102, 241, 0.08), 0 8px 16px -8px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 8px 24px -4px rgba(99, 102, 241, 0.35);
 }
 
 [data-theme="dark"] th {
@@ -846,6 +863,49 @@ select:focus {
   box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-textarea,
+[data-theme="dark"] .form-control,
+[data-theme="dark"] select {
+  background: #0d1321;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-textarea:focus,
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] select:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25), 0 0 12px rgba(129, 140, 248, 0.15);
+}
+
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .filter-search {
+  background: #0d1321;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .filter-search:focus-within {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25), 0 0 12px rgba(129, 140, 248, 0.15);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .modal-footer {
+  background: #0d1321;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
 .form-input.error,
 .form-control.error {
   border-color: var(--color-danger);
@@ -986,14 +1046,20 @@ select:focus {
 .overlay-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+}
+
+@media (max-width: 576px) {
+  .overlay-backdrop {
+    padding: 10px;
+  }
 }
 
 /* Avatar */
@@ -1819,7 +1885,7 @@ input[type="radio"]:hover:not(:checked) {
 
 /* Dark mode improvements */
 [data-theme="dark"] tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(99, 102, 241, 0.06);
 }
 
 [data-theme="dark"] th {
@@ -2367,4 +2433,48 @@ th.col-check {
 }
 [data-theme="dark"] [data-tooltip]::after {
   border-color: rgba(255, 255, 255, 0.98) transparent transparent;
+}
+
+/* ================================================
+   NEW RESPONSIVE SYSTEM - AUDIT PHẦN 2
+   ================================================ */
+
+/* Hàng bộ lọc: ẩn hiện trên Tablet < 1024px */
+@media (min-width: 1025px) {
+  .filter-mobile-only {
+    display: none !important;
+  }
+}
+@media (max-width: 1024px) {
+  .filter-hide-on-mobile {
+    display: none !important;
+  }
+  .filter-mobile-only {
+    display: block !important;
+  }
+}
+
+/* Form điều kiện Rule Engine (RuleSettings) */
+.condition-row-responsive {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .condition-row-responsive {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+    padding-left: 2.25rem !important; /* Lùi lề để nhường chỗ cho nhãn IF/AND */
+  }
+  .condition-row-responsive > div {
+    width: 100% !important;
+  }
+  .condition-row-responsive > div:first-child {
+    position: absolute !important;
+    left: 0;
+    top: 4px;
+    width: 32px !important;
+  }
 }

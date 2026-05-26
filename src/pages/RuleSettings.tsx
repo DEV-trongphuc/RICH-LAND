@@ -736,7 +736,7 @@ export const RuleSettings = () => {
                     const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
                     const isLast = i === branch.conditions.length - 1;
                     return (
-                      <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', background: 'transparent', padding: '0', position: 'relative' }}>
+                      <div key={i} className="condition-row-responsive" style={{ background: 'transparent', padding: '0', position: 'relative' }}>
                         <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                           {i === 0 ? (
                             <div style={{ background: '#f3e8ff', color: '#7c3aed', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>

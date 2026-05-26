@@ -144,7 +144,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           {isCollapsed ? (
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                if (onMobileClose) onMobileClose();
+              }}
               style={{
                 width: 44, height: 44, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
@@ -159,7 +162,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             </button>
           ) : (
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                if (onMobileClose) onMobileClose();
+              }}
               style={{
                 width: '100%', height: 44, borderRadius: '12px',
                 background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',

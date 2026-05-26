@@ -431,7 +431,7 @@ export const Consultants = () => {
 
       {/* Table */}
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+        <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
           <table className="mobile-table-compact">
             <thead>
               <tr>
@@ -467,7 +467,7 @@ export const Consultants = () => {
                     onClick={() => openEditModal(u)}
                     title={t("Nhấp để chỉnh sửa thông tin")}
                   >
-                    <td>
+                    <td data-label={t('Tên TVV')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Avatar src={u.avatar} name={u.name} size={32} />
                         <div>
@@ -512,8 +512,8 @@ export const Consultants = () => {
                         </div>
                       </div>
                     </td>
-                    <td style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{u.email}</td>
-                    <td>
+                    <td data-label={t('Email')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{u.email}</td>
+                    <td data-label={t('Zalo Bot')}>
                       {u.zalo_chat_id ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{
@@ -547,7 +547,7 @@ export const Consultants = () => {
                         </div>
                       )}
                     </td>
-                    <td onClick={e => e.stopPropagation()}>
+                    <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {u.status === 'active' ? (
                           Number(u.vacation_mode) ? (
@@ -579,7 +579,7 @@ export const Consultants = () => {
                         )}
                       </div>
                     </td>
-                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                    <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
                         <button
                           onClick={() => {

@@ -35,12 +35,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   if (confirmType === 'primary') {
     btnClass = 'btn primary';
-    iconBg = 'rgba(59, 130, 246, 0.1)';
-    iconColor = '#3b82f6';
+    iconBg = 'var(--color-info-light)';
+    iconColor = 'var(--color-info)';
   } else if (confirmType === 'success') {
-    btnClass = 'btn primary';
-    iconBg = 'rgba(16, 185, 129, 0.1)';
-    iconColor = '#10b981';
+    btnClass = 'btn success';
+    iconBg = 'var(--color-success-light)';
+    iconColor = 'var(--color-success)';
   }
 
   return (
