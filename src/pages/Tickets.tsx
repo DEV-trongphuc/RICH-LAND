@@ -870,137 +870,336 @@ export const Tickets = () => {
                 </p>
               </div>
             ) : (
-              <div className="table-wrap mobile-card-table">
-                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
-                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Tư vấn viên')}</th>
-                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Vòng phân bổ')}</th>
-                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do lỗi')}</th>
-                      <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>{t('Thao tác')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReports.map(r => (
-                      <tr 
-                        key={r.id} 
-                        onClick={() => {
-                          setSelectedLead({
-                            id: r.log_id || 0,
-                            name: r.lead_name,
-                            phone: r.lead_phone,
-                            email: r.lead_email || '-',
-                            source: r.lead_source || '-',
-                            status: r.log_status || 'assigned',
-                            assigned_to_name: r.consultant_name,
-                            assigned_to_avatar: r.consultant_avatar,
-                            round_name: r.round_name || '-',
-                            created_at: r.log_received_at || r.created_at,
-                            type: r.lead_type || '-',
-                            note: r.lead_note || '',
-                            report_status: r.status,
-                            resolved_by: r.resolved_by,
-                            resolved_at: r.resolved_at,
-                            last_activity_at: r.last_activity_at
-                          });
-                        }}
-                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
-                        className="lead-row"
-                      >
-                        <td data-label={t('Thông tin Lead')} style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
-                            <Avatar name={r.lead_name} size={36} />
-                            <div>
-                              <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
-                                <span>{r.lead_phone}</span>
-                              </div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
-                                {new Date(r.created_at).toLocaleString('vi-VN')}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td data-label={t('Tư vấn viên')} style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                            <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
-                          </div>
-                        </td>
-                        <td data-label={t('Vòng phân bổ')} style={{ padding: '1.25rem 1.5rem' }}>
-                          {r.round_name && (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
-                              <Zap size={12} /> {r.round_name}
-                            </div>
-                          )}
-                        </td>
-                        <td data-label={t('Lý do lỗi')} style={{ padding: '1.25rem 1.5rem' }}>
-                          <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
-                            <div style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                              background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
-                              color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
-                            }}>
-                              {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
-                            </div>
-                            {r.status === 'rejected' && r.reject_reason && (
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                                {t('Lý do:')} {r.reject_reason}
-                              </div>
-                            )}
-                            {r.status === 'approved' && r.approval_reason && (
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                                {t('Lý do:')} {r.approval_reason}
-                              </div>
-                            )}
-                          </div>
-                          {r.status !== 'pending' && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
-                              <span>
-                                {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
-                              </span>
-                              {r.resolved_at && (
-                                <>
-                                  <span style={{ opacity: 0.5 }}>•</span>
-                                  <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="col-actions" data-label={t('Thao tác')} style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {r.status === 'pending' ? (
-                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                              {r.zalo_chat_id && (
-                                <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                  <Bell size={14} />
-                                </button>
-                              )}
-                              <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
-                                {t('Từ chối')}
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
-                                {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                              {r.zalo_chat_id && (
-                                <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                  <Bell size={14} />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
+              <>
+                {/* Desktop View Table */}
+                <div className="table-wrap hide-on-mobile">
+                  <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>{t('Tư vấn viên')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Vòng phân bổ')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do lỗi')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220 }}>{t('Thao tác')}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredReports.map(r => (
+                        <tr 
+                          key={r.id} 
+                          onClick={() => {
+                            setSelectedLead({
+                              id: r.log_id || 0,
+                              name: r.lead_name,
+                              phone: r.lead_phone,
+                              email: r.lead_email || '-',
+                              source: r.lead_source || '-',
+                              status: r.log_status || 'assigned',
+                              assigned_to_name: r.consultant_name,
+                              assigned_to_avatar: r.consultant_avatar,
+                              round_name: r.round_name || '-',
+                              created_at: r.log_received_at || r.created_at,
+                              type: r.lead_type || '-',
+                              note: r.lead_note || '',
+                              report_status: r.status,
+                              resolved_by: r.resolved_by,
+                              resolved_at: r.resolved_at,
+                              last_activity_at: r.last_activity_at
+                            });
+                          }}
+                          style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                          className="lead-row"
+                        >
+                          <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
+                              <Avatar name={r.lead_name} size={36} />
+                              <div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
+                                  <span>{r.lead_phone}</span>
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                                  {new Date(r.created_at).toLocaleString('vi-VN')}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                              <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} /> {r.consultant_name}
+                            </div>
+                          </td>
+                          <td style={{ padding: '1.25rem 1.5rem' }}>
+                            {r.round_name && (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                                <Zap size={12} /> {r.round_name}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '1.25rem 1.5rem' }}>
+                            <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                                background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
+                                color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                              }}>
+                                {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                              </div>
+                              {r.status === 'rejected' && r.reject_reason && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                                  {t('Lý do:')} {r.reject_reason}
+                                </div>
+                              )}
+                              {r.status === 'approved' && r.approval_reason && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                                  {t('Lý do:')} {r.approval_reason}
+                                </div>
+                              )}
+                            </div>
+                            {r.status !== 'pending' && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
+                                <span>
+                                  {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
+                                </span>
+                                {r.resolved_at && (
+                                  <>
+                                    <span style={{ opacity: 0.5 }}>•</span>
+                                    <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {r.status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                {r.zalo_chat_id && (
+                                  <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                    <Bell size={14} />
+                                  </button>
+                                )}
+                                <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                                  {t('Từ chối')}
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                                  {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                                {r.zalo_chat_id && (
+                                  <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                    <Bell size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card List View */}
+                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                  {filteredReports.map(r => (
+                    <div 
+                      key={r.id}
+                      onClick={() => {
+                        setSelectedLead({
+                          id: r.log_id || 0,
+                          name: r.lead_name,
+                          phone: r.lead_phone,
+                          email: r.lead_email || '-',
+                          source: r.lead_source || '-',
+                          status: r.log_status || 'assigned',
+                          assigned_to_name: r.consultant_name,
+                          assigned_to_avatar: r.consultant_avatar,
+                          round_name: r.round_name || '-',
+                          created_at: r.log_received_at || r.created_at,
+                          type: r.lead_type || '-',
+                          note: r.lead_note || '',
+                          report_status: r.status,
+                          resolved_by: r.resolved_by,
+                          resolved_at: r.resolved_at,
+                          last_activity_at: r.last_activity_at
+                        });
+                      }}
+                      style={{
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '16px',
+                        padding: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}
+                      className="hover-lift"
+                    >
+                      {/* Header: Lead Info */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <Avatar name={r.lead_name} size={32} />
+                          <div>
+                            <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{r.lead_name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              <Phone size={12} style={{ opacity: 0.6 }} />
+                              <span>{r.lead_phone}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
+                            <Clock size={12} style={{ opacity: 0.6 }} />
+                            <span>
+                              {new Date(r.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
+                              {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+                          {r.round_name && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                              <Zap size={10} /> {r.round_name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+                      {/* Consultant details */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text-light)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <User size={12} style={{ opacity: 0.6 }} />
+                          {t('Người báo lỗi:')}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontWeight: 600 }}>
+                          <Avatar src={r.consultant_avatar} name={r.consultant_name} size={20} />
+                          <span>{r.consultant_name}</span>
+                        </div>
+                      </div>
+
+                      {/* Error Reason & Status Callout */}
+                      <div style={{
+                        background: r.status === 'pending' ? 'rgba(245, 158, 11, 0.04)' : r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
+                        borderLeft: `3px solid ${r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                            {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                          </span>
+                        </div>
+                        
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', fontWeight: 600, marginTop: 2 }}>
+                          {r.reason}
+                        </div>
+
+                        {/* Resolve Info */}
+                        {r.status !== 'pending' && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', borderTop: '1px dashed var(--color-border-light)', paddingTop: 6, marginTop: 4 }}>
+                            <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={14} />
+                            <span>
+                              {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
+                            </span>
+                            {r.resolved_at && (
+                              <span>• {new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {r.status === 'rejected' && r.reject_reason && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, background: 'rgba(239, 68, 68, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                            {t('Lý do từ chối:')} {r.reject_reason}
+                          </div>
+                        )}
+                        {r.status === 'approved' && r.approval_reason && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                            {t('Ghi chú duyệt:')} {r.approval_reason}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions footer */}
+                      {r.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                          {r.zalo_chat_id && (
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); 
+                                setQuickMessageOpen(true); 
+                              }} 
+                              className="btn ghost sm" 
+                              style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }} 
+                              title={t("Nhắn Zalo Bot")}
+                            >
+                              <Bell size={16} />
+                            </button>
+                          )}
+                          
+                          <button 
+                            onClick={(e) => { 
+                               e.stopPropagation(); 
+                               openRejectModal(r.id); 
+                            }} 
+                            disabled={isActioning === r.id} 
+                            className="btn outline sm" 
+                            style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            title={t('Từ chối')}
+                          >
+                            <XCircle size={14} />
+                            <span>{t('Từ chối')}</span>
+                          </button>
+
+                          <button 
+                            onClick={(e) => { 
+                               e.stopPropagation(); 
+                               openApproveModal(r.id); 
+                            }} 
+                            disabled={isActioning === r.id} 
+                            className="btn primary sm" 
+                            style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            title={t('Duyệt')}
+                          >
+                            <CheckCircle2 size={14} />
+                            <span>{t('Duyệt')}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {r.status !== 'pending' && r.zalo_chat_id && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); 
+                              setQuickMessageOpen(true); 
+                            }} 
+                            className="btn ghost sm" 
+                            style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }} 
+                            title={t("Nhắn Zalo Bot")}
+                          >
+                            <Bell size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Pagination */}
