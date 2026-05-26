@@ -1320,7 +1320,7 @@ export const Gatekeeper = () => {
                             </span>
                           )}
                           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
-                            <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                            <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                           </div>
                         </div>
                       </td>
@@ -1481,7 +1481,7 @@ export const Gatekeeper = () => {
                     </div>
                     
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                      <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('AI Đánh giá:')}</strong>{' '}
+                      <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
                       {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                     </div>
                   </div>

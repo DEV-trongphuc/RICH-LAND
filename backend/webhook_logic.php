@@ -2038,9 +2038,6 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
                     if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
                         // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                         $result = $manualResult;
-                        if (isset($result['reason'])) {
-                            $result['reason'] .= ' (Bỏ qua gọi AI do đã khớp luật thủ công)';
-                        }
                     } else {
                         // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
                         $result = runAIScreener($conn, $leadData, $aiRules);
@@ -2089,9 +2086,6 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
                 if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
                     // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                     $result = $manualResult;
-                    if (isset($result['reason'])) {
-                        $result['reason'] .= ' (Bỏ qua gọi AI do đã khớp luật thủ công)';
-                    }
                 } else {
                     // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
                     $result = runAIScreener($conn, $leadData);
