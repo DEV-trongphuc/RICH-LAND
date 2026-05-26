@@ -1636,7 +1636,7 @@ function triggerTwoWaySync($conn, $leadId) {
     return false;
 }
 
-function runAIScreener($conn, $leadData) {
+function runAIScreener($conn, $leadData, $customRules = null) {
     // 1. Check if AI screener is enabled
     $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
     if ($enabled !== 1) {
@@ -1650,7 +1650,7 @@ function runAIScreener($conn, $leadData) {
         return ['status' => 'error', 'reason' => 'Gemini API Key is not configured.'];
     }
 
-    $aiRules = get_system_setting($conn, 'ai_screener_rules');
+    $aiRules = $customRules !== null ? $customRules : get_system_setting($conn, 'ai_screener_rules');
 
     // 2. Format details and prompt
     $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên quy tắc/tiêu chí của quản trị viên.\n\n"
@@ -1736,19 +1736,19 @@ function runAIScreener($conn, $leadData) {
     ];
 }
 
-function runManualScreener($conn, $leadData) {
+function runManualScreener($conn, $leadData, $customRulesJson = null, $customAction = null) {
     // 1. Check if AI/Manual pre-screener is enabled
     $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
     if ($enabled !== 1) {
         return ['status' => 'skipped', 'reason' => 'Screener is disabled.'];
     }
 
-    $manualRulesJson = get_system_setting($conn, 'ai_screener_manual_rules');
-    $manualAction = get_system_setting($conn, 'ai_screener_manual_action') ?: 'hold';
+    $manualRulesJson = $customRulesJson !== null ? $customRulesJson : get_system_setting($conn, 'ai_screener_manual_rules');
+    $manualAction = $customAction !== null ? $customAction : (get_system_setting($conn, 'ai_screener_manual_action') ?: 'hold');
 
     $branches = json_decode($manualRulesJson, true);
     if (!is_array($branches) || empty($branches)) {
-        return ['status' => 'passed', 'reason' => 'Không cấu hình bộ lọc thủ công (mặc định Đạt chuẩn).'];
+        return ['status' => 'passed', 'reason' => 'Không cấu hình bộ lọc thủ công (mặc định Đạt chuẩn).', 'is_match' => false];
     }
 
     $source = $leadData['source'] ?? '';
@@ -1790,27 +1790,105 @@ function runManualScreener($conn, $leadData) {
         if ($manualAction === 'hold') {
             return [
                 'status' => 'failed',
-                'reason' => 'Khớp điều kiện bộ lọc thủ công (Tạm giữ): ' . $detailStr
+                'reason' => 'Khớp điều kiện bộ lọc thủ công (Tạm giữ): ' . $detailStr,
+                'is_match' => true
             ];
         } else {
             return [
                 'status' => 'passed',
-                'reason' => 'Khớp điều kiện bộ lọc thủ công (Đạt chuẩn): ' . $detailStr
+                'reason' => 'Khớp điều kiện bộ lọc thủ công (Đạt chuẩn): ' . $detailStr,
+                'is_match' => true
             ];
         }
     } else {
         if ($manualAction === 'hold') {
             return [
                 'status' => 'passed',
-                'reason' => 'Không khớp bất kỳ điều kiện bộ lọc thủ công nào (Mặc định Đạt chuẩn).'
+                'reason' => 'Không khớp bất kỳ điều kiện bộ lọc thủ công nào (Mặc định Đạt chuẩn).',
+                'is_match' => false
             ];
         } else {
             return [
                 'status' => 'failed',
-                'reason' => 'Không khớp điều kiện bộ lọc thủ công để được phân bổ (Mặc định Tạm giữ).'
+                'reason' => 'Không khớp điều kiện bộ lọc thủ công để được phân bổ (Mặc định Tạm giữ).',
+                'is_match' => false
             ];
         }
     }
+}
+
+function evaluateScreener($conn, $targetRoundId, $leadData) {
+    // 1. Check if overall AI screener is enabled
+    $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
+    if ($enabled !== 1) {
+        return null; // skipped
+    }
+
+    // 2. Fetch the multi-configs settings key
+    $configsJson = get_system_setting($conn, 'ai_screener_configs');
+    $configs = json_decode($configsJson, true);
+
+    if (is_array($configs) && !empty($configs)) {
+        // Find matching configuration for this round
+        foreach ($configs as $config) {
+            $rounds = $config['rounds'] ?? [];
+            $normalizedRounds = array_map('intval', $rounds);
+            if (in_array((int)$targetRoundId, $normalizedRounds)) {
+                $mode = $config['mode'] ?? 'ai';
+                $aiRules = $config['ai_rules'] ?? '';
+                $manualAction = $config['manual_action'] ?? 'hold';
+                $manualRules = $config['manual_rules'] ?? [];
+                $manualRulesJson = json_encode($manualRules);
+
+                if ($mode === 'manual') {
+                    return runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
+                } else if ($mode === 'ai') {
+                    return runAIScreener($conn, $leadData, $aiRules);
+                } else if ($mode === 'hybrid') {
+                    $manualResult = runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
+                    if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
+                        return $manualResult;
+                    }
+                    return runAIScreener($conn, $leadData, $aiRules);
+                }
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback compatibility (old settings format)
+    $oldRoundsJson = get_system_setting($conn, 'ai_screener_rounds');
+    $oldRounds = [];
+    if (!empty($oldRoundsJson)) {
+        $trimmed = trim($oldRoundsJson);
+        if (strpos($trimmed, '[') === 0) {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                $oldRounds = $decoded;
+            }
+        } else {
+            $oldRounds = explode(',', $trimmed);
+        }
+    }
+    if (is_array($oldRounds) && !empty($oldRounds)) {
+        $normalizedOldRounds = array_map('intval', $oldRounds);
+        if (in_array((int)$targetRoundId, $normalizedOldRounds)) {
+            $mode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
+            if ($mode === 'manual') {
+                return runManualScreener($conn, $leadData);
+            } else if ($mode === 'ai') {
+                return runAIScreener($conn, $leadData);
+            } else if ($mode === 'hybrid') {
+                $manualResult = runManualScreener($conn, $leadData);
+                if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
+                    return $manualResult;
+                }
+                return runAIScreener($conn, $leadData);
+            }
+        }
+    }
+
+    return null; // Skip evaluation
 }
 
 function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $roundName, $email = '', $source = '', $type = '', $note = '') {

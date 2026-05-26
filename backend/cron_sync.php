@@ -1184,28 +1184,15 @@ foreach ($connections as $connItem) {
                 }
 
                 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
-                $aiScreenerResult = null;
-                $aiScreenerEnabled = (int)get_system_setting($conn, 'ai_screener_enabled');
-                if ($aiScreenerEnabled === 1) {
-                    $screenerRounds = get_system_setting($conn, 'ai_screener_rounds');
-                    $enabledRounds = !empty(trim($screenerRounds)) ? array_map('intval', explode(',', $screenerRounds)) : [];
-                    if ((int)$targetRoundId > 0 && in_array((int)$targetRoundId, $enabledRounds)) {
-                        $screenerData = [
-                            'phone' => $phone,
-                            'email' => $email,
-                            'name' => $name,
-                            'source' => $source,
-                            'type' => $type,
-                            'note' => $note
-                        ];
-                        $screenerMode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
-                        if ($screenerMode === 'manual') {
-                            $aiScreenerResult = runManualScreener($conn, $screenerData);
-                        } else {
-                            $aiScreenerResult = runAIScreener($conn, $screenerData);
-                        }
-                    }
-                }
+                $screenerData = [
+                    'phone' => $phone,
+                    'email' => $email,
+                    'name' => $name,
+                    'source' => $source,
+                    'type' => $type,
+                    'note' => $note
+                ];
+                $aiScreenerResult = evaluateScreener($conn, $targetRoundId, $screenerData);
 
                 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
                     $conn->begin_transaction();

@@ -9301,26 +9301,16 @@ switch ($action) {
             } else {
                 // Check if we need to run AI Screener
                 $aiScreenerResult = null;
-                $aiScreenerEnabled = (int)get_system_setting($conn, 'ai_screener_enabled');
-                if ($aiScreenerEnabled === 1 && !$override_consultant_id) {
-                    $screenerRounds = get_system_setting($conn, 'ai_screener_rounds');
-                    $enabledRounds = !empty(trim($screenerRounds)) ? array_map('intval', explode(',', $screenerRounds)) : [];
-                    if ((int)$assignedRoundId > 0 && in_array((int)$assignedRoundId, $enabledRounds)) {
-                        $screenerData = [
-                            'phone' => $phone,
-                            'email' => $email,
-                            'name' => $name,
-                            'source' => $source,
-                            'type' => $type,
-                            'note' => $note
-                        ];
-                        $screenerMode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
-                        if ($screenerMode === 'manual') {
-                            $aiScreenerResult = runManualScreener($conn, $screenerData);
-                        } else {
-                            $aiScreenerResult = runAIScreener($conn, $screenerData);
-                        }
-                    }
+                if (!$override_consultant_id) {
+                    $screenerData = [
+                        'phone' => $phone,
+                        'email' => $email,
+                        'name' => $name,
+                        'source' => $source,
+                        'type' => $type,
+                        'note' => $note
+                    ];
+                    $aiScreenerResult = evaluateScreener($conn, $assignedRoundId, $screenerData);
                 }
 
                 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {

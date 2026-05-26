@@ -442,20 +442,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
 }
 
 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
-$aiScreenerResult = null;
-$aiScreenerEnabled = (int)get_system_setting($conn, 'ai_screener_enabled');
-if ($aiScreenerEnabled === 1) {
-    $screenerRounds = get_system_setting($conn, 'ai_screener_rounds');
-    $enabledRounds = !empty(trim($screenerRounds)) ? array_map('intval', explode(',', $screenerRounds)) : [];
-    if ((int)$targetRoundId > 0 && in_array((int)$targetRoundId, $enabledRounds)) {
-        $screenerMode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
-        if ($screenerMode === 'manual') {
-            $aiScreenerResult = runManualScreener($conn, $data);
-        } else {
-            $aiScreenerResult = runAIScreener($conn, $data);
-        }
-    }
-}
+$aiScreenerResult = evaluateScreener($conn, $targetRoundId, $data);
 
 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
     $conn->begin_transaction();

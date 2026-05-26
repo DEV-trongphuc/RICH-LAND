@@ -8,7 +8,7 @@ import {
   ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus, 
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, 
   Phone, Mail, Clock, Tag, XCircle, 
-  ExternalLink, Check, Shield, Save, Settings, ShieldCheck
+  ExternalLink, Check, Shield, Save, Sparkles
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -115,6 +115,16 @@ const parseBlacklistNote = (note: string) => {
   return { admin, time, reason };
 };
 
+interface AIScreenerConfig {
+  id: string;
+  name: string;
+  rounds: number[];
+  mode: 'ai' | 'manual' | 'hybrid';
+  ai_rules: string;
+  manual_action: 'hold' | 'skip';
+  manual_rules: any[];
+}
+
 export const Gatekeeper = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -147,11 +157,7 @@ export const Gatekeeper = () => {
   const [settingsLoading, setSettingsLoading] = useState<boolean>(false);
   const [savingSettings, setSavingSettings] = useState<boolean>(false);
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState(false);
-  const [aiScreenerRules, setAiScreenerRules] = useState('');
-  const [aiScreenerRounds, setAiScreenerRounds] = useState<number[]>([]);
-  const [aiScreenerMode, setAiScreenerMode] = useState('ai');
-  const [aiScreenerManualAction, setAiScreenerManualAction] = useState('hold');
-  const [aiScreenerManualRules, setAiScreenerManualRules] = useState<any[]>([]);
+  const [aiScreenerConfigs, setAiScreenerConfigs] = useState<AIScreenerConfig[]>([]);
 
   // Modals & Action States
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -164,7 +170,8 @@ export const Gatekeeper = () => {
   
   // Custom Settings & Guide Modal
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
-  const [modalTab, setModalTab] = useState<'config' | 'guide'>('config');
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [isDynamicFlowExpanded, setIsDynamicFlowExpanded] = useState<boolean>(false);
   
   // Custom Date Picker Modal
   const [showDateModal, setShowDateModal] = useState(false);
@@ -249,30 +256,49 @@ export const Gatekeeper = () => {
       const res = await fetchAPI('get_settings');
       if (res.success && res.data) {
         setAiScreenerEnabled(res.data.ai_screener_enabled === '1' || res.data.ai_screener_enabled === 1);
-        if (res.data.ai_screener_rules) setAiScreenerRules(res.data.ai_screener_rules);
-        if (res.data.ai_screener_rounds) {
-          setAiScreenerRounds(res.data.ai_screener_rounds.split(',').map(Number).filter((n: any) => !isNaN(n) && n > 0));
-        } else {
-          setAiScreenerRounds([]);
-        }
-        setAiScreenerMode(res.data.ai_screener_mode || 'ai');
-        setAiScreenerManualAction(res.data.ai_screener_manual_action || 'hold');
-        if (res.data.ai_screener_manual_rules) {
+
+        // Fetch multiple configurations
+        let configsArray: AIScreenerConfig[] = [];
+        if (res.data.ai_screener_configs) {
           try {
-            const parsed = typeof res.data.ai_screener_manual_rules === 'string'
-              ? JSON.parse(res.data.ai_screener_manual_rules)
-              : res.data.ai_screener_manual_rules;
+            const parsed = typeof res.data.ai_screener_configs === 'string'
+              ? JSON.parse(res.data.ai_screener_configs)
+              : res.data.ai_screener_configs;
             if (Array.isArray(parsed)) {
-              setAiScreenerManualRules(parsed);
-            } else {
-              setAiScreenerManualRules([]);
+              configsArray = parsed;
             }
-          } catch {
-            setAiScreenerManualRules([]);
+          } catch (e) {
+            console.error('Error parsing aiScreenerConfigs', e);
           }
-        } else {
-          setAiScreenerManualRules([]);
         }
+
+        // Fallback: migrate single configuration to multi-ruleset if none exists
+        if (configsArray.length === 0) {
+          const oldRounds = res.data.ai_screener_rounds
+            ? res.data.ai_screener_rounds.split(',').map(Number).filter((n: any) => !isNaN(n) && n > 0)
+            : [];
+          if (oldRounds.length > 0 || res.data.ai_screener_rules || res.data.ai_screener_manual_rules) {
+            let oldManualRules: any[] = [];
+            if (res.data.ai_screener_manual_rules) {
+              try {
+                const parsedRules = typeof res.data.ai_screener_manual_rules === 'string'
+                  ? JSON.parse(res.data.ai_screener_manual_rules)
+                  : res.data.ai_screener_manual_rules;
+                if (Array.isArray(parsedRules)) oldManualRules = parsedRules;
+              } catch {}
+            }
+            configsArray = [{
+              id: 'config_' + Date.now(),
+              name: t('Cấu hình mặc định'),
+              rounds: oldRounds,
+              mode: (res.data.ai_screener_mode as any) || 'ai',
+              ai_rules: res.data.ai_screener_rules || '',
+              manual_action: (res.data.ai_screener_manual_action as any) || 'hold',
+              manual_rules: oldManualRules
+            }];
+          }
+        }
+        setAiScreenerConfigs(configsArray);
       }
     } catch (e: any) {
       console.error('Error fetching settings:', e);
@@ -400,11 +426,13 @@ export const Gatekeeper = () => {
     setSavingSettings(true);
     const payload = {
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
-      ai_screener_rules: aiScreenerRules,
-      ai_screener_rounds: aiScreenerRounds.join(','),
-      ai_screener_mode: aiScreenerMode,
-      ai_screener_manual_action: aiScreenerManualAction,
-      ai_screener_manual_rules: aiScreenerManualRules
+      ai_screener_configs: aiScreenerConfigs,
+      // Retain old settings keys for backward compatibility using first config
+      ai_screener_rounds: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].rounds.join(',') : '',
+      ai_screener_rules: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].ai_rules : '',
+      ai_screener_mode: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].mode : 'ai',
+      ai_screener_manual_action: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].manual_action : 'hold',
+      ai_screener_manual_rules: aiScreenerConfigs.length > 0 ? aiScreenerConfigs[0].manual_rules : []
     };
 
     try {
@@ -425,6 +453,7 @@ export const Gatekeeper = () => {
     setSavingSettings(false);
   };
 
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       
@@ -443,38 +472,368 @@ export const Gatekeeper = () => {
         </div>
 
         {/* Header Actions */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          
+          {/* Guide Button */}
           <button
-            onClick={() => {
-              fetchSettings();
-              setModalTab('config');
-              setIsSettingsModalOpen(true);
-            }}
-            title={t("Cấu hình bộ lọc & Hướng dẫn")}
+            onClick={() => setIsGuideModalOpen(true)}
+            title={t("Hướng dẫn sử dụng")}
             style={{
-              padding: '8px 16px', borderRadius: 8, border: '1px solid var(--color-primary)',
-              background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
-              color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)', cursor: 'pointer',
+              color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6,
               fontSize: '0.8125rem', fontWeight: 700, transition: 'all 0.15s'
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
           >
-            <Settings size={14} /> {t('Cấu hình & Hướng dẫn')}
+            <Sparkles size={14} color="var(--color-primary)" /> {t('Hướng dẫn')}
           </button>
 
-          <div style={{
-            background: heldLeadsTotalCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: heldLeadsTotalCount > 0 ? 'var(--color-danger)' : '#10b981',
-            padding: '8px 16px', borderRadius: 20, fontSize: '0.875rem', fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-            {heldLeadsTotalCount > 0 ? <ShieldAlert size={16} /> : <CheckCircle size={16} />}
-            {heldLeadsTotalCount} {t('đang tạm giữ')}
+          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
+          {/* Lọc AI Toggle */}
+          <div 
+            onClick={() => {
+              fetchSettings();
+              setIsSettingsModalOpen(true);
+            }}
+            title={t("Cấu hình quy tắc lọc AI")}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 8,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-text-muted)';
+            }}
+          >
+            <span 
+              className="auto-approve-label"
+              style={{ 
+                fontSize: '0.8rem', 
+                fontWeight: 700, 
+                color: 'var(--color-text-muted)',
+                transition: 'color 0.2s',
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted'
+              }}
+            >
+              {t('Lọc AI')}
+            </span>
+            <div 
+              style={{
+                width: 36, height: 20, borderRadius: 10,
+                background: aiScreenerEnabled ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                position: 'relative', transition: 'background 0.2s',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                left: aiScreenerEnabled ? 19 : 3, transition: 'left 0.2s'
+              }} />
+            </div>
           </div>
+
+          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
+          {/* Status Badge */}
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+            {t('Tổng cộng:')} {heldLeadsTotalCount} {t('đang tạm giữ')}
+          </span>
+
         </div>
+
+      </div>
+
+      {/* Intro explain card styled identically to FairShareAudit */}
+      <div className="hide-on-mobile" style={{
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
+        border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
+        borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
+          <div style={{
+            background: 'var(--color-card, #fff)',
+            width: 40, height: 40, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
+          }}>
+            <Sparkles size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4, marginTop: 0 }}>
+              {t("Bộ Lọc AI Gác Cổng hoạt động thế nào?")}
+            </h4>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
+              {t("Hệ thống tự động tiếp nhận dữ liệu từ webhook nguồn, chuyển qua đánh giá chất lượng tự động (sử dụng Gemini AI hoặc Luật thủ công cấu hình). Những dữ liệu không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên, giúp tiết kiệm thời gian Telesale.")}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsDynamicFlowExpanded(!isDynamicFlowExpanded)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--color-primary-light)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-primary)',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              alignSelf: 'center',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {isDynamicFlowExpanded ? t('Thu gọn') : t('Cách hoạt động')}
+            <span style={{ transform: isDynamicFlowExpanded ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform 0.2s', fontSize: '10px' }}>▼</span>
+          </button>
+        </div>
+
+        {/* Dynamic step-by-step logic panel */}
+        {isDynamicFlowExpanded && (
+          <div style={{
+            marginTop: '0.5rem',
+            paddingTop: '1.25rem',
+            borderTop: '1px dashed var(--color-primary-light)',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <h5 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+              {t('LUỒNG XỬ LÝ HIỆN TẠI (DYNAMIC FLOW):')}
+            </h5>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1.25rem',
+              position: 'relative'
+            }}>
+              {/* Step 1 */}
+              <div style={{
+                background: 'var(--color-surface)',
+                borderRadius: '8px',
+                padding: '1rem',
+                border: '1px solid var(--color-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    background: 'rgba(124, 58, 237, 0.1)',
+                    color: 'var(--color-primary)',
+                    fontWeight: 800,
+                    width: 20, height: 20,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem'
+                  }}>1</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                    {t('Webhook tiếp nhận')}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t('Lead mới được gửi từ Google Sheets, Facebook, Landing Page...')}
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div style={{
+                background: 'var(--color-surface)',
+                borderRadius: '8px',
+                padding: '1rem',
+                border: '1px solid var(--color-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    background: 'rgba(124, 58, 237, 0.1)',
+                    color: 'var(--color-primary)',
+                    fontWeight: 800,
+                    width: 20, height: 20,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem'
+                  }}>2</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                    {t('Kiểm tra trạng thái')}
+                  </span>
+                  <span style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                    color: aiScreenerEnabled ? '#10b981' : 'var(--color-text-muted)'
+                  }}>
+                    {aiScreenerEnabled ? t('Đang BẬT') : t('Đang TẮT')}
+                  </span>
+                </div>
+                {!aiScreenerEnabled ? (
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    {t('Bộ lọc AI đang tắt. Mọi Lead sẽ chuyển tiếp thẳng sang phân phối mà không đánh giá.')}
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      {t('Kiểm tra vòng của Lead. Áp dụng cho các vòng:')}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                      {(() => {
+                        const allRounds = aiScreenerConfigs.reduce<number[]>((acc: number[], cfg: AIScreenerConfig) => [...acc, ...cfg.rounds], []);
+                        if (allRounds.length === 0) {
+                          return (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                              {t('Chưa chọn vòng nào (Ví dụ: Form, BBA...)')}
+                            </span>
+                          );
+                        }
+                        return rounds
+                          .filter((r: any) => allRounds.includes(Number(r.id)))
+                          .map((r: any) => (
+                            <span key={r.id} style={{
+                              fontSize: '0.6875rem',
+                              background: 'var(--color-bg-alt)',
+                              border: '1px solid var(--color-border)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              color: 'var(--color-text)'
+                            }}>
+                              {r.round_name}
+                            </span>
+                          ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 3 */}
+              {aiScreenerEnabled && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      background: 'rgba(124, 58, 237, 0.1)',
+                      color: 'var(--color-primary)',
+                      fontWeight: 800,
+                      width: 20, height: 20,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem'
+                    }}>3</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                      {t('Đánh giá chất lượng')}
+                    </span>
+                  </div>
+
+                  {aiScreenerConfigs.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      {t('Chưa có nhóm cấu hình lọc nào hoạt động.')}
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+                      {aiScreenerConfigs.map((cfg: AIScreenerConfig, idx: number) => {
+                        const roundNames = rounds.filter((r: any) => cfg.rounds.includes(Number(r.id))).map((r: any) => r.round_name).join(', ');
+                        return (
+                          <div key={cfg.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: idx < aiScreenerConfigs.length - 1 ? '1px dashed var(--color-border)' : 'none', paddingBottom: idx < aiScreenerConfigs.length - 1 ? 6 : 0 }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                              {cfg.name || `${t('Nhóm')} ${idx + 1}`}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                              {t('Vòng:')} {roundNames || t('Chưa chọn')}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
+                              {t('Chế độ:')} <strong style={{ color: 'var(--color-primary)' }}>{cfg.mode === 'ai' ? t('Gemini AI') : cfg.mode === 'manual' ? t('Thủ công') : t('Kết hợp')}</strong>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 4 */}
+              <div style={{
+                background: 'var(--color-surface)',
+                borderRadius: '8px',
+                padding: '1rem',
+                border: '1px solid var(--color-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    background: 'rgba(124, 58, 237, 0.1)',
+                    color: 'var(--color-primary)',
+                    fontWeight: 800,
+                    width: 20, height: 20,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem'
+                  }}>{aiScreenerEnabled ? '4' : '3'}</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                    {t('Phân bổ & Hàng chờ')}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {aiScreenerEnabled
+                    ? t('Đạt chuẩn -> Giao tự động & Đẩy Sheets. Không đạt -> Đưa vào bảng hàng chờ này.')
+                    : t('Tự động giao ngay cho tất cả Lead & Đồng bộ Sheets.')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Main content card showing held queue ── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', minHeight: '500px' }}>
+
         
         {/* Filter bar */}
         <div className="responsive-filter-row" style={{
@@ -720,8 +1079,8 @@ export const Gatekeeper = () => {
               </div>
               <button 
                 onClick={() => updateParams('page', String(Math.min(currentPage + 1, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE))))}
-                disabled={currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0}
-                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'not-allowed' : 'pointer' }}
+                disabled={currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE)}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
               >
                 <ChevronRight size={16} />
               </button>
@@ -730,65 +1089,22 @@ export const Gatekeeper = () => {
         )}
       </div>
 
-      {/* ── Modals & Drawers ── */}
-
-      {/* Settings Modal (Cấu hình & Hướng dẫn) */}
+      {/* Settings Modal (Cấu hình Bộ lọc AI) */}
       <CustomModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        title={t("Cấu hình Bộ Lọc AI & Hướng dẫn")}
+        title={t("Cấu hình Bộ lọc AI")}
         width="950px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0', maxHeight: '78vh', overflowY: 'auto' }}>
-          
-          {/* Settings Tab Selector */}
-          <div style={{
-            display: 'flex',
-            background: 'var(--color-bg-alt)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '10px',
-            padding: '3px',
-            gap: '3px',
-            alignSelf: 'flex-start'
-          }}>
-            <button
-              onClick={() => setModalTab('config')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                border: 'none',
-                background: modalTab === 'config' ? 'var(--color-surface)' : 'transparent',
-                color: modalTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-            >
-              {t("Cấu hình Bộ lọc")}
-            </button>
-            <button
-              onClick={() => setModalTab('guide')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                border: 'none',
-                background: modalTab === 'guide' ? 'var(--color-surface)' : 'transparent',
-                color: modalTab === 'guide' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-            >
-              {t("Ưu điểm & Hướng dẫn")}
-            </button>
-          </div>
+        <style>{`
+          div:has(> .settings-modal-container) {
+            overflow: hidden !important;
+            padding: 0 !important;
+          }
+        `}</style>
+        <div className="settings-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          <div style={{ borderBottom: '1px solid var(--color-border)', margin: '0 -1.5rem' }} />
-
-          {/* Config Content */}
-          {modalTab === 'config' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {settingsLoading ? (
                 <TableSkeleton rows={4} cols={2} />
@@ -807,7 +1123,7 @@ export const Gatekeeper = () => {
                         {t('Kích hoạt AI Gác Cổng (Pre-screener Gatekeeper)')}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                        {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động. Nếu tắt, bỏ qua bộ lọc và phân bổ thẳng.')}
+                        {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động.')}
                       </div>
                     </div>
                   </div>
@@ -815,401 +1131,562 @@ export const Gatekeeper = () => {
                   {aiScreenerEnabled && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                          {t('Chọn các vòng áp dụng đánh giá Gác Cổng')}
-                        </label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {rounds.map(r => {
-                            const roundId = Number(r.id);
-                            const isSelected = aiScreenerRounds.includes(roundId);
-                            return (
-                              <button
-                                key={roundId}
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setAiScreenerRounds(aiScreenerRounds.filter(id => id !== roundId));
-                                  } else {
-                                    setAiScreenerRounds([...aiScreenerRounds, roundId]);
-                                  }
-                                }}
-                                style={{
+                      {/* Configuration Cards List */}
+                      {aiScreenerConfigs.map((config: AIScreenerConfig, index: number) => {
+                        return (
+                          <div 
+                            key={config.id} 
+                            style={{ 
+                              border: '1px solid var(--color-border)', 
+                              borderRadius: '12px', 
+                              padding: '1.25rem', 
+                              position: 'relative', 
+                              background: 'var(--color-surface)',
+                              boxShadow: 'var(--shadow-sm)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1rem'
+                            }}
+                          >
+                            {/* Card Decorative Left border */}
+                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: '12px 0 0 12px' }} />
+
+                            {/* Card Header: Title input and Delete button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, marginRight: '1.5rem' }}>
+                                <span style={{
+                                  background: 'rgba(124, 58, 237, 0.1)',
+                                  color: 'var(--color-primary)',
+                                  fontWeight: 800,
+                                  width: 24, height: 24,
+                                  borderRadius: '50%',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '6px 12px',
-                                  borderRadius: '20px',
-                                  fontSize: '0.8125rem',
-                                  fontWeight: 500,
-                                  border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
-                                  background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s ease',
-                                  outline: 'none'
+                                  justifyContent: 'center',
+                                  fontSize: '0.8rem',
+                                  flexShrink: 0
+                                }}>{index + 1}</span>
+                                <input
+                                  type="text"
+                                  value={config.name}
+                                  onChange={e => {
+                                    const updated = [...aiScreenerConfigs];
+                                    updated[index].name = e.target.value;
+                                    setAiScreenerConfigs(updated);
+                                  }}
+                                  placeholder={t("Tên nhóm cấu hình (Ví dụ: Nhóm Vòng tiếng Anh)")}
+                                  className="form-input"
+                                  style={{ height: 36, fontSize: '0.875rem', fontWeight: 700, width: '100%', maxWidth: 350, border: 'none', background: 'transparent', padding: '0 4px', borderBottom: '1px dashed var(--color-border)' }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                style={{ color: 'var(--color-danger)', padding: 4 }}
+                                onClick={() => {
+                                  setAiScreenerConfigs(aiScreenerConfigs.filter((cfg: AIScreenerConfig) => cfg.id !== config.id));
                                 }}
+                                title={t("Xóa nhóm cấu hình lọc này")}
                               >
-                                <div style={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  background: isSelected ? 'var(--color-primary)' : 'var(--color-border)'
-                                }} />
-                                {r.round_name}
+                                <Trash2 size={16} />
                               </button>
-                            );
-                          })}
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          {t('Chỉ những lead thuộc các vòng được chọn mới đi qua bộ lọc Gác Cổng. Các vòng khác sẽ được phân bổ tự động bình thường.')}
-                        </span>
-                      </div>
+                            </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                          {t('Chế độ Lọc Gác Cổng (Screener Mode)')}
-                        </label>
-                        <CustomSelect
-                          options={[
-                            { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') },
-                            { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') }
-                          ]}
-                          value={aiScreenerMode}
-                          onChange={val => setAiScreenerMode(String(val))}
-                          width="100%"
-                        />
-                      </div>
-
-                      {aiScreenerMode === 'ai' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                            {t('Quy tắc & Tiêu chuẩn lọc của AI (Screener Rules)')}
-                          </label>
-                          <textarea
-                            value={aiScreenerRules}
-                            onChange={e => setAiScreenerRules(e.target.value)}
-                            placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã học tiếng Anh, có nền tảng)...")}
-                            rows={6}
-                            style={{
-                              padding: '10px 12px',
-                              border: '1px solid var(--color-border)',
-                              borderRadius: '8px',
-                              fontSize: '0.875rem',
-                              outline: 'none',
-                              background: 'var(--color-bg)',
-                              color: 'var(--color-text)',
-                              width: '100%',
-                              fontFamily: 'inherit',
-                              resize: 'vertical',
-                              lineHeight: 1.5
-                            }}
-                          />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            {t('Mô tả chi tiết các tiêu chí để AI phân loại "passed" (được phân bổ ngay) hoặc "failed" (tạm giữ phê duyệt).')}
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                              {t('Hành động khi KHỚP quy tắc thủ công (Manual Action)')}
-                            </label>
-                            <CustomSelect
-                              options={[
-                                { value: 'hold', label: t('Tạm giữ để phê duyệt (Hold)') },
-                                { value: 'pass', label: t('Đánh giá Đạt chuẩn để phân bổ (Pass)') }
-                              ]}
-                              value={aiScreenerManualAction}
-                              onChange={val => setAiScreenerManualAction(String(val))}
-                              width="100%"
-                            />
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                              {t('Nếu một lead mới khớp với bất kỳ nhánh quy tắc nào dưới đây, hệ thống sẽ thực hiện hành động đã chọn.')}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                              {t('Danh sách Quy tắc Lọc Thủ công (Manual Screener Rules)')}
-                            </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                              {aiScreenerManualRules.map((branch, bIndex) => (
-                                <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', position: 'relative', background: 'var(--color-bg-alt)' }}>
-                                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#10b981', borderRadius: '12px 0 0 12px' }} />
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0 }}>
-                                      {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
-                                    </h4>
+                            {/* Section 1: Choose Rounds (Overlap Protected) */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                {t('Chọn các vòng áp dụng cho nhóm này')}
+                              </label>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {rounds.map((r: any) => {
+                                  const roundId = Number(r.id);
+                                  const isSelected = config.rounds.includes(roundId);
+                                  
+                                  // Check if selected in another config
+                                  const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId));
+                                  
+                                  return (
                                     <button
+                                      key={roundId}
                                       type="button"
-                                      className="btn ghost"
-                                      style={{ color: 'var(--color-danger)', padding: 4 }}
-                                      onClick={() => setAiScreenerManualRules(aiScreenerManualRules.filter((_, idx) => idx !== bIndex))}
+                                      disabled={selectedElsewhere}
+                                      onClick={() => {
+                                        const updated = [...aiScreenerConfigs];
+                                        if (isSelected) {
+                                          updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
+                                        } else {
+                                          updated[index].rounds = [...config.rounds, roundId];
+                                        }
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 12px',
+                                        borderRadius: '20px',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 500,
+                                        border: '1px solid ' + (
+                                          isSelected 
+                                            ? 'var(--color-primary)' 
+                                            : 'var(--color-border)'
+                                        ),
+                                        background: isSelected 
+                                          ? 'var(--color-primary-light)' 
+                                          : 'var(--color-bg)',
+                                        color: isSelected 
+                                          ? 'var(--color-primary)' 
+                                          : selectedElsewhere 
+                                            ? 'var(--color-text-light)' 
+                                            : 'var(--color-text-muted)',
+                                        opacity: selectedElsewhere ? 0.5 : 1,
+                                        cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        outline: 'none'
+                                      }}
+                                      title={selectedElsewhere ? t("Đã được cấu hình ở nhóm khác") : r.round_name}
                                     >
-                                      <Trash2 size={16} />
+                                      {selectedElsewhere && <span style={{ fontSize: '10px', marginRight: '4px' }}>🔒</span>}
+                                      {r.round_name}
                                     </button>
-                                  </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
 
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {(branch.conditions || []).map((c: any, i: number) => {
-                                      const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
-                                      const isLast = i === branch.conditions.length - 1;
-                                      return (
-                                        <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            {i === 0 ? (
-                                              <div style={{ background: '#d1fae5', color: '#047857', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
-                                            ) : (
-                                              <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
-                                            )}
-                                            {!isLast && (
-                                              <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
-                                            )}
-                                          </div>
+                            {/* Section 2: Choose Mode */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                {t('Chế độ Lọc Gác Cổng')}
+                              </label>
+                              <CustomSelect
+                                options={[
+                                  { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') },
+                                  { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') },
+                                  { value: 'hybrid', label: t('Kết hợp: Lọc Thủ công + AI') }
+                                ]}
+                                value={config.mode}
+                                onChange={val => {
+                                  const updated = [...aiScreenerConfigs];
+                                  updated[index].mode = val as any;
+                                  setAiScreenerConfigs(updated);
+                                }}
+                                width="100%"
+                              />
+                            </div>
 
-                                          <div style={{ flex: 1, minWidth: 150 }}>
-                                            <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
-                                              <CustomSelect
-                                                options={[
-                                                  { value: 'source', label: t('Nguồn Data') },
-                                                  { value: 'type', label: t('Loại Data') },
-                                                  { value: 'note', label: t('Ghi Chú') },
-                                                  { value: 'name', label: t('Họ và Tên') },
-                                                  { value: 'phone', label: t('Số điện thoại') },
-                                                  { value: 'email', label: t('Email') }
-                                                ]}
-                                                value={c.col}
-                                                onChange={val => {
-                                                  const newB = [...aiScreenerManualRules];
-                                                  newB[bIndex].conditions[i].col = String(val);
-                                                  setAiScreenerManualRules(newB);
-                                                }}
-                                                placeholder={t("Chọn trường...")}
-                                              />
-                                            </div>
-                                          </div>
+                            {/* Conditional Prompt Area */}
+                            {(config.mode === 'ai' || config.mode === 'hybrid') && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                  {t('Quy tắc & Tiêu chuẩn lọc của AI')}
+                                </label>
+                                <textarea
+                                  value={config.ai_rules}
+                                  onChange={e => {
+                                    const updated = [...aiScreenerConfigs];
+                                    updated[index].ai_rules = e.target.value;
+                                    setAiScreenerConfigs(updated);
+                                  }}
+                                  rows={4}
+                                  className="form-input"
+                                  style={{ resize: 'vertical' }}
+                                  placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã đi làm hoặc có IELTS), Không đạt chuẩn (học sinh cấp 1, 2)...")}
+                                />
+                              </div>
+                            )}
 
-                                          <div style={{ flex: 1, minWidth: 150 }}>
-                                            <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
-                                              <CustomSelect
-                                                options={[
-                                                  { value: 'contains', label: t('Có chứa từ khóa') },
-                                                  { value: 'not_contains', label: t('Không chứa từ khóa') },
-                                                  { value: 'equals', label: t('Trùng khớp chính xác') },
-                                                  { value: 'not_equals', label: t('Không trùng khớp') },
-                                                  { value: 'starts_with', label: t('Bắt đầu bằng') },
-                                                  { value: 'ends_with', label: t('Kết thúc bằng') },
-                                                  { value: 'is_empty', label: t('Trống') },
-                                                  { value: 'is_not_empty', label: t('Không trống') }
-                                                ]}
-                                                value={c.op}
-                                                onChange={val => {
-                                                  const newB = [...aiScreenerManualRules];
-                                                  newB[bIndex].conditions[i].op = String(val);
-                                                  setAiScreenerManualRules(newB);
-                                                }}
-                                              />
-                                            </div>
-                                          </div>
-
-                                          {!isNoValueOp && (
-                                            <div style={{ flex: 1, minWidth: 150 }}>
-                                              <input
-                                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                                placeholder={t("Nhập giá trị...")}
-                                                value={c.val || ''}
-                                                onChange={e => {
-                                                  const newB = [...aiScreenerManualRules];
-                                                  newB[bIndex].conditions[i].val = e.target.value;
-                                                  setAiScreenerManualRules(newB);
-                                                }}
-                                              />
-                                            </div>
-                                          )}
-
-                                          {branch.conditions.length > 1 && (
-                                            <button
-                                              type="button"
-                                              className="btn ghost"
-                                              style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
-                                              onClick={() => {
-                                                const newB = [...aiScreenerManualRules];
-                                                newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
-                                                setAiScreenerManualRules(newB);
-                                              }}
-                                            >
-                                              <Trash2 size={16} />
-                                            </button>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-
-                                    <div style={{ paddingLeft: 44, marginTop: '0.75rem', position: 'relative' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const newB = [...aiScreenerManualRules];
-                                          if (!newB[bIndex].conditions) newB[bIndex].conditions = [];
-                                          newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
-                                          setAiScreenerManualRules(newB);
+                            {/* Conditional Manual Rules Area */}
+                            {(config.mode === 'manual' || config.mode === 'hybrid') && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                    {t('Danh sách Quy tắc Lọc Thủ công')}
+                                  </label>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Hành động khi khớp:')}</span>
+                                    <div style={{ width: 140 }}>
+                                      <CustomSelect
+                                        options={[
+                                          { value: 'hold', label: t('Tạm giữ') },
+                                          { value: 'skip', label: t('Bỏ qua/Duyệt') }
+                                        ]}
+                                        value={config.manual_action}
+                                        onChange={val => {
+                                          const updated = [...aiScreenerConfigs];
+                                          updated[index].manual_action = val as any;
+                                          setAiScreenerConfigs(updated);
                                         }}
-                                        style={{ background: '#d1fae5', color: '#047857', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                                      >
-                                        <Plus size={14} /> {t("Thêm điều kiện")}
-                                      </button>
+                                        width="100%"
+                                      />
                                     </div>
                                   </div>
                                 </div>
-                              ))}
 
-                              <div>
-                                <button
-                                  type="button"
-                                  onClick={() => setAiScreenerManualRules([...aiScreenerManualRules, { conditions: [{ col: 'source', op: 'contains', val: '' }] }])}
-                                  className="btn outline"
-                                  style={{ gap: 6, fontWeight: 700, borderRadius: 20, borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
-                                >
-                                  <Plus size={16} /> {t("Thêm nhánh quy tắc")}
-                                </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                  {(config.manual_rules || []).map((branch: any, bIndex: number) => (
+                                    <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', position: 'relative', background: 'var(--color-bg-alt)' }}>
+                                      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#10b981', borderRadius: '12px 0 0 12px' }} />
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0 }}>
+                                          {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
+                                        </h4>
+                                        <button
+                                          type="button"
+                                          className="btn ghost"
+                                          style={{ color: 'var(--color-danger)', padding: 4 }}
+                                          onClick={() => {
+                                            const updated = [...aiScreenerConfigs];
+                                            updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
+                                            setAiScreenerConfigs(updated);
+                                          }}
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </div>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {(branch.conditions || []).map((c: any, i: number) => {
+                                          const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
+                                          const isLast = i === branch.conditions.length - 1;
+                                          return (
+                                            <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                              <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                {i === 0 ? (
+                                                  <div style={{ background: '#d1fae5', color: '#047857', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
+                                                ) : (
+                                                  <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
+                                                )}
+                                                {!isLast && (
+                                                  <div style={{ position: 'absolute', top: 32, bottom: -16, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
+                                                )}
+                                              </div>
+
+                                              <div style={{ width: 140 }}>
+                                                <CustomSelect
+                                                  options={[
+                                                    { value: 'source', label: t('Nguồn (Source)') },
+                                                    { value: 'name', label: t('Tên KH (Name)') },
+                                                    { value: 'phone', label: t('Số ĐT (Phone)') },
+                                                    { value: 'email', label: t('Email') },
+                                                    { value: 'note', label: t('Ghi chú (Note)') }
+                                                  ]}
+                                                  value={c.col || 'source'}
+                                                  onChange={val => {
+                                                    const updated = [...aiScreenerConfigs];
+                                                    updated[index].manual_rules[bIndex].conditions[i].col = String(val);
+                                                    setAiScreenerConfigs(updated);
+                                                  }}
+                                                  width="100%"
+                                                />
+                                              </div>
+
+                                              <div style={{ width: 150 }}>
+                                                <CustomSelect
+                                                  options={[
+                                                    { value: 'contains', label: t('Có chứa') },
+                                                    { value: 'not_contains', label: t('Không chứa') },
+                                                    { value: 'equals', label: t('Bằng') },
+                                                    { value: 'starts_with', label: t('Bắt đầu bằng') },
+                                                    { value: 'ends_with', label: t('Kết thúc bằng') },
+                                                    { value: 'is_empty', label: t('Rỗng') },
+                                                    { value: 'is_not_empty', label: t('Không rỗng') }
+                                                  ]}
+                                                  value={c.op || 'contains'}
+                                                  onChange={val => {
+                                                    const updated = [...aiScreenerConfigs];
+                                                    updated[index].manual_rules[bIndex].conditions[i].op = String(val);
+                                                    if (val === 'is_empty' || val === 'is_not_empty') {
+                                                      updated[index].manual_rules[bIndex].conditions[i].val = '';
+                                                    }
+                                                    setAiScreenerConfigs(updated);
+                                                  }}
+                                                  width="100%"
+                                                />
+                                              </div>
+
+                                              {!isNoValueOp && (
+                                                <div style={{ flex: 1, minWidth: 150 }}>
+                                                  <input
+                                                    type="text"
+                                                    value={c.val || ''}
+                                                    onChange={e => {
+                                                      const updated = [...aiScreenerConfigs];
+                                                      updated[index].manual_rules[bIndex].conditions[i].val = e.target.value;
+                                                      setAiScreenerConfigs(updated);
+                                                    }}
+                                                    placeholder={t("Giá trị so khớp...")}
+                                                    className="form-input"
+                                                    style={{ height: 36, fontSize: '0.825rem', width: '100%' }}
+                                                  />
+                                                </div>
+                                              )}
+
+                                              <button
+                                                type="button"
+                                                className="btn ghost"
+                                                style={{ color: 'var(--color-text-muted)', padding: 4 }}
+                                                onClick={() => {
+                                                  const updated = [...aiScreenerConfigs];
+                                                  const remaining = config.manual_rules[bIndex].conditions.filter((_: any, idx: number) => idx !== i);
+                                                  if (remaining.length === 0) {
+                                                    updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
+                                                  } else {
+                                                    updated[index].manual_rules[bIndex].conditions = remaining;
+                                                  }
+                                                  setAiScreenerConfigs(updated);
+                                                }}
+                                              >
+                                                <XCircle size={16} />
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+
+                                        <div style={{ paddingLeft: 32, marginTop: 4 }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const updated = [...aiScreenerConfigs];
+                                              updated[index].manual_rules[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
+                                              setAiScreenerConfigs(updated);
+                                            }}
+                                            className="btn ghost"
+                                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                                          >
+                                            <Plus size={12} /> {t("Thêm điều kiện (AND)")}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...aiScreenerConfigs];
+                                        updated[index].manual_rules = [...(config.manual_rules || []), { conditions: [{ col: 'source', op: 'contains', val: '' }] }];
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                      className="btn outline"
+                                      style={{ gap: 6, fontWeight: 700, borderRadius: 20, borderColor: 'var(--color-primary)', color: 'var(--color-primary)', padding: '6px 14px', fontSize: '0.8125rem' }}
+                                    >
+                                      <Plus size={14} /> {t("Thêm nhánh quy tắc")}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            )}
+
                           </div>
-                        </>
-                      )}
+                        );
+                      })}
+
+                      {/* Add Group Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiScreenerConfigs([...aiScreenerConfigs, {
+                            id: 'config_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                            name: '',
+                            rounds: [],
+                            mode: 'ai',
+                            ai_rules: '',
+                            manual_action: 'hold',
+                            manual_rules: []
+                          }]);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          padding: '1.25rem',
+                          borderRadius: '12px',
+                          border: '2px dashed var(--color-primary-light)',
+                          background: 'rgba(124, 58, 237, 0.02)',
+                          color: 'var(--color-primary)',
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          width: '100%'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        }}
+                      >
+                        <Plus size={16} /> {t("Thêm nhóm cấu hình lọc mới")}
+                      </button>
+
                     </div>
                   )}
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', marginTop: '1rem' }}>
-                    <button
-                      onClick={handleSaveConfig}
-                      disabled={savingSettings}
-                      className="btn primary"
-                      style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
-                    >
-                      {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
-                      {t("Lưu cấu hình bộ lọc")}
-                    </button>
-                  </div>
                 </>
               )}
             </div>
-          )}
 
-          {/* Guide Content */}
-          {modalTab === 'guide' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.5rem 0' }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2.5rem', alignItems: 'center', flexWrap: 'wrap' }} className="responsive-grid-1-1">
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
-                    {t('Bộ lọc AI - Lá chắn thông minh cho Đội ngũ TVV')}
-                  </h3>
-                  <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
-                    {t('Trong vận hành Telesale, lead rác (số điện thoại ảo, sai thông tin, spam hoặc không đúng đối tượng) chiếm tới 30-40% ngân sách và làm giảm 50% động lực làm việc của đội ngũ. Bộ lọc AI được thiết kế để tự động nhận dạng, phân loại và tạm giữ các lead rác ngay khi vừa đổ về webhook trước khi hệ thống chia số cho Sales.')}
-                  </p>
-                </div>
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(79, 70, 229, 0.05) 100%)',
-                  border: '1px solid rgba(124, 58, 237, 0.15)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <ShieldCheck size={20} color="#7c3aed" style={{ flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Đã tiết kiệm được')}</span>
-                  </div>
-                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>
-                    85% +
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {t('Thống kê thời gian Sales dành cho lead rác giảm rõ rệt sau khi kích hoạt Bộ lọc AI thông minh.')}
-                  </span>
-                </div>
+          </div>
+
+          {/* Sticky Bottom Actions Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: '1rem',
+            marginTop: '0.75rem',
+            flexShrink: 0
+          }}>
+            <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>
+              {t("Đóng")}
+            </button>
+            <button
+              onClick={handleSaveConfig}
+              disabled={savingSettings}
+              className="btn primary"
+              style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
+            >
+              {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+              {t("Lưu cấu hình bộ lọc")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Guide Modal */}
+      <CustomModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        title={t("Ưu điểm & Hướng dẫn sử dụng Bộ lọc AI")}
+        width="950px"
+      >
+        <style>{`
+          div:has(> .guide-modal-container) {
+            overflow: hidden !important;
+            padding: 0 !important;
+          }
+        `}</style>
+        <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
+              border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
+              borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem'
+            }}>
+              <div style={{
+                background: 'var(--color-card, #fff)',
+                width: 40, height: 40, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
+              }}>
+                <Sparkles size={20} />
               </div>
-
               <div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                  {t('Sơ đồ hoạt động của hệ thống')}
+                <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4, marginTop: 0 }}>
+                  {t("Bộ lọc AI - Lá chắn thông minh cho Đội ngũ TVV")}
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>1</div>
-                    <div>
-                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Webhook tiếp nhận')}</h5>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead mới đổ vào hệ thống từ Google Sheets, Facebook Form, Landing Page...')}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>2</div>
-                    <div>
-                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Kiểm thử Bộ lọc')}</h5>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Hệ thống đánh giá dựa trên Prompt AI của Gemini hoặc các Luật thủ công đã cấu hình.')}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: '#10b981', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✓</div>
-                    <div>
-                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: '#10b981' }}>{t('Phân bổ tự động')}</h5>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead đạt chuẩn được giao ngay cho TVV theo lượt chia và đẩy đồng bộ lên Sheets.')}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✗</div>
-                    <div>
-                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{t('Tạm giữ phê duyệt')}</h5>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead dưới chuẩn bị giữ lại. Admin xem lại tại bảng Phê duyệt để Duyệt hoặc Chặn/Hủy.')}</p>
-                    </div>
-                  </div>
-                </div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
+                  {t("Trong vận hành Telesale, lead rác (số điện thoại ảo, sai thông tin, spam hoặc không đúng đối tượng) chiếm tới 30-40% ngân sách và làm giảm 50% động lực làm việc của đội ngũ. Bộ lọc AI được thiết kế để tự động nhận dạng, phân loại và tạm giữ các lead rác ngay khi vừa đổ về webhook trước khi hệ thống chia số cho Sales.")}
+                </p>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
-                <div>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Zap size={18} color="#eab308" />
-                    {t('Mẹo cấu hình Gemini AI')}
-                  </h4>
-                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                    <li>
-                      <strong>{t('Đặt tiêu chuẩn rõ ràng:')}</strong> {t('AI hoạt động tốt nhất khi được cung cấp quy tắc dạng logic như "Tiếng Anh: Đạt chuẩn (đã đi làm hoặc sinh viên muốn ôn thi IELTS), Không đạt (học sinh cấp 1, cấp 2 hoặc không nghe điện thoại)".')}
-                    </li>
-                    <li>
-                      <strong>{t('Không cần viết code:')}</strong> {t('Hãy dùng ngôn ngữ tự nhiên bình thường. AI có khả năng đọc ghi chú, thông tin học vấn hay nguồn để suy luận rất tốt.')}
-                    </li>
-                    <li>
-                      <strong>{t('Luôn chỉ rõ trường hợp loại trừ:')}</strong> {t('Ví dụ: "Số điện thoại bị thiếu số hoặc ghi chú ghi là test thì luôn đánh giá không đạt chuẩn".')}
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <ShieldAlert size={18} color="#3b82f6" />
-                    {t('Hướng dẫn xử lý duyệt')}
-                  </h4>
-                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                    <li>
-                      <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
-                    </li>
-                    <li>
-                      <strong>{t('Hủy lead:')}</strong> {t('Hệ thống loại bỏ lead này khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
-                    </li>
-                    <li>
-                      <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
             </div>
-          )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>{t("Đóng")}</button>
+            <div>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                {t('Sơ đồ hoạt động của hệ thống')}
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>1</div>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Webhook tiếp nhận')}</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead mới đổ vào hệ thống từ Google Sheets, Facebook Form, Landing Page...')}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>2</div>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Kiểm thử Bộ lọc')}</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Hệ thống đánh giá dựa trên Prompt AI của Gemini hoặc các Luật thủ công đã cấu hình.')}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: '#10b981', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✓</div>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: '#10b981' }}>{t('Phân bổ tự động')}</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead đạt chuẩn được giao ngay cho TVV theo lượt chia và đẩy đồng bộ lên Sheets.')}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✗</div>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{t('Tạm giữ phê duyệt')}</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead dưới chuẩn bị giữ lại. Admin xem lại tại bảng Phê duyệt để Duyệt hoặc Chặn/Hủy.')}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Zap size={18} color="#eab308" />
+                  {t('Mẹo cấu hình Gemini AI')}
+                </h4>
+                <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                  <li>
+                    <strong>{t('Đặt tiêu chuẩn rõ ràng:')}</strong> {t('AI hoạt động tốt nhất khi được cung cấp quy tắc dạng logic như "Tiếng Anh: Đạt chuẩn (đã đi làm hoặc sinh viên muốn IELTS), Không đạt (học sinh cấp 1, cấp 2 hoặc không nghe điện thoại)".')}
+                  </li>
+                  <li>
+                    <strong>{t('Không cần viết code:')}</strong> {t('Hãy dùng ngôn ngữ tự nhiên bình thường. AI có khả năng đọc ghi chú, thông tin học vấn hay nguồn để suy luận rất tốt.')}
+                  </li>
+                  <li>
+                    <strong>{t('Luôn chỉ rõ trường hợp loại trừ:')}</strong> {t('Ví dụ: "Số điện thoại bị thiếu số hoặc ghi chú ghi là test thì luôn đánh giá không đạt chuẩn".')}
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldAlert size={18} color="#3b82f6" />
+                  {t('Hướng dẫn xử lý duyệt')}
+                </h4>
+                <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                  <li>
+                    <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
+                  </li>
+                  <li>
+                    <strong>{t('Hủy lead:')}</strong> {t('Hệ thống loại bỏ lead này khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
+                  </li>
+                  <li>
+                    <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Sticky Bottom Actions Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: '1rem',
+            marginTop: '0.75rem',
+            flexShrink: 0
+          }}>
+            <button className="btn outline" onClick={() => setIsGuideModalOpen(false)}>
+              {t("Đóng")}
+            </button>
           </div>
         </div>
       </CustomModal>
