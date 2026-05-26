@@ -36,7 +36,10 @@
   .btn { padding: 0.4rem 0.75rem !important; font-size: 0.8125rem !important; height: 36px !important; }
   .btn svg { width: 14px !important; height: 14px !important; }
   .responsive-grid-1-1 { grid-template-columns: 1fr !important; }
-  .responsive-filter-row { flex-direction: column !important; }
+  .responsive-filter-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
   .responsive-filter-item { width: 100% !important; }
   .responsive-filter-item > div { width: 100% !important; }
   .responsive-flex-row { flex-direction: column !important; align-items: stretch !important; }

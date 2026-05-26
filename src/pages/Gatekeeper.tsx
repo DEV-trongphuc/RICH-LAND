@@ -598,7 +598,9 @@ export const Gatekeeper = () => {
               e.currentTarget.style.borderColor = 'var(--color-border)';
             }}
           >
-            <Settings size={14} color="var(--color-primary)" /> {t('Cấu hình quy tắc')}
+            <Settings size={14} color="var(--color-primary)" />
+            <span className="hide-on-mobile">{t('Cấu hình quy tắc')}</span>
+            <span className="mobile-only">{t('Cấu hình')}</span>
           </button>
 
           <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
@@ -1091,37 +1093,21 @@ export const Gatekeeper = () => {
           <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
 
           <div className="mobile-stack" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
-            <input
-              type="text"
-              value={heldLeadsSearch}
-              onChange={e => setHeldLeadsSearch(e.target.value)}
-              placeholder={t("Tìm kiếm Tên, SĐT, Email...")}
-              className="form-input mobile-w-full"
-              style={{ height: 44, fontSize: '0.85rem', width: '100%', maxWidth: 350, borderRadius: 'var(--radius-lg)', padding: '0 1rem' }}
-            />
-            
-            <div className="mobile-w-full" style={{ position: 'relative', width: 180 }}>
-              <CustomSelect
-                options={dateOptions}
-                value={dateFilter}
-                onChange={val => {
-                  if (val === 'Tùy chỉnh') {
-                    setShowDateModal(true);
-                    return;
-                  }
-                  updateParams('date', val.toString());
-                }}
-                width="100%"
+            {/* Search Input + Refresh Button */}
+            <div className="mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: 350 }}>
+              <input
+                type="text"
+                value={heldLeadsSearch}
+                onChange={e => setHeldLeadsSearch(e.target.value)}
+                placeholder={t("Tìm kiếm Tên, SĐT, Email...")}
+                className="form-input mobile-w-full"
+                style={{ height: 44, fontSize: '0.85rem', width: '100%', maxWidth: 350, borderRadius: 'var(--radius-lg)', padding: '0 1rem', flex: 1 }}
               />
-            </div>
-
-            {/* Mobile filter buttons */}
-            <div style={{ display: 'flex', gap: '0.75rem', width: '100%', justifyContent: 'space-between', alignItems: 'center' }} className="mobile-only">
               <button
                 onClick={fetchHeldLeads}
                 disabled={heldLeadsLoading}
                 title={t("Làm mới")}
-                className="btn outline"
+                className="btn outline mobile-only"
                 style={{
                   padding: 0,
                   borderRadius: 'var(--radius-lg)',
@@ -1139,9 +1125,28 @@ export const Gatekeeper = () => {
               >
                 <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
               </button>
+            </div>
+            
+            {/* Date Select + Stats Button */}
+            <div className="mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: 180 }}>
+              <div style={{ position: 'relative', width: '100%' }} className="mobile-flex-1">
+                <CustomSelect
+                  options={dateOptions}
+                  value={dateFilter}
+                  onChange={val => {
+                    if (val === 'Tùy chỉnh') {
+                      setShowDateModal(true);
+                      return;
+                    }
+                    updateParams('date', val.toString());
+                  }}
+                  width="100%"
+                />
+              </div>
+              
               <button
                 onClick={() => setIsStatsModalOpen(true)}
-                className="btn primary"
+                className="btn primary mobile-only"
                 style={{
                   height: 44,
                   fontSize: '0.825rem',

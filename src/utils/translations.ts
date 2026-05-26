@@ -1,4 +1,6 @@
 export const en: Record<string, string> = {
+  "Cấu hình": "Configure",
+  "Cấu hình quy tắc": "Configure Rules",
   // Navigation / Sidebar
   "Dashboard": "Dashboard",
   "Quản lý Data": "Data Management",
@@ -1791,6 +1793,8 @@ export const en: Record<string, string> = {
 };
 
 export const ja: Record<string, string> = {
+  "Cấu hình": "設定",
+  "Cấu hình quy tắc": "ルール設定",
   "Dashboard": "ダッシュボード",
   "Quản lý Data": "データ管理",
   "Vòng phân bổ": "割り当てラウンド",
@@ -3532,6 +3536,8 @@ export const ja: Record<string, string> = {
 };
 
 export const zh: Record<string, string> = {
+  "Cấu hình": "配置",
+  "Cấu hình quy tắc": "规则配置",
   "Dashboard": "仪表板",
   "Quản lý Data": "数据管理",
   "Vòng phân bổ": "分配轮次",
