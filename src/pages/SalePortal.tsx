@@ -47,6 +47,7 @@ export const SalePortal = () => {
     by_round: [],
     by_hour: Array(24).fill(0)
   });
+  const isAllowedToReport = data.is_allowed_to_report !== false;
 
   const [portalVacationMode, setPortalVacationMode] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -273,35 +274,48 @@ export const SalePortal = () => {
     toast.success(t('Đã đăng xuất tài khoản.'));
   };
 
+  const getReasonsList = (): { reason: string; note: string }[] => {
+    return data.report_error_reasons || [
+      { reason: 'Sai số điện thoại / Số ảo', note: 'Data có số điện thoại sai, không đúng, thiếu số, hoặc gọi thì báo không phải tên của khách hàng.' },
+      { reason: 'Trùng của tôi (Trùng Saleperson)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+      { reason: 'Trùng của người khác (Saleperson khác đã chăm)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+      { reason: 'Spam ảo / Junk lead', note: 'Data mà vừa giao gọi cuộc 1 đã báo hết nhu cầu rồi, không có đăng kí, cháu chắt phá, hoặc đăng kí cho vui.' },
+      { reason: 'Khác (Vui lòng ghi rõ ở phần ghi chú)', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
+    ];
+  };
+
   // Submit quick ticket
   const handleOpenReportModal = (lead: any) => {
     setSelectedLead(lead);
-    setReportReasonType('Số điện thoại không đúng / Thuê bao');
+    const rList = getReasonsList();
+    setReportReasonType(rList[0]?.reason || '');
     setReportDetails('');
     setReportModalOpen(true);
   };
 
   const handleSubmitReport = async () => {
     if (!selectedLead) return;
+    const isOtherReason = reportReasonType.toLowerCase().includes('khác') || reportReasonType.toLowerCase().includes('other');
+    if (isOtherReason && !reportDetails.trim()) {
+      toast.error(t('Vui lòng nhập mô tả chi tiết lý do lỗi.'));
+      return;
+    }
     setSubmittingReport(true);
     try {
-      const fullReason = `${reportReasonType}${reportDetails ? ' - ' + reportDetails.trim() : ''}`;
+      const finalReason = isOtherReason 
+        ? `${reportReasonType}: ${reportDetails.trim()}` 
+        : (reportDetails.trim() ? `${reportReasonType} (Ghi chú: ${reportDetails.trim()})` : reportReasonType);
       const payload = {
         lead_id: selectedLead.lead_id,
         sale_id: user?.role === 'sale' ? user?.consultant_id : selectedLead.assigned_to,
         round_id: selectedLead.round_id,
-        reason: fullReason
+        reason: finalReason
       };
 
-      const res = await fetch('https://open.domation.net/sale_data/api.php?action=submit_report', {
+      const json = await fetchAPI('submit_report', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
 
       if (json.success) {
         if (json.auto_approved) {
@@ -314,8 +328,8 @@ export const SalePortal = () => {
       } else {
         toast.error(json.message || t('Gửi báo lỗi thất bại'));
       }
-    } catch (err) {
-      toast.error(t('Không thể kết nối máy chủ gửi báo lỗi'));
+    } catch (err: any) {
+      toast.error(t('Không thể kết nối máy chủ gửi báo lỗi') + (err.message ? ': ' + err.message : ''));
     }
     setSubmittingReport(false);
   };
@@ -1102,7 +1116,7 @@ export const SalePortal = () => {
                               <XCircle size={16} />
                             </div>
                           )}
-                          {!lead.report_status && (
+                          {!lead.report_status && isAllowedToReport && (
                             <button
                               onClick={(e) => {
                                   e.stopPropagation();
@@ -1144,79 +1158,109 @@ export const SalePortal = () => {
           onClose={() => setReportModalOpen(false)}
           title={t("BÁO CÁO LỖI DỮ LIỆU")}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ background: 'var(--color-bg)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
-              <div style={{ marginBottom: '6px' }}>
-                <strong>{t('Tên Khách hàng:')}</strong> {selectedLead.lead_name}
-              </div>
-              <div style={{ marginBottom: '6px' }}>
-                <strong>{t('Số điện thoại:')}</strong> <span style={{ color: '#d97706', fontWeight: 700 }}>{selectedLead.phone}</span>
-              </div>
-              <div>
-                <strong>{t('Vòng chia:')}</strong> {selectedLead.round_name || t('Mặc định')}
-              </div>
-            </div>
+          {(() => {
+            const isOtherReason = reportReasonType.toLowerCase().includes('khác') || reportReasonType.toLowerCase().includes('other');
+            const rList = getReasonsList();
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ background: 'var(--color-bg)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                  <div style={{ marginBottom: '6px' }}>
+                    <strong>{t('Tên Khách hàng:')}</strong> {selectedLead.lead_name}
+                  </div>
+                  <div style={{ marginBottom: '6px' }}>
+                    <strong>{t('Số điện thoại:')}</strong> <span style={{ color: '#d97706', fontWeight: 700 }}>{selectedLead.phone}</span>
+                  </div>
+                  <div>
+                    <strong>{t('Vòng chia:')}</strong> {selectedLead.round_name || t('Mặc định')}
+                  </div>
+                </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
-                {t('Lý do báo lỗi (Chọn mẫu có sẵn)')}
-              </label>
-              <select
-                value={reportReasonType}
-                onChange={(e) => setReportReasonType(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '10px',
-                  border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)',
-                  color: 'var(--color-text)', outline: 'none', cursor: 'pointer'
-                }}
-              >
-                <option value="Số điện thoại không đúng / Thuê bao">{t("Số điện thoại không đúng / Thuê bao")}</option>
-                <option value="Khách hàng trùng lặp">{t("Khách hàng trùng lặp (Đã được giao trước đó)")}</option>
-                <option value="Khách hàng không có nhu cầu / Spam">{t("Khách hàng không có nhu cầu / Spam")}</option>
-                <option value="Sai dòng sản phẩm / Nhầm phân bổ">{t("Sai dòng sản phẩm / Nhầm phân bổ")}</option>
-                <option value="Lý do khác (Vui lòng ghi chi tiết)">{t("Lý do khác (Vui lòng ghi chi tiết ở dưới)")}</option>
-              </select>
-            </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
+                    {t('Lý do báo lỗi (Chọn mẫu có sẵn)')}
+                  </label>
+                  <select
+                    value={reportReasonType}
+                    onChange={(e) => setReportReasonType(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: '10px',
+                      border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)',
+                      color: 'var(--color-text)', outline: 'none', cursor: 'pointer'
+                    }}
+                  >
+                    {rList.map((r: any) => (
+                      <option key={r.reason} value={r.reason}>{t(r.reason)}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
-                {t('Mô tả chi tiết lỗi (Không bắt buộc)')}
-              </label>
-              <textarea
-                placeholder={t("Nhập thêm chi tiết lỗi hoặc dẫn chứng trùng lặp...")}
-                value={reportDetails}
-                onChange={(e) => setReportDetails(e.target.value)}
-                style={{
-                  width: '100%', height: 100, padding: '10px 12px', borderRadius: '10px',
-                  border: '1px solid var(--color-border)', fontSize: '0.875rem', outline: 'none',
-                  resize: 'none', fontFamily: 'inherit', color: 'var(--color-text)', background: 'var(--color-surface)'
-                }}
-              />
-            </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-light)', marginBottom: '6px' }}>
+                    {isOtherReason ? t('Mô tả chi tiết lỗi (Bắt buộc)') : t('Mô tả chi tiết lỗi (Không bắt buộc)')}
+                  </label>
+                  <textarea
+                    placeholder={isOtherReason ? t('Nhập chi tiết lý do lỗi (bắt buộc)...') : t('Nhập thêm chi tiết lỗi hoặc dẫn chứng trùng lặp (tùy chọn)...')}
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    style={{
+                      width: '100%', height: 100, padding: '10px 12px', borderRadius: '10px',
+                      border: '1px solid var(--color-border)', fontSize: '0.875rem', outline: 'none',
+                      resize: 'none', fontFamily: 'inherit', color: 'var(--color-text)', background: 'var(--color-surface)'
+                    }}
+                  />
+                </div>
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button
-                onClick={() => setReportModalOpen(false)}
-                style={{
-                  background: 'var(--color-border-light)', color: 'var(--color-text-light)', border: 'none', borderRadius: '8px',
-                  padding: '10px 20px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
-                }}
-              >
-                {t('Hủy bỏ')}
-              </button>
-              <button
-                onClick={handleSubmitReport}
-                disabled={submittingReport}
-                style={{
-                  background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px',
-                  padding: '10px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px'
-                }}
-              >
-                <Send size={16} /> {submittingReport ? t('Đang gửi...') : t('Gửi báo cáo lỗi')}
-              </button>
-            </div>
-          </div>
+                <details style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}>
+                  <summary style={{ fontWeight: 700, color: 'var(--color-text-light)', outline: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>💡 {t("Xem hướng dẫn quy định báo cáo lỗi")}</span>
+                  </summary>
+                  <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'default' }}>
+                    {rList.map((item: any, idx: number) => {
+                      const borderColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
+                      const borderColor = borderColors[idx % borderColors.length];
+                      const cleanNote = (item.note || '').replace(/{n}/g, String(data.duplicate_check_months || 6));
+                      if (!cleanNote) return null;
+                      return (
+                        <div key={idx} style={{ fontSize: '0.78rem', lineHeight: 1.4, borderLeft: `3px solid ${borderColor}`, paddingLeft: 8 }}>
+                          <strong style={{ color: borderColor }}>{t(item.reason).toUpperCase()}:</strong> {t(cleanNote)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <button
+                    onClick={() => setReportModalOpen(false)}
+                    style={{
+                      background: 'var(--color-border-light)', color: 'var(--color-text-light)', border: 'none', borderRadius: '8px',
+                      padding: '10px 20px', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
+                    }}
+                  >
+                    {t('Hủy bỏ')}
+                  </button>
+                  <button
+                    onClick={handleSubmitReport}
+                    disabled={submittingReport}
+                    style={{
+                      background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px',
+                      padding: '10px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px'
+                    }}
+                  >
+                    <Send size={16} /> {submittingReport ? t('Đang gửi...') : t('Gửi báo cáo lỗi')}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </CustomModal>
       )}
 

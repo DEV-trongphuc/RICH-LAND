@@ -8,7 +8,7 @@ import { Avatar } from './ui/Avatar';
 import toast from 'react-hot-toast';
 
 export const ProfileModal = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -186,7 +186,7 @@ export const ProfileModal = () => {
             display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
           }}
         >
-          <User size={16} /> Hồ sơ của tôi
+          <User size={16} /> {t('Hồ sơ của tôi')}
         </button>
         <button
           onClick={() => setActiveTab('password')}
@@ -198,7 +198,7 @@ export const ProfileModal = () => {
             display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
           }}
         >
-          <Key size={16} /> Đổi mật khẩu
+          <Key size={16} /> {t('Đổi mật khẩu')}
         </button>
         <button
           onClick={() => setActiveTab('activity')}
@@ -210,7 +210,7 @@ export const ProfileModal = () => {
             display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', transition: 'all 0.2s', whiteSpace: 'nowrap'
           }}
         >
-          <Activity size={16} /> Thống kê hoạt động
+          <Activity size={16} /> {t('Thống kê hoạt động')}
         </button>
       </div>
 
@@ -230,7 +230,7 @@ export const ProfileModal = () => {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                  Ảnh đại diện
+                  {t('Ảnh đại diện')}
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -240,7 +240,7 @@ export const ProfileModal = () => {
                     style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white' }}
                     disabled={isUploadingAvatar}
                   >
-                    Tải ảnh lên
+                    {t('Tải ảnh lên')}
                   </button>
                   {profileData.avatar && (
                     <button
@@ -249,7 +249,7 @@ export const ProfileModal = () => {
                       className="btn outline sm"
                       style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'white' }}
                     >
-                      Xóa ảnh
+                      {t('Xóa ảnh')}
                     </button>
                   )}
                 </div>
@@ -261,7 +261,7 @@ export const ProfileModal = () => {
                   style={{ display: 'none' }}
                 />
                 <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                  Chấp nhận JPG, PNG, WEBP (tối đa 5MB)
+                  {t('Chấp nhận JPG, PNG, WEBP (tối đa 5MB)')}
                 </span>
               </div>
             </div>
@@ -429,7 +429,7 @@ export const ProfileModal = () => {
                               {log.action}
                             </span>
                             <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Clock size={12} /> {new Date(log.created_at).toLocaleString('vi-VN')}
+                              <Clock size={12} /> {new Date(log.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : 'en-US')}
                             </span>
                           </div>
 

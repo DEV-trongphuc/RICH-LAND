@@ -972,6 +972,8 @@ switch ($action) {
             $stmtV->close();
         }
 
+        $isAllowedToReport = true;
+
         $leadRecallMinutes = (int) get_system_setting($conn, 'lead_recall_minutes');
         
         echo json_encode([
@@ -981,6 +983,9 @@ switch ($action) {
             'consultants' => $consultantsList,
             'vacation_mode' => $vacationMode,
             'lead_recall_minutes' => $leadRecallMinutes,
+            'duplicate_check_months' => (int) get_system_setting($conn, 'duplicate_check_months') ?: 6,
+            'report_error_reasons' => get_normalized_report_error_reasons($conn),
+            'is_allowed_to_report' => true,
             'stats' => [
                 'total_received' => count($leads),
                 'tickets_total' => (int)($ticketStats['total'] ?? 0),
@@ -3283,6 +3288,19 @@ switch ($action) {
         $pendingChk->execute();
         $existingReport = $pendingChk->get_result()->fetch_assoc();
 
+        $cEmail = $ctx['consultant_email'];
+        $cRole = 'sale';
+        $roleStmt = $conn->prepare("SELECT role FROM accounts WHERE email = ? LIMIT 1");
+        if ($roleStmt) {
+            $roleStmt->bind_param("s", $cEmail);
+            $roleStmt->execute();
+            $roleRes = $roleStmt->get_result()->fetch_assoc();
+            if ($roleRes) {
+                $cRole = $roleRes['role'];
+            }
+            $roleStmt->close();
+        }
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -3297,6 +3315,10 @@ switch ($action) {
                 'round_name' => $ctx['round_name'],
                 'assigned_at' => $ctx['received_at'],
                 'existing_report' => $existingReport ? $existingReport['status'] : null,
+                'duplicate_check_months' => (int) get_system_setting($conn, 'duplicate_check_months') ?: 6,
+                'report_error_reasons' => get_normalized_report_error_reasons($conn),
+                'is_allowed_to_report' => true,
+                'consultant_role' => $cRole
             ]
         ]);
         break;
@@ -3312,6 +3334,8 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);
             break;
         }
+
+
 
         // SECURITY: Verify ownership — lead must truly belong to this consultant in this round
         $verifyStmt = $conn->prepare("

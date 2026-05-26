@@ -4,12 +4,17 @@ import { AlertCircle, CheckCircle, Send, Loader2, Shield, XCircle } from 'lucide
 import { fetchPublicAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const REPORT_REASONS = [
-  'Sai số điện thoại / Số ảo',
-  'Trùng của tôi (Trùng Saleperson)',
-  'Trùng của người khác (Saleperson khác đã chăm)',
-  'Spam ảo / Junk lead',
-  'Khác (Vui lòng ghi rõ ở phần ghi chú)'
+interface ReportReason {
+  reason: string;
+  note: string;
+}
+
+const DEFAULT_REPORT_REASONS: ReportReason[] = [
+  { reason: 'Sai số điện thoại / Số ảo', note: 'Data có số điện thoại sai, không đúng, thiếu số, hoặc gọi thì báo không phải tên của khách hàng.' },
+  { reason: 'Trùng của tôi (Trùng Saleperson)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+  { reason: 'Trùng của người khác (Saleperson khác đã chăm)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+  { reason: 'Spam ảo / Junk lead', note: 'Data mà vừa giao gọi cuộc 1 đã báo hết nhu cầu rồi, không có đăng kí, cháu chắt phá, hoặc đăng kí cho vui.' },
+  { reason: 'Khác (Vui lòng ghi rõ ở phần ghi chú)', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
 ];
 
 const TEST_MOCK_CONTEXT = {
@@ -24,6 +29,7 @@ const TEST_MOCK_CONTEXT = {
   round_name: 'Vòng A — Facebook Inbound',
   assigned_at: new Date().toISOString(),
   existing_report: null as string | null,
+  duplicate_check_months: 6
 };
 
 // Color hash for avatars
@@ -39,6 +45,7 @@ interface ReportContext {
   lead_name: string; lead_phone: string; lead_email?: string; lead_source: string; lead_type?: string; lead_note: string;
   consultant_name: string; consultant_email: string; round_name: string;
   assigned_at: string; existing_report: string | null;
+  duplicate_check_months?: number;
 }
 
 export const ReportData = () => {
@@ -65,10 +72,11 @@ export const ReportData = () => {
     isTest: searchParams.get('test') === '1',
   });
 
+  const [reasons, setReasons] = useState<ReportReason[]>([]);
   const [context, setContext] = useState<ReportContext | null>(null);
   const [loadingCtx, setLoadingCtx] = useState(true);
   const [ctxError, setCtxError] = useState('');
-  const [reason, setReason] = useState(REPORT_REASONS[0]);
+  const [reason, setReason] = useState<string>('');
   const [customReason, setCustomReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -77,27 +85,48 @@ export const ReportData = () => {
 
   useEffect(() => {
     navigate('/report-data', { replace: true });
-    if (params.isTest) { setContext(TEST_MOCK_CONTEXT); setLoadingCtx(false); return; }
-    // BUG-07 fix: Kiểm tra params phải là số nguyên dương hợp lệ, không chỉ "có tồn tại"
+    if (params.isTest) {
+      setContext(TEST_MOCK_CONTEXT);
+      setReasons(DEFAULT_REPORT_REASONS);
+      setReason(DEFAULT_REPORT_REASONS[0].reason);
+      setLoadingCtx(false);
+      return;
+    }
     const isValidId = (v: string) => /^\d+$/.test(v) && parseInt(v) > 0;
     if (!isValidId(params.leadId) || !isValidId(params.saleId) || !isValidId(params.roundId)) {
       setCtxError(t('Đường dẫn không hợp lệ hoặc đã hết hạn. Vui lòng mở lại từ Email.'));
       setLoadingCtx(false); return;
     }
     fetchPublicAPI(`get_report_context&lead_id=${params.leadId}&sale_id=${params.saleId}&round_id=${params.roundId}`)
-      .then(res => { if (res.success) setContext(res.data); else setCtxError(t(res.message) || t('Không thể xác thực.')); })
+      .then(res => {
+        if (res.success) {
+          setContext(res.data);
+          if (res.data.is_allowed_to_report === false) {
+            setCtxError(t('Tài khoản của bạn không có quyền báo cáo lỗi data.'));
+          } else {
+            const list = res.data.report_error_reasons || DEFAULT_REPORT_REASONS;
+            setReasons(list);
+            if (list.length > 0) {
+              setReason(list[0].reason);
+            }
+          }
+        } else {
+          setCtxError(t(res.message) || t('Không thể xác thực.'));
+        }
+      })
       .catch(e => setCtxError(t(e.message) || t('Lỗi kết nối.')))
       .finally(() => setLoadingCtx(false));
   }, []);
 
+  const isOtherReason = reason.toLowerCase().includes('khác') || reason.toLowerCase().includes('other');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (params.isTest) { setSubmitError(t('Đây là link thử nghiệm — không thể gửi báo cáo thật.')); setSubmitStatus('error'); return; }
     if (submitting || submitStatus === 'success') return;
     setSubmitting(true); setSubmitError('');
-    const finalReason = reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' 
-      ? `Khác: ${customReason}` 
+    const finalReason = isOtherReason 
+      ? `${reason}: ${customReason}` 
       : (customReason.trim() ? `${reason} (Ghi chú: ${customReason.trim()})` : reason);
     try {
       const res = await fetchPublicAPI('submit_report', {
@@ -150,7 +179,9 @@ export const ReportData = () => {
                 <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#fca5a5,#f87171)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                   <XCircle size={36} color="white" />
                 </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>{t("Đường dẫn không hợp lệ")}</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>
+                  {ctxError.includes('quyền') ? t("Không có quyền truy cập") : t("Đường dẫn không hợp lệ")}
+                </h2>
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{ctxError}</p>
               </div>
             </div>
@@ -298,31 +329,31 @@ export const ReportData = () => {
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t("Chọn lý do lỗi")}</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {REPORT_REASONS.map(r => (
-                        <label key={r} style={{
+                      {reasons.map(r => (
+                        <label key={r.reason} style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '10px 14px',
-                          border: '1.5px solid', borderColor: reason === r ? '#8b5cf6' : 'transparent',
-                          background: reason === r ? (theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))') : 'var(--color-bg)',
+                          border: '1.5px solid', borderColor: reason === r.reason ? '#8b5cf6' : 'transparent',
+                          background: reason === r.reason ? (theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))') : 'var(--color-bg)',
                           borderRadius: 12, cursor: 'pointer',
                           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: reason === r ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
+                          boxShadow: reason === r.reason ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
                           flexShrink: 0
                         }}>
-                          <input type="radio" name="reason" value={r} checked={reason === r}
-                            onChange={() => setReason(r)}
+                          <input type="radio" name="reason" value={r.reason} checked={reason === r.reason}
+                            onChange={() => setReason(r.reason)}
                             style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.85rem', color: reason === r ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r ? 700 : 400 }}>{t(r)}</span>
+                          <span style={{ fontSize: '0.85rem', color: reason === r.reason ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r.reason ? 700 : 400 }}>{t(r.reason)}</span>
                         </label>
                       ))}
                     </div>
 
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>{t("Ghi chú thêm")}</div>
                     <textarea 
-                      required={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)'} 
+                      required={isOtherReason} 
                       value={customReason} 
                       onChange={e => setCustomReason(e.target.value)}
-                      placeholder={reason === 'Khác (Vui lòng ghi rõ ở phần ghi chú)' ? t('Nhập chi tiết lý do lỗi (bắt buộc)...') : t('Nhập ghi chú thêm nếu có (tùy chọn)...')}
+                      placeholder={isOtherReason ? t('Nhập chi tiết lý do lỗi (bắt buộc)...') : t('Nhập ghi chú thêm nếu có (tùy chọn)...')}
                       style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0, background: 'var(--color-surface)', color: 'var(--color-text)' }} />
 
                     <button type="submit" disabled={submitting}
@@ -346,6 +377,68 @@ export const ReportData = () => {
             </div>
           )}
         </div>
+
+        {/* Dynamic Guidelines Card */}
+        {context && reasons.length > 0 && (
+          <div style={{
+            marginTop: 20,
+            marginLeft: 24,
+            marginRight: 24,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 16,
+            padding: 20,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            backdropFilter: 'blur(10px)',
+          }}>
+            <h3 style={{
+              fontSize: '1rem',
+              fontWeight: 800,
+              color: 'white',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              borderBottom: '1px solid var(--color-border)',
+              paddingBottom: 10
+            }}>
+              <AlertCircle size={18} style={{ color: '#ef4444' }} />
+              {t("Quy định báo cáo dữ liệu lỗi")}
+            </h3>
+            <div className="guidelines-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 16
+            }}>
+              {reasons.map((item, idx) => {
+                const borderColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
+                const borderColor = borderColors[idx % borderColors.length];
+                const cleanNote = (item.note || '').replace(/{n}/g, String(context.duplicate_check_months || 6));
+                
+                if (!cleanNote) return null;
+
+                return (
+                  <div key={idx} style={{
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    borderLeft: `4px solid ${borderColor}`,
+                    borderRadius: 8,
+                    padding: 12,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.8rem', color: borderColor, marginBottom: 6 }}>
+                      {t(item.reason).toUpperCase()}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.4, color: 'rgba(255, 255, 255, 0.7)', whiteSpace: 'pre-wrap' }}>
+                      {t(cleanNote)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem', paddingTop: 24, flexShrink: 0 }}>

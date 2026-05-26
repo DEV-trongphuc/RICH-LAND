@@ -18,16 +18,16 @@ export const MOCK_DB = {
       { time: '20:00', volume: 20 },
     ],
     topConsultants: [
-      { id: 1, name: 'Nguyễn Văn A', email: 'haidang@domation.net', data: 450, percent: 85, color: '#3b82f6' },
-      { id: 2, name: 'Trần Thị B', email: 'thanhthao@domation.net', data: 380, percent: 70, color: '#10b981' },
-      { id: 3, name: 'Lê Hoàng C', email: 'vietdung@domation.net', data: 310, percent: 60, color: '#f59e0b' },
-      { id: 4, name: 'Hoàng Tú E', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#8b5cf6' },
-      { id: 5, name: 'Phạm Minh D', email: 'ngocmai@domation.net', data: 150, percent: 30, color: '#ef4444' }
+      { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', data: 450, percent: 85, color: '#3b82f6' },
+      { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', data: 380, percent: 70, color: '#10b981' },
+      { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', data: 310, percent: 60, color: '#f59e0b' },
+      { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#8b5cf6' },
+      { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', data: 150, percent: 30, color: '#ef4444' }
     ],
     roundRatio: [
-      { round: 'Vòng A - Facebook Ads', count: 850, percent: 55, color: '#3b82f6' },
-      { round: 'Vòng B - Zalo ZCA', count: 420, percent: 30, color: '#8b5cf6' },
-      { round: 'Vòng C - Organic Search', count: 272, percent: 15, color: '#10b981' }
+      { round: 'Vòng Phân Bổ: Facebook & TikTok Ads', count: 850, percent: 55, color: '#3b82f6' },
+      { round: 'Vòng Ưu Tiên: Zalo ZCA & Hotline', count: 420, percent: 30, color: '#8b5cf6' },
+      { round: 'Vòng Hỗ Trợ: Organic Search', count: 272, percent: 15, color: '#10b981' }
     ]
   },
   
@@ -54,17 +54,17 @@ export const MOCK_DB = {
     type: 'Tư vấn',
     note: 'Demo data from mock engine',
     status: Math.random() > 0.8 ? (Math.random() > 0.5 ? 'error' : 'compensation') : 'assigned',
-    assigned_to_name: ['Nguyễn Văn A', 'Trần Thị B', 'Lê Hoàng C', 'Hoàng Tú E'][Math.floor(Math.random() * 4)],
-    round_name: ['Vòng A - Facebook Ads', 'Vòng B - Zalo ZCA'][Math.floor(Math.random() * 2)],
+    assigned_to_name: ['Hải Đăng', 'Thanh Thảo', 'Việt Dũng', 'Minh Tuấn'][Math.floor(Math.random() * 4)],
+    round_name: ['Vòng Phân Bổ: Facebook & TikTok Ads', 'Vòng Ưu Tiên: Zalo ZCA & Hotline'][Math.floor(Math.random() * 2)],
     created_at: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
     report_status: null
   })),
 
   tickets: [
-    { id: 101, lead_name: 'Trần Văn Demo', consultant_name: 'Nguyễn Văn A', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn ò í e' },
-    { id: 102, lead_name: 'Lê Thị Test', consultant_name: 'Trần Thị B', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách bảo đang làm việc với C' },
-    { id: 103, lead_name: 'Phạm Văn Mẫu', consultant_name: 'Lê Hoàng C', reason: 'Khác', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Đã đền bù data mới', admin_note: 'Duyệt đền bù' },
-    { id: 104, lead_name: 'Nguyễn Demo 4', consultant_name: 'Hoàng Tú E', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Spam chửi bậy', admin_note: 'Từ chối vì khách vẫn nghe máy' },
+    { id: 101, lead_name: 'Trần Văn Demo', consultant_name: 'Hải Đăng', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn ò í e' },
+    { id: 102, lead_name: 'Lê Thị Test', consultant_name: 'Thanh Thảo', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách bảo đang làm việc với C' },
+    { id: 103, lead_name: 'Phạm Văn Mẫu', consultant_name: 'Việt Dũng', reason: 'Khác', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Đã đền bù data mới', admin_note: 'Duyệt đền bù' },
+    { id: 104, lead_name: 'Nguyễn Demo 4', consultant_name: 'Minh Tuấn', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Spam chửi bậy', admin_note: 'Từ chối vì khách vẫn nghe máy' },
   ],
 
   rules: [
@@ -197,9 +197,9 @@ export const MOCK_DB = {
     lead_source: 'Facebook Ads — Chiến dịch Demo',
     lead_type: 'Tư vấn khóa học',
     lead_note: 'Quan tâm: Khóa Marketing\nNgân sách: 5–10 triệu',
-    consultant_name: 'Nguyễn Văn A',
-    consultant_email: 'nguyenvana@domation.net',
-    round_name: 'Vòng A — Facebook Inbound',
+    consultant_name: 'Hải Đăng',
+    consultant_email: 'haidang@domation.net',
+    round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads',
     assigned_at: new Date().toISOString(),
     existing_report: null,
   }

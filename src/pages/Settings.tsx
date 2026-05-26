@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -61,6 +61,14 @@ const formatExcelDate = (val: string) => {
   return trimmed;
 };
 
+const DEFAULT_REPORT_REASONS = [
+  { reason: 'Sai số điện thoại / Số ảo', note: 'Data có số điện thoại sai, không đúng, thiếu số, hoặc gọi thì báo không phải tên của khách hàng.' },
+  { reason: 'Trùng của tôi (Trùng Saleperson)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+  { reason: 'Trùng của người khác (Saleperson khác đã chăm)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
+  { reason: 'Spam ảo / Junk lead', note: 'Data mà vừa giao gọi cuộc 1 đã báo hết nhu cầu rồi, không có đăng kí, cháu chắt phá, hoặc đăng kí cho vui.' },
+  { reason: 'Khác (Vui lòng ghi rõ ở phần ghi chú)', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
+];
+
 export const Settings = () => {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
@@ -68,12 +76,11 @@ export const Settings = () => {
   const [testing, setTesting] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'mail' | 'zalo' | 'report' | 'duplicate_check' | 'ai'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai'>('processing');
 
   const tabOptions = [
     { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
-    { value: 'mail', label: t('Cấu hình Email'), icon: <Mail size={16} /> },
-    { value: 'zalo', label: t('Cấu hình Zalo Bot'), icon: <MessageCircle size={16} /> },
+    { value: 'communications', label: t('Cấu hình Gửi tin & Email'), icon: <Send size={16} /> },
     { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
     { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
     { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> }
@@ -117,6 +124,21 @@ export const Settings = () => {
   const [reassignIfOwnerInactive, setReassignIfOwnerInactive] = useState(true);
   const [starvationPreventionEnabled, setStarvationPreventionEnabled] = useState(false);
   const [starvationMaxLeadsPerHour, setStarvationMaxLeadsPerHour] = useState(3);
+  const [reportErrorReasons, setReportErrorReasons] = useState<{ reason: string; note: string }[]>([]);
+
+  const handleAddReasonRow = () => {
+    setReportErrorReasons(prev => [...prev, { reason: '', note: '' }]);
+  };
+
+  const handleUpdateReasonRow = (index: number, key: 'reason' | 'note', value: string) => {
+    setReportErrorReasons(prev =>
+      prev.map((item, idx) => (idx === index ? { ...item, [key]: value } : item))
+    );
+  };
+
+  const handleRemoveReasonRow = (index: number) => {
+    setReportErrorReasons(prev => prev.filter((_, idx) => idx !== index));
+  };
 
   // Fallback direct Admin + CC config
   const [fallbackType, setFallbackType] = useState('round');
@@ -287,6 +309,27 @@ export const Settings = () => {
         }
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
+        if (json.data.report_error_reasons) {
+          try {
+            const parsed = JSON.parse(json.data.report_error_reasons);
+            if (Array.isArray(parsed)) {
+              const normalized = parsed.map((item: any) => {
+                if (typeof item === 'string') {
+                  const defaultMatch = DEFAULT_REPORT_REASONS.find(d => d.reason === item);
+                  return { reason: item, note: defaultMatch ? defaultMatch.note : '' };
+                } else if (item && typeof item === 'object') {
+                  return { reason: item.reason || '', note: item.note || '' };
+                }
+                return { reason: '', note: '' };
+              });
+              setReportErrorReasons(normalized);
+            }
+          } catch {
+            setReportErrorReasons([]);
+          }
+        } else {
+          setReportErrorReasons(DEFAULT_REPORT_REASONS);
+        }
         if (json.data.ticket_auto_approve_rules) {
           try {
             const parsed = JSON.parse(json.data.ticket_auto_approve_rules);
@@ -354,6 +397,7 @@ export const Settings = () => {
       ticket_auto_approve_enabled: ticketAutoApproveEnabled ? 1 : 0,
       ticket_auto_approve_keywords: ticketAutoApproveKeywords,
       ticket_auto_approve_rules: ticketAutoApproveRules,
+      report_error_reasons: reportErrorReasons,
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel
     };
@@ -758,16 +802,10 @@ export const Settings = () => {
           <SettingsIcon size={18} /> {t('Cấu hình Xử lý')}
         </button>
         <button
-          onClick={() => setActiveTab('mail')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'mail' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'mail' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          onClick={() => setActiveTab('communications')}
+          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'communications' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'communications' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
         >
-          <Mail size={18} /> {t('Cấu hình Email')}
-        </button>
-        <button
-          onClick={() => setActiveTab('zalo')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'zalo' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'zalo' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
-        >
-          <MessageCircle size={18} /> {t('Cấu hình Zalo Bot')}
+          <Send size={18} /> {t('Cấu hình Gửi tin & Email')}
         </button>
         <button
           onClick={() => setActiveTab('report')}
@@ -1588,67 +1626,69 @@ export const Settings = () => {
               </div>
             </div>
 
-            <div style={{ display: activeTab === 'mail' ? 'block' : 'none', animation: activeTab === 'mail' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
-                  <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
-                </h3>
+            {/* Cấu hình Gửi tin & Email */}
+            <div style={{ display: activeTab === 'communications' ? 'block' : 'none', animation: activeTab === 'communications' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
+                    <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
+                  </h3>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label className="form-label">{t('Chọn phương thức gửi')}</label>
-                  <CustomSelect
-                    options={providerOptions}
-                    value={provider}
-                    onChange={val => {
-                      const pVal = String(val);
-                      setProvider(pVal);
-                      if (pVal === 'appscript') {
-                        setShowInputScript(true);
-                      }
-                    }}
-                  />
-                </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label className="form-label">{t('Chọn phương thức gửi')}</label>
+                    <CustomSelect
+                      options={providerOptions}
+                      value={provider}
+                      onChange={val => {
+                        const pVal = String(val);
+                        setProvider(pVal);
+                        if (pVal === 'appscript') {
+                          setShowInputScript(true);
+                        }
+                      }}
+                    />
+                  </div>
 
-                {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
-                <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
-                  <input
-                    className="form-input"
-                    placeholder={t("Ví dụ: https://sale.domation.net")}
-                    value={frontendUrl}
-                    onChange={e => setFrontendUrl(e.target.value)}
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.')}</p>
-                </div>
+                  {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
+                  <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
+                    <input
+                      className="form-input"
+                      placeholder={t("Ví dụ: https://sale.domation.net")}
+                      value={frontendUrl}
+                      onChange={e => setFrontendUrl(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.')}</p>
+                  </div>
 
-                {provider === 'appscript' && (
-                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Server size={18} color="#10b981" /> {t('Cấu hình Webhook Apps Script')}
-                    </h4>
+                  {provider === 'appscript' && (
+                    <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Server size={18} color="#10b981" /> {t('Cấu hình Webhook Apps Script')}
+                      </h4>
 
-                    <div style={{ marginBottom: '1rem' }}>
-                      <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                        {t('Mã dưới đây dùng để kích hoạt tính năng')} <strong>{t('Gửi Email')}</strong> {t('qua Google. Copy mã này vào Apps Script, chọn')} <strong>Deploy as web app</strong> {t('(Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.')}
-                      </p>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                          {t('Mã dưới đây dùng để kích hoạt tính năng')} <strong>{t('Gửi Email')}</strong> {t('qua Google. Copy mã này vào Apps Script, chọn')} <strong>Deploy as web app</strong> {t('(Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.')}
+                        </p>
 
-                      {/* Collapsible Script Block */}
-                      <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
-                        <div
-                          style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                          onClick={() => setShowInputScript(!showInputScript)}
-                        >
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Xem mã Apps Script')}</span>
-                          {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-                        </div>
+                        {/* Collapsible Script Block */}
+                        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
+                          <div
+                            style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                            onClick={() => setShowInputScript(!showInputScript)}
+                          >
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Xem mã Apps Script')}</span>
+                            {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+                          </div>
 
-                        {showInputScript && (
-                          <pre style={{
-                            background: '#1e293b', color: '#e2e8f0', padding: '1rem', margin: 0,
-                            fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
-                          }}>
-                            {`// ==========================================
+                          {showInputScript && (
+                            <pre style={{
+                              background: '#1e293b', color: '#e2e8f0', padding: '1rem', margin: 0,
+                              fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
+                            }}>
+                              {`// ==========================================
 // ĐOẠN MÃ XỬ LÝ GỬI EMAIL (DEPLOY AS WEB APP)
 // ==========================================
 
@@ -1673,123 +1713,121 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }`}
-                          </pre>
-                        )}
+                            </pre>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('URL Webhook của Google Apps Script (doPost)')}</label>
+                        <input
+                          className="form-input"
+                          placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
+                          value={appscriptUrl}
+                          onChange={e => setAppscriptUrl(e.target.value)}
+                        />
                       </div>
                     </div>
+                  )}
 
+                  {provider === 'ses' && (
+                    <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
+                      </h4>
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                        <div>
+                          <label className="form-label">SMTP Host</label>
+                          <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="form-label">Port</label>
+                          <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
+                        </div>
+                      </div>
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                        <div>
+                          <label className="form-label">SMTP Username</label>
+                          <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="form-label">SMTP Password</label>
+                          <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label">{t('Email Người Gửi (From Email)')}</label>
+                          <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
+                          <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+                    </span>
+                    Cấu hình Zalo Bot (Gửi thông báo Data)
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                    Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br />
+                    Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{ color: '#0068ff', fontWeight: 600 }}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
+                  </p>
+
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
-                      <label className="form-label">{t('URL Webhook của Google Apps Script (doPost)')}</label>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (Zalo cung cấp)')}</label>
                       <input
+                        type="password"
                         className="form-input"
-                        placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
-                        value={appscriptUrl}
-                        onChange={e => setAppscriptUrl(e.target.value)}
+                        placeholder={t("Ví dụ: 12345689:abc-xyz")}
+                        value={zaloBotToken}
+                        onChange={e => setZaloBotToken(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Secret Token (Webhook bảo mật)')}</label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        placeholder={t("Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)")}
+                        value={zaloWebhookSecret}
+                        onChange={e => setZaloWebhookSecret(e.target.value)}
                       />
                     </div>
                   </div>
-                )}
 
-                {provider === 'ses' && (
-                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
-                    </h4>
-                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                      <div>
-                        <label className="form-label">SMTP Host</label>
-                        <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="form-label">Port</label>
-                        <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
-                      </div>
-                    </div>
-                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                      <div>
-                        <label className="form-label">SMTP Username</label>
-                        <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="form-label">SMTP Password</label>
-                        <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div>
-                        <label className="form-label">{t('Email Người Gửi (From Email)')}</label>
-                        <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
-                        <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Cấu hình Zalo Bot */}
-            <div style={{ display: activeTab === 'zalo' ? 'block' : 'none', animation: activeTab === 'zalo' ? 'fadeIn 0.2s ease-out' : 'none' }}>
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-                  </span>
-                  Cấu hình Zalo Bot (Gửi thông báo Data)
-                </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br />
-                  Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{ color: '#0068ff', fontWeight: 600 }}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
-                </p>
-
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (Zalo cung cấp)')}</label>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Link Zalo Bot (zalo.me/xxx)')}</label>
                     <input
-                      type="password"
                       className="form-input"
-                      placeholder={t("Ví dụ: 12345689:abc-xyz")}
-                      value={zaloBotToken}
-                      onChange={e => setZaloBotToken(e.target.value)}
+                      placeholder={t("VD: https://zalo.me/1185588456243371597")}
+                      value={zaloBotLink}
+                      onChange={e => setZaloBotLink(e.target.value)}
                     />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      {t('Link chèn vào Email chào mừng TVV.')}
+                    </p>
                   </div>
-                  <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Secret Token (Webhook bảo mật)')}</label>
-                    <input
-                      type="password"
-                      className="form-input"
-                      placeholder={t("Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)")}
-                      value={zaloWebhookSecret}
-                      onChange={e => setZaloWebhookSecret(e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Link Zalo Bot (zalo.me/xxx)')}</label>
-                  <input
-                    className="form-input"
-                    placeholder={t("VD: https://zalo.me/1185588456243371597")}
-                    value={zaloBotLink}
-                    onChange={e => setZaloBotLink(e.target.value)}
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    {t('Link chèn vào Email chào mừng TVV.')}
-                  </p>
-                </div>
-
-                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
-                  <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                      https://open.domation.net/sale_data/zalo_webhook.php
-                    </code>
+                  <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
+                    <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
+                        https://open.domation.net/sale_data/zalo_webhook.php
+                      </code>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
+                      {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
+                    </p>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                    {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
-                  </p>
                 </div>
               </div>
             </div>
@@ -1957,27 +1995,42 @@ function doPost(e) {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '6px',
-                      padding: '1rem',
-                      borderRadius: '10px',
-                      border: fallbackType === 'round' ? '2px solid #ef4444' : '1px solid var(--color-border)',
-                      background: fallbackType === 'round' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                      gap: '8px',
+                      padding: '1.25rem',
+                      borderRadius: '14px',
+                      border: fallbackType === 'round' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: fallbackType === 'round' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      boxShadow: fallbackType === 'round' ? 'var(--shadow-sm)' : 'none',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative'
                     }}
+                    className="hover-lift"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: fallbackType === 'round' ? '5px solid var(--color-primary)' : '2px solid var(--color-text-muted)',
+                        background: 'var(--color-surface)',
+                        transition: 'all 0.2s',
+                        flexShrink: 0
+                      }} />
                       <input
                         type="radio"
                         name="fallbackType"
                         value="round"
                         checked={fallbackType === 'round'}
                         onChange={() => setFallbackType('round')}
-                        style={{ accentColor: '#ef4444', margin: 0 }}
+                        style={{ display: 'none' }}
                       />
-                      {t('Phân bổ theo Vòng mặc định')}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <RefreshCw size={16} style={{ color: fallbackType === 'round' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
+                        {t('Phân bổ theo Vòng mặc định')}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', paddingLeft: '28px', lineHeight: 1.4 }}>
                       {t('Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.')}
                     </span>
                   </label>
@@ -1986,27 +2039,42 @@ function doPost(e) {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '6px',
-                      padding: '1rem',
-                      borderRadius: '10px',
-                      border: fallbackType === 'admin' ? '2px solid #ef4444' : '1px solid var(--color-border)',
-                      background: fallbackType === 'admin' ? 'rgba(239, 68, 68, 0.03)' : 'transparent',
+                      gap: '8px',
+                      padding: '1.25rem',
+                      borderRadius: '14px',
+                      border: fallbackType === 'admin' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: fallbackType === 'admin' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      boxShadow: fallbackType === 'admin' ? 'var(--shadow-sm)' : 'none',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative'
                     }}
+                    className="hover-lift"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)' }}>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: fallbackType === 'admin' ? '5px solid var(--color-primary)' : '2px solid var(--color-text-muted)',
+                        background: 'var(--color-surface)',
+                        transition: 'all 0.2s',
+                        flexShrink: 0
+                      }} />
                       <input
                         type="radio"
                         name="fallbackType"
                         value="admin"
                         checked={fallbackType === 'admin'}
                         onChange={() => setFallbackType('admin')}
-                        style={{ accentColor: '#ef4444', margin: 0 }}
+                        style={{ display: 'none' }}
                       />
-                      {t('Giao cho Admin')}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <UserCheck size={16} style={{ color: fallbackType === 'admin' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
+                        {t('Giao cho Admin')}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', paddingLeft: '28px', lineHeight: 1.4 }}>
                       {t('Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.')}
                     </span>
                   </label>
@@ -2310,6 +2378,146 @@ function doPost(e) {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Cấu hình Ticket / Báo cáo lỗi */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Shield size={16} />
+                  </span>
+                  {t('Cấu hình Báo Cáo Lỗi & Rule Hướng Dẫn')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Cấu hình các tùy chọn lý do báo lỗi và ghi chú quy tắc báo lỗi cụ thể cho từng lý do. Ghi chú quy tắc này sẽ hiển thị trực tiếp cho người dùng ở trang báo lỗi để hướng dẫn họ.')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {reportErrorReasons.map((item, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          gap: '1rem',
+                          alignItems: 'start',
+                          padding: '1rem',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '12px',
+                          transition: 'all 0.2s ease',
+                          position: 'relative'
+                        }}
+                      >
+                        {/* Reason Column */}
+                        <div style={{ width: '260px', flexShrink: 0 }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {t('Lý do báo lỗi')}
+                          </div>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={item.reason}
+                            onChange={e => handleUpdateReasonRow(index, 'reason', e.target.value)}
+                            placeholder={t("Ví dụ: Sai số điện thoại / Số ảo...")}
+                            style={{ height: '42px', padding: '8px 12px', fontSize: '0.875rem', borderRadius: '8px' }}
+                          />
+                        </div>
+
+                        {/* Guide Note Column */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {t('Quy tắc / Ghi chú hướng dẫn báo lỗi')}
+                          </div>
+                          <textarea
+                            rows={2}
+                            className="form-input"
+                            value={item.note}
+                            onChange={e => handleUpdateReasonRow(index, 'note', e.target.value)}
+                            placeholder={t("Nhập các điều kiện để được duyệt báo lỗi (ví dụ: data tương tác cuối > {n} tháng...)")}
+                            style={{
+                              fontFamily: 'inherit',
+                              resize: 'vertical',
+                              minHeight: '64px',
+                              height: '64px',
+                              padding: '8px 12px',
+                              fontSize: '0.875rem',
+                              lineHeight: 1.5,
+                              borderRadius: '8px'
+                            }}
+                          />
+                        </div>
+
+                        {/* Action: Delete Column */}
+                        <div style={{ alignSelf: 'stretch', display: 'flex', alignItems: 'center', paddingTop: '1.25rem' }}>
+                          <button
+                            type="button"
+                            className="btn-danger-light"
+                            onClick={() => handleRemoveReasonRow(index)}
+                            style={{
+                              height: '42px',
+                              width: '42px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#ef4444',
+                              cursor: 'pointer'
+                            }}
+                            title={t('Xóa lý do này')}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {reportErrorReasons.length > 0 && (
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--color-text-muted)',
+                      background: 'var(--color-bg)',
+                      padding: '0.625rem 0.875rem',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      marginTop: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{t('Mẹo:')}</span>
+                      <span>
+                        {t('Sử dụng cụm')} <code>{'{n}'}</code> {t('để tự động thay thế bằng số tháng đã thiết lập ở tab "Ánh xạ dữ liệu cũ" (hiện tại là')} {duplicateCheckMonths} {t('tháng).')}
+                      </span>
+                    </div>
+                  )}
+
+                  {reportErrorReasons.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '1.5rem', border: '1px dashed var(--color-border)', borderRadius: 10, color: 'var(--color-text-muted)' }}>
+                      {t('Chưa có lý do báo lỗi nào. Nhấn nút bên dưới để thêm mới.')}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleAddReasonRow}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      width: 'fit-content',
+                      alignSelf: 'flex-start',
+                      padding: '0.5rem 1rem'
+                    }}
+                  >
+                    <Plus size={16} /> {t('Thêm lý do báo lỗi')}
+                  </button>
                 </div>
               </div>
 

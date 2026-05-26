@@ -39,6 +39,61 @@ if (!function_exists('get_system_setting')) {
     }
 }
 
+if (!function_exists('get_normalized_report_error_reasons')) {
+    function get_normalized_report_error_reasons($conn) {
+        $rawReasons = json_decode(get_system_setting($conn, 'report_error_reasons') ?: '[]', true) ?: [];
+        $normalizedReasons = [];
+        $defaultReasons = [
+            [
+                'reason' => 'Sai số điện thoại / Số ảo',
+                'note' => 'Data có số điện thoại sai, không đúng, thiếu số, hoặc gọi thì báo không phải tên của khách hàng.'
+            ],
+            [
+                'reason' => 'Trùng của tôi (Trùng Saleperson)',
+                'note' => 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).'
+            ],
+            [
+                'reason' => 'Trùng của người khác (Saleperson khác đã chăm)',
+                'note' => 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).'
+            ],
+            [
+                'reason' => 'Spam ảo / Junk lead',
+                'note' => 'Data mà vừa giao gọi cuộc 1 đã báo hết nhu cầu rồi, không có đăng kí, cháu chắt phá, hoặc đăng kí cho vui.'
+            ],
+            [
+                'reason' => 'Khác (Vui lòng ghi rõ ở phần ghi chú)',
+                'note' => 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.'
+            ]
+        ];
+
+        if (empty($rawReasons)) {
+            $normalizedReasons = $defaultReasons;
+        } else {
+            foreach ($rawReasons as $item) {
+                if (is_string($item)) {
+                    $matchedNote = '';
+                    foreach ($defaultReasons as $d) {
+                        if ($d['reason'] === $item) {
+                            $matchedNote = $d['note'];
+                            break;
+                        }
+                    }
+                    $normalizedReasons[] = [
+                        'reason' => $item,
+                        'note' => $matchedNote
+                    ];
+                } else if (is_array($item)) {
+                    $normalizedReasons[] = [
+                        'reason' => $item['reason'] ?? '',
+                        'note' => $item['note'] ?? ''
+                    ];
+                }
+            }
+        }
+        return $normalizedReasons;
+    }
+}
+
 if (!function_exists('pruneAdminLogs')) {
     function pruneAdminLogs($conn) {
         // [TỐI ƯU PRODUCTION] Đã tắt dọn dẹp admin_logs tự động để tránh nghẽn khi scale lớn
@@ -68,7 +123,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 121) {
+        if ($dbVer >= 122) {
             $runMigration = false;
         }
     }
@@ -89,7 +144,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 121) {
+                    if ($dbVer >= 122) {
                         $runMigration = false;
                     }
                 }
@@ -553,7 +608,11 @@ if ($runMigration) {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('starvation_prevention_enabled', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('starvation_max_leads_per_hour', '5')");
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '121') ON DUPLICATE KEY UPDATE setting_value = '121'");
+    // Auto-migrate: Version 122 - default error reporting settings
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('report_error_reasons', '[\"Sai số điện thoại / Số ảo\",\"Trùng của tôi (Trùng Saleperson)\",\"Trùng của người khác (Saleperson khác đã chăm)\",\"Spam ảo / Junk lead\",\"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('report_error_allowed_roles', 'sale,admin,assistant')");
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '122') ON DUPLICATE KEY UPDATE setting_value = '122'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
