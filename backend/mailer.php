@@ -197,7 +197,7 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
                 $customFieldsHtml .= '
                 <tr>
                     <td style="padding: 8px 0; font-weight: 600; color: #64748b; vertical-align: top;">' . $cKey . ':</td>
-                    <td style="padding: 8px 0; font-weight: 700; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
+                    <td style="padding: 8px 0; font-weight: 700; color: #334155; vertical-align: top;">' . $cVal . '</td>
                 </tr>';
             } else {
                 $actualNote .= htmlspecialchars($line) . '<br/>';
@@ -546,7 +546,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                     $customFieldsHtml .= '
                     <tr>
                         <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">' . $cKey . ':</td>
-                        <td style="padding: 6px 0; font-weight: 600; color: #0ea5e9; vertical-align: top;">' . $cVal . '</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #334155; vertical-align: top;">' . $cVal . '</td>
                     </tr>';
                 } else {
                     $actualNote .= htmlspecialchars($line) . '<br/>';
