@@ -87,7 +87,9 @@ export const ProfileModal = () => {
       const fd = new FormData();
       fd.append('avatar', file);
 
-      const res = await fetchAPI('upload_avatar', {
+      const oldAvatar = profileData.avatar || '';
+      const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;
+      const res = await fetchAPI(query, {
         method: 'POST',
         body: fd
       });

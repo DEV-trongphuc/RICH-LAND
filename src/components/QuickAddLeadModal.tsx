@@ -1242,11 +1242,15 @@ export const QuickAddLeadModal = () => {
                                 <CustomSelect
                                   options={[
                                     { value: '', label: t('-- Chọn để ép (Override) --') },
-                                    ...consultants.map(c => ({
-                                      value: c.id.toString(),
-                                      label: c.name
-                                    }))
+                                    ...consultants
+                                      .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
+                                      .map(c => ({
+                                        value: c.id.toString(),
+                                        label: c.name,
+                                        avatar: c.avatar
+                                      }))
                                   ]}
+                                  showAvatars={true}
                                   value={overrideConsId}
                                   onChange={val => setOverrideConsId(val.toString())}
                                   width="100%"
@@ -1265,11 +1269,11 @@ export const QuickAddLeadModal = () => {
                 * Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.
               </div>
 
-              {overrideConsId && overrideConsId !== String(previewCons.consultant?.consultant_id) && previewCons.consultant && (
+              {showOverrideSelector && previewCons.consultant && (
                 <div style={{ marginTop: 12, padding: '12px 16px', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fefce8', border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef08a', borderRadius: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? '#fbbf24' : '#854d0e', fontWeight: 600 }}>
-                      Trả lại data cho <strong style={{ color: theme === 'dark' ? '#f59e0b' : '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
+                      Tự động bù 1 lượt cho <strong style={{ color: theme === 'dark' ? '#f59e0b' : '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
                     </div>
                     <div
                       className={`custom-toggle ${compensateSkipped ? 'active' : ''}`}

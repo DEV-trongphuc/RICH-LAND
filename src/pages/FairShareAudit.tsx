@@ -295,6 +295,26 @@ export const FairShareAudit = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    const openCompId = searchParams.get('open_comp_id');
+    const dateMode = searchParams.get('date_mode');
+    if (openCompId) {
+      let resolvedDateFilter = dateFilter;
+      if (dateMode) {
+        switch (dateMode) {
+          case 'today': resolvedDateFilter = 'Hôm nay'; break;
+          case 'yesterday': resolvedDateFilter = 'Hôm qua'; break;
+          case '7_days': resolvedDateFilter = '7 ngày qua'; break;
+          case '30_days': resolvedDateFilter = '30 ngày qua'; break;
+          case 'this_month': resolvedDateFilter = 'Tháng này'; break;
+          case 'last_month': resolvedDateFilter = 'Tháng trước'; break;
+        }
+        setDateFilter(resolvedDateFilter);
+      }
+      handleOpenDetailsModal(Number(openCompId), resolvedDateFilter);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const abortController = new AbortController();
     fetchStats(abortController.signal);
     return () => abortController.abort();
@@ -438,12 +458,13 @@ export const FairShareAudit = () => {
       });
   };
 
-  const handleOpenDetailsModal = async (consultantId: number) => {
+  const handleOpenDetailsModal = async (consultantId: number, overrideDateFilter?: string) => {
     setShowDetailsModal(true);
     setDetailsLoading(true);
     setCompensationDetails(null);
     try {
-      const url = `get_consultant_compensation_details&consultant_id=${consultantId}&date=${encodeURIComponent(dateFilter)}&round_id=${roundFilter}`;
+      const activeDateFilter = overrideDateFilter || dateFilter;
+      const url = `get_consultant_compensation_details&consultant_id=${consultantId}&date=${encodeURIComponent(activeDateFilter)}&round_id=${roundFilter}`;
       const res = await fetchAPI(url);
       if (res.success) {
         setCompensationDetails(res.data);

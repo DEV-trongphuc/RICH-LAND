@@ -112,7 +112,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     }
     return selectedOption ? (
       <span className={styles.triggerContent}>
-        {showAvatars && <Avatar src={selectedOption.avatar} name={t(selectedOption.label)} size="sm" />}
+        {showAvatars && (
+          selectedOption.value === '' ? (
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
+          ) : (
+            <Avatar src={selectedOption.avatar} name={t(selectedOption.label)} size="sm" />
+          )
+        )}
         {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span>{t(selectedOption.label)}</span>
@@ -172,7 +178,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 >
                   <div className={styles.optionLabel}>
                     {showAvatars ? (
-                      <Avatar src={option.avatar} name={t(option.label)} size="sm" />
+                      option.value === '' ? (
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
+                      ) : (
+                        <Avatar src={option.avatar} name={t(option.label)} size="sm" />
+                      )
                     ) : (
                       option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
                     )}

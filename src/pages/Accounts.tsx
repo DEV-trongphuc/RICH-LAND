@@ -61,7 +61,9 @@ export const Accounts = () => {
       const fd = new FormData();
       fd.append('avatar', file);
 
-      const res = await fetchAPI('upload_avatar', {
+      const oldAvatar = formData.avatar || '';
+      const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;
+      const res = await fetchAPI(query, {
         method: 'POST',
         body: fd
       });
@@ -198,7 +200,16 @@ export const Accounts = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.username || !formData.name) return toast.error(t('Vui lòng nhập đủ tên và username'));
+    
+    let finalUsername = formData.username;
+    if (!finalUsername && formData.email) {
+      finalUsername = formData.email.split('@')[0];
+    }
+    if (!finalUsername) {
+      finalUsername = 'admin_' + Math.random().toString(36).substring(2, 7);
+    }
+
+    if (!formData.name) return toast.error(t('Vui lòng nhập đủ tên hiển thị'));
     if (!editingAccount && !formData.password) return toast.error(t('Vui lòng nhập mật khẩu cho tài khoản mới'));
     // Email bắt buộc trừ Super Admin (id=1)
     const isSuperAdmin = Number(editingAccount?.id) === 1;
@@ -210,7 +221,7 @@ export const Accounts = () => {
     
     setIsSaving(true);
     const action = editingAccount ? 'edit_account' : 'add_account';
-    const payload = { ...formData, id: editingAccount?.id };
+    const payload = { ...formData, username: finalUsername, id: editingAccount?.id };
 
     try {
       const json = await fetchAPI(action, {
@@ -452,7 +463,7 @@ export const Accounts = () => {
                               padding: '4px 10px', borderRadius: 20, 
                               background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
                             }}>
-                              <MessageCircle size={14} fill="#0068ff" color="white" /> {t('Đã liên kết')}
+                              <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
                             </span>
                           </div>
                         ) : (
@@ -686,15 +697,16 @@ export const Accounts = () => {
                         return (
                           <div style={{ 
                             display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: '6px', 
-                            padding: '8px 12px', 
+                            flexWrap: 'wrap',
+                            gap: '4px 12px', 
+                            padding: '6px 10px', 
                             background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', 
                             borderRadius: '8px', 
                             border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
-                            maxWidth: '450px',
+                            maxWidth: '650px',
                             minWidth: '240px',
-                            fontSize: '0.8rem' 
+                            fontSize: '0.75rem',
+                            lineHeight: '1.4'
                           }}>
                             {Object.entries(details).map(([key, val]) => {
                               const label = KEY_LABELS[key] || key;
@@ -704,18 +716,16 @@ export const Accounts = () => {
                                   display: 'flex', 
                                   flexDirection: isBlockElement ? 'column' : 'row',
                                   alignItems: isBlockElement ? 'flex-start' : 'center',
-                                  gap: isBlockElement ? '2px' : '8px',
-                                  lineHeight: '1.4'
+                                  gap: isBlockElement ? '2px' : '4px',
                                 }}>
                                   <span style={{ 
                                     fontWeight: 600, 
                                     color: 'var(--color-text-muted)', 
-                                    minWidth: isBlockElement ? 'auto' : '100px',
                                     flexShrink: 0
                                   }}>
                                     {label}:
                                   </span>
-                                  <div style={{ flexGrow: 1 }}>{renderValue(key, val)}</div>
+                                  <div style={{ color: 'var(--color-text)' }}>{renderValue(key, val)}</div>
                                 </div>
                               );
                             })}
@@ -931,16 +941,6 @@ export const Accounts = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Username <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(dùng nội bộ)')}</span></label>
-              <input
-                className="form-input"
-                placeholder="VD: admin_nhansu"
-                value={formData.username}
-                onChange={e => setFormData({ ...formData, username: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
               <label className="form-label">
                 {t('Email đăng nhập')} {Number(editingAccount?.id) !== 1 && <span style={{ color: 'var(--color-danger)' }}>*</span>}
                 {Number(editingAccount?.id) === 1 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> {t('(tùy chọn với Super Admin)')}</span>}
@@ -956,12 +956,13 @@ export const Accounts = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(tùy chọn)')}</span></label>
+              <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(chỉ có thể hủy liên kết)')}</span></label>
               <input
                 className="form-input"
-                placeholder="VD: 43521235123551"
+                placeholder={t('Chưa liên kết Zalo')}
                 value={formData.zalo_chat_id}
-                onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
+                disabled
+                style={{ cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)' }}
               />
             </div>
             <div className="form-group">
@@ -1007,7 +1008,7 @@ export const Accounts = () => {
               marginTop: '0.5rem'
             }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <MessageCircle size={14} fill="#3b82f6" color="white" /> {t('Tính năng Zalo Bot')}
+                <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Tính năng Zalo Bot')}
               </span>
               
               {/* Quick Message Input & Button */}

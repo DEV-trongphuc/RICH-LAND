@@ -989,9 +989,6 @@ export const Tickets = () => {
                               <Bell size={14} />
                             </button>
                           )}
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: r.status === 'approved' ? '#10b981' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {r.status === 'approved' ? <><CheckCircle size={14} /> {t('Đã Đền Bù')}</> : t('Đã Từ chối')}
-                          </div>
                         </div>
                       )}
                     </td>

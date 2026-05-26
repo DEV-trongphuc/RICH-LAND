@@ -50,6 +50,37 @@ if ($danId > 0) {
     echo "Error: Consultant with name containing 'Đan' not found.\n";
 }
 
+// 3. Migrate resolved_by for specific data_reports
+$admin3Res = $conn->query("SELECT name FROM accounts WHERE id = 3 LIMIT 1");
+$admin3Name = ($admin3Res && $row = $admin3Res->fetch_assoc()) ? $row['name'] : 'Turnio DEV';
+
+$admin5Res = $conn->query("SELECT name FROM accounts WHERE id = 5 LIMIT 1");
+$admin5Name = ($admin5Res && $row = $admin5Res->fetch_assoc()) ? $row['name'] : 'Mai Nữ';
+
+// 2 rejected tickets (Từ chối) currently resolved by "Hệ thống" -> turn to admin 3
+$rejectedPhones = ['0939312685', '0912457911'];
+foreach ($rejectedPhones as $phone) {
+    $conn->query("
+        UPDATE data_reports dr
+        JOIN leads l ON dr.lead_id = l.id
+        SET dr.resolved_by = '$admin3Name'
+        WHERE l.phone = '$phone' AND dr.status = 'rejected'
+    ");
+    echo "Successfully updated rejected data report for lead $phone to be resolved by $admin3Name (Admin ID 3).\n";
+}
+
+// 2 approved tickets (Đã duyệt) currently resolved by "Hệ thống" -> turn to admin 5
+$approvedPhones = ['0824866886', '0586044779'];
+foreach ($approvedPhones as $phone) {
+    $conn->query("
+        UPDATE data_reports dr
+        JOIN leads l ON dr.lead_id = l.id
+        SET dr.resolved_by = '$admin5Name'
+        WHERE l.phone = '$phone' AND dr.status = 'approved'
+    ");
+    echo "Successfully updated approved data report for lead $phone to be resolved by $admin5Name (Admin ID 5).\n";
+}
+
 } catch (Throwable $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
     echo "FILE: " . $e->getFile() . "\n";

@@ -1594,6 +1594,19 @@ switch ($action) {
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {
                 $relativeUrl = 'uploads/avatars/' . $newFilename;
+
+                // Xóa ảnh cũ nếu có
+                $oldAvatar = $_GET['old_avatar'] ?? '';
+                if (!empty($oldAvatar)) {
+                    $oldFilename = basename($oldAvatar);
+                    if ($oldFilename && strpos($oldFilename, 'avatar_') === 0) {
+                        $oldFilePath = $uploadDir . $oldFilename;
+                        if (file_exists($oldFilePath) && is_file($oldFilePath)) {
+                            unlink($oldFilePath);
+                        }
+                    }
+                }
+
                 echo json_encode(['success' => true, 'url' => $relativeUrl]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Không thể lưu file trên máy chủ']);
@@ -2005,6 +2018,55 @@ switch ($action) {
                 'pending' => (int)($rawTickets['pending'] ?? 0)
             ];
             $stmtTickets->close();
+
+            // Cộng thêm "Bù chủ động" từ active_compensation_logs vào Đã bù (và tổng gửi đi)
+            $activeCompSum = 0;
+            $sqlActiveComp = "
+                SELECT IFNULL(SUM(amount), 0) as active_comp_sum
+                FROM active_compensation_logs
+                WHERE consultant_id = ? AND $ticketCondition
+            ";
+            $stmtActiveComp = $conn->prepare($sqlActiveComp);
+            if ($stmtActiveComp) {
+                $bindTypesComp = "i" . $ticketTypes;
+                $bindParamsComp = array_merge([$consultantId], $ticketParams);
+                $stmtActiveComp->bind_param($bindTypesComp, ...$bindParamsComp);
+                $stmtActiveComp->execute();
+                $resActiveComp = $stmtActiveComp->get_result()->fetch_assoc();
+                $activeCompSum = (int)($resActiveComp['active_comp_sum'] ?? 0);
+                $stmtActiveComp->close();
+            }
+
+            // Cộng thêm "Bù blacklist" từ admin_logs vào Đã bù (và tổng gửi đi)
+            $blacklistCompCount = 0;
+            $sqlBlacklistLogs = "
+                SELECT details FROM admin_logs
+                WHERE action = 'BLOCK_LEAD_BLACKLIST'
+                  AND $ticketCondition
+            ";
+            $stmtBlacklistLogs = $conn->prepare($sqlBlacklistLogs);
+            if ($stmtBlacklistLogs) {
+                if (!empty($ticketTypes)) {
+                    $stmtBlacklistLogs->bind_param($ticketTypes, ...$ticketParams);
+                }
+                $stmtBlacklistLogs->execute();
+                $resBlacklistLogs = $stmtBlacklistLogs->get_result();
+                while ($rowB = $resBlacklistLogs->fetch_assoc()) {
+                    $det = json_decode($rowB['details'], true);
+                    if ($det) {
+                        $oldId = isset($det['old_consultant_id']) ? (int)$det['old_consultant_id'] : 0;
+                        if ($oldId === $consultantId) {
+                            $isComp = $det['compensate_sale'] ?? false;
+                            if ($isComp === true || $isComp === 1 || $isComp === '1' || $isComp === 'true') {
+                                $blacklistCompCount++;
+                            }
+                        }
+                    }
+                }
+                $stmtBlacklistLogs->close();
+            }
+            // $ticketsStats['approved'] += $activeCompSum + $blacklistCompCount;
+            // $ticketsStats['total'] += $activeCompSum + $blacklistCompCount;
         }
 
         echo json_encode([
@@ -2013,7 +2075,9 @@ switch ($action) {
             'rounds' => $roundsStats,
             'by_date' => $byDate,
             'by_source' => $bySource,
-            'tickets' => $ticketsStats
+            'tickets' => $ticketsStats,
+            'active_compensation' => $activeCompSum,
+            'blacklist_compensation' => $blacklistCompCount
         ]);
         break;
 
@@ -6779,6 +6843,14 @@ switch ($action) {
                     $insComp->execute();
                     $insComp->close();
                 }
+
+                // Ghi log vào active_compensation_logs để thống kê đầy đủ
+                $reasonText = "Bù 1 lượt do chuyển giao Lead \"" . ($log_data['lead_name'] ?: 'Khách hàng ẩn danh') . "\" sang cho TVV " . $new_cons_name;
+                $logStmt = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) VALUES (?, ?, ?, 1, ?)");
+                $adminIdInt = (int)$decodedUser['id'];
+                $logStmt->bind_param("iiis", $log_data['round_id'], $old_consultant_id, $adminIdInt, $reasonText);
+                $logStmt->execute();
+                $logStmt->close();
             }
 
             logAdminAction($conn, $decodedUser['id'], 'REASSIGN_LEAD', [
@@ -6935,7 +7007,7 @@ switch ($action) {
                         sendLeadAssignedEmailToSale(
                             $new_cons_email,
                             $new_cons_name,
-                            $log_data['lead_name'] ?: 'Khach hang an danh',
+                            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
                             $log_data['phone'] ?: '',
                             $log_data['note'] ?: '',
                             $log_data['source'] ?: '',
@@ -6953,7 +7025,7 @@ switch ($action) {
                         sendLeadAssignedZaloMessageToSale(
                             $new_consultant_id,
                             $new_cons_name,
-                            $log_data['lead_name'] ?: 'Khach hang an danh',
+                            $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
                             $log_data['phone'] ?: '',
                             $log_data['note'] ?: '',
                             $log_data['source'] ?: '',
@@ -8245,6 +8317,7 @@ switch ($action) {
             }
         }
 
+        $skippedCompensationNotify = null;
         $lockAcquired = false;
         $lockKey = '';
         if (!empty($phone)) {
@@ -8371,6 +8444,59 @@ switch ($action) {
                         $stmtComp->bind_param("ii", $assignedRoundId, $skipped_consultant_id);
                         $stmtComp->execute();
                         $stmtComp->close();
+
+                        // Fetch skipped consultant name & email
+                        $skippedCName = '';
+                        $skippedCEmail = '';
+                        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                        $stmtC->bind_param("i", $skipped_consultant_id);
+                        $stmtC->execute();
+                        $resC = $stmtC->get_result()->fetch_assoc();
+                        if ($resC) {
+                            $skippedCName = $resC['name'];
+                            $skippedCEmail = $resC['email'];
+                        }
+                        $stmtC->close();
+
+                        // Fetch round name
+                        $roundName = 'Không rõ';
+                        $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                        $stmtR->bind_param("i", $assignedRoundId);
+                        $stmtR->execute();
+                        $resR = $stmtR->get_result()->fetch_assoc();
+                        if ($resR) {
+                            $roundName = $resR['round_name'];
+                        }
+                        $stmtR->close();
+
+                        // Write to active_compensation_logs
+                        $reason = "Bù 1 lượt do Admin chỉ định đè lead (Nhập thủ công)";
+                        $stmtCompLog = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) VALUES (?, ?, ?, 1, ?)");
+                        $adminIdInt = (int)$decodedUser['id'];
+                        $stmtCompLog->bind_param("iiis", $assignedRoundId, $skipped_consultant_id, $adminIdInt, $reason);
+                        $stmtCompLog->execute();
+                        $stmtCompLog->close();
+
+                        // Log admin action
+                        logAdminAction($conn, $decodedUser['id'], 'MANUAL_COMPENSATE_SKIPPED_SALE', [
+                            'round_id' => $assignedRoundId,
+                            'round_name' => $roundName,
+                            'consultant_id' => $skipped_consultant_id,
+                            'consultant_name' => $skippedCName,
+                            'reason' => $reason
+                        ]);
+
+                        // Setup notification queue data
+                        $skippedCompensationNotify = [
+                            'consultant_id' => $skipped_consultant_id,
+                            'email' => $skippedCEmail,
+                            'name' => $skippedCName,
+                            'round_name' => $roundName,
+                            'delta' => 1,
+                            'admin_name' => $decodedUser['name'] ?? 'Admin',
+                            'reason' => $reason,
+                            'time' => date('H:i:s d/m/Y')
+                        ];
                     }
                 }
 
@@ -8469,6 +8595,45 @@ switch ($action) {
 
                     $conn->commit();
                     $inTransaction = false;
+
+                    // Fire skipped compensation notifications outside transaction
+                    if ($skippedCompensationNotify) {
+                        try {
+                            require_once __DIR__ . '/mailer.php';
+                            require_once __DIR__ . '/zalo_bot.php';
+                            
+                            if (!empty($skippedCompensationNotify['email'])) {
+                                try {
+                                    sendCompensationAddedEmailToSale(
+                                        $skippedCompensationNotify['email'],
+                                        $skippedCompensationNotify['name'],
+                                        $skippedCompensationNotify['round_name'],
+                                        $skippedCompensationNotify['delta'],
+                                        $skippedCompensationNotify['admin_name'],
+                                        $skippedCompensationNotify['reason'],
+                                        $skippedCompensationNotify['time']
+                                    );
+                                } catch (Exception $mailEx) {
+                                    error_log("Error sending manual insert skip compensation email: " . $mailEx->getMessage());
+                                }
+                            }
+                            try {
+                                sendCompensationAddedZaloMessageToSale(
+                                    $skippedCompensationNotify['consultant_id'],
+                                    $skippedCompensationNotify['name'],
+                                    $skippedCompensationNotify['round_name'],
+                                    $skippedCompensationNotify['delta'],
+                                    $skippedCompensationNotify['admin_name'],
+                                    $skippedCompensationNotify['reason'],
+                                    $skippedCompensationNotify['time']
+                                );
+                            } catch (Exception $zaloEx) {
+                                error_log("Error sending manual insert skip compensation Zalo: " . $zaloEx->getMessage());
+                            }
+                        } catch (Exception $notifyEx) {
+                            error_log("Error preparing skipped compensation notifications: " . $notifyEx->getMessage());
+                        }
+                    }
 
                     // Fire notification using Mailer and Zalo ONLY if within working hours
                     if (!$isOutsideWorkHours) {
