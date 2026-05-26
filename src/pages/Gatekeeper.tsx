@@ -167,6 +167,7 @@ export const Gatekeeper = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [heldActionModalOpen, setHeldActionModalOpen] = useState<'approve' | 'reject' | 'blacklist' | null>(null);
   const [actioningHeldLead, setActioningHeldLead] = useState<any | null>(null);
+  const [selectedApproveRoundId, setSelectedApproveRoundId] = useState<number | null>(null);
   const [heldActionReason, setHeldActionReason] = useState<string>('');
   const [previewedConsultant, setPreviewedConsultant] = useState<any>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<number | null>(null);
@@ -386,10 +387,30 @@ export const Gatekeeper = () => {
   const handleOpenApproveHeldLead = async (lead: any) => {
     setActioningHeldLead(lead);
     setHeldActionModalOpen('approve');
+    setSelectedApproveRoundId(lead.target_round_id ? Number(lead.target_round_id) : null);
     setPreviewLoadingId(lead.id);
     setPreviewedConsultant(null);
     try {
-      const res = await fetchAPI(`preview_held_lead_assignment&lead_id=${lead.id}`);
+      const rId = lead.target_round_id ? Number(lead.target_round_id) : '';
+      const res = await fetchAPI(`preview_held_lead_assignment&lead_id=${lead.id}&round_id=${rId}`);
+      if (res.success) {
+        setPreviewedConsultant(res.consultant);
+      } else {
+        toast.error(res.message || t('Lỗi tải thông tin Sale tiếp nhận.'));
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+    setPreviewLoadingId(null);
+  };
+
+  const handleApproveRoundChange = async (newRoundId: number) => {
+    setSelectedApproveRoundId(newRoundId);
+    if (!actioningHeldLead) return;
+    setPreviewLoadingId(actioningHeldLead.id);
+    setPreviewedConsultant(null);
+    try {
+      const res = await fetchAPI(`preview_held_lead_assignment&lead_id=${actioningHeldLead.id}&round_id=${newRoundId}`);
       if (res.success) {
         setPreviewedConsultant(res.consultant);
       } else {
@@ -409,7 +430,10 @@ export const Gatekeeper = () => {
     try {
       const res = await fetchAPI('approve_held_lead', {
         method: 'POST',
-        body: JSON.stringify({ lead_id: currentLeadId })
+        body: JSON.stringify({ 
+          lead_id: currentLeadId,
+          round_id: selectedApproveRoundId
+        })
       });
       if (res.success) {
         toast.success(t('Đã duyệt và phân bổ lead thành công!'));
@@ -2599,6 +2623,22 @@ export const Gatekeeper = () => {
             {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
           </p>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+              {t('Vòng phân phối:')}
+            </label>
+            <CustomSelect
+              options={rounds.map((r: any) => ({ value: String(r.id), label: r.round_name }))}
+              value={selectedApproveRoundId ? String(selectedApproveRoundId) : ''}
+              onChange={val => {
+                if (val) {
+                  handleApproveRoundChange(Number(val));
+                }
+              }}
+              width="100%"
+            />
+          </div>
+
           <div style={{
             padding: '1.25rem',
             background: 'linear-gradient(to bottom right, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02))',
@@ -2621,7 +2661,7 @@ export const Gatekeeper = () => {
                     {previewedConsultant.name}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                    {t("Đang hoạt động trong vòng:")} <strong>{actioningHeldLead?.round_name}</strong>
+                    {t("Nhận từ vòng:")} <strong>{rounds.find(r => Number(r.id) === selectedApproveRoundId)?.round_name || actioningHeldLead?.round_name}</strong>
                   </div>
                 </div>
               </>

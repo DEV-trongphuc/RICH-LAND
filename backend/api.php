@@ -4750,7 +4750,7 @@ switch ($action) {
             break;
         }
 
-        $roundId = (int) $lead['target_round_id'];
+        $roundId = (int) ($_GET['round_id'] ?? $lead['target_round_id'] ?? 0);
         if ($roundId <= 0) {
             echo json_encode(['success' => true, 'consultant' => null, 'message' => 'Không chỉ định vòng phân bổ. Sẽ chuyển thẳng cho Admin mặc định.']);
             break;
@@ -4808,7 +4808,7 @@ switch ($action) {
                 throw new Exception("Lead không tồn tại hoặc đã được xử lý duyệt trước đó.");
             }
 
-            $targetRoundId = (int) $lead['target_round_id'];
+            $targetRoundId = (int) ($input['round_id'] ?? $lead['target_round_id'] ?? 0);
             $assignedConsultantId = null;
             $status = 'unassigned';
             $message = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.';
@@ -4886,8 +4886,8 @@ switch ($action) {
             $note = $lead['note'] . $adminNote;
 
             // 2. Update Lead Table
-            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'passed' WHERE id = ?");
-            $updLead->bind_param("isi", $assignedConsultantId, $note, $lead_id);
+            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'passed', target_round_id = ? WHERE id = ?");
+            $updLead->bind_param("isiii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
             $updLead->execute();
             $updLead->close();
 
