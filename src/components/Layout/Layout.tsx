@@ -140,6 +140,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const handleViewTickets = () => {
     setIsTicketModalOpen(false);
+    setIsHeldModalOpen(false);
     navigate('/tickets');
   };
 
@@ -340,6 +341,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <button 
               onClick={() => {
                 setIsHeldModalOpen(false);
+                setIsTicketModalOpen(false);
                 navigate('/gatekeeper');
               }}
               onMouseEnter={() => setIsHeldViewHovered(true)}
