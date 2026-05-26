@@ -7291,7 +7291,7 @@ switch ($action) {
             SELECT dl.lead_id, dl.round_id, dl.assigned_to as old_consultant_id, c_old.name as old_consultant_name, 
                    c_old.email as old_consultant_email, c_old.zalo_chat_id as old_consultant_zalo,
                    l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.note as lead_note, 
-                   r.round_name
+                   r.round_name, dl.status as dl_status
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
@@ -7319,6 +7319,7 @@ switch ($action) {
         $lead_email = trim($log_data['lead_email'] ?? '');
         $lead_name = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
         $round_name = $log_data['round_name'] ?? 'Không rõ';
+        $dl_status = $log_data['dl_status'] ?? '';
 
         if (empty($lead_phone) && empty($lead_email)) {
             echo json_encode(['success' => false, 'message' => 'Lead không có Số điện thoại hoặc Email để chặn']);
@@ -7327,6 +7328,27 @@ switch ($action) {
 
         $conn->begin_transaction();
         try {
+            // Check if lead already has a Ticket (data_reports record with approved or pending status, or distribution log status is error/Ticket)
+            $ticketExists = false;
+            if ($dl_status === 'error') {
+                $ticketExists = true;
+            } else {
+                $tStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id = ? AND status IN ('approved', 'pending') LIMIT 1");
+                if ($tStmt) {
+                    $tStmt->bind_param("i", $lead_id);
+                    $tStmt->execute();
+                    $tRes = $tStmt->get_result();
+                    if ($tRes && $tRes->num_rows > 0) {
+                        $ticketExists = true;
+                    }
+                    $tStmt->close();
+                }
+            }
+
+            if ($ticketExists) {
+                $compensate_sale = false; // Do not compensate again if lead already has a Ticket status
+            }
+
             // 2. Add contact to global_exclusion_contacts
             $settingsStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_exclusion_contacts' LIMIT 1");
             $currentContactsStr = '';
@@ -7365,7 +7387,11 @@ switch ($action) {
             }
 
             // 3. Update Lead status to blacklisted and append reason to note
-            $newNote = trim(($log_data['lead_note'] ?? '') . "\n[Bị chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]");
+            $noteSuffix = "\n[Bị chặn bởi Admin " . $adminName . " lúc " . date('Y-m-d H:i:s') . ". Lý do: " . $reason . "]";
+            if ($ticketExists) {
+                $noteSuffix .= "\n[Hệ thống: Không cộng bù do Lead đã có trạng thái Ticket]";
+            }
+            $newNote = trim(($log_data['lead_note'] ?? '') . $noteSuffix);
             $updLead = $conn->prepare("UPDATE leads SET note = ? WHERE id = ?");
             $updLead->bind_param("si", $newNote, $lead_id);
             $updLead->execute();
@@ -8085,6 +8111,7 @@ switch ($action) {
         break;
 
     case 'batch_import_leads':
+        @set_time_limit(0); // Prevent PHP execution timeout during bulk Excel imports
         require_once __DIR__ . '/webhook_logic.php';
         $input = json_decode(file_get_contents('php://input'), true);
         $leads = $input['leads'] ?? [];

@@ -660,6 +660,8 @@ export const en: Record<string, string> = {
   "Chặn và Bù vòng cho Sale": "Block and Compensate round",
   "Đền bù 1 lượt data vòng": "Compensate 1 round-robin lead",
   "Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.": "Lead has not been distributed to any sales rep, cannot select Compensation.",
+  "Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.": "This lead is already ticketed (error). Additional compensation is not allowed when blocking.",
+  "Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.": "This lead is already ticketed and compensated. The system will only add this customer's info to the Blacklist and will not grant any further compensation.",
   "Lý do chặn": "Block Reason",
   "Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)": "Enter block reason (e.g., fake number, no demand, spam...)",
   "Xác nhận chặn": "Confirm Block",

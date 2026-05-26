@@ -201,6 +201,7 @@ export const Tickets = () => {
 
   const ITEMS_PER_PAGE = 50;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   const updateParams = (key: string, value: string) => {
     setSearchParams(prev => {
@@ -1227,7 +1228,8 @@ export const Tickets = () => {
                       {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && (
                         <button
                           onClick={() => {
-                            setCompensateBlock(selectedLead.assigned_to_name !== '-');
+                            const isTicket = selectedLead.status === 'error' || selectedLead.report_status === 'approved' || selectedLead.report_status === 'pending';
+                            setCompensateBlock(selectedLead.assigned_to_name !== '-' && !isTicket);
                             setConfirmBlockOpen(true);
                           }}
                           title={t("Chặn & Blacklist khách hàng này")}
@@ -1851,6 +1853,28 @@ export const Tickets = () => {
             </div>
           </div>
 
+          {isTicketLead && (
+            <div style={{
+              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '12px',
+              padding: '1rem',
+              color: 'var(--color-danger)',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              lineHeight: 1.5,
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
+            }}>
+              <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                {t("Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.")}
+              </div>
+            </div>
+          )}
+
           <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Hình thức chặn:")}</div>
             
@@ -1868,13 +1892,19 @@ export const Tickets = () => {
               </div>
             </label>
 
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: selectedLead?.assigned_to_name === '-' ? 'not-allowed' : 'pointer', opacity: selectedLead?.assigned_to_name === '-' ? 0.5 : 1 }}>
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              gap: '8px', 
+              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer', 
+              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1 
+            }}>
               <input 
                 type="radio" 
                 name="blockType" 
                 checked={compensateBlock} 
                 onChange={() => setCompensateBlock(true)} 
-                disabled={selectedLead?.assigned_to_name === '-'}
+                disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
                 style={{ marginTop: '3px' }}
               />
               <div>
@@ -1888,6 +1918,12 @@ export const Tickets = () => {
             {selectedLead?.assigned_to_name === '-' && (
               <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <AlertTriangle size={12} /> {t("Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.")}
+              </div>
+            )}
+
+            {isTicketLead && (
+              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <AlertTriangle size={12} /> {t("Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.")}
               </div>
             )}
           </div>
