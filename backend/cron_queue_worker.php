@@ -11,7 +11,7 @@ function processSyncQueue($conn) {
         return;
     }
 
-    // 1. Fetch pending items
+    // 1. Fetch pending items with pessimistic locking (FOR UPDATE SKIP LOCKED) to support concurrent multi-server execution
     $conn->begin_transaction();
     $res = $conn->query("
         SELECT id, lead_id, attempts 
@@ -19,6 +19,7 @@ function processSyncQueue($conn) {
         WHERE status = 'pending' 
           AND next_retry_at <= NOW() 
         LIMIT 20
+        FOR UPDATE SKIP LOCKED
     ");
 
     $items = [];

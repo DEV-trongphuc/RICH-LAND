@@ -151,7 +151,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
 
             if (strpos($contact, '@') !== false) {
                 // Email check: exact match OR domain match if contact starts with @ (e.g. @test.com)
-                if (!empty($e) && ($e === $contact || (strpos($contact, '@') === 0 && strpos($e, $contact) !== false))) {
+                if (!empty($e) && ($e === $contact || (strpos($contact, '@') === 0 && substr($e, -strlen($contact)) === $contact))) {
                     $matched = true;
                     $reason = "Trùng Email/Tên miền trong danh sách đen: " . $contact;
                     break;
@@ -739,24 +739,27 @@ function getNextConsultantInRound($conn, $roundId)
         }
 
         // Priority 2: Starvation Prevention (skipped_credit) - only if available (not on vacation), enabled, within hourly limit, and currently on shift
-        if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
-            // Count starvation leads received in last hour
-            $logStmt = $conn->prepare("
-                SELECT COUNT(*) as cnt 
-                FROM distribution_logs 
-                WHERE assigned_to = ? 
-                  AND status = 'compensation' 
-                  AND message LIKE '%(Starvation Prevention)%' 
-                  AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-            ");
-            if ($logStmt) {
-                $logStmt->bind_param("i", $row['id']);
-                $logStmt->execute();
-                $logRes = $logStmt->get_result()->fetch_assoc();
-                $logStmt->close();
-                $hourlyCount = (int) ($logRes['cnt'] ?? 0);
-                if ($hourlyCount < $starvationMaxPerHour) {
-                    $starvationConsultant = $row;
+        // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
+        if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+            if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
+                // Count starvation leads received in last hour
+                $logStmt = $conn->prepare("
+                    SELECT COUNT(*) as cnt 
+                    FROM distribution_logs 
+                    WHERE assigned_to = ? 
+                      AND status = 'compensation' 
+                      AND message LIKE '%(Starvation Prevention)%' 
+                      AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                ");
+                if ($logStmt) {
+                    $logStmt->bind_param("i", $row['id']);
+                    $logStmt->execute();
+                    $logRes = $logStmt->get_result()->fetch_assoc();
+                    $logStmt->close();
+                    $hourlyCount = (int) ($logRes['cnt'] ?? 0);
+                    if ($hourlyCount < $starvationMaxPerHour) {
+                        $starvationConsultant = $row;
+                    }
                 }
             }
         }
@@ -1128,24 +1131,27 @@ function simulateNextConsultantInRound($conn, $roundId)
         }
 
         // Priority 2: Starvation (only if on shift)
-        if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
-            // Count starvation leads in last hour
-            $logStmt = $conn->prepare("
-                SELECT COUNT(*) as cnt 
-                FROM distribution_logs 
-                WHERE assigned_to = ? 
-                  AND status = 'compensation' 
-                  AND message LIKE '%(Starvation Prevention)%' 
-                  AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-            ");
-            if ($logStmt) {
-                $logStmt->bind_param("i", $row['id']);
-                $logStmt->execute();
-                $logRes = $logStmt->get_result()->fetch_assoc();
-                $logStmt->close();
-                $hourlyCount = (int) ($logRes['cnt'] ?? 0);
-                if ($hourlyCount < $starvationMaxPerHour) {
-                    $starvationConsultant = $row;
+        // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
+        if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+            if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
+                // Count starvation leads in last hour
+                $logStmt = $conn->prepare("
+                    SELECT COUNT(*) as cnt 
+                    FROM distribution_logs 
+                    WHERE assigned_to = ? 
+                      AND status = 'compensation' 
+                      AND message LIKE '%(Starvation Prevention)%' 
+                      AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                ");
+                if ($logStmt) {
+                    $logStmt->bind_param("i", $row['id']);
+                    $logStmt->execute();
+                    $logRes = $logStmt->get_result()->fetch_assoc();
+                    $logStmt->close();
+                    $hourlyCount = (int) ($logRes['cnt'] ?? 0);
+                    if ($hourlyCount < $starvationMaxPerHour) {
+                        $starvationConsultant = $row;
+                    }
                 }
             }
         }
@@ -1539,6 +1545,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null)
                     curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
                     curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
                     $response = curl_exec($ch);
                     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1628,6 +1635,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null)
         curl_setopt($chM, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
         curl_setopt($chM, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+        curl_setopt($chM, CURLOPT_SSL_VERIFYPEER, true);
 
         $responseM = curl_exec($chM);
         $httpCodeMaster = curl_getinfo($chM, CURLINFO_HTTP_CODE);
@@ -1771,14 +1779,14 @@ function runAIScreener($conn, $leadData, $customRules = null)
 
     $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
 
-    // 3. Make cURL POST request
+    // 3. Make cURL POST request (SSL_VERIFYPEER enabled for production security)
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1787,10 +1795,20 @@ function runAIScreener($conn, $leadData, $customRules = null)
 
     if ($response === false || $httpCode !== 200) {
         $errDetail = !empty($curlErr) ? $curlErr : "HTTP " . $httpCode;
+        if ($response !== false) {
+            $resJson = json_decode($response, true);
+            if (isset($resJson['error']['message'])) {
+                $errDetail .= " (" . $resJson['error']['message'] . ")";
+            }
+        }
         return ['status' => 'error', 'reason' => "Lỗi kết nối Gemini API: " . $errDetail];
     }
 
     $resJson = json_decode($response, true);
+    if (isset($resJson['error']['message'])) {
+        return ['status' => 'error', 'reason' => "Lỗi Gemini API: " . $resJson['error']['message']];
+    }
+
     $rawText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
     if (empty($rawText)) {
         return ['status' => 'error', 'reason' => 'Gemini API returned an empty response.'];
@@ -1804,19 +1822,86 @@ function runAIScreener($conn, $leadData, $customRules = null)
         $cleanText = trim($m[1]);
     }
 
+    // Robust parsing: extract JSON using braces in case of conversational prefixes/suffixes
     $data = json_decode($cleanText, true);
-    if (!$data || !isset($data['status']) || !isset($data['reason'])) {
+    if (!$data && preg_match('/\{[\s\S]*\}/', $cleanText, $matches)) {
+        $data = json_decode($matches[0], true);
+    }
+
+    if (!is_array($data)) {
         return ['status' => 'error', 'reason' => 'Không thể phân tích kết quả JSON trả về từ Gemini: ' . substr($rawText, 0, 100)];
     }
 
-    $status = strtolower(trim($data['status']));
-    if ($status !== 'passed' && $status !== 'failed') {
-        $status = 'passed'; // Fallback to passed on invalid status code
+    // Robust key mapping
+    $statusKey = '';
+    $reasonKey = '';
+
+    // 1. Scan for values that are 'passed' or 'failed' to identify status key
+    foreach ($data as $key => $val) {
+        if (is_string($val)) {
+            $vLower = strtolower(trim($val));
+            if ($vLower === 'passed' || $vLower === 'failed') {
+                $statusKey = $key;
+                break;
+            }
+        }
     }
+
+    // 2. If status key not found by value, check common names
+    if (empty($statusKey)) {
+        foreach ($data as $key => $val) {
+            $lowerKey = strtolower($key);
+            if ($lowerKey === 'status' || $lowerKey === 'result' || $lowerKey === 'evaluation') {
+                $statusKey = $key;
+                break;
+            }
+        }
+    }
+
+    // 3. Scan for reason key among common names
+    foreach ($data as $key => $val) {
+        if ($key === $statusKey) {
+            continue;
+        }
+        $lowerKey = strtolower($key);
+        if ($lowerKey === 'reason' || $lowerKey === 'explanation' || $lowerKey === 'detail' || $lowerKey === 'details' || $lowerKey === 'note') {
+            $reasonKey = $key;
+            break;
+        }
+    }
+
+    // 4. Fallbacks if still empty
+    if (empty($statusKey)) {
+        $statusKey = isset($data['status']) ? 'status' : (isset($data['Status']) ? 'Status' : '');
+    }
+    if (empty($reasonKey)) {
+        $reasonKey = isset($data['reason']) ? 'reason' : (isset($data['Reason']) ? 'Reason' : '');
+    }
+
+    // 5. If reasonKey is still empty, pick the first key that is not statusKey
+    if (empty($reasonKey) && !empty($statusKey)) {
+        foreach ($data as $key => $val) {
+            if ($key !== $statusKey) {
+                $reasonKey = $key;
+                break;
+            }
+        }
+    }
+
+    if (empty($statusKey) || !isset($data[$statusKey])) {
+        return ['status' => 'error', 'reason' => 'Không tìm thấy trường trạng thái đánh giá trong phản hồi JSON của Gemini: ' . substr($rawText, 0, 100)];
+    }
+
+    $status = strtolower(trim($data[$statusKey]));
+    if ($status !== 'passed' && $status !== 'failed') {
+        $status = 'failed'; // Safe fallback for screening: if output is invalid, treat as failed (held)
+    }
+
+    $reason = !empty($reasonKey) && isset($data[$reasonKey]) ? trim($data[$reasonKey]) : 'AI không cung cấp lý do chi tiết.';
 
     return [
         'status' => $status,
-        'reason' => trim($data['reason'])
+        'reason' => $reason
     ];
 }
 

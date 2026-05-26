@@ -89,6 +89,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $result = curl_exec($ch);
         curl_close($ch);
         return true;

@@ -16,6 +16,13 @@
  */
 
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000); // Chờ tối đa 10 giây để lấy khóa
+  } catch (ex) {
+    return createJsonResponse({ status: "error", message: "Hệ thống Google Sheets đang bận xử lý yêu cầu khác, vui lòng thử lại sau (Lock Timeout)" });
+  }
+
   try {
     if (!e || !e.postData || !e.postData.contents) {
       return createJsonResponse({ status: "error", message: "Yêu cầu không chứa dữ liệu" });
@@ -207,6 +214,12 @@ function doPost(e) {
     
   } catch (err) {
     return createJsonResponse({ status: "error", message: err.toString() });
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (lockReleaseError) {
+      // Bỏ qua lỗi nếu không thể giải phóng khóa
+    }
   }
 }
 

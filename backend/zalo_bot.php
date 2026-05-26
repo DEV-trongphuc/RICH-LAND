@@ -29,6 +29,7 @@ function sendZaloMessage($botToken, $chatId, $text)
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout 5 giây tránh nghẽn
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $result = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -92,6 +93,7 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text)
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tránh nghẽn lâu
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
         curl_multi_add_handle($multiHandle, $ch);
         $curlHandles[] = $ch;

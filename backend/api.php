@@ -2990,6 +2990,7 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15); // MISSING-FIX: Tránh server treo vô hạn khi Google Sheets không phản hồi
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $html = curl_exec($ch);
         curl_close($ch);
 
@@ -3037,6 +3038,7 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15); // MISSING-FIX: Tránh server treo vô hạn khi Google Sheets không phản hồi
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -5439,6 +5441,80 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Invalid data']);
             break;
         }
+
+        // Validate AI pre-screener configurations to prevent corrupt settings
+        foreach ($input as $k => $v) {
+            if ($k === 'ai_screener_enabled') {
+                if ($v !== '0' && $v !== '1' && $v !== 0 && $v !== 1) {
+                    echo json_encode(['success' => false, 'message' => 'Cấu hình trạng thái AI Gác cổng không hợp lệ (phải là 0 hoặc 1).']);
+                    break 2;
+                }
+            }
+            if ($k === 'ai_screener_configs') {
+                $configs = is_array($v) ? $v : json_decode($v, true);
+                if (!is_array($configs)) {
+                    echo json_encode(['success' => false, 'message' => 'Cấu hình nhóm lọc AI (ai_screener_configs) không đúng định dạng JSON.']);
+                    break 2;
+                }
+                foreach ($configs as $idx => $cfg) {
+                    $cfgName = $cfg['name'] ?? ('Nhóm thứ ' . ($idx + 1));
+                    if (!isset($cfg['rounds']) || !is_array($cfg['rounds'])) {
+                        echo json_encode(['success' => false, 'message' => "Cấu hình '$cfgName' thiếu danh sách vòng phân bổ áp dụng."]);
+                        break 3;
+                    }
+                    $mode = $cfg['mode'] ?? 'ai';
+                    if (!in_array($mode, ['ai', 'manual', 'hybrid'])) {
+                        echo json_encode(['success' => false, 'message' => "Chế độ lọc '$mode' của nhóm '$cfgName' không hợp lệ."]);
+                        break 3;
+                    }
+                    $manual_action = $cfg['manual_action'] ?? 'hold';
+                    if (!in_array($manual_action, ['hold', 'pass'])) {
+                        echo json_encode(['success' => false, 'message' => "Hành động lọc thủ công '$manual_action' của nhóm '$cfgName' không hợp lệ."]);
+                        break 3;
+                    }
+                    if (isset($cfg['manual_rules']) && !is_array($cfg['manual_rules'])) {
+                        echo json_encode(['success' => false, 'message' => "Bộ lọc thủ công của nhóm '$cfgName' phải là danh sách quy tắc (array)."]);
+                        break 3;
+                    }
+                    
+                    // Validate fallback settings logic
+                    $fb_enabled = !empty($cfg['below_standard_fallback_enabled']) ? 1 : 0;
+                    if ($fb_enabled) {
+                        $fb_round = (int)($cfg['below_standard_fallback_round_id'] ?? 0);
+                        if ($fb_round <= 0) {
+                            echo json_encode(['success' => false, 'message' => "Nhóm '$cfgName' đã bật phân bổ dưới chuẩn nhưng chưa chọn vòng phân bổ fallback hợp lệ."]);
+                            break 3;
+                        }
+                        // Fallback round cannot be in the list of applied rounds for this configuration
+                        $appliedRounds = array_map('intval', $cfg['rounds']);
+                        if (in_array($fb_round, $appliedRounds)) {
+                            echo json_encode(['success' => false, 'message' => "Vòng fallback (ID: $fb_round) không được trùng với các vòng áp dụng của nhóm '$cfgName'."]);
+                            break 3;
+                        }
+                    }
+                }
+            }
+            if ($k === 'ai_screener_mode') {
+                if (!in_array($v, ['ai', 'manual', 'hybrid'])) {
+                    echo json_encode(['success' => false, 'message' => 'Chế độ ai_screener_mode không hợp lệ.']);
+                    break 2;
+                }
+            }
+            if ($k === 'ai_screener_manual_action') {
+                if (!in_array($v, ['hold', 'pass'])) {
+                    echo json_encode(['success' => false, 'message' => 'Hành động lọc thủ công không hợp lệ.']);
+                    break 2;
+                }
+            }
+            if ($k === 'ai_screener_manual_rules') {
+                $rules = is_array($v) ? $v : json_decode($v, true);
+                if ($v !== null && $v !== '' && !is_array($rules)) {
+                    echo json_encode(['success' => false, 'message' => 'Cấu hình quy tắc lọc thủ công không hợp lệ.']);
+                    break 2;
+                }
+            }
+        }
+
         $stmt = $conn->prepare("REPLACE INTO system_settings (setting_key, setting_value) VALUES (?, ?)");
         foreach ($input as $k => $v) {
             // Array values (e.g. daily_report_admins) must be JSON-encoded before storage
@@ -5497,7 +5573,7 @@ switch ($action) {
             curl_setopt($ch, CURLOPT_TIMEOUT, 6); // Timeout 6s tối đa cho kiểm thử
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
-
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curlError = curl_error($ch);
@@ -5722,6 +5798,10 @@ switch ($action) {
                         'content' => json_encode($payload),
                         'timeout' => 20,
                         'ignore_errors' => true
+                    ],
+                    'ssl' => [
+                        'verify_peer' => true,
+                        'verify_peer_name' => true
                     ]
                 ];
                 $contextStream = stream_context_create($httpOpts);
@@ -9285,6 +9365,7 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);

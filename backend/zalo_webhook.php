@@ -1371,19 +1371,19 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
                         $rejectionResultText = "Lead bị loại bỏ hoàn toàn (Không phân bổ).";
                     }
-
-                    // Send confirmation message to Admin on Zalo
-                    $successMsg = "❌ Đã từ chối lead #$leadId.\n"
-                                . "• Khách hàng: " . ($lead['name'] ?: 'Ẩn danh') . " (" . ($lead['phone'] ?: 'Không có') . ")\n"
-                                . "• Kết quả xử lý: $rejectionResultText\n"
-                                . "• Phân bổ đến: $assignedToName\n"
-                                . "• Lý do từ chối: $reason";
-                    sendZaloMessage($botToken, $chatId, $successMsg);
                 } catch (Exception $e) {
                     $conn->rollback();
                     sendZaloMessage($botToken, $chatId, "❌ Lỗi: " . $e->getMessage());
                     exit;
                 }
+
+                // Send confirmation message to Admin on Zalo (outside transaction for reliability)
+                $successMsg = "❌ Đã từ chối lead #$leadId.\n"
+                            . "• Khách hàng: " . ($lead['name'] ?: 'Ẩn danh') . " (" . ($lead['phone'] ?: 'Không có') . ")\n"
+                            . "• Kết quả xử lý: $rejectionResultText\n"
+                            . "• Phân bổ đến: $assignedToName\n"
+                            . "• Lý do từ chối: $reason";
+                sendZaloMessage($botToken, $chatId, $successMsg);
 
                 exit;
             }

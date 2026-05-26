@@ -195,23 +195,31 @@ if ($lockRes['get_lock'] != 1) {
 }
 
 $lockReleased = false;
+
+if (!function_exists('releaseAdvisoryLock')) {
+    function releaseAdvisoryLock($conn, $lockKey, &$lockReleased) {
+        if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
+            $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+            if ($relStmt) {
+                $relStmt->bind_param("s", $lockKey);
+                $relStmt->execute();
+                $relStmt->close();
+            }
+            $lockReleased = true;
+        }
+    }
+}
+
 // BUG-CRIT-01 fix: Dùng prepared statement cho RELEASE_LOCK, tránh SQL Injection
 register_shutdown_function(function() use ($conn, $lockKey, &$lockReleased) {
-    if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
-        $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
-        if ($relStmt) {
-            $relStmt->bind_param("s", $lockKey);
-            $relStmt->execute();
-            $relStmt->close();
-        }
-        $lockReleased = true;
-    }
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
 });
 
 // --- 0. Check Global Blacklist / Exclusions ---
 if (checkGlobalExclusion($conn, $data, $phone, $email, true, $name, $source, $type, $note)) {
     // If blacklisted, return ignored immediately without saving to DB
     echo json_encode(["success" => true, "status" => "ignored", "message" => "Data matches exclusion list."]);
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     exit();
 }
 
@@ -357,6 +365,7 @@ if ($isSilent == 1) {
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
 
@@ -407,6 +416,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
 
@@ -491,6 +501,7 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
     
@@ -502,15 +513,7 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
     }
     
     // Release advisory lock
-    if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
-        $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
-        if ($relStmt) {
-            $relStmt->bind_param("s", $lockKey);
-            $relStmt->execute();
-            $relStmt->close();
-        }
-        $lockReleased = true;
-    }
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     
     echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Gác Cổng: " . $aiScreenerResult['reason']]);
     exit();
@@ -580,11 +583,13 @@ try {
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     exit();
 }
 
 if ($status === 'unassigned' || $status === 'pending') {
     echo json_encode(["success" => true, "status" => $status, "message" => $message]);
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     exit();
 }
 
@@ -678,15 +683,7 @@ try {
 }
 
 // Release advisory lock before closing connection
-if (!$lockReleased && $conn && $conn instanceof mysqli && @$conn->ping()) {
-    $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
-    if ($relStmt) {
-        $relStmt->bind_param("s", $lockKey);
-        $relStmt->execute();
-        $relStmt->close();
-    }
-    $lockReleased = true;
-}
+releaseAdvisoryLock($conn, $lockKey, $lockReleased);
 
 $conn->close();
 
