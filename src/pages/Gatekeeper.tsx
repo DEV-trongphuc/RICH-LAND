@@ -966,11 +966,11 @@ export const Gatekeeper = () => {
                             )}
                             {cfg.mode === 'hybrid' && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
+                                  <strong>{t('Match logic:')}</strong> {cfg.manual_rules && cfg.manual_rules.length > 0 ? `${cfg.manual_rules.length} ${t('nhánh thủ công')}` : t('Chưa thiết lập')}
+                                </span>
                                 <span style={{ fontSize: '0.7rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={cfg.ai_rules}>
                                   <strong>{t('Quy tắc AI:')}</strong> {cfg.ai_rules || t('Chưa thiết lập')}
-                                </span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
-                                  <strong>{t('Quy tắc phụ:')}</strong> {cfg.manual_rules && cfg.manual_rules.length > 0 ? `${cfg.manual_rules.length} ${t('nhánh thủ công')}` : t('Chưa thiết lập')}
                                 </span>
                               </div>
                             )}
@@ -1745,9 +1745,9 @@ export const Gatekeeper = () => {
                               </label>
                               <CustomSelect
                                 options={[
-                                  { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') },
                                   { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') },
-                                  { value: 'hybrid', label: t('Kết hợp: Lọc Thủ công + AI') }
+                                  { value: 'hybrid', label: t('Kết hợp: Lọc Thủ công + AI (Ưu tiên thủ công trước)') },
+                                  { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') }
                                 ]}
                                 value={config.mode}
                                 onChange={val => {
@@ -1757,6 +1757,23 @@ export const Gatekeeper = () => {
                                 }}
                                 width="100%"
                               />
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: '1.4' }}>
+                                {config.mode === 'hybrid' && (
+                                  <span style={{ color: '#059669', fontWeight: 500 }}>
+                                    {t('Chế độ Kết hợp: Hệ thống chạy bộ lọc thủ công trước. Nếu khớp, thực hiện ngay hành động và BỎ QUA gọi AI để tiết kiệm tối đa chi phí. Nếu không khớp, mới gọi AI đánh giá.')}
+                                  </span>
+                                )}
+                                {config.mode === 'manual' && (
+                                  <span>
+                                    {t('Chế độ Thủ công: Chỉ áp dụng quy tắc khớp cột dữ liệu đã cấu hình.')}
+                                  </span>
+                                )}
+                                {config.mode === 'ai' && (
+                                  <span>
+                                    {t('Chế độ AI: Sử dụng Gemini AI để đánh giá theo yêu cầu cấu hình dưới.')}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Conditional Prompt Area */}

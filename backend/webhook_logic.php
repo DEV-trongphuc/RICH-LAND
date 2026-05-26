@@ -483,6 +483,16 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     ];
 }
 
+function normalizeTextForComparison($str)
+{
+    $str = mb_strtolower($str, 'UTF-8');
+    // Thay thế các ký tự phân tách phổ biến (: ; - ,) bằng khoảng trắng
+    $str = str_replace([':', ';', '-', ',', '–'], ' ', $str);
+    // Rút gọn nhiều khoảng trắng liên tiếp thành 1 khoảng trắng duy nhất
+    $str = preg_replace('/\s+/', ' ', $str);
+    return trim($str);
+}
+
 function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null)
 {
     $dataVal = '';
@@ -495,9 +505,16 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
     else
         $dataVal = $data[$col] ?? '';
 
-    $dataVal = mb_strtolower($dataVal, 'UTF-8');
-    $val = mb_strtolower($val, 'UTF-8');
     $op = strtolower($op);
+
+    // Đối với các phép so sánh ngày, không dùng chuẩn hóa chuỗi text thường
+    if (in_array($op, ['date_before', 'date_after', 'date_equals'])) {
+        $dataVal = mb_strtolower($dataVal, 'UTF-8');
+        $val = mb_strtolower($val, 'UTF-8');
+    } else {
+        $dataVal = normalizeTextForComparison($dataVal);
+        $val = normalizeTextForComparison($val);
+    }
 
     switch ($op) {
         case 'contains':
@@ -2013,16 +2030,24 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
 
                 $result = null;
                 if ($mode === 'manual') {
+                    // Chế độ: Chỉ lọc thủ công (Manual Only)
                     $result = runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
-                } else if ($mode === 'ai') {
-                    $result = runAIScreener($conn, $leadData, $aiRules);
                 } else if ($mode === 'hybrid') {
+                    // Chế độ: Kết hợp (Hybrid) - ƯU TIÊN 1: Chạy bộ lọc thủ công trước
                     $manualResult = runManualScreener($conn, $leadData, $manualRulesJson, $manualAction);
                     if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
+                        // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                         $result = $manualResult;
+                        if (isset($result['reason'])) {
+                            $result['reason'] .= ' (Bỏ qua gọi AI do đã khớp luật thủ công)';
+                        }
                     } else {
+                        // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
                         $result = runAIScreener($conn, $leadData, $aiRules);
                     }
+                } else if ($mode === 'ai') {
+                    // Chế độ: Chỉ lọc AI (AI Only)
+                    $result = runAIScreener($conn, $leadData, $aiRules);
                 }
 
                 if ($result) {
@@ -2056,16 +2081,24 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
             $mode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
             $result = null;
             if ($mode === 'manual') {
+                // Chế độ: Chỉ lọc thủ công (Manual Only)
                 $result = runManualScreener($conn, $leadData);
-            } else if ($mode === 'ai') {
-                $result = runAIScreener($conn, $leadData);
             } else if ($mode === 'hybrid') {
+                // Chế độ: Kết hợp (Hybrid) - ƯU TIÊN 1: Chạy bộ lọc thủ công trước
                 $manualResult = runManualScreener($conn, $leadData);
                 if ($manualResult && isset($manualResult['is_match']) && $manualResult['is_match']) {
+                    // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                     $result = $manualResult;
+                    if (isset($result['reason'])) {
+                        $result['reason'] .= ' (Bỏ qua gọi AI do đã khớp luật thủ công)';
+                    }
                 } else {
+                    // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
                     $result = runAIScreener($conn, $leadData);
                 }
+            } else if ($mode === 'ai') {
+                // Chế độ: Chỉ lọc AI (AI Only)
+                $result = runAIScreener($conn, $leadData);
             }
 
             if ($result) {

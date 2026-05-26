@@ -56,10 +56,18 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
     resolvedSrc = `${apiBase}/${src}`;
   }
 
-  // Reset error state if src changes
+  // Nếu name là "Hệ thống" / "System" / "HT" và không có ảnh avatar cụ thể, gán ảnh LOGO mặc định
+  if (!resolvedSrc && name) {
+    const trimmedName = name.trim().toLowerCase();
+    if (trimmedName === 'hệ thống' || trimmedName === 'system' || trimmedName === 'ht') {
+      resolvedSrc = 'https://crm-domation.vercel.app/LOGO.jpg';
+    }
+  }
+
+  // Reset error state if resolvedSrc changes
   React.useEffect(() => {
     setHasError(false);
-  }, [src]);
+  }, [resolvedSrc]);
 
   return (
     <div 
@@ -69,11 +77,11 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
         width: finalSize, 
         height: finalSize, 
         fontSize: finalSize * 0.4,
-        backgroundColor: src && !hasError ? 'transparent' : bgColor,
+        backgroundColor: resolvedSrc && !hasError ? 'transparent' : bgColor,
         ...style 
       }}
     >
-      {src && !hasError ? (
+      {resolvedSrc && !hasError ? (
         <img 
           src={resolvedSrc} 
           alt={name} 
