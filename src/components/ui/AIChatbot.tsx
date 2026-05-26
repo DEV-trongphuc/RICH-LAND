@@ -505,8 +505,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             left: auto !important;
             right: 16px !important;
             bottom: 16px !important;
-            width: 64px !important;
-            height: 64px !important;
+            width: 52px !important;
+            height: 52px !important;
           }
           .chatbot-window {
             width: auto !important;
@@ -526,8 +526,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
       <button
         onClick={() => setIsOpen(true)}
         style={{
-          width: 64,
-          height: 64,
+          width: 52,
+          height: 52,
           borderRadius: '50%',
           background: 'white',
           padding: 0,
@@ -577,10 +577,10 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         />
         <span style={{
           position: 'absolute',
-          top: -2,
-          right: -2,
-          width: 14,
-          height: 14,
+          top: -1,
+          right: -1,
+          width: 12,
+          height: 12,
           borderRadius: '50%',
           background: '#10b981',
           boxShadow: '0 0 0 2px var(--color-surface)',
