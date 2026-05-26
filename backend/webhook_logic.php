@@ -11,9 +11,11 @@ require_once __DIR__ . '/db_connect.php';
  * - Removes all formatting chars (spaces, dashes, p:, tel:, etc.)
  * BUG-13 fix: Single canonical implementation (was duplicated with wrong logic in webhook_logic.php)
  */
-function normalizePhone($phoneRaw) {
-    if (empty($phoneRaw)) return '';
-    $phone = trim((string)$phoneRaw);
+function normalizePhone($phoneRaw)
+{
+    if (empty($phoneRaw))
+        return '';
+    $phone = trim((string) $phoneRaw);
 
     // Remove common prefixes like "p:", "tel:", "phone:", etc.
     $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
@@ -70,10 +72,13 @@ function normalizePhone($phoneRaw) {
  * Normalize date to standard MySQL Y-m-d H:i:s format.
  * Supports various common Excel/text formats (e.g. 20-05-2026 16:35:50, 2026-05-20, etc.)
  */
-function normalizeDate($dateRaw) {
-    if (empty($dateRaw)) return null;
-    $dateStr = trim((string)$dateRaw);
-    if ($dateStr === '') return null;
+function normalizeDate($dateRaw)
+{
+    if (empty($dateRaw))
+        return null;
+    $dateStr = trim((string) $dateRaw);
+    if ($dateStr === '')
+        return null;
 
     // 1. If it's already Y-m-d H:i:s
     if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $dateStr)) {
@@ -82,13 +87,13 @@ function normalizeDate($dateRaw) {
 
     // 2. Try parsing DMY format: dd-mm-yyyy hh:ii:ss or dd/mm/yyyy hh:ii:ss
     if (preg_match('/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $dateStr, $matches)) {
-        $day = (int)$matches[1];
-        $month = (int)$matches[2];
-        $year = (int)$matches[3];
-        $hour = isset($matches[4]) ? (int)$matches[4] : 0;
-        $minute = isset($matches[5]) ? (int)$matches[5] : 0;
-        $second = isset($matches[6]) ? (int)$matches[6] : 0;
-        
+        $day = (int) $matches[1];
+        $month = (int) $matches[2];
+        $year = (int) $matches[3];
+        $hour = isset($matches[4]) ? (int) $matches[4] : 0;
+        $minute = isset($matches[5]) ? (int) $matches[5] : 0;
+        $second = isset($matches[6]) ? (int) $matches[6] : 0;
+
         if (checkdate($month, $day, $year)) {
             return sprintf('%04d-%02d-%02d %02d:%02d:%02d', $year, $month, $day, $hour, $minute, $second);
         }
@@ -102,7 +107,7 @@ function normalizeDate($dateRaw) {
 
     // 4. Try parsing Excel numeric timestamp
     if (is_numeric($dateStr)) {
-        $days = (float)$dateStr;
+        $days = (float) $dateStr;
         // Excel base date is 1900-01-01
         $timestamp = ($days - 25569) * 86400;
         if ($timestamp > 0) {
@@ -113,7 +118,8 @@ function normalizeDate($dateRaw) {
     return null;
 }
 
-function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = false, $name = '', $source = '', $type = '', $note = '') {
+function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = false, $name = '', $source = '', $type = '', $note = '')
+{
     static $exclusions = null;
     static $blacklistContacts = null;
     static $blacklistKeys = null;
@@ -122,8 +128,10 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
         $res = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_exclusion_keys', 'global_exclusion_contacts')");
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                if ($row['setting_key'] === 'global_exclusion_keys') $exclusions['keys'] = $row['setting_value'];
-                if ($row['setting_key'] === 'global_exclusion_contacts') $exclusions['contacts'] = $row['setting_value'];
+                if ($row['setting_key'] === 'global_exclusion_keys')
+                    $exclusions['keys'] = $row['setting_value'];
+                if ($row['setting_key'] === 'global_exclusion_contacts')
+                    $exclusions['contacts'] = $row['setting_value'];
             }
         }
         $blacklistContacts = !empty($exclusions['contacts']) ? array_map('trim', explode(',', strtolower($exclusions['contacts']))) : [];
@@ -138,8 +146,9 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
         $p = strtolower(normalizePhone($phone));
         $e = strtolower(trim($email));
         foreach ($blacklistContacts as $contact) {
-            if (empty($contact)) continue;
-            
+            if (empty($contact))
+                continue;
+
             if (strpos($contact, '@') !== false) {
                 // Email check: exact match OR domain match if contact starts with @ (e.g. @test.com)
                 if (!empty($e) && ($e === $contact || (strpos($contact, '@') === 0 && strpos($e, $contact) !== false))) {
@@ -163,19 +172,20 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
     if (!$matched && !empty($blacklistKeys)) {
         $scanData = $data;
         unset($scanData['_meta']); // Do not scan internal metadata
-        
+
         // Flatten array to extract only values (ignore column headers / JSON keys)
         $values = [];
-        array_walk_recursive($scanData, function($v) use (&$values) {
+        array_walk_recursive($scanData, function ($v) use (&$values) {
             if (!is_null($v) && !is_bool($v)) {
                 $values[] = $v;
             }
         });
-        
+
         $payloadStr = mb_strtolower(implode(' | ', $values), 'UTF-8');
-        
+
         foreach ($blacklistKeys as $key) {
-            if (empty($key)) continue;
+            if (empty($key))
+                continue;
             if (mb_strpos($payloadStr, $key, 0, 'UTF-8') !== false) {
                 $matched = true;
                 $reason = "Trùng từ khóa loại trừ: \"" . $key . "\"";
@@ -190,7 +200,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                 // 1. Get bot token
                 $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
                 $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-                
+
                 // 2. Query all admins
                 $adminRes = $conn->query("SELECT name, email, zalo_chat_id FROM accounts WHERE role = 'admin'");
                 if ($adminRes) {
@@ -198,7 +208,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                     while ($row = $adminRes->fetch_assoc()) {
                         $admins[] = $row;
                     }
-                    
+
                     if (!empty($admins)) {
                         $maskedPhone = '';
                         if (!empty($phone)) {
@@ -209,17 +219,17 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                                 $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
                             }
                         }
-                        
+
                         $zaloMsg = "⚠️ [ CẢNH BÁO DATA TRÙNG/SPAM CHẶN BLACKLIST ]\n\n"
-                                 . "Hệ thống vừa nhận được data mới khớp với danh sách đen/từ khóa loại trừ và đã tự động bỏ qua.\n\n"
-                                 . "- Tên khách hàng: " . ($name ?: 'Không rõ') . "\n"
-                                 . "- SĐT: " . ($maskedPhone ?: '-') . "\n"
-                                 . "- Email: " . ($email ?: '-') . "\n"
-                                 . "- Nguồn: " . ($source ?: '-') . "\n"
-                                 . "- Loại: " . ($type ?: '-') . "\n"
-                                 . "- Ghi chú: " . ($note ?: '-') . "\n"
-                                 . "- Lý do lọc: " . $reason;
-                                 
+                            . "Hệ thống vừa nhận được data mới khớp với danh sách đen/từ khóa loại trừ và đã tự động bỏ qua.\n\n"
+                            . "- Tên khách hàng: " . ($name ?: 'Không rõ') . "\n"
+                            . "- SĐT: " . ($maskedPhone ?: '-') . "\n"
+                            . "- Email: " . ($email ?: '-') . "\n"
+                            . "- Nguồn: " . ($source ?: '-') . "\n"
+                            . "- Loại: " . ($type ?: '-') . "\n"
+                            . "- Ghi chú: " . ($note ?: '-') . "\n"
+                            . "- Lý do lọc: " . $reason;
+
                         // Send Zalo
                         if (!empty($botToken)) {
                             require_once __DIR__ . '/zalo_bot.php';
@@ -229,7 +239,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                                 }
                             }
                         }
-                        
+
                         // Send Email
                         require_once __DIR__ . '/mailer.php';
                         $emailSubj = "[Cảnh báo] Data mới bị loại trừ (Blacklist) - " . ($name ?: 'Không rõ');
@@ -244,7 +254,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                                           <li><strong>Ghi chú:</strong> " . ($note ?: '-') . "</li>
                                           <li><strong>Lý do lọc:</strong> " . $reason . "</li>
                                       </ul>";
-                                      
+
                         foreach ($admins as $admin) {
                             if (!empty($admin['email'])) {
                                 sendEmailNotification($admin['email'], $emailSubj, 'Cảnh báo Data Blacklist', $emailBody, '');
@@ -286,17 +296,19 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
     return false;
 }
 
-function findConsultantByEmailOrName($conn, $value) {
+function findConsultantByEmailOrName($conn, $value)
+{
     $value = trim($value);
-    if (empty($value)) return null;
+    if (empty($value))
+        return null;
     $lowerVal = mb_strtolower($value, 'UTF-8');
-    
+
     // Sử dụng bộ nhớ đệm static cache tránh truy vấn DB lặp lại nhiều lần
     static $consultantNameIdCache = [];
     if (array_key_exists($lowerVal, $consultantNameIdCache)) {
         return $consultantNameIdCache[$lowerVal];
     }
-    
+
     // 1. Try finding by email
     if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
         $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(email) = ? LIMIT 1");
@@ -307,7 +319,7 @@ function findConsultantByEmailOrName($conn, $value) {
             $row = $res->fetch_assoc();
             $stmt->close();
             if ($row) {
-                $consultantNameIdCache[$lowerVal] = (int)$row['id'];
+                $consultantNameIdCache[$lowerVal] = (int) $row['id'];
                 return $consultantNameIdCache[$lowerVal];
             }
         }
@@ -321,7 +333,7 @@ function findConsultantByEmailOrName($conn, $value) {
         $row = $res->fetch_assoc();
         $stmt->close();
         if ($row) {
-            $consultantNameIdCache[$lowerVal] = (int)$row['id'];
+            $consultantNameIdCache[$lowerVal] = (int) $row['id'];
             return $consultantNameIdCache[$lowerVal];
         }
     }
@@ -329,7 +341,8 @@ function findConsultantByEmailOrName($conn, $value) {
     return null;
 }
 
-function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInactive = false) {
+function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInactive = false)
+{
     if (empty($phone) && empty($email)) {
         return [
             'isDuplicate' => false,
@@ -339,38 +352,40 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             'consultantStatus' => null
         ];
     }
-    
+
     $where = [];
     $params = [];
     $types = '';
-    
+
     // Split and normalize multiple phone numbers if present
     $phones = [];
     if (!empty($phone)) {
-        $phoneParts = preg_split('/[,;\/]|(?:\s+hoặc\s+)|(?:\s+or\s+)|(?:\s+và\s+)|(?:\s+and\s+)|\s+/i', (string)$phone);
+        $phoneParts = preg_split('/[,;\/]|(?:\s+hoặc\s+)|(?:\s+or\s+)|(?:\s+và\s+)|(?:\s+and\s+)|\s+/i', (string) $phone);
         foreach ($phoneParts as $part) {
             $part = trim($part);
-            if (empty($part)) continue;
+            if (empty($part))
+                continue;
             $norm = normalizePhone($part);
             if (!empty($norm) && !in_array($norm, $phones)) {
                 $phones[] = $norm;
             }
         }
     }
-    
+
     // Split and clean multiple email addresses if present
     $emails = [];
     if (!empty($email)) {
-        $emailParts = preg_split('/[,;\/\s]+/i', (string)$email);
+        $emailParts = preg_split('/[,;\/\s]+/i', (string) $email);
         foreach ($emailParts as $part) {
             $part = trim(strtolower($part));
-            if (empty($part)) continue;
+            if (empty($part))
+                continue;
             if (strpos($part, '@') !== false && !in_array($part, $emails)) {
                 $emails[] = $part;
             }
         }
     }
-    
+
     if (empty($phones) && empty($emails)) {
         return [
             'isDuplicate' => false,
@@ -380,7 +395,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             'consultantStatus' => null
         ];
     }
-    
+
     foreach ($phones as $p) {
         $where[] = "l.phone = ?";
         $params[] = $p;
@@ -391,39 +406,39 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $params[] = $e;
         $types .= 's';
     }
-    
+
     $whereClause = implode(" OR ", $where);
     $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
                             FROM leads l 
                             LEFT JOIN consultants c ON l.assigned_to = c.id 
                             WHERE $whereClause 
                             ORDER BY l.last_interaction_date DESC LIMIT 1");
-    
+
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
     }
-    
+
     $stmt->execute();
     $res = $stmt->get_result();
     $stmt->close();
-    
+
     if ($res->num_rows > 0) {
         $row = $res->fetch_assoc();
         $lastInteraction = new DateTime($row['last_interaction_date']);
         $now = new DateTime();
         $diff = $now->diff($lastInteraction);
         $months = ($diff->format('%y') * 12) + $diff->format('%m');
-        
+
         $reassignIfOwnerInactive = get_system_setting($conn, 'reassign_if_owner_inactive');
         if ($reassignIfOwnerInactive === '') {
             $reassignIfOwnerInactive = '1'; // Default to ON (mặc định bật)
         }
-        
+
         $consultantStatus = $row['consultant_status'];
         $leaveStart = $row['leave_start'] ?? null;
         $leaveEnd = $row['leave_end'] ?? null;
         $today = date('Y-m-d');
-        
+
         $isActuallyOnLeave = false;
         if ($consultantStatus === 'leave') {
             $isActuallyOnLeave = true;
@@ -432,9 +447,9 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
                 $isActuallyOnLeave = true;
             }
         }
-        
+
         $effectiveStatus = $isActuallyOnLeave ? 'leave' : $consultantStatus;
-        
+
         if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
             $isDuplicate = ($effectiveStatus === 'active');
             $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
@@ -443,9 +458,10 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $isDuplicate = true;
             $assignedTo = $row['assigned_to'];
         }
-        
+
         return [
             'isDuplicate' => $isDuplicate,
+            'leadExists' => true,
             'monthsSinceLastInteraction' => $months,
             'assignedTo' => $assignedTo,
             'assignedName' => $row['consultant_name'] ?? 'Không rõ',
@@ -454,9 +470,10 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             'consultantStatus' => $effectiveStatus
         ];
     }
-    
+
     return [
         'isDuplicate' => false,
+        'leadExists' => false,
         'monthsSinceLastInteraction' => 0,
         'assignedTo' => null,
         'assignedName' => 'Không rõ',
@@ -466,17 +483,22 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     ];
 }
 
-function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null) {
+function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null)
+{
     $dataVal = '';
-    if ($col === 'source') $dataVal = $source;
-    elseif ($col === 'type') $dataVal = $type;
-    elseif ($col === 'connection_id') $dataVal = (string)$connId;
-    else $dataVal = $data[$col] ?? '';
-    
+    if ($col === 'source')
+        $dataVal = $source;
+    elseif ($col === 'type')
+        $dataVal = $type;
+    elseif ($col === 'connection_id')
+        $dataVal = (string) $connId;
+    else
+        $dataVal = $data[$col] ?? '';
+
     $dataVal = mb_strtolower($dataVal, 'UTF-8');
     $val = mb_strtolower($val, 'UTF-8');
     $op = strtolower($op);
-    
+
     switch ($op) {
         case 'contains':
             return mb_strpos($dataVal, $val) !== false;
@@ -490,7 +512,8 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
             return mb_strpos($dataVal, $val) === 0;
         case 'ends_with':
             $valLen = mb_strlen($val, 'UTF-8');
-            if ($valLen === 0) return true;
+            if ($valLen === 0)
+                return true;
             return mb_substr($dataVal, -$valLen, null, 'UTF-8') === $val;
         case 'is_empty':
             return trim($dataVal) === '';
@@ -506,7 +529,8 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
     return false;
 }
 
-function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets') {
+function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets')
+{
     static $rulesCache = null;
     if ($rulesCache === null) {
         $rulesCache = [];
@@ -517,22 +541,35 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             }
         }
     }
-    
+
     foreach ($rulesCache as $row) {
         // Skip rule if it is bound to a specific connection_id and it doesn't match the incoming connection
         if (!empty($row['connection_id'])) {
-            $ruleConnIds = array_map('trim', explode(',', (string)$row['connection_id']));
+            $ruleConnIds = array_map('trim', explode(',', (string) $row['connection_id']));
             $isMatched = false;
-            
+
             foreach ($ruleConnIds as $ruleConnIdStr) {
-                $ruleConnId = (int)$ruleConnIdStr;
-                if ($ruleConnId === -1 && $connectionType === 'sheets') { $isMatched = true; break; }
-                if ($ruleConnId === -2 && $connectionType === 'landing_page') { $isMatched = true; break; }
-                if ($ruleConnId === -3 && $connectionType === 'manual') { $isMatched = true; break; }
-                if ($ruleConnId > 0 && $ruleConnId == $connId) { $isMatched = true; break; }
+                $ruleConnId = (int) $ruleConnIdStr;
+                if ($ruleConnId === -1 && $connectionType === 'sheets') {
+                    $isMatched = true;
+                    break;
+                }
+                if ($ruleConnId === -2 && $connectionType === 'landing_page') {
+                    $isMatched = true;
+                    break;
+                }
+                if ($ruleConnId === -3 && $connectionType === 'manual') {
+                    $isMatched = true;
+                    break;
+                }
+                if ($ruleConnId > 0 && $ruleConnId == $connId) {
+                    $isMatched = true;
+                    break;
+                }
             }
-            
-            if (!$isMatched) continue;
+
+            if (!$isMatched)
+                continue;
         }
 
         $logicalOperator = strtoupper($row['logical_operator'] ?? 'AND');
@@ -555,23 +592,25 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
                     // New format: Array of branch objects
                     $branches = $parsed;
                 }
-                
+
                 $isMatch = false;
                 $matchedBranch = null;
-                
+
                 foreach ($branches as $branchObj) {
                     $conds = $branchObj['conditions'] ?? [];
-                    if (!is_array($conds) || count($conds) === 0) continue;
-                    
+                    if (!is_array($conds) || count($conds) === 0)
+                        continue;
+
                     $branchMatch = true; // AND logic within branch
                     foreach ($conds as $cond) {
-                        if (!isset($cond['col'])) continue;
+                        if (!isset($cond['col']))
+                            continue;
                         if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connId)) {
                             $branchMatch = false;
                             break; // One condition failed, entire branch fails
                         }
                     }
-                    
+
                     if ($branchMatch) {
                         $isMatch = true; // OR logic between branches
                         $matchedBranch = $branchObj;
@@ -583,7 +622,7 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             // Legacy format fallback
             $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value'], $connId);
         }
-        
+
         if ($isMatch) {
             $inject = [];
             if ($matchedBranch && !empty($matchedBranch['inject'])) {
@@ -609,26 +648,27 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             ];
         }
     }
-    
+
     return null;
 }
 
-function getNextConsultantInRound($conn, $roundId) {
+function getNextConsultantInRound($conn, $roundId)
+{
     // 1. Get round info with FOR UPDATE lock
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
     $stmt->bind_param("i", $roundId);
     $stmt->execute();
     $res = $stmt->get_result();
-    
+
     if ($res->num_rows === 0) {
         $stmt->close();
         return null; // Round not found or inactive
     }
-    
+
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
-    
+
     // Load starvation prevention settings
     $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
     $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
@@ -666,38 +706,38 @@ function getNextConsultantInRound($conn, $roundId) {
             ORDER BY c.id ASC
         ");
     }
-    
+
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
-    
+
     if ($cRes->num_rows === 0) {
         error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
         $cStmt->close();
         return null;
     }
-    
+
     $consultants = [];
     $compensatedConsultant = null;
     $starvationConsultant = null;
     $midTurnConsultant = null;  // Consultant who is mid-turn (current_turn_remaining > 0)
-    
+
     $today = date('Y-m-d');
     $currentTime = date('H:i');
-    
+
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
-        
+
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
-        
+
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
-        
+
         // Priority 2: Starvation Prevention (skipped_credit) - only if available (not on vacation), enabled, within hourly limit, and currently on shift
         if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             // Count starvation leads received in last hour
@@ -714,19 +754,19 @@ function getNextConsultantInRound($conn, $roundId) {
                 $logStmt->execute();
                 $logRes = $logStmt->get_result()->fetch_assoc();
                 $logStmt->close();
-                $hourlyCount = (int)($logRes['cnt'] ?? 0);
+                $hourlyCount = (int) ($logRes['cnt'] ?? 0);
                 if ($hourlyCount < $starvationMaxPerHour) {
                     $starvationConsultant = $row;
                 }
             }
         }
-        
+
         // Priority 3: Mid-turn - only if available
         if (empty($compensatedConsultant) && empty($starvationConsultant) && empty($midTurnConsultant) && $isAvailable && intval($row['current_turn_remaining']) > 0) {
             $midTurnConsultant = $row;
         }
     }
-    
+
     // === PRIORITY 1: COMPENSATION — Ai cần được đền bù thì được giao ngay ===
     if ($compensatedConsultant) {
         $nextId = $compensatedConsultant['id'];
@@ -734,7 +774,8 @@ function getNextConsultantInRound($conn, $roundId) {
         $compStmt->bind_param("ii", $roundId, $nextId);
         $compStmt->execute();
         $compStmt->close();
-        if (isset($cStmt)) $cStmt->close();
+        if (isset($cStmt))
+            $cStmt->close();
         return ['id' => $nextId, 'is_compensation' => true];
     }
 
@@ -745,7 +786,8 @@ function getNextConsultantInRound($conn, $roundId) {
         $starvStmt->bind_param("ii", $roundId, $nextId);
         $starvStmt->execute();
         $starvStmt->close();
-        if (isset($cStmt)) $cStmt->close();
+        if (isset($cStmt))
+            $cStmt->close();
         return ['id' => $nextId, 'is_compensation' => true, 'is_starvation' => true];
     }
 
@@ -757,10 +799,11 @@ function getNextConsultantInRound($conn, $roundId) {
         $midStmt->bind_param("ii", $roundId, $nextId);
         $midStmt->execute();
         $midStmt->close();
-        if (isset($cStmt)) $cStmt->close();
+        if (isset($cStmt))
+            $cStmt->close();
         return ['id' => $nextId, 'is_compensation' => false];
     }
-    
+
     // === PRIORITY 4: ROUND-ROBIN — Find next consultant by receive_ratio ===
     $nextIdx = 0;
     if ($lastAssignedId) {
@@ -771,25 +814,25 @@ function getNextConsultantInRound($conn, $roundId) {
             }
         }
     }
-    
+
     $startIdx = $nextIdx;
     $chosenConsultant = null;
     $skippedConsultants = [];
-    
+
     $skipResetStmt = $conn->prepare("UPDATE round_consultants SET skip_count = 0 WHERE round_id = ? AND consultant_id = ?");
-    $skipIncrStmt  = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
-    
+    $skipIncrStmt = $conn->prepare("UPDATE round_consultants SET skip_count = skip_count + 1 WHERE round_id = ? AND consultant_id = ?");
+
     do {
         $candidate = $consultants[$nextIdx];
-        
+
         // Check availability (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
-        
+
         if ($isAvailable) {
-            $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
-            $skipCount = (int)($candidate['skip_count'] ?? 0);
-            
+            $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
+            $skipCount = (int) ($candidate['skip_count'] ?? 0);
+
             if ($ratio == 1 || $skipCount >= $ratio - 1) {
                 $chosenConsultant = $candidate;
                 $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
@@ -803,12 +846,12 @@ function getNextConsultantInRound($conn, $roundId) {
         } else {
             // Unavailable: skipped
             if ($starvationEnabled === 1) {
-                $skippedConsultants[] = (int)$candidate['id'];
+                $skippedConsultants[] = (int) $candidate['id'];
             }
             $nextIdx = ($nextIdx + 1) % count($consultants);
         }
     } while ($nextIdx != $startIdx);
-    
+
     // Fallback: everyone is skipped or offline simultaneously
     if (!$chosenConsultant) {
         $chosenConsultant = $consultants[$startIdx];
@@ -816,10 +859,10 @@ function getNextConsultantInRound($conn, $roundId) {
         $skipResetStmt->execute();
         $skippedConsultants = []; // Reset skipped list
     }
-    
-    $nextId    = $chosenConsultant['id'];
-    $dataPerTurn = max(1, (int)($chosenConsultant['data_per_turn'] ?? 1));
-    
+
+    $nextId = $chosenConsultant['id'];
+    $dataPerTurn = max(1, (int) ($chosenConsultant['data_per_turn'] ?? 1));
+
     // If data_per_turn > 1, set current_turn_remaining = dataPerTurn - 1
     if ($dataPerTurn > 1) {
         $setTurnStmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = ? WHERE round_id = ? AND consultant_id = ?");
@@ -828,13 +871,13 @@ function getNextConsultantInRound($conn, $roundId) {
         $setTurnStmt->execute();
         $setTurnStmt->close();
     }
-    
+
     // Update last_assigned for round-robin tracking
     $updStmt = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
     $updStmt->bind_param("ii", $nextId, $roundId);
     $updStmt->execute();
     $updStmt->close();
-    
+
     // Increment skipped_credit for bypassed/skipped consultants
     if (!empty($skippedConsultants) && $starvationEnabled === 1) {
         $placeholders = implode(',', array_fill(0, count($skippedConsultants), '?'));
@@ -847,21 +890,26 @@ function getNextConsultantInRound($conn, $roundId) {
             $stmtSkip->close();
         }
     }
-    
-    if (isset($skipResetStmt)) $skipResetStmt->close();
-    if (isset($skipIncrStmt)) $skipIncrStmt->close();
-    if (isset($cStmt)) $cStmt->close();
-    
+
+    if (isset($skipResetStmt))
+        $skipResetStmt->close();
+    if (isset($skipIncrStmt))
+        $skipIncrStmt->close();
+    if (isset($cStmt))
+        $cStmt->close();
+
     return ['id' => $nextId, 'is_compensation' => false];
 }
 
-function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null) {
+function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null)
+{
     $phone = normalizePhone($phone);
-    if ($phone === '') $phone = null;
+    if ($phone === '')
+        $phone = null;
     $email = trim($email) === '' ? null : trim($email);
-    
+
     $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
-    
+
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE 
@@ -898,14 +946,16 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false) {
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false)
+{
     $phone = normalizePhone($phone);
-    if (empty($phone) && empty($email)) return null;
-    
+    if (empty($phone) && empty($email))
+        return null;
+
     $where = [];
     $params = [];
     $types = '';
-    
+
     if (!empty($phone)) {
         $where[] = "phone = ?";
         $params[] = $phone;
@@ -916,14 +966,15 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $params[] = $email;
         $types .= 's';
     }
-    
+
     $id = null;
     if (!empty($phone)) {
         $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
         $sStmt->bind_param("s", $phone);
         $sStmt->execute();
         $res = $sStmt->get_result();
-        if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
+        if ($res->num_rows > 0)
+            $id = $res->fetch_assoc()['id'];
         $sStmt->close();
     }
     if (!$id && !empty($email)) {
@@ -931,10 +982,11 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         $sStmt->bind_param("s", $email);
         $sStmt->execute();
         $res = $sStmt->get_result();
-        if ($res->num_rows > 0) $id = $res->fetch_assoc()['id'];
+        if ($res->num_rows > 0)
+            $id = $res->fetch_assoc()['id'];
         $sStmt->close();
     }
-    
+
     if ($id) {
         $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
         if ($onlyUpdateDate) {
@@ -974,12 +1026,13 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
-function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true) {
+function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true)
+{
     $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
     $stmt->execute();
     $stmt->close();
-    
+
     if (function_exists('pruneAdminLogs')) {
         pruneAdminLogs($conn);
     }
@@ -994,22 +1047,23 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
  * Simulate getNextConsultantInRound WITHOUT updating the database.
  * Used for previewing who will receive the lead.
  */
-function simulateNextConsultantInRound($conn, $roundId) {
+function simulateNextConsultantInRound($conn, $roundId)
+{
     // 1. Get round info without FOR UPDATE
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1");
     $stmt->bind_param("i", $roundId);
     $stmt->execute();
     $res = $stmt->get_result();
-    
+
     if ($res->num_rows === 0) {
         $stmt->close();
         return null; // Round not found or inactive
     }
-    
+
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
-    
+
     $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
     $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
     if ($starvationMaxPerHour <= 0) {
@@ -1047,32 +1101,32 @@ function simulateNextConsultantInRound($conn, $roundId) {
     $cStmt->bind_param("i", $roundId);
     $cStmt->execute();
     $cRes = $cStmt->get_result();
-    
+
     if ($cRes->num_rows === 0) {
         $cStmt->close();
         return null;
     }
-    
+
     $consultants = [];
     $compensatedConsultant = null;
     $starvationConsultant = null;
     $midTurnConsultant = null;
-    
+
     $today = date('Y-m-d');
     $currentTime = date('H:i');
-    
+
     while ($row = $cRes->fetch_assoc()) {
         $consultants[] = $row;
-        
+
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
-        
+
         // Priority 1: Compensation
         if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
-        
+
         // Priority 2: Starvation (only if on shift)
         if ($starvationEnabled === 1 && empty($compensatedConsultant) && empty($starvationConsultant) && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             // Count starvation leads in last hour
@@ -1089,20 +1143,20 @@ function simulateNextConsultantInRound($conn, $roundId) {
                 $logStmt->execute();
                 $logRes = $logStmt->get_result()->fetch_assoc();
                 $logStmt->close();
-                $hourlyCount = (int)($logRes['cnt'] ?? 0);
+                $hourlyCount = (int) ($logRes['cnt'] ?? 0);
                 if ($hourlyCount < $starvationMaxPerHour) {
                     $starvationConsultant = $row;
                 }
             }
         }
-        
+
         // Priority 3: Mid-turn
         if (empty($compensatedConsultant) && empty($starvationConsultant) && empty($midTurnConsultant) && $isAvailable && intval($row['current_turn_remaining']) > 0) {
             $midTurnConsultant = $row;
         }
     }
     $cStmt->close();
-    
+
     // === PRIORITY 1: COMPENSATION ===
     if ($compensatedConsultant) {
         return $compensatedConsultant;
@@ -1117,7 +1171,7 @@ function simulateNextConsultantInRound($conn, $roundId) {
     if ($midTurnConsultant) {
         return $midTurnConsultant;
     }
-    
+
     // === PRIORITY 4: ROUND-ROBIN ===
     $nextIdx = 0;
     if ($lastAssignedId) {
@@ -1128,23 +1182,23 @@ function simulateNextConsultantInRound($conn, $roundId) {
             }
         }
     }
-    
+
     $startIdx = $nextIdx;
     $chosenConsultant = null;
-    
+
     // Simulate skip tracking
     $simulatedConsultants = $consultants;
-    
+
     do {
         $candidate = $simulatedConsultants[$nextIdx];
-        
+
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
-        
+
         if ($isAvailable) {
-            $ratio     = max(1, (int)($candidate['receive_ratio'] ?? 1));
-            $skipCount = (int)($candidate['skip_count'] ?? 0);
-            
+            $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
+            $skipCount = (int) ($candidate['skip_count'] ?? 0);
+
             if ($ratio == 1 || $skipCount >= $ratio - 1) {
                 $chosenConsultant = $candidate;
                 break;
@@ -1157,12 +1211,12 @@ function simulateNextConsultantInRound($conn, $roundId) {
             $nextIdx = ($nextIdx + 1) % count($simulatedConsultants);
         }
     } while ($nextIdx != $startIdx);
-    
+
     // Fallback
     if (!$chosenConsultant) {
         $chosenConsultant = $consultants[$startIdx];
     }
-    
+
     return $chosenConsultant;
 }
 
@@ -1171,7 +1225,8 @@ function simulateNextConsultantInRound($conn, $roundId) {
  * Supports intervals spanning midnight (e.g. 22:00 to 06:00).
  * Highly resilient: supports HH:MM, HH:MM:SS, and leading/trailing spaces.
  */
-function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = null) {
+function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = null)
+{
     $timeStr = trim($timeStr ?? '');
     if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
         $timeStr = $m[1];
@@ -1186,7 +1241,7 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
             $dayOfWeek = date('N');
             if (isset($schedule[$dayOfWeek])) {
                 $dayConfig = $schedule[$dayOfWeek];
-                $active = isset($dayConfig['active']) ? (bool)$dayConfig['active'] : false;
+                $active = isset($dayConfig['active']) ? (bool) $dayConfig['active'] : false;
                 if (!$active) {
                     return false; // Closed today
                 }
@@ -1198,26 +1253,26 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
 
     $start = trim($start ?? '00:00');
     $end = trim($end ?? '23:59');
-    
+
     if (preg_match('/^(\d{2}:\d{2})/', $start, $m)) {
         $start = $m[1];
     } else {
         $start = '00:00';
     }
-    
+
     if (preg_match('/^(\d{2}:\d{2})/', $end, $m)) {
         $end = $m[1];
     } else {
         $end = '23:59';
     }
-    
+
     if ($start === '00:00' && $end === '23:59') {
         return true;
     }
     if ($start === $end) {
         return true;
     }
-    
+
     if ($start < $end) {
         return ($timeStr >= $start && $timeStr <= $end);
     } else {
@@ -1229,9 +1284,11 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
 /**
  * Lấy lịch sử phân bổ gần nhất của Lead để hiển thị khi nhắc trùng
  */
-function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false) {
+function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false)
+{
     $timeline = [];
-    if (empty($leadId)) return $timeline;
+    if (empty($leadId))
+        return $timeline;
 
     $limit = $excludeLatestIfReminder ? 6 : 5;
     $stmt = $conn->prepare("
@@ -1247,7 +1304,7 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
         $stmt->bind_param("ii", $leadId, $limit);
         $stmt->execute();
         $res = $stmt->get_result();
-        
+
         $statusTranslations = [
             'assigned' => 'Đã bàn giao',
             'reminder' => 'Nhắc trùng',
@@ -1262,22 +1319,22 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
         $count = 0;
         while ($row = $res->fetch_assoc()) {
             $statusRaw = $row['status'] ?? '';
-            
+
             if ($excludeLatestIfReminder && $isFirst && ($statusRaw === 'reminder' || $statusRaw === 'silent')) {
                 $isFirst = false;
                 continue;
             }
             $isFirst = false;
-            
+
             if ($count >= 5) {
                 break;
             }
             $count++;
 
             $statusText = $statusTranslations[$statusRaw] ?? $statusRaw;
-            
+
             $msg = $row['message'] ?? '';
-            
+
             // Translate common messages to Vietnamese
             $translations = [
                 'Assigned via round-robin.' => 'Được phân bổ tự động qua vòng xoay.',
@@ -1295,14 +1352,14 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
                 'Trung so tu file Excel nhap vao.' => 'Trùng số từ file Excel nhập vào.',
                 'Khong co Sale nhan tu file Excel.' => 'Không có Sale nhận từ file Excel.',
             ];
-            
+
             foreach ($translations as $eng => $vi) {
                 if (trim($msg) === $eng) {
                     $msg = $vi;
                     break;
                 }
             }
-            
+
             // Catch dynamic messages
             if (preg_match('/Khách cũ đăng ký lại < (\d+) tháng via cron_sync\./i', $msg, $matches)) {
                 $msg = 'Khách cũ đăng ký lại < ' . $matches[1] . ' tháng (đồng bộ hệ thống).';
@@ -1313,7 +1370,7 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
             } elseif (preg_match('/\(Delayed: outside working hours (.*)\)/i', $msg, $matches)) {
                 $msg = preg_replace('/\(Delayed: outside working hours (.*)\)/i', '(Trì hoãn: ngoài khung giờ làm việc $1)', $msg);
             }
-            
+
             $timeline[] = [
                 'received_at' => $row['received_at'],
                 'status' => $statusText,
@@ -1331,8 +1388,10 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
 /**
  * Gửi thông báo đồng bộ 2 chiều (write-back) ngược về Google Sheets thông qua Web App Apps Script
  */
-function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
-    if (empty($leadId)) return false;
+function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null)
+{
+    if (empty($leadId))
+        return false;
 
     // 1. Lấy thông tin chi tiết của Lead, Connection liên kết, và Vòng chia số
     $stmt = $conn->prepare("
@@ -1371,11 +1430,13 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
     $connectionSuccess = true;
 
     // A. Đồng bộ riêng cho Connection liên kết (nếu có cấu hình và đang hoạt động)
-    if (!empty($lead['connection_id']) && 
-        !empty($lead['two_way_sync']) && 
-        !empty($lead['google_script_url']) && 
-        !empty($lead['conn_is_active'])) {
-        
+    if (
+        !empty($lead['connection_id']) &&
+        !empty($lead['two_way_sync']) &&
+        !empty($lead['google_script_url']) &&
+        !empty($lead['conn_is_active'])
+    ) {
+
         $connectionSynced = true;
         // 2. Lấy danh sách mapping của Connection này
         $mapStmt = $conn->prepare("SELECT sheet_column, system_field FROM field_mappings WHERE connection_id = ?");
@@ -1383,7 +1444,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
             $mapStmt->bind_param("i", $lead['connection_id']);
             $mapStmt->execute();
             $mapRes = $mapStmt->get_result();
-            
+
             $mappings = [];
             while ($mRow = $mapRes->fetch_assoc()) {
                 $mappings[$mRow['system_field']][] = $mRow['sheet_column'];
@@ -1397,14 +1458,14 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
             if (!empty($searchColPhone) || !empty($searchColEmail)) {
                 // 3. Khởi tạo mảng các trường cần cập nhật
                 $updates = [];
-                
+
                 // Ghi chú (note)
                 if (!empty($mappings['note'])) {
                     foreach ($mappings['note'] as $col) {
                         $updates[$col] = $lead['note'];
                     }
                 }
-                
+
                 // Trạng thái / Phân loại (type)
                 if (!empty($mappings['type'])) {
                     foreach ($mappings['type'] as $col) {
@@ -1465,7 +1526,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
                     ];
 
                     $jsonData = json_encode($payload, JSON_UNESCAPED_UNICODE);
-                    
+
                     // Thực hiện gọi CURL
                     $ch = curl_init($lead['google_script_url']);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1478,7 +1539,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
                     curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
                     curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
-                    
+
                     $response = curl_exec($ch);
                     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                     if ($response === false) {
@@ -1487,6 +1548,31 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
                     } elseif ($httpCode !== 200) {
                         $connectionSuccess = false;
                         $errorMsg = "Connection HTTP status code $httpCode. Response: " . substr($response, 0, 150);
+                    } else {
+                        // Success! Parse the response and save row hash to prevent re-processing
+                        $respData = json_decode($response, true);
+                        if ($respData && ($respData['status'] ?? '') === 'success' && !empty($respData['row_values']) && !empty($respData['headers'])) {
+                            $rowValues = $respData['row_values'];
+                            $respHeaders = $respData['headers'];
+
+                            $rowData = [];
+                            foreach ($respHeaders as $idx => $headerName) {
+                                $headerName = trim((string) $headerName);
+                                if ($headerName === '')
+                                    continue;
+                                $rowData[$headerName] = isset($rowValues[$idx]) ? trim((string) $rowValues[$idx]) : '';
+                            }
+
+                            $newRowHash = md5(json_encode($rowData));
+
+                            // Save the new hash to sheet_sync_records
+                            $hashStmt = $conn->prepare("INSERT INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?) ON DUPLICATE KEY UPDATE row_hash = VALUES(row_hash)");
+                            if ($hashStmt) {
+                                $hashStmt->bind_param("is", $lead['connection_id'], $newRowHash);
+                                $hashStmt->execute();
+                                $hashStmt->close();
+                            }
+                        }
                     }
                     curl_close($ch);
 
@@ -1530,7 +1616,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
         ];
 
         $jsonDataMaster = json_encode($masterPayload, JSON_UNESCAPED_UNICODE);
-        
+
         $chM = curl_init($masterUrl);
         curl_setopt($chM, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($chM, CURLOPT_POST, true);
@@ -1542,7 +1628,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
         curl_setopt($chM, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
         curl_setopt($chM, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
-        
+
         $responseM = curl_exec($chM);
         $httpCodeMaster = curl_getinfo($chM, CURLINFO_HTTP_CODE);
         if ($responseM === false) {
@@ -1577,8 +1663,10 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
 /**
  * Đẩy yêu cầu đồng bộ 2 chiều vào database queue (Outbox Pattern)
  */
-function triggerTwoWaySync($conn, $leadId) {
-    if (empty($leadId)) return false;
+function triggerTwoWaySync($conn, $leadId)
+{
+    if (empty($leadId))
+        return false;
 
     // Check if sync is configured & active for this lead/connection or master sync to avoid useless queue growth
     $stmt = $conn->prepare("
@@ -1588,7 +1676,8 @@ function triggerTwoWaySync($conn, $leadId) {
         LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
         WHERE l.id = ? LIMIT 1
     ");
-    if (!$stmt) return false;
+    if (!$stmt)
+        return false;
     $stmt->bind_param("i", $leadId);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -1600,10 +1689,12 @@ function triggerTwoWaySync($conn, $leadId) {
     $stmt->close();
 
     $needsSync = false;
-    if (!empty($lead['connection_id']) && 
-        !empty($lead['two_way_sync']) && 
-        !empty($lead['google_script_url']) && 
-        !empty($lead['conn_is_active'])) {
+    if (
+        !empty($lead['connection_id']) &&
+        !empty($lead['two_way_sync']) &&
+        !empty($lead['google_script_url']) &&
+        !empty($lead['conn_is_active'])
+    ) {
         $needsSync = true;
     }
 
@@ -1627,7 +1718,7 @@ function triggerTwoWaySync($conn, $leadId) {
             next_retry_at = NOW()
     ");
     if ($queueStmt) {
-        $connId = !empty($lead['connection_id']) ? (int)$lead['connection_id'] : null;
+        $connId = !empty($lead['connection_id']) ? (int) $lead['connection_id'] : null;
         $queueStmt->bind_param("ii", $leadId, $connId);
         $queueStmt->execute();
         $queueStmt->close();
@@ -1636,7 +1727,8 @@ function triggerTwoWaySync($conn, $leadId) {
     return false;
 }
 
-function runAIScreener($conn, $leadData, $customRules = null) {
+function runAIScreener($conn, $leadData, $customRules = null)
+{
     // 1. Check if AI screener is enabled
     $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
     if ($enabled !== 1) {
@@ -1653,24 +1745,16 @@ function runAIScreener($conn, $leadData, $customRules = null) {
     $aiRules = $customRules !== null ? $customRules : get_system_setting($conn, 'ai_screener_rules');
 
     // 2. Format details and prompt
-    $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên quy tắc/tiêu chí của quản trị viên.\n\n"
-            . "QUY TẮC ĐÁNH GIÁ CỦA QUẢN TRỊ VIÊN:\n" . $aiRules . "\n\n"
-            . "THÔNG TIN KHÁCH HÀNG:\n"
-            . "Họ tên: " . ($leadData['name'] ?? '') . "\n"
-            . "Số điện thoại: " . ($leadData['phone'] ?? '') . "\n"
-            . "Email: " . ($leadData['email'] ?? '') . "\n"
-            . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
-            . "Loại data: " . ($leadData['type'] ?? '') . "\n"
-            . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
-            . "HƯỚNG DẪN ĐÁNH GIÁ CHẶT CHẼ & CHUYÊN NGHIỆP:\n"
-            . "1. Tuyệt đối KHÔNG sử dụng các ký tự Latinh mặc định trong địa chỉ Email (ví dụ: gmail.com, yahoo.com, tên email viết tắt), Số điện thoại, hay Nguồn để đánh giá đạt tiêu chuẩn ngoại ngữ/tiếng Anh.\n"
-            . "2. Việc khách hàng có tên hay email viết không dấu (chữ Latin) là bình thường đối với mọi khách hàng tại Việt Nam, điều này KHÔNG chứng minh khách hàng có nhu cầu học hoặc biết tiếng Anh.\n"
-            . "3. Hãy tập trung phân tích kỹ trường 'Ghi chú' và 'Loại data' để xác định nhu cầu thực sự, trình độ, hoặc mong muốn học tập/giao tiếp liên quan đến quy tắc của quản trị viên.\n"
-            . "4. Nếu trường 'Ghi chú' và 'Loại data' trống hoặc không đề cập đến ngoại ngữ/tiếng Anh trong khi quy tắc yêu cầu tiếng Anh, hãy đánh giá là \"failed\" và tự viết một câu giải thích đa dạng, tự nhiên và lịch sự dựa trên hồ sơ khách hàng (ví dụ: \"Thông tin đăng ký chưa ghi nhận mong muốn học ngoại ngữ\", \"Hệ thống tạm giữ do hồ sơ chưa thể hiện nhu cầu học tiếng Anh\", \"Khách hàng chưa cung cấp thông tin về trình độ tiếng Anh trong phiếu đăng ký\").\n"
-            . "5. Nếu trường 'Ghi chú' chứa thông tin phủ định (ví dụ: 'không học', 'không biết', 'tiếng Anh: không', 'tiếng Anh: không có'), hãy đánh giá là \"failed\" và tự viết một câu nhận định chuyên nghiệp, tự nhiên mô tả thực tế thông tin của khách (ví dụ: \"Khách hàng xác nhận không có nhu cầu học tiếng Anh trong ghi chú\", \"Thông tin ghi chú ghi nhận khách không đáp ứng tiêu chuẩn tiếng Anh\", \"Khách ghi chú không có mong muốn học tiếng Anh nên hệ thống tạm giữ\").\n\n"
-            . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
-            . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn (cần tạm giữ phê duyệt).\n"
-            . "- reason: giải thích một cách chuyên nghiệp, khách quan, tự nhiên và đa dạng bằng tiếng Việt (ví dụ: \"Khách hàng có mong muốn học IELTS nâng cao, đáp ứng tiêu chuẩn\", \"Khách hàng xác nhận không có nhu cầu học tiếng Anh trong ghi chú\", \"Hệ thống tạm giữ do hồ sơ chưa thể hiện nhu cầu học tiếng Anh\").";
+    $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên quy tắc.\n\n"
+        . "THÔNG TIN KHÁCH HÀNG:\n"
+        . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
+        . "Loại data: " . ($leadData['type'] ?? '') . "\n"
+        . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
+        . "QUY TẮC ĐÁNH GIÁ DUY NHẤT ĐẠT HOẶC KHÔNG ĐẠT BÁM SÁT THEO:\n" . $aiRules . "\n\n"
+        . "Nếu dữ liệu không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
+        . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
+        . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
+        . "- reason: giải thích ngắn gọn lý do.";
 
     $payload = [
         'contents' => [
@@ -1695,7 +1779,7 @@ function runAIScreener($conn, $leadData, $customRules = null) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_TIMEOUT, 12);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
+
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr = curl_error($ch);
@@ -1736,7 +1820,8 @@ function runAIScreener($conn, $leadData, $customRules = null) {
     ];
 }
 
-function runManualScreener($conn, $leadData, $customRulesJson = null, $customAction = null) {
+function runManualScreener($conn, $leadData, $customRulesJson = null, $customAction = null)
+{
     // 1. Check if AI/Manual pre-screener is enabled
     $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
     if ($enabled !== 1) {
@@ -1817,7 +1902,8 @@ function runManualScreener($conn, $leadData, $customRulesJson = null, $customAct
     }
 }
 
-function evaluateScreener($conn, $targetRoundId, $leadData) {
+function evaluateScreener($conn, $targetRoundId, $leadData)
+{
     // 1. Check if overall AI screener is enabled
     $enabled = (int) get_system_setting($conn, 'ai_screener_enabled');
     if ($enabled !== 1) {
@@ -1833,7 +1919,7 @@ function evaluateScreener($conn, $targetRoundId, $leadData) {
         foreach ($configs as $config) {
             $rounds = $config['rounds'] ?? [];
             $normalizedRounds = array_map('intval', $rounds);
-            if (in_array((int)$targetRoundId, $normalizedRounds)) {
+            if (in_array((int) $targetRoundId, $normalizedRounds)) {
                 $mode = $config['mode'] ?? 'ai';
                 $aiRules = $config['ai_rules'] ?? '';
                 $manualAction = $config['manual_action'] ?? 'hold';
@@ -1872,7 +1958,7 @@ function evaluateScreener($conn, $targetRoundId, $leadData) {
     }
     if (is_array($oldRounds) && !empty($oldRounds)) {
         $normalizedOldRounds = array_map('intval', $oldRounds);
-        if (in_array((int)$targetRoundId, $normalizedOldRounds)) {
+        if (in_array((int) $targetRoundId, $normalizedOldRounds)) {
             $mode = get_system_setting($conn, 'ai_screener_mode') ?: 'ai';
             if ($mode === 'manual') {
                 return runManualScreener($conn, $leadData);
@@ -1891,7 +1977,8 @@ function evaluateScreener($conn, $targetRoundId, $leadData) {
     return null; // Skip evaluation
 }
 
-function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $roundName, $email = '', $source = '', $type = '', $note = '') {
+function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $roundName, $email = '', $source = '', $type = '', $note = '')
+{
     $admins = getTicketNotifyAdmins($conn);
     if (empty($admins)) {
         return false;
@@ -1934,17 +2021,17 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
     // 3. Send Zalo Notification
     if (!empty($botToken) && !empty($zaloChatIds)) {
         $zaloMsg = "🔔 [ CẢNH BÁO DATA DƯỚI CHUẨN ] 🔔\n"
-                 . "━━━━━━━━━━━━━━━━━━━━━\n"
-                 . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
-                 . "👤 THÔNG TIN KHÁCH HÀNG:\n"
-                 . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
-                 . "  • Số ĐT: " . (!empty($phone) ? $phone : "Không có") . "\n"
-                 . "  • Vòng phân bổ dự kiến: " . (!empty($roundName) ? $roundName : "Không rõ") . "\n"
-                 . "  • Nguồn: " . (!empty($source) ? $source : "Không có") . "\n\n"
-                 . "🤖 ĐÁNH GIÁ AI:\n"
-                 . "  " . $aiReason . "\n\n"
-                 . "👉 Vui lòng đăng nhập hệ thống để phê duyệt/từ chối.\n"
-                 . "━━━━━━━━━━━━━━━━━━━━━";
+            . "━━━━━━━━━━━━━━━━━━━━━\n"
+            . "Hệ thống vừa tạm giữ 1 data do trợ lý AI đánh giá KHÔNG ĐẠT chuẩn:\n\n"
+            . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+            . "  • Tên KH: " . (!empty($name) ? $name : "Ẩn danh") . "\n"
+            . "  • Số ĐT: " . (!empty($phone) ? $phone : "Không có") . "\n"
+            . "  • Vòng phân bổ dự kiến: " . (!empty($roundName) ? $roundName : "Không rõ") . "\n"
+            . "  • Nguồn: " . (!empty($source) ? $source : "Không có") . "\n\n"
+            . "🤖 ĐÁNH GIÁ AI:\n"
+            . "  " . $aiReason . "\n\n"
+            . "👉 Vui lòng đăng nhập hệ thống để phê duyệt/từ chối.\n"
+            . "━━━━━━━━━━━━━━━━━━━━━";
         try {
             sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg);
         } catch (Exception $e) {

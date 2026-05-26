@@ -189,9 +189,20 @@ function doPost(e) {
     // Force spreadsheet to flush and write immediately
     SpreadsheetApp.flush();
     
+    // Read the fully updated display values of the row to calculate identical hash in CRM
+    var updatedRowValues = sheet.getRange(targetRowIndex, 1, 1, lastColumn).getDisplayValues()[0];
+    var formattedRowValues = updatedRowValues.map(function(val) {
+      return (val !== null && val !== undefined) ? val.toString().trim() : "";
+    });
+    var formattedHeaders = headers.map(function(h) {
+      return (h !== null && h !== undefined) ? h.toString().trim() : "";
+    });
+    
     return createJsonResponse({ 
       status: "success", 
-      message: (isNewRow ? "Thêm mới thành công dòng " : "Cập nhật thành công dòng ") + targetRowIndex + " (" + updateCount + " cột)" 
+      message: (isNewRow ? "Thêm mới thành công dòng " : "Cập nhật thành công dòng ") + targetRowIndex + " (" + updateCount + " cột)",
+      row_values: formattedRowValues,
+      headers: formattedHeaders
     });
     
   } catch (err) {

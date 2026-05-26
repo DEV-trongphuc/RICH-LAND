@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, Fragment } from 'react';
@@ -12,7 +12,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
-  { name: 'Bộ Lọc AI', href: '/gatekeeper', icon: Shield, adminOnly: true, badgeKey: 'gatekeeper' },
+  { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
   { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },

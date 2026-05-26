@@ -316,7 +316,7 @@ const KeyboardShortcutsController = () => {
                       <kbd className="shortcuts-kbd">Alt + A</kbd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>{t("Bộ Lọc AI")}</span>
+                      <span style={{ color: 'var(--color-text)' }}>{t("AI Pre-screener")}</span>
                       <kbd className="shortcuts-kbd">Alt + G</kbd>
                     </div>
                   </div>

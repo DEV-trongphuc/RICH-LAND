@@ -342,7 +342,7 @@ if ($isSilent == 1) {
     
     $conn->begin_transaction();
     try {
-        if ($crmCheckResult['isDuplicate']) {
+        if ($crmCheckResult['leadExists']) {
             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
             $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId, null, $name);
         } else {
@@ -447,7 +447,7 @@ $aiScreenerResult = evaluateScreener($conn, $targetRoundId, $data);
 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
     $conn->begin_transaction();
     try {
-        if ($crmCheckResult['isDuplicate']) {
+        if ($crmCheckResult['leadExists']) {
             $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
         } else {
             $leadId = insertLead($conn, $data, null, $phone, $email, $name, $source, $type, $note, $connectionId);
@@ -527,7 +527,7 @@ try {
         }
     }
 
-    if ($crmCheckResult['isDuplicate']) {
+    if ($crmCheckResult['leadExists']) {
         // Existed but older than N months -> new assignment
         if (!empty($crmCheckResult['originalAssignedTo'])) {
             $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';

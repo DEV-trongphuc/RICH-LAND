@@ -1076,7 +1076,7 @@ foreach ($connections as $connItem) {
                     
                     $conn->begin_transaction();
                     try {
-                        if ($crmCheckResult['isDuplicate']) {
+                        if ($crmCheckResult['leadExists']) {
                             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
                             $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name);
                         } else {
@@ -1197,7 +1197,7 @@ foreach ($connections as $connItem) {
                 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
                     $conn->begin_transaction();
                     try {
-                        if ($crmCheckResult['isDuplicate']) {
+                        if ($crmCheckResult['leadExists']) {
                             $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connItem['id'], null, $name);
                         } else {
                             $leadId = insertLead($conn, $rowData, null, $phone, $email, $name, $source, $type, $note, $connItem['id']);
@@ -1271,7 +1271,7 @@ foreach ($connections as $connItem) {
                         }
                     }
 
-                    if ($crmCheckResult['isDuplicate']) {
+                    if ($crmCheckResult['leadExists']) {
                         if (!empty($crmCheckResult['originalAssignedTo'])) {
                             $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';
                             $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';

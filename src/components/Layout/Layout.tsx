@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
@@ -38,6 +38,37 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState<boolean>(false);
+  const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
+  const [isHeldModalOpen, setIsHeldModalOpen] = useState<boolean>(false);
+
+  // Hover states for notification buttons
+  const [isTicketViewHovered, setIsTicketViewHovered] = useState(false);
+  const [isTicketLaterHovered, setIsTicketLaterHovered] = useState(false);
+  const [isHeldViewHovered, setIsHeldViewHovered] = useState(false);
+  const [isHeldLaterHovered, setIsHeldLaterHovered] = useState(false);
+
+  // Helper translation mapping for held leads notification
+  const getTranslation = (key: string, fallback: string) => {
+    const val = t(key);
+    if (val === key && language !== 'vi') {
+      const localDict: Record<string, Record<string, string>> = {
+        en: {
+          "Thông báo Data tạm giữ": "Held Data Notification",
+          "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.": "below-standard leads held by AI Pre-screener waiting for your approval."
+        },
+        ja: {
+          "Thông báo Data tạm giữ": "一時保留データのお知らせ",
+          "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.": "件 củaデータがAI Pre-screenerによって一時保留され、承認待ちです。"
+        },
+        zh: {
+          "Thông báo Data tạm giữ": "暂存数据通知",
+          "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.": "条数据被 AI Pre-screener 暂扣，等待您的审批。"
+        }
+      };
+      return localDict[language]?.[key] || fallback;
+    }
+    return val;
+  };
 
   // Activity Feed states
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
@@ -92,6 +123,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           }
         })
         .catch(err => console.error('Error loading ticket notification:', err));
+
+      fetchAPI('get_held_leads&pageSize=1&date=all')
+        .then(res => {
+          if (res.success) {
+            const total = res.total_count ?? 0;
+            if (total > 0) {
+              setHeldLeadsCount(total);
+              setIsHeldModalOpen(true);
+            }
+          }
+        })
+        .catch(err => console.error('Error loading held leads notification:', err));
     }
   }, [user]);
 
@@ -167,7 +210,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             width: 56, 
             height: 56, 
             borderRadius: '50%', 
-            background: 'rgba(239, 68, 68, 0.1)', 
+            background: 'rgba(239, 68, 68, 0.08)', 
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center', 
@@ -182,21 +225,145 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </h3>
           
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-danger)', fontSize: '1rem' }}>{pendingTicketsCount}</strong> {t("ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.")}
+            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-danger)', fontSize: '1rem', fontWeight: 'bold' }}>{pendingTicketsCount}</strong> {t("ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.")}
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
             <button 
-              className="btn outline" 
               onClick={() => setIsTicketModalOpen(false)}
-              style={{ flex: 1, height: 42, fontWeight: 600 }}
+              onMouseEnter={() => setIsTicketLaterHovered(true)}
+              onMouseLeave={() => setIsTicketLaterHovered(false)}
+              style={{ 
+                flex: 1, 
+                height: 42, 
+                fontWeight: 600, 
+                borderRadius: '9999px', 
+                border: isTicketLaterHovered ? '1.5px solid var(--color-primary-hover)' : '1.5px solid var(--color-primary)', 
+                color: isTicketLaterHovered ? 'var(--color-primary-hover)' : 'var(--color-primary)', 
+                background: isTicketLaterHovered ? 'var(--color-primary-light)' : 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                transform: isTicketLaterHovered ? 'translateY(-1px)' : 'none'
+              }}
             >
               {t("Để sau")}
             </button>
             <button 
-              className="btn primary" 
               onClick={handleViewTickets}
-              style={{ flex: 1, height: 42, background: 'var(--color-primary)', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}
+              onMouseEnter={() => setIsTicketViewHovered(true)}
+              onMouseLeave={() => setIsTicketViewHovered(false)}
+              style={{ 
+                flex: 1, 
+                height: 42, 
+                fontWeight: 600, 
+                borderRadius: '9999px',
+                background: isTicketViewHovered 
+                  ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
+                  : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                border: 'none',
+                color: '#fff',
+                boxShadow: isTicketViewHovered 
+                  ? '0 6px 20px rgba(124, 58, 237, 0.4)' 
+                  : '0 4px 12px rgba(124, 58, 237, 0.25)',
+                display: 'inline-flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: 6,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                transform: isTicketViewHovered ? 'translateY(-1px)' : 'none'
+              }}
+            >
+              {t("Xem ngay")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Held Leads Notification Modal */}
+      <CustomModal
+        isOpen={isHeldModalOpen}
+        onClose={() => setIsHeldModalOpen(false)}
+        title={getTranslation("Thông báo Data tạm giữ", "Thông báo Data tạm giữ")}
+        width={420}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem 0.5rem' }}>
+          <div style={{ 
+            width: 56, 
+            height: 56, 
+            borderRadius: '50%', 
+            background: 'rgba(124, 58, 237, 0.08)', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            marginBottom: '1rem',
+            color: 'var(--color-primary)'
+          }}>
+            <ShieldAlert size={28} />
+          </div>
+          
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+            {t("Yêu cầu cần xử lý!")}
+          </h3>
+          
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-primary)', fontSize: '1rem', fontWeight: 'bold' }}>{heldLeadsCount}</strong> {getTranslation("dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.", "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.")}
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+            <button 
+              onClick={() => setIsHeldModalOpen(false)}
+              onMouseEnter={() => setIsHeldLaterHovered(true)}
+              onMouseLeave={() => setIsHeldLaterHovered(false)}
+              style={{ 
+                flex: 1, 
+                height: 42, 
+                fontWeight: 600, 
+                borderRadius: '9999px', 
+                border: isHeldLaterHovered ? '1.5px solid var(--color-primary-hover)' : '1.5px solid var(--color-primary)', 
+                color: isHeldLaterHovered ? 'var(--color-primary-hover)' : 'var(--color-primary)', 
+                background: isHeldLaterHovered ? 'var(--color-primary-light)' : 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                transform: isHeldLaterHovered ? 'translateY(-1px)' : 'none'
+              }}
+            >
+              {t("Để sau")}
+            </button>
+            <button 
+              onClick={() => {
+                setIsHeldModalOpen(false);
+                navigate('/gatekeeper');
+              }}
+              onMouseEnter={() => setIsHeldViewHovered(true)}
+              onMouseLeave={() => setIsHeldViewHovered(false)}
+              style={{ 
+                flex: 1, 
+                height: 42, 
+                fontWeight: 600, 
+                borderRadius: '9999px',
+                background: isHeldViewHovered 
+                  ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
+                  : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                border: 'none',
+                color: '#fff',
+                boxShadow: isHeldViewHovered 
+                  ? '0 6px 20px rgba(124, 58, 237, 0.4)' 
+                  : '0 4px 12px rgba(124, 58, 237, 0.25)',
+                display: 'inline-flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: 6,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                transform: isHeldViewHovered ? 'translateY(-1px)' : 'none'
+              }}
             >
               {t("Xem ngay")}
             </button>

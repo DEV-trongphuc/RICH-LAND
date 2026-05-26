@@ -172,7 +172,20 @@ export const Gatekeeper = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
   const [isDynamicFlowExpanded, setIsDynamicFlowExpanded] = useState<boolean>(false);
-  
+  const [activeRoundsDropdown, setActiveRoundsDropdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActiveRoundsDropdown(null);
+    };
+    if (activeRoundsDropdown) {
+      window.addEventListener('click', handleGlobalClick);
+    }
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+    };
+  }, [activeRoundsDropdown]);
+
   // Custom Date Picker Modal
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -319,6 +332,7 @@ export const Gatekeeper = () => {
 
   useEffect(() => {
     fetchRounds();
+    fetchSettings();
   }, []);
 
   useEffect(() => {
@@ -630,81 +644,100 @@ export const Gatekeeper = () => {
               position: 'relative'
             }}>
               {/* Step 1 */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '8px',
-                padding: '1rem',
-                border: '1px solid var(--color-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="flow-step-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{
-                    background: 'rgba(124, 58, 237, 0.1)',
-                    color: 'var(--color-primary)',
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                    color: '#fff',
                     fontWeight: 800,
-                    width: 20, height: 20,
+                    width: 24, height: 24,
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.75rem'
+                    fontSize: '0.75rem',
+                    boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                    flexShrink: 0
                   }}>1</span>
-                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                     {t('Webhook tiếp nhận')}
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  {t('Lead mới được gửi từ Google Sheets, Facebook, Landing Page...')}
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+                  {t('Lead mới được gửi realtime từ các kênh Google Sheets, Facebook Lead Ads, Landing Page...')}
                 </p>
+                <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                  <span style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                    background: 'rgba(124, 58, 237, 0.08)',
+                    color: '#7c3aed',
+                    border: '1px solid rgba(124, 58, 237, 0.15)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#7c3aed' }} />
+                    {t('Thời gian thực (Realtime)')}
+                  </span>
+                </div>
               </div>
 
               {/* Step 2 */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '8px',
-                padding: '1rem',
-                border: '1px solid var(--color-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    background: 'rgba(124, 58, 237, 0.1)',
-                    color: 'var(--color-primary)',
-                    fontWeight: 800,
-                    width: 20, height: 20,
-                    borderRadius: '50%',
-                    display: 'flex',
+              <div className="flow-step-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      width: 24, height: 24,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                      flexShrink: 0
+                    }}>2</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                      {t('Kiểm tra bộ lọc AI')}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem'
-                  }}>2</span>
-                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
-                    {t('Kiểm tra trạng thái')}
-                  </span>
-                  <span style={{
+                    gap: '5px',
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(124, 58, 237, 0.08)',
+                    border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(124, 58, 237, 0.2)',
                     fontSize: '0.6875rem',
                     fontWeight: 700,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                    color: aiScreenerEnabled ? '#10b981' : 'var(--color-text-muted)'
+                    color: aiScreenerEnabled ? '#10b981' : '#7c3aed'
                   }}>
-                    {aiScreenerEnabled ? t('Đang BẬT') : t('Đang TẮT')}
-                  </span>
+                    {aiScreenerEnabled ? (
+                      <>
+                        <span style={{
+                          width: 6, height: 6,
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          boxShadow: '0 0 6px #10b981',
+                          display: 'inline-block'
+                        }} />
+                        {t('Đang BẬT')}
+                      </>
+                    ) : (
+                      t('Ví dụ cấu hình')
+                    )}
+                  </div>
                 </div>
-                {!aiScreenerEnabled ? (
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {t('Bộ lọc AI đang tắt. Mọi Lead sẽ chuyển tiếp thẳng sang phân phối mà không đánh giá.')}
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                
+                {aiScreenerEnabled ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
                       {t('Kiểm tra vòng của Lead. Áp dụng cho các vòng:')}
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
@@ -726,7 +759,8 @@ export const Gatekeeper = () => {
                               border: '1px solid var(--color-border)',
                               padding: '1px 6px',
                               borderRadius: '4px',
-                              color: 'var(--color-text)'
+                              color: 'var(--color-text)',
+                              fontWeight: 500
                             }}>
                               {r.round_name}
                             </span>
@@ -734,97 +768,219 @@ export const Gatekeeper = () => {
                       })()}
                     </div>
                   </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+                      {t('Kiểm tra vòng của Lead. Áp dụng cho các vòng được chọn (Ví dụ):')}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        background: 'var(--color-bg-alt)',
+                        border: '1px solid var(--color-border)',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        color: 'var(--color-text)',
+                        fontWeight: 500
+                      }}>{t('Vòng Form')}</span>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        background: 'var(--color-bg-alt)',
+                        border: '1px solid var(--color-border)',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        color: 'var(--color-text)',
+                        fontWeight: 500
+                      }}>{t('Vòng BBA')}</span>
+                      <span style={{
+                        fontSize: '0.6875rem',
+                        background: 'var(--color-bg-alt)',
+                        border: '1px solid var(--color-border)',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        color: 'var(--color-text)',
+                        fontWeight: 500
+                      }}>{t('Facebook Ads')}</span>
+                    </div>
+                  </div>
                 )}
               </div>
 
               {/* Step 3 */}
-              {aiScreenerEnabled && (
-                <div style={{
-                  background: 'var(--color-surface)',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  border: '1px solid var(--color-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  boxShadow: 'var(--shadow-sm)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="flow-step-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{
-                      background: 'rgba(124, 58, 237, 0.1)',
-                      color: 'var(--color-primary)',
+                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      color: '#fff',
                       fontWeight: 800,
-                      width: 20, height: 20,
+                      width: 24, height: 24,
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '0.75rem'
+                      fontSize: '0.75rem',
+                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                      flexShrink: 0
                     }}>3</span>
-                    <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                       {t('Đánh giá chất lượng')}
                     </span>
                   </div>
+                  {!aiScreenerEnabled && (
+                    <div style={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      background: 'rgba(124, 58, 237, 0.08)',
+                      color: '#7c3aed',
+                      border: '1px solid rgba(124, 58, 237, 0.2)',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {t('Ví dụ cấu hình')}
+                    </div>
+                  )}
+                </div>
 
-                  {aiScreenerConfigs.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                {aiScreenerEnabled ? (
+                  aiScreenerConfigs.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
                       {t('Chưa có nhóm cấu hình lọc nào hoạt động.')}
                     </p>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
                       {aiScreenerConfigs.map((cfg: AIScreenerConfig, idx: number) => {
                         const roundNames = rounds.filter((r: any) => cfg.rounds.includes(Number(r.id))).map((r: any) => r.round_name).join(', ');
                         return (
-                          <div key={cfg.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: idx < aiScreenerConfigs.length - 1 ? '1px dashed var(--color-border)' : 'none', paddingBottom: idx < aiScreenerConfigs.length - 1 ? 6 : 0 }}>
+                          <div key={cfg.id} style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                            borderBottom: idx < aiScreenerConfigs.length - 1 ? '1px dashed var(--color-border)' : 'none',
+                            paddingBottom: idx < aiScreenerConfigs.length - 1 ? 6 : 0
+                          }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                               {cfg.name || `${t('Nhóm')} ${idx + 1}`}
                             </span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                               {t('Vòng:')} {roundNames || t('Chưa chọn')}
                             </span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
-                              {t('Chế độ:')} <strong style={{ color: 'var(--color-primary)' }}>{cfg.mode === 'ai' ? t('Gemini AI') : cfg.mode === 'manual' ? t('Thủ công') : t('Kết hợp')}</strong>
-                            </span>
+                            {cfg.mode === 'ai' && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={cfg.ai_rules}>
+                                <strong>{t('Quy tắc AI:')}</strong> {cfg.ai_rules || t('Chưa thiết lập')}
+                              </span>
+                            )}
+                            {cfg.mode === 'manual' && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
+                                <strong>{t('Quy tắc:')}</strong> {cfg.manual_rules && cfg.manual_rules.length > 0 ? `${cfg.manual_rules.length} ${t('nhánh lọc thủ công')}` : t('Chưa thiết lập')}
+                              </span>
+                            )}
+                            {cfg.mode === 'hybrid' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={cfg.ai_rules}>
+                                  <strong>{t('Quy tắc AI:')}</strong> {cfg.ai_rules || t('Chưa thiết lập')}
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
+                                  <strong>{t('Quy tắc phụ:')}</strong> {cfg.manual_rules && cfg.manual_rules.length > 0 ? `${cfg.manual_rules.length} ${t('nhánh thủ công')}` : t('Chưa thiết lập')}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 110, overflowY: 'auto', paddingRight: 4 }}>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      borderBottom: '1px dashed var(--color-border)',
+                      paddingBottom: 6
+                    }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                        {t('Ví dụ: Nhóm Lọc Tự Động')}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                        {t('Vòng:')} {t('Vòng Form, Facebook Ads')}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        <strong>{t('Quy tắc AI:')}</strong> {t('Đạt chuẩn (đã đi làm hoặc có nhu cầu học ngay)...')}
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                        {t('Ví dụ: Nhóm Duyệt Tay')}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                        {t('Vòng:')} {t('Vòng BBA')}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text)' }}>
+                        <strong>{t('Quy tắc:')}</strong> {t('2 nhánh lọc thủ công (Loại trừ số rác...)')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Step 4 */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '8px',
-                padding: '1rem',
-                border: '1px solid var(--color-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    background: 'rgba(124, 58, 237, 0.1)',
-                    color: 'var(--color-primary)',
-                    fontWeight: 800,
-                    width: 20, height: 20,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem'
-                  }}>{aiScreenerEnabled ? '4' : '3'}</span>
-                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
-                    {t('Phân bổ & Hàng chờ')}
-                  </span>
+              <div className="flow-step-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      width: 24, height: 24,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                      flexShrink: 0
+                    }}>4</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                      {t('Phân bổ & Hàng chờ')}
+                    </span>
+                  </div>
+                  {!aiScreenerEnabled && (
+                    <div style={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      background: 'rgba(124, 58, 237, 0.08)',
+                      color: '#7c3aed',
+                      border: '1px solid rgba(124, 58, 237, 0.2)',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {t('Ví dụ cấu hình')}
+                    </div>
+                  )}
                 </div>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  {aiScreenerEnabled
-                    ? t('Đạt chuẩn -> Giao tự động & Đẩy Sheets. Không đạt -> Đưa vào bảng hàng chờ này.')
-                    : t('Tự động giao ngay cho tất cả Lead & Đồng bộ Sheets.')}
-                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+                    {t('Sau khi đánh giá xong, Lead sẽ được phân luồng xử lý:')}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text)', marginTop: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981' }} />
+                      <span><strong>{t('Đạt chuẩn:')}</strong> {t('Tự động chia vòng & đồng bộ Sheets.')}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f59e0b' }} />
+                      <span><strong>{t('Không đạt:')}</strong> {t('Giữ lại bảng này chờ Admin duyệt.')}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1003,7 +1159,7 @@ export const Gatekeeper = () => {
                             setHeldActionModalOpen('reject');
                           }}
                           className="btn outline sm" 
-                          style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border)', boxShadow: 'none' }}
+                          style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}
                           title={t("Không duyệt và hủy lead")}
                         >
                           {t('Hủy lead')}
@@ -1191,69 +1347,189 @@ export const Gatekeeper = () => {
                                 <Trash2 size={16} />
                               </button>
                             </div>
+                             {/* Section 1: Choose Rounds (Tags Select with Dropdown) */}
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
+                               <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                 {t('Chọn các vòng áp dụng cho nhóm này')}
+                               </label>
+                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                 {/* Display already selected rounds */}
+                                 {config.rounds.map((roundId: number) => {
+                                   const r = rounds.find((x: any) => Number(x.id) === roundId);
+                                   if (!r) return null;
+                                   return (
+                                     <span
+                                       key={roundId}
+                                       style={{
+                                         display: 'inline-flex',
+                                         alignItems: 'center',
+                                         gap: '6px',
+                                         padding: '4px 10px',
+                                         borderRadius: '20px',
+                                         fontSize: '0.8125rem',
+                                         fontWeight: 500,
+                                         border: '1px solid var(--color-primary-light)',
+                                         background: 'var(--color-primary-light)',
+                                         color: 'var(--color-primary)',
+                                         transition: 'all 0.15s ease'
+                                       }}
+                                     >
+                                       {r.round_name}
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           const updated = [...aiScreenerConfigs];
+                                           updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
+                                           setAiScreenerConfigs(updated);
+                                         }}
+                                         style={{
+                                           border: 'none',
+                                           background: 'transparent',
+                                           color: 'var(--color-primary)',
+                                           cursor: 'pointer',
+                                           display: 'inline-flex',
+                                           alignItems: 'center',
+                                           justifyContent: 'center',
+                                           padding: 0,
+                                           marginLeft: '2px',
+                                           outline: 'none'
+                                         }}
+                                       >
+                                         <span style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: 1 }}>×</span>
+                                       </button>
+                                     </span>
+                                   );
+                                 })}
 
-                            {/* Section 1: Choose Rounds (Overlap Protected) */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                {t('Chọn các vòng áp dụng cho nhóm này')}
-                              </label>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {rounds.map((r: any) => {
-                                  const roundId = Number(r.id);
-                                  const isSelected = config.rounds.includes(roundId);
-                                  
-                                  // Check if selected in another config
-                                  const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId));
-                                  
-                                  return (
-                                    <button
-                                      key={roundId}
-                                      type="button"
-                                      disabled={selectedElsewhere}
-                                      onClick={() => {
-                                        const updated = [...aiScreenerConfigs];
-                                        if (isSelected) {
-                                          updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
-                                        } else {
-                                          updated[index].rounds = [...config.rounds, roundId];
-                                        }
-                                        setAiScreenerConfigs(updated);
-                                      }}
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        borderRadius: '20px',
-                                        fontSize: '0.8125rem',
-                                        fontWeight: 500,
-                                        border: '1px solid ' + (
-                                          isSelected 
-                                            ? 'var(--color-primary)' 
-                                            : 'var(--color-border)'
-                                        ),
-                                        background: isSelected 
-                                          ? 'var(--color-primary-light)' 
-                                          : 'var(--color-bg)',
-                                        color: isSelected 
-                                          ? 'var(--color-primary)' 
-                                          : selectedElsewhere 
-                                            ? 'var(--color-text-light)' 
-                                            : 'var(--color-text-muted)',
-                                        opacity: selectedElsewhere ? 0.5 : 1,
-                                        cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
-                                        transition: 'all 0.15s ease',
-                                        outline: 'none'
-                                      }}
-                                      title={selectedElsewhere ? t("Đã được cấu hình ở nhóm khác") : r.round_name}
-                                    >
-                                      {selectedElsewhere && <span style={{ fontSize: '10px', marginRight: '4px' }}>🔒</span>}
-                                      {r.round_name}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                                 {/* Plus Button to add more rounds */}
+                                 <div style={{ position: 'relative' }}>
+                                   <button
+                                     type="button"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setActiveRoundsDropdown(activeRoundsDropdown === config.id ? null : config.id);
+                                     }}
+                                     style={{
+                                       display: 'inline-flex',
+                                       alignItems: 'center',
+                                       gap: '4px',
+                                       padding: '4px 10px',
+                                       borderRadius: '20px',
+                                       fontSize: '0.8125rem',
+                                       fontWeight: 500,
+                                       border: '1px dashed var(--color-border)',
+                                       background: 'var(--color-surface)',
+                                       color: 'var(--color-text-muted)',
+                                       cursor: 'pointer',
+                                       transition: 'all 0.15s ease',
+                                       outline: 'none'
+                                     }}
+                                   >
+                                     <Plus size={14} />
+                                     <span>{t('Thêm vòng')}</span>
+                                   </button>
+
+                                   {/* Dropdown Menu */}
+                                   {activeRoundsDropdown === config.id && (
+                                     <div 
+                                       onClick={(e) => e.stopPropagation()}
+                                       style={{
+                                         position: 'absolute',
+                                         top: 'calc(100% + 6px)',
+                                         left: 0,
+                                         zIndex: 55,
+                                         minWidth: '220px',
+                                         background: 'var(--color-surface)',
+                                         border: '1px solid var(--color-border)',
+                                         borderRadius: '8px',
+                                         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                                         maxHeight: '220px',
+                                         overflowY: 'auto',
+                                         padding: '4px'
+                                       }}
+                                     >
+                                       {(() => {
+                                         // Filter rounds that are NOT selected in this config
+                                         const availableRounds = rounds.filter((r: any) => !config.rounds.includes(Number(r.id)));
+                                         
+                                         if (availableRounds.length === 0) {
+                                           return (
+                                             <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                                               {t('Không còn vòng nào khả dụng')}
+                                             </div>
+                                           );
+                                         }
+
+                                         return availableRounds.map((r: any) => {
+                                           const roundId = Number(r.id);
+                                           // Check if selected in another config
+                                           const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId));
+
+                                           return (
+                                             <button
+                                               key={roundId}
+                                               type="button"
+                                               disabled={selectedElsewhere}
+                                               onClick={() => {
+                                                 const updated = [...aiScreenerConfigs];
+                                                 updated[index].rounds = [...config.rounds, roundId];
+                                                 setAiScreenerConfigs(updated);
+                                                 setActiveRoundsDropdown(null);
+                                               }}
+                                               style={{
+                                                 width: '100%',
+                                                 padding: '8px 12px',
+                                                 fontSize: '0.8125rem',
+                                                 textAlign: 'left',
+                                                 border: 'none',
+                                                 background: 'transparent',
+                                                 color: selectedElsewhere ? 'var(--color-text-light)' : 'var(--color-text)',
+                                                 cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
+                                                 borderRadius: '6px',
+                                                 display: 'flex',
+                                                 alignItems: 'center',
+                                                 justifyContent: 'space-between',
+                                                 gap: '8px',
+                                                 transition: 'background 0.1s ease',
+                                                 outline: 'none'
+                                               }}
+                                               onMouseEnter={(e) => {
+                                                 if (!selectedElsewhere) e.currentTarget.style.background = 'var(--color-bg-alt)';
+                                               }}
+                                               onMouseLeave={(e) => {
+                                                 e.currentTarget.style.background = 'transparent';
+                                               }}
+                                             >
+                                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                 {r.round_name}
+                                               </span>
+                                               {selectedElsewhere && (
+                                                 <span style={{
+                                                   fontSize: '0.6875rem',
+                                                   color: 'var(--color-danger)',
+                                                   background: 'rgba(239, 68, 68, 0.08)',
+                                                   padding: '2px 6px',
+                                                   borderRadius: '4px',
+                                                   fontWeight: 600,
+                                                   flexShrink: 0,
+                                                   display: 'flex',
+                                                   alignItems: 'center',
+                                                   gap: '4px'
+                                                 }}>
+                                                   <Shield size={10} />
+                                                   {t('Nhóm khác')}
+                                                 </span>
+                                               )}
+                                             </button>
+                                           );
+                                         });
+                                       })()}
+                                     </div>
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+
 
                             {/* Section 2: Choose Mode */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1573,67 +1849,8 @@ export const Gatekeeper = () => {
             padding: 0 !important;
           }
         `}</style>
-        <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
-              border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
-              borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem'
-            }}>
-              <div style={{
-                background: 'var(--color-card, #fff)',
-                width: 40, height: 40, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
-              }}>
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4, marginTop: 0 }}>
-                  {t("Bộ lọc AI - Lá chắn thông minh cho Đội ngũ TVV")}
-                </h4>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
-                  {t("Trong vận hành Telesale, lead rác (số điện thoại ảo, sai thông tin, spam hoặc không đúng đối tượng) chiếm tới 30-40% ngân sách và làm giảm 50% động lực làm việc của đội ngũ. Bộ lọc AI được thiết kế để tự động nhận dạng, phân loại và tạm giữ các lead rác ngay khi vừa đổ về webhook trước khi hệ thống chia số cho Sales.")}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-                {t('Sơ đồ hoạt động của hệ thống')}
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>1</div>
-                  <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Webhook tiếp nhận')}</h5>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead mới đổ vào hệ thống từ Google Sheets, Facebook Form, Landing Page...')}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>2</div>
-                  <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Kiểm thử Bộ lọc')}</h5>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Hệ thống đánh giá dựa trên Prompt AI của Gemini hoặc các Luật thủ công đã cấu hình.')}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: '#10b981', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✓</div>
-                  <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: '#10b981' }}>{t('Phân bổ tự động')}</h5>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead đạt chuẩn được giao ngay cho TVV theo lượt chia và đẩy đồng bộ lên Sheets.')}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✗</div>
-                  <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{t('Tạm giữ phê duyệt')}</h5>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead dưới chuẩn bị giữ lại. Admin xem lại tại bảng Phê duyệt để Duyệt hoặc Chặn/Hủy.')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', overflowX: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
               <div>
@@ -2055,7 +2272,7 @@ export const Gatekeeper = () => {
                       setHeldActionModalOpen('reject');
                     }}
                     className="btn outline"
-                    style={{ width: '100%', height: 46, borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                    style={{ width: '100%', height: 46, borderColor: 'var(--color-warning)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
                   >
                     <XCircle size={18} />
                     {t("Từ chối & Hủy Lead")}
@@ -2104,6 +2321,17 @@ export const Gatekeeper = () => {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .flow-step-card {
+          background: var(--color-surface);
+          border-radius: 8px;
+          padding: 1rem;
+          border: 1px solid var(--color-border);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          box-shadow: var(--shadow-sm);
+          cursor: default;
         }
       `}</style>
 

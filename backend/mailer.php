@@ -754,7 +754,7 @@ function sendHeldLeadEmailToAdmin(
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
     }
-    $approvalUrl = $frontendUrl . "/tickets?tab=ai";
+    $approvalUrl = $frontendUrl . "/gatekeeper";
 
     $content = '<p style="color:#475569;font-size:16px;line-height:1.7;margin-bottom:24px;">Xin chào <strong>' . $fAdmin . '</strong>,<br><br>Hệ thống vừa tiếp nhận dữ liệu khách hàng mới và bị trợ lý AI tạm giữ do đánh giá <strong>DƯỚI CHUẨN</strong>.</p>'
         . '<div style="text-align:center;margin-bottom:28px;"><span style="display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;color:#92400e;padding:8px 22px;border-radius:20px;font-size:13px;font-weight:700;">DATA CHỜ PHÊ DUYỆT (AI GATEKEEPER)</span></div>'

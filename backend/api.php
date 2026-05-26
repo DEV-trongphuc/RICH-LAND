@@ -9316,7 +9316,7 @@ switch ($action) {
                 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error')) {
                     $conn->begin_transaction();
                     $inTransaction = true;
-                    if ($crmCheckResult['isDuplicate']) {
+                    if ($crmCheckResult['leadExists']) {
                         $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
                     } else {
                         $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
@@ -9437,8 +9437,11 @@ switch ($action) {
                 }
 
                 if ($isFallbackAdmin && $fallbackAdminData) {
-                    // Insert unassigned in leads (since fallback admin is in accounts, not consultants)
-                    $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    }
                     if ($aiScreenerResult) {
                         $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
                         $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
@@ -9528,7 +9531,11 @@ switch ($action) {
                     }
                     $whStmt->close();
 
-                    $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                    }
                     if ($aiScreenerResult) {
                         $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
                         $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
@@ -9659,8 +9666,11 @@ switch ($action) {
 
                     echo json_encode(['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.']);
                 } else {
-                    // Insert unassigned
-                    $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    }
                     if ($aiScreenerResult) {
                         $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
                         $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
