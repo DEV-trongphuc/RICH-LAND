@@ -7038,7 +7038,9 @@ switch ($action) {
             'duplicate' => 0,
             'reminder' => 0,
             'no_consultant' => 0,
-            'blacklisted' => 0
+            'blacklisted' => 0,
+            'pending_approval' => 0,
+            'rejected' => 0
         ];
         $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         $distributionBlacklisted = 0;
@@ -7076,7 +7078,9 @@ switch ($action) {
             'duplicate' => 0,
             'reminder' => 0,
             'no_consultant' => 0,
-            'blacklisted' => 0
+            'blacklisted' => 0,
+            'pending_approval' => 0,
+            'rejected' => 0
         ];
         $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
         $prevDistributionBlacklisted = 0;
@@ -7134,7 +7138,8 @@ switch ($action) {
         }
 
         $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
-        $statsRes['errors'] = $ticketErrors + $blacklistCnt;
+        $underStandard = $statusCounts['rejected'] + $statusCounts['pending_approval'];
+        $statsRes['errors'] = $ticketErrors + $underStandard + $blacklistCnt;
 
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
@@ -7145,7 +7150,8 @@ switch ($action) {
         }
 
         $prevBlacklistCnt = $prevDistributionBlacklisted + $prevAutoBlacklistCnt;
-        $prevStatsRes['errors'] = $prevTicketErrors + $prevBlacklistCnt;
+        $prevUnderStandard = $prevStatusCounts['rejected'] + $prevStatusCounts['pending_approval'];
+        $prevStatsRes['errors'] = $prevTicketErrors + $prevUnderStandard + $prevBlacklistCnt;
 
         $calcChange = function ($current, $prev) {
             $current = (int) $current;
@@ -7380,6 +7386,7 @@ switch ($action) {
                 'ticket_errors' => (int) $ticketErrors,
                 'ticket_count' => $todayTickets,
                 'blacklists' => (int) $blacklistCnt,
+                'under_standard' => (int) $underStandard,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
                 'duplicates_change' => $calcChange($statsRes['duplicates'], $prevStatsRes['duplicates']),

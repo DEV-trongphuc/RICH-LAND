@@ -275,8 +275,8 @@ export const Dashboard = () => {
     },
     {
       id: 'errors',
-      statusValue: 'error,blacklisted',
-      label: t('DATA LỖI / KHÔNG XÁC ĐỊNH'),
+      statusValue: 'error,blacklisted,rejected,pending_approval',
+      label: t('DATA LỖI / Dưới chuẩn'),
       value: stats?.errors?.toLocaleString() || '0',
       icon: Zap,
       color: '#ef4444', // Red for Errors
@@ -410,7 +410,7 @@ export const Dashboard = () => {
                 )}
                 {card.id === 'errors' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', fontWeight: 600 }}>
-                    {stats?.ticket_errors || 0} {t('ticket')} / {stats?.blacklists || 0} {t('blacklist')}
+                    {stats?.ticket_errors || 0} {t('ticket')} / {stats?.under_standard || 0} {t('dưới chuẩn')} / {stats?.blacklists || 0} {t('blacklist')}
                   </div>
                 )}
               </div>
