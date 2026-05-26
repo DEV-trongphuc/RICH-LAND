@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'migrate_preview_test_leads', 'migrate_confirm_delete_test_leads'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -247,151 +247,6 @@ function getTicketNotifyAdmins($conn) {
 }
 
 switch ($action) {
-    case 'migrate_preview_test_leads':
-        if (($_GET['secret'] ?? '') !== 'Ideas@812') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden']);
-            exit();
-        }
-        header("Content-Type: text/plain; charset=utf-8");
-        echo "=== RUNNING IN PREVIEW MODE: DRY RUN (NO DELETIONS) ===\n";
-        echo "To confirm and execute the deletion, please call: ?action=migrate_confirm_delete_test_leads&secret=Ideas@812\n\n";
-
-        // Fetch all test leads except "Test nha bà con"
-        $query = "SELECT id, name, phone, email, source, type, note, created_at 
-                  FROM leads 
-                  WHERE (name LIKE '%test%' OR email LIKE '%test%' OR note LIKE '%test%')
-                    AND name NOT LIKE '%Test nha bà con%'
-                    AND note NOT LIKE '%Test nha bà con%'";
-
-        $res = $conn->query($query);
-        if (!$res) {
-            die("Error fetching test leads: " . $conn->error . "\n");
-        }
-
-        $leadsToDelete = [];
-        while ($row = $res->fetch_assoc()) {
-            $leadsToDelete[] = $row;
-        }
-
-        $totalLeads = count($leadsToDelete);
-        echo "Found {$totalLeads} test leads to process (excluding 'Test nha bà con').\n\n";
-
-        if ($totalLeads === 0) {
-            echo "No test data found. Exiting.\n";
-            exit();
-        }
-
-        $totalLogsFound = 0;
-        $totalReportsFound = 0;
-        $totalQueueFound = 0;
-
-        foreach ($leadsToDelete as $lead) {
-            $leadId = (int)$lead['id'];
-            echo "----------------------------------------\n";
-            echo "Lead ID #{$leadId}:\n";
-            echo "  - Name: {$lead['name']}\n";
-            echo "  - Phone: {$lead['phone']}\n";
-            echo "  - Email: {$lead['email']}\n";
-            echo "  - Note: " . str_replace(\"\n\", \" \", substr($lead['note'], 0, 100)) . "...\n";
-            echo "  - Created At: {$lead['created_at']}\n";
-
-            // Related distribution logs
-            $resD = $conn->query("SELECT id, status, message, received_at FROM distribution_logs WHERE lead_id = {$leadId}");
-            if ($resD && $resD->num_rows > 0) {
-                echo "    * Related Distribution Logs:\n";
-                while ($log = $resD->fetch_assoc()) {
-                    echo "      - Log ID {$log['id']}: Status: {$log['status']} | Message: {$log['message']} | Time: {$log['received_at']}\n";
-                    $totalLogsFound++;
-                }
-            }
-            
-            // Related data reports (tickets)
-            $resR = $conn->query("SELECT id, status, reason, created_at FROM data_reports WHERE lead_id = {$leadId}");
-            if ($resR && $resR->num_rows > 0) {
-                echo "    * Related Tickets/Data Reports:\n";
-                while ($rep = $resR->fetch_assoc()) {
-                    echo "      - Ticket ID {$rep['id']}: Status: {$rep['status']} | Reason: {$rep['reason']} | Time: {$rep['created_at']}\n";
-                    $totalReportsFound++;
-                }
-            }
-
-            // Related sync queue items
-            $resQ = $conn->query("SELECT id, status, attempts FROM sync_queue WHERE lead_id = {$leadId}");
-            if ($resQ && $resQ->num_rows > 0) {
-                echo "    * Related Sync Queue Items:\n";
-                while ($q = $resQ->fetch_assoc()) {
-                    echo "      - Queue ID {$q['id']}: Status: {$q['status']} | Attempts: {$q['attempts']}\n";
-                    $totalQueueFound++;
-                }
-            }
-        }
-
-        echo "\n========================================\n";
-        echo "SUMMARY OF DATA TO BE DELETED:\n";
-        echo "  - Total Leads: {$totalLeads}\n";
-        echo "  - Total Distribution Logs: {$totalLogsFound}\n";
-        echo "  - Total Tickets/Data Reports: {$totalReportsFound}\n";
-        echo "  - Total Sync Queue Items: {$totalQueueFound}\n";
-        echo "========================================\n\n";
-        echo "PREVIEW COMPLETED. No database changes were made.\n";
-        exit();
-
-    case 'migrate_confirm_delete_test_leads':
-        if (($_GET['secret'] ?? '') !== 'Ideas@812') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden']);
-            exit();
-        }
-        header("Content-Type: text/plain; charset=utf-8");
-        echo "=== RUNNING IN CONFIRM MODE: ACTUAL DELETION ===\n\n";
-
-        // Fetch all test leads except "Test nha bà con"
-        $query = "SELECT id, name FROM leads 
-                  WHERE (name LIKE '%test%' OR email LIKE '%test%' OR note LIKE '%test%')
-                    AND name NOT LIKE '%Test nha bà con%'
-                    AND note NOT LIKE '%Test nha bà con%'";
-
-        $res = $conn->query($query);
-        if (!$res) {
-            die("Error fetching test leads: " . $conn->error . "\n");
-        }
-
-        $leadsToDelete = [];
-        while ($row = $res->fetch_assoc()) {
-            $leadsToDelete[] = $row;
-        }
-
-        $totalLeads = count($leadsToDelete);
-        if ($totalLeads === 0) {
-            echo "No test data found to delete.\n";
-            exit();
-        }
-
-        // Start database transaction for actual deletion
-        $conn->begin_transaction();
-        try {
-            foreach ($leadsToDelete as $lead) {
-                $leadId = (int)$lead['id'];
-                
-                // Delete child tables
-                $conn->query("DELETE FROM distribution_logs WHERE lead_id = {$leadId}");
-                $conn->query("DELETE FROM data_reports WHERE lead_id = {$leadId}");
-                $conn->query("DELETE FROM sync_queue WHERE lead_id = {$leadId}");
-                
-                // Delete parent lead
-                $conn->query("DELETE FROM leads WHERE id = {$leadId}");
-                echo "Deleted Lead ID #{$leadId} and its related logs/tickets.\n";
-            }
-
-            $conn->commit();
-            echo "\nDELETION COMPLETED SUCCESSFULLY! Database updated.\n";
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo "ERROR during deletion: " . $e->getMessage() . "\nDeletion rolled back.\n";
-        }
-        exit();
-
     case 'get_zalo_send_logs':
         $logFile = __DIR__ . '/zalo_send_log.txt';
         if (file_exists($logFile)) {
@@ -4671,6 +4526,180 @@ switch ($action) {
                 'pending' => $totalCount
             ]
         ]);
+        break;
+
+    case 'get_gatekeeper_stats':
+        try {
+            $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
+
+            // Parse date condition using l.created_at
+            $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            if ($date === 'all' || $date === '') {
+                $dateCondition = "1=1";
+            } else if ($date === 'Hôm nay') {
+                $dateCondition = "l.created_at >= CURDATE() AND l.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+            } else if ($date === 'Hôm qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND l.created_at < CURDATE()";
+            } else if ($date === 'Tuần này') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND l.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === 'Tuần trước') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            } else if ($date === 'Tuần trước nữa') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === '7 ngày qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            } else if ($date === '30 ngày qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            } else if ($date === 'Tháng này') {
+                $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            } else if ($date === 'Tháng trước') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND l.created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+            } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+                $start = $conn->real_escape_string($matches[1]);
+                $end = $conn->real_escape_string($matches[2]);
+                $dateCondition = "l.created_at >= '$start 00:00:00' AND l.created_at <= '$end 23:59:59'";
+            }
+
+            // Helper to execute query safely and throw exception on error
+            $safeQuery = function($sql) use ($conn) {
+                $res = $conn->query($sql);
+                if (!$res) {
+                    throw new Exception("Query failed: " . $conn->error . " | SQL: " . $sql);
+                }
+                return $res;
+            };
+
+            // 1. Fetch general statistics
+            // Total leads overall
+            $totalLeadsSql = "SELECT COUNT(*) as cnt FROM leads l WHERE $dateCondition";
+            $totalLeads = (int)($safeQuery($totalLeadsSql)->fetch_assoc()['cnt'] ?? 0);
+
+            // Total under-standard leads (giam & huy)
+            $totalBelowStandardSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition";
+            $totalBelowStandard = (int)($safeQuery($totalBelowStandardSql)->fetch_assoc()['cnt'] ?? 0);
+
+            // Total held (giam)
+            $totalHeldSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status = 'pending_approval' AND $dateCondition";
+            $totalHeld = (int)($safeQuery($totalHeldSql)->fetch_assoc()['cnt'] ?? 0);
+
+            // Total rejected/blacklisted (huy)
+            $totalRejectedSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition";
+            $totalRejected = (int)($safeQuery($totalRejectedSql)->fetch_assoc()['cnt'] ?? 0);
+
+            $ratio = $totalLeads > 0 ? round(($totalBelowStandard / $totalLeads) * 100, 1) : 0;
+
+            // 2. Breakdown by Vòng phân bổ (Rounds)
+            $roundsSql = "
+                SELECT 
+                    l.target_round_id, 
+                    COALESCE(dr.round_name, 'Chưa phân vòng') as round_name, 
+                    COUNT(*) as cnt
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                GROUP BY l.target_round_id, dr.round_name
+                ORDER BY cnt DESC
+            ";
+            $roundsRes = $safeQuery($roundsSql);
+            $roundsBreakdown = [];
+            if ($roundsRes) {
+                while ($row = $roundsRes->fetch_assoc()) {
+                    $roundsBreakdown[] = [
+                        'round_id' => $row['target_round_id'],
+                        'round_name' => $row['round_name'],
+                        'count' => (int)$row['cnt']
+                    ];
+                }
+            }
+
+            // 3. Breakdown by Nguồn kết nối / Source (fixed sc.name -> sc.sheet_name)
+            $sourcesSql = "
+                SELECT 
+                    l.connection_id,
+                    COALESCE(sc.sheet_name, l.source, 'Khác/Tự nhập') as source_name,
+                    COUNT(*) as cnt
+                FROM leads l
+                LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                GROUP BY l.connection_id, sc.sheet_name, l.source
+                ORDER BY cnt DESC
+            ";
+            $sourcesRes = $safeQuery($sourcesSql);
+            $sourcesBreakdown = [];
+            if ($sourcesRes) {
+                while ($row = $sourcesRes->fetch_assoc()) {
+                    $sourcesBreakdown[] = [
+                        'connection_id' => $row['connection_id'],
+                        'source_name' => $row['source_name'],
+                        'count' => (int)$row['cnt']
+                    ];
+                }
+            }
+
+            // 4. Breakdown by Reasons (dynamic from database, not hardcoded)
+            $reasonsSql = "
+                SELECT 
+                    COALESCE(NULLIF(TRIM(l.ai_evaluation), ''), NULLIF(TRIM(l.note), ''), 'Chưa rõ lý do') as reason_name,
+                    COUNT(*) as cnt
+                FROM leads l
+                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                GROUP BY reason_name
+                ORDER BY cnt DESC
+                LIMIT 5
+            ";
+            $reasonsRes = $safeQuery($reasonsSql);
+            $reasonsBreakdown = [];
+            if ($reasonsRes) {
+                while ($row = $reasonsRes->fetch_assoc()) {
+                    $reasonText = trim($row['reason_name']);
+                    if (mb_strlen($reasonText) > 60) {
+                        $reasonText = mb_substr($reasonText, 0, 60) . '...';
+                    }
+                    $reasonsBreakdown[] = [
+                        'reason' => $reasonText,
+                        'count' => (int)$row['cnt']
+                    ];
+                }
+            }
+
+            // 5. Fetch recent below-standard leads for pagination
+            $recentSql = "
+                SELECT l.id, l.name, l.phone, l.email, l.source, l.note, l.ai_evaluation, l.status, l.created_at, dr.round_name
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                ORDER BY l.created_at DESC
+            ";
+            $recentRes = $safeQuery($recentSql);
+            $recentBelowStandard = [];
+            if ($recentRes) {
+                while ($row = $recentRes->fetch_assoc()) {
+                    $recentBelowStandard[] = $row;
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'stats' => [
+                    'total_leads' => $totalLeads,
+                    'total_below_standard' => $totalBelowStandard,
+                    'ratio_below_standard' => $ratio,
+                    'total_held' => $totalHeld,
+                    'total_rejected' => $totalRejected
+                ],
+                'rounds_breakdown' => $roundsBreakdown,
+                'sources_breakdown' => $sourcesBreakdown,
+                'reasons_breakdown' => $reasonsBreakdown,
+                'recent_below_standard' => $recentBelowStandard
+            ]);
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi SQL/PHP: ' . $e->getMessage()
+            ]);
+        }
         break;
 
     case 'preview_held_lead_assignment':

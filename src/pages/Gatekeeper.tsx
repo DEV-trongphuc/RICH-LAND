@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,8 @@ import {
   ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus, 
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, 
   Phone, Mail, Clock, Tag, XCircle, 
-  ExternalLink, Check, Shield, Save, Sparkles
+  ExternalLink, Check, Shield, Save, Sparkles, X,
+  BarChart2
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -174,6 +175,19 @@ export const Gatekeeper = () => {
   const [isDynamicFlowExpanded, setIsDynamicFlowExpanded] = useState<boolean>(false);
   const [activeRoundsDropdown, setActiveRoundsDropdown] = useState<string | null>(null);
 
+  // Stats Modal States
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState<boolean>(false);
+  const [statsData, setStatsData] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState<boolean>(false);
+  const [statsPage, setStatsPage] = useState<number>(1);
+  const STATS_ITEMS_PER_PAGE = 50;
+
+  const paginatedRecentLeads = useMemo(() => {
+    if (!statsData?.recent_below_standard) return [];
+    const start = (statsPage - 1) * STATS_ITEMS_PER_PAGE;
+    return statsData.recent_below_standard.slice(start, start + STATS_ITEMS_PER_PAGE);
+  }, [statsData?.recent_below_standard, statsPage]);
+
   useEffect(() => {
     const handleGlobalClick = () => {
       setActiveRoundsDropdown(null);
@@ -243,6 +257,28 @@ export const Gatekeeper = () => {
   };
 
   // ── API Fetchers ──
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    try {
+      const res = await fetchAPI(`get_gatekeeper_stats&date=${encodeURIComponent(dateFilter)}`);
+      if (res.success) {
+        setStatsData(res);
+      } else {
+        toast.error(t('Lỗi tải thống kê bộ lọc'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối Server: ') + e.message);
+    }
+    setStatsLoading(false);
+  };
+
+  useEffect(() => {
+    if (isStatsModalOpen) {
+      setStatsPage(1);
+      fetchStats();
+    }
+  }, [isStatsModalOpen, dateFilter]);
+
   const fetchHeldLeads = async () => {
     setHeldLeadsLoading(true);
     try {
@@ -254,8 +290,12 @@ export const Gatekeeper = () => {
 
       const res = await fetchAPI(`get_held_leads&${queryParams.toString()}`);
       if (res.success) {
-        setHeldLeads(res.data || []);
+        const data = res.data || [];
+        setHeldLeads(data);
         setHeldLeadsTotalCount(res.total_count ?? 0);
+        if (data.length === 0 && !heldLeadsSearch) {
+          setIsDynamicFlowExpanded(true);
+        }
       }
     } catch (e: any) {
       toast.error(t('Lỗi tải dữ liệu AI Gác Cổng: ') + e.message);
@@ -1011,7 +1051,7 @@ export const Gatekeeper = () => {
               onChange={e => setHeldLeadsSearch(e.target.value)}
               placeholder={t("Tìm kiếm Tên, SĐT, Email...")}
               className="form-input"
-              style={{ height: 36, fontSize: '0.825rem', width: '100%', maxWidth: 350 }}
+              style={{ height: 44, fontSize: '0.85rem', width: '100%', maxWidth: 350, borderRadius: 'var(--radius-lg)', padding: '0 1rem' }}
             />
             
             <div style={{ position: 'relative', width: 180 }}>
@@ -1036,7 +1076,7 @@ export const Gatekeeper = () => {
               className="btn outline"
               style={{
                 padding: 0,
-                borderRadius: 8,
+                borderRadius: 'var(--radius-lg)',
                 borderColor: 'var(--color-border)',
                 background: 'var(--color-surface)',
                 color: 'var(--color-text-muted)',
@@ -1044,12 +1084,37 @@ export const Gatekeeper = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 flexShrink: 0
               }}
             >
               <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+
+            <button
+              onClick={() => setIsStatsModalOpen(true)}
+              className="btn primary"
+              style={{
+                height: 44,
+                fontSize: '0.825rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginLeft: 'auto',
+                padding: '0 16px',
+                borderRadius: 'var(--radius-lg)',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <BarChart2 size={15} />
+              <span>{t('Thống kê dưới chuẩn')}</span>
             </button>
           </div>
         </div>
@@ -1364,16 +1429,18 @@ export const Gatekeeper = () => {
                                          display: 'inline-flex',
                                          alignItems: 'center',
                                          gap: '6px',
-                                         padding: '4px 10px',
-                                         borderRadius: '20px',
+                                         padding: '5px 12px',
+                                         borderRadius: '9999px',
                                          fontSize: '0.8125rem',
-                                         fontWeight: 500,
-                                         border: '1px solid var(--color-primary-light)',
-                                         background: 'var(--color-primary-light)',
-                                         color: 'var(--color-primary)',
-                                         transition: 'all 0.15s ease'
+                                         fontWeight: 600,
+                                         border: '1px solid rgba(124, 58, 237, 0.25)',
+                                         background: 'rgba(124, 58, 237, 0.08)',
+                                         color: '#a78bfa',
+                                         boxShadow: '0 2px 8px rgba(124, 58, 237, 0.05)',
+                                         transition: 'all 0.2s ease'
                                        }}
                                      >
+                                       <Tag size={12} style={{ opacity: 0.8 }} />
                                        {r.round_name}
                                        <button
                                          type="button"
@@ -1384,18 +1451,28 @@ export const Gatekeeper = () => {
                                          }}
                                          style={{
                                            border: 'none',
-                                           background: 'transparent',
-                                           color: 'var(--color-primary)',
+                                           background: 'rgba(255, 255, 255, 0.06)',
+                                           color: 'var(--color-text-muted)',
                                            cursor: 'pointer',
                                            display: 'inline-flex',
                                            alignItems: 'center',
                                            justifyContent: 'center',
-                                           padding: 0,
-                                           marginLeft: '2px',
-                                           outline: 'none'
+                                           padding: '2px',
+                                           borderRadius: '50%',
+                                           marginLeft: '4px',
+                                           outline: 'none',
+                                           transition: 'all 0.15s ease'
+                                         }}
+                                         onMouseEnter={(e) => {
+                                           e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                           e.currentTarget.style.color = 'var(--color-danger)';
+                                         }}
+                                         onMouseLeave={(e) => {
+                                           e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                           e.currentTarget.style.color = 'var(--color-text-muted)';
                                          }}
                                        >
-                                         <span style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: 1 }}>×</span>
+                                         <X size={10} />
                                        </button>
                                      </span>
                                    );
@@ -1412,20 +1489,31 @@ export const Gatekeeper = () => {
                                      style={{
                                        display: 'inline-flex',
                                        alignItems: 'center',
-                                       gap: '4px',
-                                       padding: '4px 10px',
-                                       borderRadius: '20px',
+                                       gap: '6px',
+                                       padding: '5px 12px',
+                                       borderRadius: '9999px',
                                        fontSize: '0.8125rem',
-                                       fontWeight: 500,
-                                       border: '1px dashed var(--color-border)',
-                                       background: 'var(--color-surface)',
-                                       color: 'var(--color-text-muted)',
+                                       fontWeight: 600,
+                                       border: '1px dashed var(--color-primary-light)',
+                                       background: 'rgba(124, 58, 237, 0.02)',
+                                       color: 'var(--color-primary)',
                                        cursor: 'pointer',
-                                       transition: 'all 0.15s ease',
-                                       outline: 'none'
+                                       transition: 'all 0.2s ease',
+                                       outline: 'none',
+                                       boxShadow: 'var(--shadow-sm)'
+                                     }}
+                                     onMouseEnter={(e) => {
+                                       e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                       e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                       e.currentTarget.style.transform = 'translateY(-0.5px)';
+                                     }}
+                                     onMouseLeave={(e) => {
+                                       e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                                       e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                       e.currentTarget.style.transform = 'none';
                                      }}
                                    >
-                                     <Plus size={14} />
+                                     <Plus size={12} />
                                      <span>{t('Thêm vòng')}</span>
                                    </button>
 
@@ -1440,12 +1528,12 @@ export const Gatekeeper = () => {
                                          zIndex: 55,
                                          minWidth: '220px',
                                          background: 'var(--color-surface)',
-                                         border: '1px solid var(--color-border)',
-                                         borderRadius: '8px',
-                                         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                                         border: '1px solid rgba(124, 58, 237, 0.15)',
+                                         borderRadius: '12px',
+                                         boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
                                          maxHeight: '220px',
                                          overflowY: 'auto',
-                                         padding: '4px'
+                                         padding: '6px'
                                        }}
                                      >
                                        {(() => {
@@ -1478,29 +1566,38 @@ export const Gatekeeper = () => {
                                                }}
                                                style={{
                                                  width: '100%',
-                                                 padding: '8px 12px',
+                                                 padding: '10px 14px',
                                                  fontSize: '0.8125rem',
+                                                 fontWeight: 550,
                                                  textAlign: 'left',
                                                  border: 'none',
                                                  background: 'transparent',
-                                                 color: selectedElsewhere ? 'var(--color-text-light)' : 'var(--color-text)',
+                                                 color: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                                 opacity: selectedElsewhere ? 0.4 : 1,
                                                  cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
-                                                 borderRadius: '6px',
+                                                 borderRadius: '8px',
                                                  display: 'flex',
                                                  alignItems: 'center',
                                                  justifyContent: 'space-between',
-                                                 gap: '8px',
-                                                 transition: 'background 0.1s ease',
+                                                 gap: '10px',
+                                                 transition: 'all 0.15s ease',
                                                  outline: 'none'
                                                }}
                                                onMouseEnter={(e) => {
-                                                 if (!selectedElsewhere) e.currentTarget.style.background = 'var(--color-bg-alt)';
+                                                 if (!selectedElsewhere) {
+                                                   e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                                   e.currentTarget.style.color = 'var(--color-primary)';
+                                                 }
                                                }}
                                                onMouseLeave={(e) => {
-                                                 e.currentTarget.style.background = 'transparent';
+                                                 if (!selectedElsewhere) {
+                                                   e.currentTarget.style.background = 'transparent';
+                                                   e.currentTarget.style.color = 'var(--color-text)';
+                                                 }
                                                }}
                                              >
-                                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
                                                  {r.round_name}
                                                </span>
                                                {selectedElsewhere && (
@@ -1556,7 +1653,7 @@ export const Gatekeeper = () => {
                             {(config.mode === 'ai' || config.mode === 'hybrid') && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                  {t('Quy tắc & Tiêu chuẩn lọc của AI')}
+                                  {t('Quy tắc đạt chuẩn duy nhất')}
                                 </label>
                                 <textarea
                                   value={config.ai_rules}
@@ -1938,6 +2035,350 @@ export const Gatekeeper = () => {
             <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
             <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
           </div>
+        </div>
+      </CustomModal>
+
+      {/* AI Pre-screener Filter Stats Modal */}
+      <CustomModal
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+        title={t("Thống kê bộ lọc AI Pre-screener")}
+        width="1000px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
+          
+          {/* Header/Subtitle containing selected Date Filter */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 16px',
+            background: 'rgba(124, 58, 237, 0.06)',
+            border: '1px solid rgba(124, 58, 237, 0.15)',
+            borderRadius: '10px',
+            marginBottom: '4px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter size={16} color="var(--color-primary)" />
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                {t('Đang áp dụng bộ lọc thời gian:')}
+              </span>
+              <span style={{
+                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '20px',
+                boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
+              }}>
+                {getDisplayDateFilterText(dateFilter)}
+              </span>
+            </div>
+            {statsLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>{t('Đang tải dữ liệu mới...')}</span>
+              </div>
+            )}
+          </div>
+
+          {statsLoading && !statsData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '3rem 0', alignItems: 'center', justifyContent: 'center' }}>
+              <RefreshCw size={32} color="var(--color-primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê...')}</span>
+            </div>
+          ) : !statsData ? (
+            <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              {t('Không có dữ liệu thống kê.')}
+            </div>
+          ) : (
+            <>
+              {/* Breakdowns columns grid (Rounds, Sources, Reasons) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '20px',
+                marginTop: '10px'
+              }}>
+                {/* 1. Breakdown by Rounds */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed' }}></span>
+                    {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                    {statsData.rounds_breakdown?.length === 0 ? (
+                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {t('Không có dữ liệu phân bố vòng')}
+                      </div>
+                    ) : (
+                      statsData.rounds_breakdown?.map((item: any, idx: number) => {
+                        const totalBS = statsData.stats?.total_below_standard || 1;
+                        const pct = Math.round((item.count / totalBS) * 100);
+                        return (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</span>
+                              <span>{item.count} ({pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #7c3aed, #9061f9)' }}></div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Breakdown by Sources */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }}></span>
+                    {t('Nguồn kết nối dưới chuẩn nhiều nhất')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                    {statsData.sources_breakdown?.length === 0 ? (
+                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {t('Không có dữ liệu phân bố nguồn')}
+                      </div>
+                    ) : (
+                      statsData.sources_breakdown?.map((item: any, idx: number) => {
+                        const totalBS = statsData.stats?.total_below_standard || 1;
+                        const pct = Math.round((item.count / totalBS) * 100);
+                        return (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</span>
+                              <span>{item.count} ({pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)' }}></div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Breakdown by Rejection Reason */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span>
+                    {t('Lý do AI loại / giữ nhiều nhất')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                    {statsData.reasons_breakdown?.length === 0 ? (
+                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {t('Không có dữ liệu phân bố lý do')}
+                      </div>
+                    ) : (
+                      statsData.reasons_breakdown?.map((item: any, idx: number) => {
+                        const totalBS = statsData.stats?.total_below_standard || 1;
+                        const pct = Math.round((item.count / totalBS) * 100);
+                        return (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t(item.reason)}</span>
+                              <span>{item.count} ({pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #ef4444, #f87171)' }}></div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Table of below-standard leads with pagination */}
+              <div style={{ marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldAlert size={16} color="var(--color-danger)" />
+                  {t('Danh sách lead dưới chuẩn')}
+                </h4>
+                <div style={{
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  background: 'rgba(255, 255, 255, 0.01)'
+                }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Thời gian')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Họ tên / SĐT')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nguồn / Vòng')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đánh giá của AI')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', width: '110px' }}>{t('Trạng thái')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRecentLeads.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              {t('Không có lead nào dưới chuẩn')}
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedRecentLeads.map((l: any, idx: number) => {
+                            let statusBadge = null;
+                            if (l.status === 'pending_approval') {
+                              statusBadge = (
+                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
+                                  {t('Chờ duyệt')}
+                                </span>
+                              );
+                            } else if (l.status === 'rejected') {
+                              statusBadge = (
+                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.12)', color: 'var(--color-danger)' }}>
+                                  {t('Đã hủy')}
+                                </span>
+                              );
+                            } else if (l.status === 'blacklisted') {
+                              statusBadge = (
+                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(0, 0, 0, 0.3)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                  {t('Blacklist')}
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <tr key={idx} style={{ borderBottom: idx < paginatedRecentLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
+                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                  {new Date(l.created_at).toLocaleString('vi-VN')}
+                                </td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
+                                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
+                                    {user?.role === 'admin' ? l.phone : maskPhone(l.phone)}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  <div style={{ color: 'var(--color-text)' }}>{l.source || '-'}</div>
+                                  <div style={{ color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 600, marginTop: '1.5px' }}>
+                                    {l.round_name || '-'}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '10px 14px', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
+                                  {l.ai_evaluation || l.note || t('Không có đánh giá')}
+                                </td>
+                                <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                                  {statusBadge}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Footer */}
+                  {statsData.recent_below_standard && statsData.recent_below_standard.length > STATS_ITEMS_PER_PAGE && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--color-border)',
+                      background: 'rgba(255,255,255,0.01)',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{ color: 'var(--color-text-muted)' }}>
+                        {t('Hiển thị')}{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {(statsPage - 1) * STATS_ITEMS_PER_PAGE + 1}
+                        </span>{' '}
+                        -{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {Math.min(statsPage * STATS_ITEMS_PER_PAGE, statsData.recent_below_standard.length)}
+                        </span>{' '}
+                        {t('trên')}{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {statsData.recent_below_standard.length}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          onClick={() => setStatsPage(p => Math.max(p - 1, 1))}
+                          disabled={statsPage === 1}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border)',
+                            background: statsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
+                            color: statsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: statsPage === 1 ? 'not-allowed' : 'pointer',
+                            fontSize: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <ChevronLeft size={12} />
+                          {t('Trước')}
+                        </button>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
+                          {t('Trang')} {statsPage} / {Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
+                        </span>
+                        <button
+                          onClick={() => setStatsPage(p => Math.min(p + 1, Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)))}
+                          disabled={statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border)',
+                            background: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)',
+                            color: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer',
+                            fontSize: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          {t('Sau')}
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+
         </div>
       </CustomModal>
 

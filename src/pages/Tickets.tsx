@@ -590,7 +590,7 @@ export const Tickets = () => {
         </div>
       </div>
       
-      <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
         {FILTER_TABS.map(tab => (
           <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8.5rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
             {t(tab.label)} {`(${stats[tab.key]})`}
@@ -603,6 +603,7 @@ export const Tickets = () => {
           onClick={() => setShowSettingsModal(true)}
           title={t("Thiết lập thông báo Ticket")}
           style={{
+            marginLeft: 'auto',
             padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-primary)',
             background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
             color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 5,

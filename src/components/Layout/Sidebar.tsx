@@ -212,7 +212,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
             {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
               const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
-              const isSettingsGroupStart = href === '/gatekeeper';
+              const isSettingsGroupStart = href === '/integrations';
               return (
                 <Fragment key={href}>
                   {isSettingsGroupStart && !isCollapsed && (
