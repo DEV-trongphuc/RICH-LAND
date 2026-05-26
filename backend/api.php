@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'migrate_preview_test_leads', 'migrate_confirm_delete_test_leads'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -247,6 +247,151 @@ function getTicketNotifyAdmins($conn) {
 }
 
 switch ($action) {
+    case 'migrate_preview_test_leads':
+        if (($_GET['secret'] ?? '') !== 'Ideas@812') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            exit();
+        }
+        header("Content-Type: text/plain; charset=utf-8");
+        echo "=== RUNNING IN PREVIEW MODE: DRY RUN (NO DELETIONS) ===\n";
+        echo "To confirm and execute the deletion, please call: ?action=migrate_confirm_delete_test_leads&secret=Ideas@812\n\n";
+
+        // Fetch all test leads except "Test nha bà con"
+        $query = "SELECT id, name, phone, email, source, type, note, created_at 
+                  FROM leads 
+                  WHERE (name LIKE '%test%' OR email LIKE '%test%' OR note LIKE '%test%')
+                    AND name NOT LIKE '%Test nha bà con%'
+                    AND note NOT LIKE '%Test nha bà con%'";
+
+        $res = $conn->query($query);
+        if (!$res) {
+            die("Error fetching test leads: " . $conn->error . "\n");
+        }
+
+        $leadsToDelete = [];
+        while ($row = $res->fetch_assoc()) {
+            $leadsToDelete[] = $row;
+        }
+
+        $totalLeads = count($leadsToDelete);
+        echo "Found {$totalLeads} test leads to process (excluding 'Test nha bà con').\n\n";
+
+        if ($totalLeads === 0) {
+            echo "No test data found. Exiting.\n";
+            exit();
+        }
+
+        $totalLogsFound = 0;
+        $totalReportsFound = 0;
+        $totalQueueFound = 0;
+
+        foreach ($leadsToDelete as $lead) {
+            $leadId = (int)$lead['id'];
+            echo "----------------------------------------\n";
+            echo "Lead ID #{$leadId}:\n";
+            echo "  - Name: {$lead['name']}\n";
+            echo "  - Phone: {$lead['phone']}\n";
+            echo "  - Email: {$lead['email']}\n";
+            echo "  - Note: " . str_replace(\"\n\", \" \", substr($lead['note'], 0, 100)) . "...\n";
+            echo "  - Created At: {$lead['created_at']}\n";
+
+            // Related distribution logs
+            $resD = $conn->query("SELECT id, status, message, received_at FROM distribution_logs WHERE lead_id = {$leadId}");
+            if ($resD && $resD->num_rows > 0) {
+                echo "    * Related Distribution Logs:\n";
+                while ($log = $resD->fetch_assoc()) {
+                    echo "      - Log ID {$log['id']}: Status: {$log['status']} | Message: {$log['message']} | Time: {$log['received_at']}\n";
+                    $totalLogsFound++;
+                }
+            }
+            
+            // Related data reports (tickets)
+            $resR = $conn->query("SELECT id, status, reason, created_at FROM data_reports WHERE lead_id = {$leadId}");
+            if ($resR && $resR->num_rows > 0) {
+                echo "    * Related Tickets/Data Reports:\n";
+                while ($rep = $resR->fetch_assoc()) {
+                    echo "      - Ticket ID {$rep['id']}: Status: {$rep['status']} | Reason: {$rep['reason']} | Time: {$rep['created_at']}\n";
+                    $totalReportsFound++;
+                }
+            }
+
+            // Related sync queue items
+            $resQ = $conn->query("SELECT id, status, attempts FROM sync_queue WHERE lead_id = {$leadId}");
+            if ($resQ && $resQ->num_rows > 0) {
+                echo "    * Related Sync Queue Items:\n";
+                while ($q = $resQ->fetch_assoc()) {
+                    echo "      - Queue ID {$q['id']}: Status: {$q['status']} | Attempts: {$q['attempts']}\n";
+                    $totalQueueFound++;
+                }
+            }
+        }
+
+        echo "\n========================================\n";
+        echo "SUMMARY OF DATA TO BE DELETED:\n";
+        echo "  - Total Leads: {$totalLeads}\n";
+        echo "  - Total Distribution Logs: {$totalLogsFound}\n";
+        echo "  - Total Tickets/Data Reports: {$totalReportsFound}\n";
+        echo "  - Total Sync Queue Items: {$totalQueueFound}\n";
+        echo "========================================\n\n";
+        echo "PREVIEW COMPLETED. No database changes were made.\n";
+        exit();
+
+    case 'migrate_confirm_delete_test_leads':
+        if (($_GET['secret'] ?? '') !== 'Ideas@812') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            exit();
+        }
+        header("Content-Type: text/plain; charset=utf-8");
+        echo "=== RUNNING IN CONFIRM MODE: ACTUAL DELETION ===\n\n";
+
+        // Fetch all test leads except "Test nha bà con"
+        $query = "SELECT id, name FROM leads 
+                  WHERE (name LIKE '%test%' OR email LIKE '%test%' OR note LIKE '%test%')
+                    AND name NOT LIKE '%Test nha bà con%'
+                    AND note NOT LIKE '%Test nha bà con%'";
+
+        $res = $conn->query($query);
+        if (!$res) {
+            die("Error fetching test leads: " . $conn->error . "\n");
+        }
+
+        $leadsToDelete = [];
+        while ($row = $res->fetch_assoc()) {
+            $leadsToDelete[] = $row;
+        }
+
+        $totalLeads = count($leadsToDelete);
+        if ($totalLeads === 0) {
+            echo "No test data found to delete.\n";
+            exit();
+        }
+
+        // Start database transaction for actual deletion
+        $conn->begin_transaction();
+        try {
+            foreach ($leadsToDelete as $lead) {
+                $leadId = (int)$lead['id'];
+                
+                // Delete child tables
+                $conn->query("DELETE FROM distribution_logs WHERE lead_id = {$leadId}");
+                $conn->query("DELETE FROM data_reports WHERE lead_id = {$leadId}");
+                $conn->query("DELETE FROM sync_queue WHERE lead_id = {$leadId}");
+                
+                // Delete parent lead
+                $conn->query("DELETE FROM leads WHERE id = {$leadId}");
+                echo "Deleted Lead ID #{$leadId} and its related logs/tickets.\n";
+            }
+
+            $conn->commit();
+            echo "\nDELETION COMPLETED SUCCESSFULLY! Database updated.\n";
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo "ERROR during deletion: " . $e->getMessage() . "\nDeletion rolled back.\n";
+        }
+        exit();
+
     case 'get_zalo_send_logs':
         $logFile = __DIR__ . '/zalo_send_log.txt';
         if (file_exists($logFile)) {
