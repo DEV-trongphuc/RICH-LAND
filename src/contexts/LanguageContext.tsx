@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { en } from '../utils/translations';
+import { en, ja, zh } from '../utils/translations';
 
-type Language = 'vi' | 'en';
+type Language = 'vi' | 'en' | 'ja' | 'zh';
 
 interface LanguageContextType {
   language: Language;
@@ -35,7 +35,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = (key: string): string => {
     if (language === 'vi') return key;
-    return en[key] || key;
+    if (language === 'en') return en[key] || key;
+    if (language === 'ja') return ja[key] || key;
+    if (language === 'zh') return zh[key] || key;
+    return key;
   };
 
   return (

@@ -8,6 +8,15 @@ import { CustomModal } from '../ui/CustomModal';
 import { fetchAPI } from '../../utils/api';
 import vnFlag from '../../assets/vn.svg';
 import usFlag from '../../assets/us.svg';
+import jpFlag from '../../assets/jp.svg';
+import cnFlag from '../../assets/cn.svg';
+
+const languagesList = [
+  { code: 'vi', name: 'Tiếng Việt', flag: vnFlag },
+  { code: 'en', name: 'English', flag: usFlag },
+  { code: 'ja', name: '日本語', flag: jpFlag },
+  { code: 'zh', name: '简体中文', flag: cnFlag }
+] as const;
 
 export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
@@ -347,7 +356,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
             }}
           >
             <img 
-              src={language === 'vi' ? vnFlag : usFlag} 
+              src={languagesList.find(l => l.code === language)?.flag || vnFlag} 
               style={{ 
                 width: 24, 
                 height: 16, 
@@ -356,7 +365,7 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
                 border: '1px solid rgba(0, 0, 0, 0.08)',
                 display: 'block' 
               }} 
-              alt={language === 'vi' ? t('Tiếng Việt') : t('English')} 
+              alt={languagesList.find(l => l.code === language)?.name || 'Tiếng Việt'} 
             />
             <ChevronDown 
               size={12} 
@@ -384,77 +393,44 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
               minWidth: '135px',
               zIndex: 50
             }}>
-              <button
-                onClick={() => {
-                  setLanguage('vi');
-                  setIsLangOpen(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: language === 'vi' ? 'var(--color-bg)' : 'transparent',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--color-text)',
-                  fontSize: '0.8125rem',
-                  fontWeight: language === 'vi' ? 600 : 400,
-                  textAlign: 'left',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => {
-                  if (language !== 'vi') e.currentTarget.style.background = 'var(--color-bg)';
-                }}
-                onMouseLeave={e => {
-                  if (language !== 'vi') e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <img 
-                  src={vnFlag} 
-                  style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
-                  alt={t("Tiếng Việt")} 
-                />
-                {t('Tiếng Việt')}
-              </button>
-
-              <button
-                onClick={() => {
-                  setLanguage('en');
-                  setIsLangOpen(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: language === 'en' ? 'var(--color-bg)' : 'transparent',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--color-text)',
-                  fontSize: '0.8125rem',
-                  fontWeight: language === 'en' ? 600 : 400,
-                  textAlign: 'left',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => {
-                  if (language !== 'en') e.currentTarget.style.background = 'var(--color-bg)';
-                }}
-                onMouseLeave={e => {
-                  if (language !== 'en') e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <img 
-                  src={usFlag} 
-                  style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
-                  alt={t("English")} 
-                />
-                {t('English')}
-              </button>
+              {languagesList.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang.code);
+                    setIsLangOpen(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: language === lang.code ? 'var(--color-bg)' : 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    fontWeight: language === lang.code ? 600 : 400,
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => {
+                    if (language !== lang.code) e.currentTarget.style.background = 'var(--color-bg)';
+                  }}
+                  onMouseLeave={e => {
+                    if (language !== lang.code) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <img 
+                    src={lang.flag} 
+                    style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
+                    alt={lang.name} 
+                  />
+                  {lang.name}
+                </button>
+              ))}
             </div>
           )}
         </div>

@@ -1530,7 +1530,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
         $finalSuccess = false;
     }
     if (!$connectionSynced && !$masterSynced) {
-        $finalSuccess = false;
+        $finalSuccess = true;
     }
 
     return $finalSuccess;

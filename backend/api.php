@@ -2273,6 +2273,7 @@ switch ($action) {
             $row['ratios'] = [];
             $row['data_per_turns'] = [];
             $row['compensations'] = [];
+            $row['skipped_credits'] = [];
             $row['consultant_lead_counts'] = [];
 
             $data[$row['id']] = $row;
@@ -2283,7 +2284,7 @@ switch ($action) {
             $idsStr = implode(',', $roundIds);
             
             // 1. Fetch ratios, compensations and group active consultants in each round
-            $ratioRes = $conn->query("SELECT rc.round_id, rc.consultant_id, rc.receive_ratio, rc.data_per_turn, rc.compensation_count, c.name 
+            $ratioRes = $conn->query("SELECT rc.round_id, rc.consultant_id, rc.receive_ratio, rc.data_per_turn, rc.compensation_count, rc.skipped_credit, c.name 
                                       FROM round_consultants rc
                                       JOIN consultants c ON rc.consultant_id = c.id
                                       WHERE rc.round_id IN ($idsStr) AND c.status = 'active'");
@@ -2294,10 +2295,12 @@ switch ($action) {
                 $data[$rId]['ratios'][$cId] = (int) $rr['receive_ratio'];
                 $data[$rId]['data_per_turns'][$cId] = (int) ($rr['data_per_turn'] ?? 1);
                 $data[$rId]['compensations'][$cId] = (int) $rr['compensation_count'];
+                $data[$rId]['skipped_credits'][$cId] = (int) ($rr['skipped_credit'] ?? 0);
                 
                 $roundActiveConsultants[$rId][] = [
                     'id' => $cId,
-                    'receive_ratio' => (int) $rr['receive_ratio']
+                    'receive_ratio' => (int) $rr['receive_ratio'],
+                    'skipped_credit' => (int) ($rr['skipped_credit'] ?? 0)
                 ];
             }
 
@@ -2496,17 +2499,29 @@ switch ($action) {
 
             $ratios = $input['ratios'] ?? [];
             $per_turns = $input['data_per_turns'] ?? [];
-
             $compensations = $input['compensations'] ?? [];
+            $skipped_credits = isset($input['skipped_credits']) ? $input['skipped_credits'] : null;
 
             if (!empty($consultants)) {
-                $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), compensation_count = VALUES(compensation_count), current_turn_remaining = 0");
-                foreach ($consultants as $cid) {
-                    $ratio = isset($ratios[$cid]) ? max(1, (int) $ratios[$cid]) : 1;
-                    $perTurn = isset($per_turns[$cid]) ? max(1, (int) $per_turns[$cid]) : 1;
-                    $comp = isset($compensations[$cid]) ? max(0, (int) $compensations[$cid]) : 0;
-                    $stmtC->bind_param("iiiii", $id, $cid, $ratio, $perTurn, $comp);
-                    $stmtC->execute();
+                if ($skipped_credits !== null) {
+                    $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count, skipped_credit) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), compensation_count = VALUES(compensation_count), skipped_credit = VALUES(skipped_credit), current_turn_remaining = 0");
+                    foreach ($consultants as $cid) {
+                        $ratio = isset($ratios[$cid]) ? max(1, (int) $ratios[$cid]) : 1;
+                        $perTurn = isset($per_turns[$cid]) ? max(1, (int) $per_turns[$cid]) : 1;
+                        $comp = isset($compensations[$cid]) ? max(0, (int) $compensations[$cid]) : 0;
+                        $skipCred = isset($skipped_credits[$cid]) ? max(0, (int) $skipped_credits[$cid]) : 0;
+                        $stmtC->bind_param("iiiiii", $id, $cid, $ratio, $perTurn, $comp, $skipCred);
+                        $stmtC->execute();
+                    }
+                } else {
+                    $stmtC = $conn->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, data_per_turn, compensation_count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE receive_ratio = VALUES(receive_ratio), data_per_turn = VALUES(data_per_turn), compensation_count = VALUES(compensation_count), current_turn_remaining = 0");
+                    foreach ($consultants as $cid) {
+                        $ratio = isset($ratios[$cid]) ? max(1, (int) $ratios[$cid]) : 1;
+                        $perTurn = isset($per_turns[$cid]) ? max(1, (int) $per_turns[$cid]) : 1;
+                        $comp = isset($compensations[$cid]) ? max(0, (int) $compensations[$cid]) : 0;
+                        $stmtC->bind_param("iiiii", $id, $cid, $ratio, $perTurn, $comp);
+                        $stmtC->execute();
+                    }
                 }
                 $stmtC->close();
             }

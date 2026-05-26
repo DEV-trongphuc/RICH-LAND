@@ -32,7 +32,6 @@ function processSyncQueue($conn) {
         $conn->commit();
         @flock($fp, LOCK_UN);
         @fclose($fp);
-        @unlink($lockFile);
         return;
     }
 
