@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, MessageCircle, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
