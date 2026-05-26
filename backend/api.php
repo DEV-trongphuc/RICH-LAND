@@ -8487,12 +8487,9 @@ switch ($action) {
                         $branches = $parsed;
                     }
 
-                    $logicalOp = strtoupper($rule['logical_operator'] ?? 'AND');
-                    
                     foreach ($branches as $bIdx => $branchObj) {
                         $conds = $branchObj['conditions'] ?? [];
-                        $branchMatch = ($logicalOp === 'AND'); 
-                        if ($logicalOp === 'OR' && empty($conds)) $branchMatch = true;
+                        $branchMatch = true; // ALWAYS AND logic within a single branch
                         
                         $branchCondsDetail = [];
                         foreach ($conds as $cond) {
@@ -8503,23 +8500,26 @@ switch ($action) {
                                 'val' => $cond['val'],
                                 'matched' => $resVal
                             ];
-                            if ($logicalOp === 'AND') {
-                                if (!$resVal) {
-                                    $branchMatch = false;
-                                }
-                            } else { 
-                                if ($resVal) {
-                                    $branchMatch = true;
-                                }
+                            if (!$resVal) {
+                                $branchMatch = false;
                             }
                         }
                         
                         if ($branchMatch) {
                             $isMatch = true;
-                            if (isset($branchObj['inject']) && !empty($branchObj['inject']['enabled']) && !empty($branchObj['inject']['fields'])) {
-                                foreach ($branchObj['inject']['fields'] as $f) {
-                                    if (!empty($f['col'])) {
-                                        $injectedFields[$f['col']] = $f['val'];
+                            if (isset($branchObj['inject'])) {
+                                $injectObj = $branchObj['inject'];
+                                if (isset($injectObj['enabled']) && $injectObj['enabled'] && !empty($injectObj['fields']) && is_array($injectObj['fields'])) {
+                                    foreach ($injectObj['fields'] as $f) {
+                                        if (!empty($f['col'])) {
+                                            $injectedFields[$f['col']] = $f['val'];
+                                        }
+                                    }
+                                } else if (is_array($injectObj)) {
+                                    foreach ($injectObj as $f) {
+                                        if (is_array($f) && !empty($f['col'])) {
+                                            $injectedFields[$f['col']] = $f['val'];
+                                        }
                                     }
                                 }
                             }
@@ -8735,6 +8735,9 @@ switch ($action) {
                 $customDateRaw = trim($lead['date'] ?? '');
                 $customDate = normalizeDate($customDateRaw);
                 $salepersonVal = trim($lead['saleperson'] ?? '');
+                $source = 'Excel Import';
+                $type = 'Excel';
+                $note = '';
                 
                 if (empty($phone) && empty($email)) {
                     continue;
@@ -8811,21 +8814,46 @@ switch ($action) {
                         } else {
                             $assignedToId = $fileConsultantId;
                             $isFromRules = false;
+                            $roundId = null;
                             if (empty($assignedToId)) {
                                 $rowData = $lead;
                                 $rowData['phone'] = $phone;
                                 $rowData['email'] = $email;
                                 $rowData['name'] = $name;
-                                $rulesResult = evaluateRules($conn, $rowData, 'Excel Import', 'Excel', null, 'sheets');
-                                $assignedToId = $rulesResult['consultant_id'] ?? null;
-                                $isFromRules = true;
+                                $rulesResult = evaluateRules($conn, $rowData, $source, $type, null, 'sheets');
+                                if (is_array($rulesResult)) {
+                                    $roundId = $rulesResult['target_round_id'] ?? null;
+                                    $inject = $rulesResult['inject'] ?? [];
+                                    
+                                    // Apply inject fields for Excel Import
+                                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+                                    foreach ($inject as $k => $v) {
+                                        if (in_array($k, $standardFields)) {
+                                            if ($k === 'source') $source = $v;
+                                            if ($k === 'type') $type = $v;
+                                            if ($k === 'note') $note = $v;
+                                            if ($k === 'name') $name = $v;
+                                            if ($k === 'phone') $phone = normalizePhone($v);
+                                            if ($k === 'email') $email = trim($v);
+                                        } else {
+                                            $note = trim($note) === '' ? "[$k]: $v" : $note . "\n[$k]: $v";
+                                        }
+                                    }
+                                    
+                                    if ($roundId) {
+                                        $assignResult = getNextConsultantInRound($conn, $roundId);
+                                        if ($assignResult) {
+                                            $assignedToId = $assignResult['id'];
+                                        }
+                                    }
+                                    $isFromRules = true;
+                                }
                             }
                             
-                            $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
+                            $leadId = insertLead($conn, [], $assignedToId, $phone, $email, $name, $source, $type, $note, null, $customDate);
                             $newCount++;
                             
                             if ($assignedToId) {
-                                $roundId = ($isFromRules && isset($rulesResult['round_id'])) ? $rulesResult['round_id'] : null;
                                 $logMsg = $isFromRules ? 'Phan chia tu dong tu file Excel.' : 'Phan chia cho Sale tu file Excel.';
                                 logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg, false);
                                 
@@ -8837,8 +8865,8 @@ switch ($action) {
                                 if ($cRow) {
                                     require_once __DIR__ . '/mailer.php';
                                     require_once __DIR__ . '/zalo_bot.php';
-                                    sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', '', $leadId, $assignedToId, $roundId ?? 0);
-                                    sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0, $email, 'Excel');
+                                    sendLeadAssignedEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Lead moi tu file Excel', $source, '', '', $leadId, $assignedToId, $roundId ?? 0);
+                                    sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', $source, '', $leadId, $roundId ?? 0, $email, $type);
                                 }
                             } else {
                                 logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.', false);

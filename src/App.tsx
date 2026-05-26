@@ -16,6 +16,7 @@ const Tickets = lazy(() => import('./pages/Tickets').then(module => ({ default: 
 const RuleSettings = lazy(() => import('./pages/RuleSettings').then(module => ({ default: module.RuleSettings })));
 const Integrations = lazy(() => import('./pages/Integrations').then(module => ({ default: module.Integrations })));
 const Settings = lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
+const Gatekeeper = lazy(() => import('./pages/Gatekeeper').then(module => ({ default: module.Gatekeeper })));
 const DataList = lazy(() => import('./pages/DataList').then(module => ({ default: module.DataList })));
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Accounts = lazy(() => import('./pages/Accounts').then(module => ({ default: module.Accounts })));
@@ -62,7 +63,7 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper'];
   const isAdminPath = adminPaths.includes(currentPath);
 
   if (isAdminPath && user?.role !== 'admin') {
@@ -102,6 +103,9 @@ const AppTabs = () => {
           </div>
           <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }}>
             {visitedPaths.includes('/accounts') && <Accounts />}
+          </div>
+          <div style={{ display: currentPath === '/gatekeeper' ? 'block' : 'none' }}>
+            {visitedPaths.includes('/gatekeeper') && <Gatekeeper />}
           </div>
           <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }}>
             {visitedPaths.includes('/fair-share') && <FairShareAudit />}
@@ -180,6 +184,7 @@ const KeyboardShortcutsController = () => {
           shortcuts.i = '/integrations';
           shortcuts.o = '/settings';
           shortcuts.a = '/accounts';
+          shortcuts.g = '/gatekeeper';
         }
 
         if (shortcuts[key] !== undefined) {
@@ -310,6 +315,10 @@ const KeyboardShortcutsController = () => {
                       <span style={{ color: 'var(--color-text)' }}>{t("Tài khoản phân quyền")}</span>
                       <kbd className="shortcuts-kbd">Alt + A</kbd>
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text)' }}>{t("Bộ Lọc AI")}</span>
+                      <kbd className="shortcuts-kbd">Alt + G</kbd>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -373,6 +382,7 @@ export default function App() {
                   <Route path="/integrations" element={<AppTabs />} />
                   <Route path="/settings" element={<AppTabs />} />
                   <Route path="/accounts" element={<AppTabs />} />
+                  <Route path="/gatekeeper" element={<AppTabs />} />
                   <Route path="/fair-share" element={<AppTabs />} />
                 </Route>
 

@@ -586,10 +586,20 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
         
         if ($isMatch) {
             $inject = [];
-            if ($matchedBranch && !empty($matchedBranch['inject']) && is_array($matchedBranch['inject'])) {
-                foreach ($matchedBranch['inject'] as $f) {
-                    if (!empty($f['col'])) {
-                        $inject[$f['col']] = $f['val'];
+            if ($matchedBranch && !empty($matchedBranch['inject'])) {
+                $injectObj = $matchedBranch['inject'];
+                if (isset($injectObj['enabled']) && $injectObj['enabled'] && !empty($injectObj['fields']) && is_array($injectObj['fields'])) {
+                    foreach ($injectObj['fields'] as $f) {
+                        if (!empty($f['col'])) {
+                            $inject[$f['col']] = $f['val'];
+                        }
+                    }
+                } else if (is_array($injectObj)) {
+                    // Fallback for flat array legacy structure
+                    foreach ($injectObj as $f) {
+                        if (is_array($f) && !empty($f['col'])) {
+                            $inject[$f['col']] = $f['val'];
+                        }
                     }
                 }
             }
@@ -1412,6 +1422,34 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null) {
                 if (!empty($mappings['assigned_to'])) {
                     foreach ($mappings['assigned_to'] as $col) {
                         $updates[$col] = $consultantName;
+                    }
+                }
+
+                // Nguồn (source)
+                if (!empty($mappings['source'])) {
+                    foreach ($mappings['source'] as $col) {
+                        $updates[$col] = $lead['source'];
+                    }
+                }
+
+                // Họ tên (name)
+                if (!empty($mappings['name'])) {
+                    foreach ($mappings['name'] as $col) {
+                        $updates[$col] = $lead['name'];
+                    }
+                }
+
+                // Số điện thoại (phone)
+                if (!empty($mappings['phone'])) {
+                    foreach ($mappings['phone'] as $col) {
+                        $updates[$col] = $lead['phone'];
+                    }
+                }
+
+                // Email
+                if (!empty($mappings['email'])) {
+                    foreach ($mappings['email'] as $col) {
+                        $updates[$col] = $lead['email'];
                     }
                 }
 

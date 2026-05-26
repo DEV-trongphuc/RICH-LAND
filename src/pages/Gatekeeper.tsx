@@ -1,0 +1,1635 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchAPI } from '../utils/api';
+import toast from 'react-hot-toast';
+import { 
+  ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus, 
+  CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, 
+  Phone, Mail, Clock, Tag, XCircle, 
+  ExternalLink, Check, Shield, Save, Settings, ShieldCheck
+} from 'lucide-react';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { CustomModal } from '../components/ui/CustomModal';
+import { Avatar } from '../components/ui/Avatar';
+import { TableSkeleton } from '../components/ui/Skeleton';
+
+type Lead = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  source: string;
+  status: string;
+  assigned_to_name: string;
+  assigned_to_avatar?: string;
+  round_name: string;
+  created_at: string;
+  type?: string;
+  note?: string;
+  report_status?: string;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  last_activity_at?: string | null;
+  ai_screener_status?: string;
+  ai_evaluation?: string;
+};
+
+const maskPhone = (phone: string) => {
+  if (!phone || phone === '-') return phone;
+  const clean = phone.replace(/[^\d+]/g, '');
+  if (clean.length < 8) return phone;
+  const start = clean.slice(0, clean.length - 6);
+  const end = clean.slice(-3);
+  return `${start}***${end}`;
+};
+
+const maskEmail = (email: string) => {
+  if (!email || email === '-') return email;
+  const parts = email.split('@');
+  if (parts.length < 2) return email;
+  const name = parts[0];
+  const domain = parts[1];
+  if (name.length <= 3) {
+    return `${name.slice(0, 1)}***@${domain}`;
+  }
+  return `${name.slice(0, 3)}***${name.slice(-1)}@${domain}`;
+};
+
+const parseNote = (noteText: string) => {
+  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [] };
+  const normalized = noteText.replace(/\\n/g, '\n');
+  const lines = normalized.split('\n');
+  const cleanLines: string[] = [];
+  const errorNotes: string[] = [];
+  const blacklistNotes: string[] = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(trimmed)) {
+      return;
+    }
+    if (trimmed.startsWith('[LỖI -') || trimmed.startsWith('[LỖI ')) {
+      errorNotes.push(trimmed);
+    } else if (
+      trimmed.startsWith('[Bị chặn bởi') ||
+      trimmed.startsWith('[Chặn bởi') ||
+      trimmed.toLowerCase().startsWith('[bị chặn bởi') ||
+      trimmed.toLowerCase().startsWith('[chặn bởi')
+    ) {
+      blacklistNotes.push(trimmed);
+    } else {
+      cleanLines.push(line);
+    }
+  });
+  
+  return {
+    cleanNote: cleanLines.join('\n').trim(),
+    errorNotes,
+    blacklistNotes
+  };
+};
+
+const parseBlacklistNote = (note: string) => {
+  let admin = 'Hệ thống';
+  let time = 'Hệ thống';
+  let reason = '';
+
+  const adminMatch = note.match(/bởi\s+Admin\s+([^\s]+(?:\s+[^\s]+)*?)(?:\s+lúc|$)/i);
+  if (adminMatch && adminMatch[1]) {
+    admin = adminMatch[1].trim();
+  }
+
+  const timeMatch = note.match(/lúc\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}|\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i);
+  if (timeMatch && timeMatch[1]) {
+    time = timeMatch[1].trim();
+  }
+
+  const reasonMatch = note.match(/Lý\s+do:\s*(.*?)\]?$/i);
+  if (reasonMatch && reasonMatch[1]) {
+    reason = reasonMatch[1].trim();
+  }
+
+  return { admin, time, reason };
+};
+
+export const Gatekeeper = () => {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
+
+  // Search Params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateFilter = searchParams.get('date') || 'Tháng này';
+  const currentPage = Number(searchParams.get('page') || '1');
+
+  // Lists & Configs States
+  const [heldLeads, setHeldLeads] = useState<any[]>([]);
+  const [heldLeadsTotalCount, setHeldLeadsTotalCount] = useState<number>(0);
+  const [heldLeadsLoading, setHeldLeadsLoading] = useState<boolean>(false);
+  const [heldLeadsSearch, setHeldLeadsSearch] = useState<string>('');
+  const [rounds, setRounds] = useState<any[]>([]);
+
+  // Settings states
+  const [settingsLoading, setSettingsLoading] = useState<boolean>(false);
+  const [savingSettings, setSavingSettings] = useState<boolean>(false);
+  const [aiScreenerEnabled, setAiScreenerEnabled] = useState(false);
+  const [aiScreenerRules, setAiScreenerRules] = useState('');
+  const [aiScreenerRounds, setAiScreenerRounds] = useState<number[]>([]);
+  const [aiScreenerMode, setAiScreenerMode] = useState('ai');
+  const [aiScreenerManualAction, setAiScreenerManualAction] = useState('hold');
+  const [aiScreenerManualRules, setAiScreenerManualRules] = useState<any[]>([]);
+
+  // Modals & Action States
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [heldActionModalOpen, setHeldActionModalOpen] = useState<'approve' | 'reject' | 'blacklist' | null>(null);
+  const [actioningHeldLead, setActioningHeldLead] = useState<any | null>(null);
+  const [heldActionReason, setHeldActionReason] = useState<string>('');
+  const [previewedConsultant, setPreviewedConsultant] = useState<any>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  
+  // Custom Settings & Guide Modal
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [modalTab, setModalTab] = useState<'config' | 'guide'>('config');
+  
+  // Custom Date Picker Modal
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const ITEMS_PER_PAGE = 50;
+
+  const updateParams = (key: string, value: string) => {
+    setSearchParams(prev => {
+      if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
+      else prev.set(key, value);
+      if (key !== 'page') prev.delete('page');
+      return prev;
+    }, { replace: true });
+  };
+
+  const getDisplayDateFilterText = (filter: string) => {
+    if (filter.includes('đến')) {
+      return filter.replace(/\s*đến\s*/i, ` ${t('đến')} `);
+    }
+    return t(filter);
+  };
+
+  const dateOptions = [
+    { value: 'all', label: t('Tất cả thời gian') },
+    { value: 'Hôm nay', label: t('Hôm nay') },
+    { value: 'Hôm qua', label: t('Hôm qua') },
+    { value: 'Tuần này', label: t('Tuần này') },
+    { value: 'Tuần trước', label: t('Tuần trước') },
+    { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+    { value: '7 ngày qua', label: t('7 ngày qua') },
+    { value: '30 ngày qua', label: t('30 ngày qua') },
+    { value: 'Tháng này', label: t('Tháng này') },
+    { value: 'Tháng trước', label: t('Tháng trước') }
+  ];
+
+  const defaultFilters = ['all', 'Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
+  if (!defaultFilters.includes(dateFilter)) {
+    dateOptions.push({ value: dateFilter, label: getDisplayDateFilterText(dateFilter) });
+  }
+  dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
+
+  const handleCustomDateSubmit = () => {
+    if (!startDate || !endDate) {
+      toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
+      return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      toast.error(t("Từ ngày không được lớn hơn Đến ngày"));
+      return;
+    }
+    const label = `${startDate} ${t('đến')} ${endDate}`;
+    updateParams('date', label);
+    setShowDateModal(false);
+  };
+
+  // ── API Fetchers ──
+  const fetchHeldLeads = async () => {
+    setHeldLeadsLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.set('page', String(currentPage));
+      queryParams.set('pageSize', String(ITEMS_PER_PAGE));
+      if (heldLeadsSearch) queryParams.set('search', heldLeadsSearch);
+      if (dateFilter) queryParams.set('date', dateFilter);
+
+      const res = await fetchAPI(`get_held_leads&${queryParams.toString()}`);
+      if (res.success) {
+        setHeldLeads(res.data || []);
+        setHeldLeadsTotalCount(res.total_count ?? 0);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi tải dữ liệu AI Gác Cổng: ') + e.message);
+    }
+    setHeldLeadsLoading(false);
+  };
+
+  const fetchSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const res = await fetchAPI('get_settings');
+      if (res.success && res.data) {
+        setAiScreenerEnabled(res.data.ai_screener_enabled === '1' || res.data.ai_screener_enabled === 1);
+        if (res.data.ai_screener_rules) setAiScreenerRules(res.data.ai_screener_rules);
+        if (res.data.ai_screener_rounds) {
+          setAiScreenerRounds(res.data.ai_screener_rounds.split(',').map(Number).filter((n: any) => !isNaN(n) && n > 0));
+        } else {
+          setAiScreenerRounds([]);
+        }
+        setAiScreenerMode(res.data.ai_screener_mode || 'ai');
+        setAiScreenerManualAction(res.data.ai_screener_manual_action || 'hold');
+        if (res.data.ai_screener_manual_rules) {
+          try {
+            const parsed = typeof res.data.ai_screener_manual_rules === 'string'
+              ? JSON.parse(res.data.ai_screener_manual_rules)
+              : res.data.ai_screener_manual_rules;
+            if (Array.isArray(parsed)) {
+              setAiScreenerManualRules(parsed);
+            } else {
+              setAiScreenerManualRules([]);
+            }
+          } catch {
+            setAiScreenerManualRules([]);
+          }
+        } else {
+          setAiScreenerManualRules([]);
+        }
+      }
+    } catch (e: any) {
+      console.error('Error fetching settings:', e);
+    }
+    setSettingsLoading(false);
+  };
+
+  const fetchRounds = async () => {
+    try {
+      const res = await fetchAPI('get_rounds');
+      if (res.success && res.data) {
+        setRounds(res.data);
+      }
+    } catch (e) {
+      console.error('Error fetching rounds:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchRounds();
+  }, []);
+
+  useEffect(() => {
+    fetchHeldLeads();
+  }, [searchParams, heldLeadsSearch]);
+
+  // ── Lead Action Handlers ──
+  const handleOpenApproveHeldLead = async (lead: any) => {
+    setActioningHeldLead(lead);
+    setHeldActionModalOpen('approve');
+    setPreviewLoadingId(lead.id);
+    setPreviewedConsultant(null);
+    try {
+      const res = await fetchAPI(`preview_held_lead_assignment&lead_id=${lead.id}`);
+      if (res.success) {
+        setPreviewedConsultant(res.consultant);
+      } else {
+        toast.error(res.message || t('Lỗi tải thông tin Sale tiếp nhận.'));
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+    setPreviewLoadingId(null);
+  };
+
+  const handleApproveHeldLeadSubmit = async () => {
+    if (!actioningHeldLead) return;
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setActionLoading(true);
+    try {
+      const res = await fetchAPI('approve_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId })
+      });
+      if (res.success) {
+        toast.success(t('Đã duyệt và phân bổ lead thành công!'));
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi duyệt lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleRejectHeldLeadSubmit = async () => {
+    if (!actioningHeldLead || !heldActionReason.trim()) {
+      toast.error(t('Vui lòng nhập lý do từ chối.'));
+      return;
+    }
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setActionLoading(true);
+    try {
+      const res = await fetchAPI('reject_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId, reason: heldActionReason })
+      });
+      if (res.success) {
+        toast.success(t('Đã từ chối lead thành công!'));
+        setHeldActionReason('');
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi từ chối lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleBlacklistHeldLeadSubmit = async () => {
+    if (!actioningHeldLead || !heldActionReason.trim()) {
+      toast.error(t('Vui lòng nhập lý do chặn.'));
+      return;
+    }
+    const currentLeadId = actioningHeldLead.id;
+    setHeldActionModalOpen(null);
+    setActionLoading(true);
+    try {
+      const res = await fetchAPI('blacklist_held_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: currentLeadId, reason: heldActionReason })
+      });
+      if (res.success) {
+        toast.success(t('Đã chặn số và đưa vào Blacklist thành công!'));
+        setHeldActionReason('');
+        fetchHeldLeads();
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(res.message || t('Lỗi khi chặn lead'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setActionLoading(false);
+  };
+
+  // ── Config Action Handlers ──
+  const handleSaveConfig = async () => {
+    setSavingSettings(true);
+    const payload = {
+      ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
+      ai_screener_rules: aiScreenerRules,
+      ai_screener_rounds: aiScreenerRounds.join(','),
+      ai_screener_mode: aiScreenerMode,
+      ai_screener_manual_action: aiScreenerManualAction,
+      ai_screener_manual_rules: aiScreenerManualRules
+    };
+
+    try {
+      const json = await fetchAPI('save_settings', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (json.success) {
+        toast.success(t("Đã lưu cấu hình bộ lọc thành công!"));
+        // Dispatch to update badge count if toggled off
+        window.dispatchEvent(new Event('ticket-resolved'));
+      } else {
+        toast.error(t("Lỗi khi lưu cấu hình bộ lọc!"));
+      }
+    } catch {
+      toast.error(t("Lỗi kết nối Server"));
+    }
+    setSavingSettings(false);
+  };
+
+  return (
+    <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+      
+      {/* ── Page Header ── */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+        <div>
+          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
+            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
+              <Shield size={24} />
+            </span>
+            {t('Bộ Lọc AI (Pre-screener)')}
+          </h1>
+          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+            {t('Đánh giá chất lượng lead tự động trước khi phân bổ. Giữ lại lead rác, lead kém chất lượng để tối ưu hóa hiệu suất của Đội ngũ TVV.')}
+          </p>
+        </div>
+
+        {/* Header Actions */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              fetchSettings();
+              setModalTab('config');
+              setIsSettingsModalOpen(true);
+            }}
+            title={t("Cấu hình bộ lọc & Hướng dẫn")}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: '1px solid var(--color-primary)',
+              background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
+              color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: '0.8125rem', fontWeight: 700, transition: 'all 0.15s'
+            }}
+          >
+            <Settings size={14} /> {t('Cấu hình & Hướng dẫn')}
+          </button>
+
+          <div style={{
+            background: heldLeadsTotalCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+            color: heldLeadsTotalCount > 0 ? 'var(--color-danger)' : '#10b981',
+            padding: '8px 16px', borderRadius: 20, fontSize: '0.875rem', fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+            {heldLeadsTotalCount > 0 ? <ShieldAlert size={16} /> : <CheckCircle size={16} />}
+            {heldLeadsTotalCount} {t('đang tạm giữ')}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main content card showing held queue ── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', minHeight: '500px' }}>
+        
+        {/* Filter bar */}
+        <div className="responsive-filter-row" style={{
+          display: 'flex', gap: 12, padding: '14px 18px',
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.04) 0%, rgba(99,102,241,0.02) 100%)',
+          borderBottom: '1px solid var(--color-border)',
+          flexWrap: 'wrap', alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8125rem' }}>
+            <Filter size={14} />
+            <span>{t('Bộ lọc')}</span>
+          </div>
+          <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
+            <input
+              type="text"
+              value={heldLeadsSearch}
+              onChange={e => setHeldLeadsSearch(e.target.value)}
+              placeholder={t("Tìm kiếm Tên, SĐT, Email...")}
+              className="form-input"
+              style={{ height: 36, fontSize: '0.825rem', width: '100%', maxWidth: 350 }}
+            />
+            
+            <div style={{ position: 'relative', width: 180 }}>
+              <CustomSelect
+                options={dateOptions}
+                value={dateFilter}
+                onChange={val => {
+                  if (val === 'Tùy chỉnh') {
+                    setShowDateModal(true);
+                    return;
+                  }
+                  updateParams('date', val.toString());
+                }}
+                width="100%"
+              />
+            </div>
+
+            <button
+              onClick={fetchHeldLeads}
+              disabled={heldLeadsLoading}
+              title={t("Làm mới")}
+              className="btn outline"
+              style={{
+                padding: 0,
+                borderRadius: 8,
+                borderColor: 'var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-muted)',
+                cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                flexShrink: 0
+              }}
+            >
+              <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+          </div>
+        </div>
+
+        {/* Held Leads Queue Table */}
+        {heldLeadsLoading ? (
+          <div style={{ padding: '2rem' }}><TableSkeleton rows={8} cols={4} /></div>
+        ) : heldLeads.length === 0 ? (
+          <div style={{ padding: '8rem 2rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <CheckCircle size={40} color="#10b981" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+              {heldLeadsSearch ? t('Không tìm thấy liên hệ nào') : t('Không có liên hệ nào đang tạm giữ')}
+            </h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0' }}>
+              {heldLeadsSearch ? t('Thử đổi từ khóa tìm kiếm.') : t('Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.')}
+            </p>
+          </div>
+        ) : (
+          <div className="table-wrap" style={{ flex: 1, overflowY: 'auto' }}>
+            <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 5 }}>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 180, minWidth: 180, whiteSpace: 'nowrap' }}>{t('Vòng phân bổ dự kiến')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do AI tạm giữ')}</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280 }}>{t('Thao tác')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {heldLeads.map((l: any) => (
+                  <tr 
+                    key={l.id} 
+                    onClick={() => {
+                      setSelectedLead({
+                        id: l.id,
+                        name: l.name,
+                        phone: l.phone,
+                        email: l.email || '-',
+                        source: l.source || '-',
+                        status: l.status,
+                        assigned_to_name: '-',
+                        round_name: l.round_name || '-',
+                        created_at: l.created_at,
+                        type: l.type || '-',
+                        note: l.note || '',
+                        ai_screener_status: l.ai_screener_status,
+                        ai_evaluation: l.ai_evaluation
+                      });
+                    }}
+                    style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                    className="lead-row"
+                  >
+                    <td style={{ padding: '1.25rem 1.5rem', width: 240, minWidth: 240, whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={l.name} size={36} />
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{l.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{l.phone}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                            {new Date(l.created_at).toLocaleString('vi-VN')}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1.25rem 1.5rem', width: 180, minWidth: 180 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                        <Zap size={12} /> {l.round_name || '-'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {l.ai_screener_status === 'error' ? (
+                          <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
+                          </span>
+                        ) : (
+                          <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <ShieldAlert size={12} /> {t('Dưới chuẩn (AI Held)')}
+                          </span>
+                        )}
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
+                          <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button 
+                          onClick={() => {
+                            setActioningHeldLead(l);
+                            setHeldActionReason('');
+                            setHeldActionModalOpen('blacklist');
+                          }}
+                          className="btn outline sm" 
+                          style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}
+                          title={t("Đưa khách hàng vào danh sách đen & Hủy lead")}
+                        >
+                          <ShieldAlert size={13} style={{ marginRight: 4 }} />
+                          {t('Chặn & Blacklist')}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setActioningHeldLead(l);
+                            setHeldActionReason('');
+                            setHeldActionModalOpen('reject');
+                          }}
+                          className="btn outline sm" 
+                          style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border)', boxShadow: 'none' }}
+                          title={t("Không duyệt và hủy lead")}
+                        >
+                          {t('Hủy lead')}
+                        </button>
+                        <button 
+                          onClick={() => handleOpenApproveHeldLead(l)}
+                          className="btn primary sm" 
+                          style={{ 
+                            background: '#10b981', 
+                            borderColor: '#10b981', 
+                            boxShadow: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title={t("Xem thử AI sẽ giao cho ai và Phê duyệt")}
+                        >
+                          <Check size={14} />
+                          {t('Duyệt giao')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!heldLeadsLoading && heldLeadsTotalCount > ITEMS_PER_PAGE && (
+          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+              {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, heldLeadsTotalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{heldLeadsTotalCount}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                disabled={currentPage === 1}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: Math.min(5, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE)) }, (_, i) => {
+                  const totalHeldPages = Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE);
+                  let startPage = 1;
+                  if (totalHeldPages > 5) {
+                    if (currentPage > 3) {
+                      startPage = currentPage - 2;
+                      if (startPage + 4 > totalHeldPages) {
+                        startPage = totalHeldPages - 4;
+                      }
+                    }
+                  }
+                  const pageNum = startPage + i;
+                  return (
+                     <button
+                       key={pageNum}
+                       onClick={() => updateParams('page', pageNum.toString())}
+                       style={{ 
+                         width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                         border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                         background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                         color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                         cursor: 'pointer'
+                       }}
+                     >
+                       {pageNum}
+                     </button>
+                  );
+                })}
+              </div>
+              <button 
+                onClick={() => updateParams('page', String(Math.min(currentPage + 1, Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE))))}
+                disabled={currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === Math.ceil(heldLeadsTotalCount / ITEMS_PER_PAGE) || heldLeadsTotalCount === 0 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Modals & Drawers ── */}
+
+      {/* Settings Modal (Cấu hình & Hướng dẫn) */}
+      <CustomModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        title={t("Cấu hình Bộ Lọc AI & Hướng dẫn")}
+        width="950px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0', maxHeight: '78vh', overflowY: 'auto' }}>
+          
+          {/* Settings Tab Selector */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--color-bg-alt)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '10px',
+            padding: '3px',
+            gap: '3px',
+            alignSelf: 'flex-start'
+          }}>
+            <button
+              onClick={() => setModalTab('config')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                border: 'none',
+                background: modalTab === 'config' ? 'var(--color-surface)' : 'transparent',
+                color: modalTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              {t("Cấu hình Bộ lọc")}
+            </button>
+            <button
+              onClick={() => setModalTab('guide')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                border: 'none',
+                background: modalTab === 'guide' ? 'var(--color-surface)' : 'transparent',
+                color: modalTab === 'guide' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              {t("Ưu điểm & Hướng dẫn")}
+            </button>
+          </div>
+
+          <div style={{ borderBottom: '1px solid var(--color-border)', margin: '0 -1.5rem' }} />
+
+          {/* Config Content */}
+          {modalTab === 'config' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {settingsLoading ? (
+                <TableSkeleton rows={4} cols={2} />
+              ) : (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1.25rem',
+                    background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px dashed var(--color-border)'
+                  }}>
+                    <ToggleSwitch
+                      checked={aiScreenerEnabled}
+                      onChange={setAiScreenerEnabled}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Kích hoạt AI Gác Cổng (Pre-screener Gatekeeper)')}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                        {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động. Nếu tắt, bỏ qua bộ lọc và phân bổ thẳng.')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {aiScreenerEnabled && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                          {t('Chọn các vòng áp dụng đánh giá Gác Cổng')}
+                        </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {rounds.map(r => {
+                            const roundId = Number(r.id);
+                            const isSelected = aiScreenerRounds.includes(roundId);
+                            return (
+                              <button
+                                key={roundId}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setAiScreenerRounds(aiScreenerRounds.filter(id => id !== roundId));
+                                  } else {
+                                    setAiScreenerRounds([...aiScreenerRounds, roundId]);
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 500,
+                                  border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
+                                  background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  outline: 'none'
+                                }}
+                              >
+                                <div style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  background: isSelected ? 'var(--color-primary)' : 'var(--color-border)'
+                                }} />
+                                {r.round_name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          {t('Chỉ những lead thuộc các vòng được chọn mới đi qua bộ lọc Gác Cổng. Các vòng khác sẽ được phân bổ tự động bình thường.')}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                          {t('Chế độ Lọc Gác Cổng (Screener Mode)')}
+                        </label>
+                        <CustomSelect
+                          options={[
+                            { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') },
+                            { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') }
+                          ]}
+                          value={aiScreenerMode}
+                          onChange={val => setAiScreenerMode(String(val))}
+                          width="100%"
+                        />
+                      </div>
+
+                      {aiScreenerMode === 'ai' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                            {t('Quy tắc & Tiêu chuẩn lọc của AI (Screener Rules)')}
+                          </label>
+                          <textarea
+                            value={aiScreenerRules}
+                            onChange={e => setAiScreenerRules(e.target.value)}
+                            placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã học tiếng Anh, có nền tảng)...")}
+                            rows={6}
+                            style={{
+                              padding: '10px 12px',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '8px',
+                              fontSize: '0.875rem',
+                              outline: 'none',
+                              background: 'var(--color-bg)',
+                              color: 'var(--color-text)',
+                              width: '100%',
+                              fontFamily: 'inherit',
+                              resize: 'vertical',
+                              lineHeight: 1.5
+                            }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {t('Mô tả chi tiết các tiêu chí để AI phân loại "passed" (được phân bổ ngay) hoặc "failed" (tạm giữ phê duyệt).')}
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                              {t('Hành động khi KHỚP quy tắc thủ công (Manual Action)')}
+                            </label>
+                            <CustomSelect
+                              options={[
+                                { value: 'hold', label: t('Tạm giữ để phê duyệt (Hold)') },
+                                { value: 'pass', label: t('Đánh giá Đạt chuẩn để phân bổ (Pass)') }
+                              ]}
+                              value={aiScreenerManualAction}
+                              onChange={val => setAiScreenerManualAction(String(val))}
+                              width="100%"
+                            />
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                              {t('Nếu một lead mới khớp với bất kỳ nhánh quy tắc nào dưới đây, hệ thống sẽ thực hiện hành động đã chọn.')}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                              {t('Danh sách Quy tắc Lọc Thủ công (Manual Screener Rules)')}
+                            </label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                              {aiScreenerManualRules.map((branch, bIndex) => (
+                                <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', position: 'relative', background: 'var(--color-bg-alt)' }}>
+                                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#10b981', borderRadius: '12px 0 0 12px' }} />
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0 }}>
+                                      {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
+                                    </h4>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      style={{ color: 'var(--color-danger)', padding: 4 }}
+                                      onClick={() => setAiScreenerManualRules(aiScreenerManualRules.filter((_, idx) => idx !== bIndex))}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {(branch.conditions || []).map((c: any, i: number) => {
+                                      const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
+                                      const isLast = i === branch.conditions.length - 1;
+                                      return (
+                                        <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                          <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            {i === 0 ? (
+                                              <div style={{ background: '#d1fae5', color: '#047857', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
+                                            ) : (
+                                              <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
+                                            )}
+                                            {!isLast && (
+                                              <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
+                                            )}
+                                          </div>
+
+                                          <div style={{ flex: 1, minWidth: 150 }}>
+                                            <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                                              <CustomSelect
+                                                options={[
+                                                  { value: 'source', label: t('Nguồn Data') },
+                                                  { value: 'type', label: t('Loại Data') },
+                                                  { value: 'note', label: t('Ghi Chú') },
+                                                  { value: 'name', label: t('Họ và Tên') },
+                                                  { value: 'phone', label: t('Số điện thoại') },
+                                                  { value: 'email', label: t('Email') }
+                                                ]}
+                                                value={c.col}
+                                                onChange={val => {
+                                                  const newB = [...aiScreenerManualRules];
+                                                  newB[bIndex].conditions[i].col = String(val);
+                                                  setAiScreenerManualRules(newB);
+                                                }}
+                                                placeholder={t("Chọn trường...")}
+                                              />
+                                            </div>
+                                          </div>
+
+                                          <div style={{ flex: 1, minWidth: 150 }}>
+                                            <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                                              <CustomSelect
+                                                options={[
+                                                  { value: 'contains', label: t('Có chứa từ khóa') },
+                                                  { value: 'not_contains', label: t('Không chứa từ khóa') },
+                                                  { value: 'equals', label: t('Trùng khớp chính xác') },
+                                                  { value: 'not_equals', label: t('Không trùng khớp') },
+                                                  { value: 'starts_with', label: t('Bắt đầu bằng') },
+                                                  { value: 'ends_with', label: t('Kết thúc bằng') },
+                                                  { value: 'is_empty', label: t('Trống') },
+                                                  { value: 'is_not_empty', label: t('Không trống') }
+                                                ]}
+                                                value={c.op}
+                                                onChange={val => {
+                                                  const newB = [...aiScreenerManualRules];
+                                                  newB[bIndex].conditions[i].op = String(val);
+                                                  setAiScreenerManualRules(newB);
+                                                }}
+                                              />
+                                            </div>
+                                          </div>
+
+                                          {!isNoValueOp && (
+                                            <div style={{ flex: 1, minWidth: 150 }}>
+                                              <input
+                                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                                placeholder={t("Nhập giá trị...")}
+                                                value={c.val || ''}
+                                                onChange={e => {
+                                                  const newB = [...aiScreenerManualRules];
+                                                  newB[bIndex].conditions[i].val = e.target.value;
+                                                  setAiScreenerManualRules(newB);
+                                                }}
+                                              />
+                                            </div>
+                                          )}
+
+                                          {branch.conditions.length > 1 && (
+                                            <button
+                                              type="button"
+                                              className="btn ghost"
+                                              style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
+                                              onClick={() => {
+                                                const newB = [...aiScreenerManualRules];
+                                                newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
+                                                setAiScreenerManualRules(newB);
+                                              }}
+                                            >
+                                              <Trash2 size={16} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+
+                                    <div style={{ paddingLeft: 44, marginTop: '0.75rem', position: 'relative' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newB = [...aiScreenerManualRules];
+                                          if (!newB[bIndex].conditions) newB[bIndex].conditions = [];
+                                          newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
+                                          setAiScreenerManualRules(newB);
+                                        }}
+                                        style={{ background: '#d1fae5', color: '#047857', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                      >
+                                        <Plus size={14} /> {t("Thêm điều kiện")}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => setAiScreenerManualRules([...aiScreenerManualRules, { conditions: [{ col: 'source', op: 'contains', val: '' }] }])}
+                                  className="btn outline"
+                                  style={{ gap: 6, fontWeight: 700, borderRadius: 20, borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                                >
+                                  <Plus size={16} /> {t("Thêm nhánh quy tắc")}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+                    <button
+                      onClick={handleSaveConfig}
+                      disabled={savingSettings}
+                      className="btn primary"
+                      style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
+                    >
+                      {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+                      {t("Lưu cấu hình bộ lọc")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Guide Content */}
+          {modalTab === 'guide' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.5rem 0' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2.5rem', alignItems: 'center', flexWrap: 'wrap' }} className="responsive-grid-1-1">
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
+                    {t('Bộ lọc AI - Lá chắn thông minh cho Đội ngũ TVV')}
+                  </h3>
+                  <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
+                    {t('Trong vận hành Telesale, lead rác (số điện thoại ảo, sai thông tin, spam hoặc không đúng đối tượng) chiếm tới 30-40% ngân sách và làm giảm 50% động lực làm việc của đội ngũ. Bộ lọc AI được thiết kế để tự động nhận dạng, phân loại và tạm giữ các lead rác ngay khi vừa đổ về webhook trước khi hệ thống chia số cho Sales.')}
+                  </p>
+                </div>
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(79, 70, 229, 0.05) 100%)',
+                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <ShieldCheck size={20} color="#7c3aed" style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Đã tiết kiệm được')}</span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>
+                    85% +
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    {t('Thống kê thời gian Sales dành cho lead rác giảm rõ rệt sau khi kích hoạt Bộ lọc AI thông minh.')}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                  {t('Sơ đồ hoạt động của hệ thống')}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>1</div>
+                    <div>
+                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Webhook tiếp nhận')}</h5>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead mới đổ vào hệ thống từ Google Sheets, Facebook Form, Landing Page...')}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>2</div>
+                    <div>
+                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Kiểm thử Bộ lọc')}</h5>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Hệ thống đánh giá dựa trên Prompt AI của Gemini hoặc các Luật thủ công đã cấu hình.')}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: '#10b981', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✓</div>
+                    <div>
+                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: '#10b981' }}>{t('Phân bổ tự động')}</h5>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead đạt chuẩn được giao ngay cho TVV theo lượt chia và đẩy đồng bộ lên Sheets.')}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', width: 36, height: 36, borderRadius: '50%', fontWeight: 800, flexShrink: 0 }}>✗</div>
+                    <div>
+                      <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{t('Tạm giữ phê duyệt')}</h5>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('Lead dưới chuẩn bị giữ lại. Admin xem lại tại bảng Phê duyệt để Duyệt hoặc Chặn/Hủy.')}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Zap size={18} color="#eab308" />
+                    {t('Mẹo cấu hình Gemini AI')}
+                  </h4>
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                    <li>
+                      <strong>{t('Đặt tiêu chuẩn rõ ràng:')}</strong> {t('AI hoạt động tốt nhất khi được cung cấp quy tắc dạng logic như "Tiếng Anh: Đạt chuẩn (đã đi làm hoặc sinh viên muốn ôn thi IELTS), Không đạt (học sinh cấp 1, cấp 2 hoặc không nghe điện thoại)".')}
+                    </li>
+                    <li>
+                      <strong>{t('Không cần viết code:')}</strong> {t('Hãy dùng ngôn ngữ tự nhiên bình thường. AI có khả năng đọc ghi chú, thông tin học vấn hay nguồn để suy luận rất tốt.')}
+                    </li>
+                    <li>
+                      <strong>{t('Luôn chỉ rõ trường hợp loại trừ:')}</strong> {t('Ví dụ: "Số điện thoại bị thiếu số hoặc ghi chú ghi là test thì luôn đánh giá không đạt chuẩn".')}
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ShieldAlert size={18} color="#3b82f6" />
+                    {t('Hướng dẫn xử lý duyệt')}
+                  </h4>
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                    <li>
+                      <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
+                    </li>
+                    <li>
+                      <strong>{t('Hủy lead:')}</strong> {t('Hệ thống loại bỏ lead này khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
+                    </li>
+                    <li>
+                      <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>{t("Đóng")}</button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Custom Date Picker Modal */}
+      <CustomModal 
+        isOpen={showDateModal} 
+        onClose={() => setShowDateModal(false)} 
+        title={t("Tùy chỉnh thời gian")}
+        width="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+          <div>
+            <label className="form-label">{t("Từ ngày")}</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={startDate} 
+              onChange={e => setStartDate(e.target.value)} 
+            />
+          </div>
+          <div>
+            <label className="form-label">{t("Đến ngày")}</label>
+            <input 
+              type="date" 
+              className="form-input" 
+              value={endDate} 
+              onChange={e => setEndDate(e.target.value)} 
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
+            <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Approve Held Lead Modal */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'approve'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Phê duyệt & Phân bổ Lead")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
+          </p>
+
+          <div style={{
+            padding: '1.25rem',
+            background: 'linear-gradient(to bottom right, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02))',
+            border: '1px solid rgba(16, 185, 129, 0.15)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            {previewLoadingId !== null ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>{t("Đang tính toán Sale tiếp theo...")}</span>
+              </div>
+            ) : previewedConsultant ? (
+              <>
+                <Avatar src={previewedConsultant.avatar} name={previewedConsultant.name} size={40} />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                    {previewedConsultant.name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Đang hoạt động trong vòng:")} <strong>{actioningHeldLead?.round_name}</strong>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: 600 }}>
+                {t("Không tìm thấy Sale hợp lệ trong vòng để nhận lead này.")}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleApproveHeldLeadSubmit}
+              disabled={previewLoadingId !== null || actionLoading}
+              style={{ background: '#10b981', borderColor: '#10b981' }}
+            >
+              {actionLoading ? t("Đang duyệt...") : t("Xác nhận duyệt")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Reject Held Lead Modal */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'reject'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Từ chối & Hủy Lead")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Vui lòng nhập lý do hủy bỏ lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
+          </p>
+
+          <div>
+            <label className="form-label">{t("Lý do từ chối")}</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              value={heldActionReason}
+              onChange={e => setHeldActionReason(e.target.value)}
+              placeholder={t("Ví dụ: Khách hàng không có nhu cầu thật, sai số...")}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleRejectHeldLeadSubmit}
+              disabled={!heldActionReason.trim() || actionLoading}
+              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+            >
+              {actionLoading ? t("Đang hủy...") : t("Từ chối lead")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Blacklist Held Lead Modal */}
+      <CustomModal
+        isOpen={heldActionModalOpen === 'blacklist'}
+        onClose={() => setHeldActionModalOpen(null)}
+        title={t("Chặn & Đưa vào Blacklist")}
+        width="450px"
+      >
+        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t("Xác nhận chặn số điện thoại này. Số điện thoại sẽ bị lưu vào danh sách đen (Global Exclusion Contacts) để tự động từ chối trong tương lai.")}
+          </p>
+
+          <div>
+            <label className="form-label">{t("Lý do chặn blacklist")}</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              value={heldActionReason}
+              onChange={e => setHeldActionReason(e.target.value)}
+              placeholder={t("Ví dụ: Số ảo phá hoại, spam, đối thủ cạnh tranh...")}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+              {t("Hủy bỏ")}
+            </button>
+            <button 
+              className="btn primary" 
+              onClick={handleBlacklistHeldLeadSubmit}
+              disabled={!heldActionReason.trim() || actionLoading}
+              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+            >
+              {actionLoading ? t("Đang chặn...") : t("Xác nhận chặn")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Customer Detail Drawer/Modal */}
+      <CustomModal
+        isOpen={selectedLead !== null}
+        onClose={() => {
+          setSelectedLead(null);
+        }}
+        title={t("Chi tiết Khách hàng")}
+        width="850px"
+      >
+        {selectedLead && (
+          <div style={{ padding: '1.5rem', background: 'transparent' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+              
+              {/* Cột Trái: Chi Tiết */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <Avatar name={selectedLead.name} size={48} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
+                  </div>
+                </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> {t("Phone")}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> {t("Email")}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t("Nguồn Data")}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                  </div>
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
+                    <div>
+                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Gác Cổng")}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {(() => {
+                  const { cleanNote, blacklistNotes } = parseNote(selectedLead.note || '');
+                  return (
+                    <>
+                      {/* AI Screener Evaluation Details */}
+                      {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && (
+                        <div style={{
+                          marginBottom: '1.25rem',
+                          padding: '1.25rem',
+                          background: selectedLead.ai_screener_status === 'error'
+                            ? 'linear-gradient(to bottom right, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))'
+                            : 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02))',
+                          border: selectedLead.ai_screener_status === 'error'
+                            ? '1px solid rgba(245, 158, 11, 0.15)'
+                            : '1px solid rgba(239, 68, 68, 0.15)',
+                          borderRadius: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem' }}>
+                            {selectedLead.ai_screener_status === 'error' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
+                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Gác Cổng') : t('AI Gác Cổng Tạm Giữ')}</span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+                            <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Clean Note Card */}
+                      <div style={{ 
+                        background: 'var(--color-warning-light)', 
+                        border: '1px solid var(--color-warning-light)',
+                        padding: '1.25rem', 
+                        borderRadius: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: 'none'
+                      }}
+                      className="premium-alert-card"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+                            padding: '8px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: theme === 'dark' ? '#f59e0b' : '#d97706'
+                          }}>
+                            <Tag size={18} strokeWidth={2.5} />
+                          </div>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t("Ghi chú & Phân loại")}</span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
+                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
+                          </div>
+                          
+                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t("Nội dung ghi chú:")}</span>
+                            <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
+                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t("Không có ghi chú thêm")}</em>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Blacklist Notes */}
+                      {blacklistNotes && blacklistNotes.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          {blacklistNotes.map((note, index) => {
+                            const parsed = parseBlacklistNote(note);
+                            return (
+                              <div key={index} style={{
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                border: '1px solid rgba(239, 68, 68, 0.15)',
+                                padding: '1.25rem',
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '8px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-danger)' }}>
+                                    <ShieldAlert size={18} />
+                                  </div>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-danger)' }}>{t("Lịch sử chặn Blacklist")}</span>
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                                  <strong>{t("Lý do chặn:")}</strong> {parsed.reason || t("Không rõ")}
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 4 }}>
+                                  <span>{t("Thực hiện bởi:")} <strong>{parsed.admin}</strong></span>
+                                  <span>•</span>
+                                  <span>{t("Thời gian:")} <strong>{parsed.time}</strong></span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Cột Phải: Thao tác Duyệt nhanh */}
+              <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2rem' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem' }}>{t("Xử lý phê duyệt")}</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  <button
+                    onClick={() => {
+                      setSelectedLead(null);
+                      handleOpenApproveHeldLead(selectedLead);
+                    }}
+                    className="btn primary"
+                    style={{ width: '100%', height: 46, background: '#10b981', borderColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                  >
+                    <Check size={18} />
+                    {t("Duyệt & Phân bổ Lead")}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedLead(null);
+                      setActioningHeldLead(selectedLead);
+                      setHeldActionReason('');
+                      setHeldActionModalOpen('reject');
+                    }}
+                    className="btn outline"
+                    style={{ width: '100%', height: 46, borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                  >
+                    <XCircle size={18} />
+                    {t("Từ chối & Hủy Lead")}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedLead(null);
+                      setActioningHeldLead(selectedLead);
+                      setHeldActionReason('');
+                      setHeldActionModalOpen('blacklist');
+                    }}
+                    className="btn outline"
+                    style={{ width: '100%', height: 46, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                  >
+                    <ShieldAlert size={18} />
+                    {t("Chặn số & Blacklist")}
+                  </button>
+                  
+                  <div style={{
+                    marginTop: '1rem', padding: '1rem',
+                    background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px solid var(--color-border)',
+                    fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5
+                  }}>
+                    <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={14} color="#7c3aed" />
+                      {t("Thông tin thêm")}
+                    </div>
+                    <div>
+                      {t("Khách hàng này được đổ về từ nguồn")} <strong>{selectedLead.source}</strong> {t("vào lúc")} {new Date(selectedLead.created_at).toLocaleString('vi-VN')}. {t("Lead này đã kích hoạt đánh giá tự động và đang được giữ lại để chờ Admin phê duyệt trước khi đi vào hàng chờ phân chia số.")}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+      </CustomModal>
+
+      <style>{`
+        .lead-row:hover {
+          background-color: var(--color-bg-alt) !important;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
+    </div>
+  );
+};

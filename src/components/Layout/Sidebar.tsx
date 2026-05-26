@@ -1,8 +1,8 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, LogOut, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Key, Scale } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { fetchAPI } from '../../utils/api';
 import { Avatar } from '../ui/Avatar';
 
@@ -13,6 +13,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
+  { name: 'Bộ Lọc AI', href: '/gatekeeper', icon: Shield, adminOnly: true, badgeKey: 'gatekeeper' },
   { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
@@ -25,6 +26,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingTickets, setPendingTickets] = useState(0);
+  const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   // Poll pending ticket count every 60s
@@ -48,7 +50,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           countHeld = resHeld.total_count ?? 0;
         }
         
-        setPendingTickets(countReports + countHeld);
+        setPendingTickets(countReports);
+        setHeldLeadsCount(countHeld);
       } catch { /* silent */ }
     };
     fetchPending();
@@ -64,17 +67,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     if (item.adminOnly && user?.role !== 'admin') return false;
     return true;
   });
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const handleProfileClick = () => {
-    if (user?.role === 'admin' || user?.role === 'assistant') {
-      window.dispatchEvent(new CustomEvent('open-profile-modal'));
-    }
-  };
 
   return (
     <>
@@ -221,166 +213,99 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             )}
 
             {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
-              const badgeCount = badgeKey === 'tickets' ? pendingTickets : 0;
+              const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
+              const isSettingsGroupStart = href === '/gatekeeper';
               return (
-                <NavLink
-                  key={href}
-                  to={href}
-                  end={end}
-                  title={isCollapsed ? t(name) : undefined}
-                  onClick={(e) => {
-                    if (location.pathname === href) {
-                      e.preventDefault();
-                      return;
-                    }
-                    if (onMobileClose) onMobileClose();
-                  }}
-                  style={({ isActive }) => ({
-                    display: 'flex', alignItems: 'center', gap: '0.875rem',
-                    padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
-                    justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
-                    textDecoration: 'none', fontSize: '0.9375rem',
-                    fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
-                    position: 'relative',
-                    background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                    whiteSpace: 'nowrap', overflow: 'hidden',
-                  })}
-                >
-                  {({ isActive }) => (
-                    <>
-                      {/* Active indicator */}
-                      {isActive && (
-                        <span style={{
-                          position: 'absolute', left: 0, top: 0, bottom: 0,
-                          width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
-                        }} />
-                      )}
-
-                      {/* Icon Box — with badge dot when collapsed */}
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 10,
-                        background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0, transition: 'all 0.2s', position: 'relative'
-                      }}>
-                        <Icon size={18} color={isActive ? 'white' : 'rgba(255,255,255,0.5)'} />
-                        {/* Collapsed badge dot */}
-                        {isCollapsed && badgeCount > 0 && (
+                <Fragment key={href}>
+                  {isSettingsGroupStart && !isCollapsed && (
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+                      textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+                      padding: '1.25rem 1.5rem 0.5rem 1.5rem', whiteSpace: 'nowrap',
+                      display: 'block'
+                    }}>{t("Cài đặt hệ thống")}</span>
+                  )}
+                  <NavLink
+                    to={href}
+                    end={end}
+                    title={isCollapsed ? t(name) : undefined}
+                    onClick={(e) => {
+                      if (location.pathname === href) {
+                        e.preventDefault();
+                        return;
+                      }
+                      if (onMobileClose) onMobileClose();
+                    }}
+                    style={({ isActive }) => ({
+                      display: 'flex', alignItems: 'center', gap: '0.875rem',
+                      padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
+                      justifyContent: isCollapsed ? 'center' : 'flex-start',
+                      color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
+                      textDecoration: 'none', fontSize: '0.9375rem',
+                      fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
+                      position: 'relative',
+                      background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                    })}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {/* Active indicator */}
+                        {isActive && (
                           <span style={{
-                            position: 'absolute', top: 4, right: 4,
-                            width: 8, height: 8, borderRadius: '50%',
-                            background: '#ef4444',
-                            boxShadow: '0 0 0 2px #1e1246'
+                            position: 'absolute', left: 0, top: 0, bottom: 0,
+                            width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
                           }} />
                         )}
-                      </div>
 
-                      {/* Label + badge count when expanded */}
-                      {!isCollapsed && (
-                        <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          {t(name)}
-                          {badgeCount > 0 && (
+                        {/* Icon Box — with badge dot when collapsed */}
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, transition: 'all 0.2s', position: 'relative'
+                        }}>
+                          <Icon size={18} color={isActive ? 'white' : 'rgba(255,255,255,0.5)'} />
+                          {/* Collapsed badge dot */}
+                          {isCollapsed && badgeCount > 0 && (
                             <span style={{
-                              background: '#ef4444', color: 'white',
-                              fontSize: '0.65rem', fontWeight: 800,
-                              padding: '2px 7px', borderRadius: 20,
-                              minWidth: 20, textAlign: 'center',
-                              lineHeight: '1.4',
-                              boxShadow: '0 2px 4px rgba(239,68,68,0.4)',
-                              animation: 'pulse 2s infinite'
-                            }}>
-                              {badgeCount}
-                            </span>
+                              position: 'absolute', top: 4, right: 4,
+                              width: 8, height: 8, borderRadius: '50%',
+                              background: '#ef4444',
+                              boxShadow: '0 0 0 2px #1e1246'
+                            }} />
                           )}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
+                        </div>
+
+                        {/* Label + badge count when expanded */}
+                        {!isCollapsed && (
+                          <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            {t(name)}
+                            {badgeCount > 0 && (
+                              <span style={{
+                                background: '#ef4444', color: 'white',
+                                fontSize: '0.65rem', fontWeight: 800,
+                                padding: '2px 7px', borderRadius: 20,
+                                minWidth: 20, textAlign: 'center',
+                                lineHeight: '1.4',
+                                boxShadow: '0 2px 4px rgba(239,68,68,0.4)',
+                                animation: 'pulse 2s infinite'
+                              }}>
+                                {badgeCount}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                </Fragment>
               );
             })}
           </div>
         </div>
 
-        {/* Footer User */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }}>
-          <div
-            onClick={handleProfileClick}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              padding: '0.625rem', borderRadius: 10,
-              cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
-              justifyContent: isCollapsed ? 'center' : 'space-between',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={e => {
-              if (user?.role === 'admin' || user?.role === 'assistant') {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Avatar src={user?.avatar} name={user?.name} size={32} />
 
-              {!isCollapsed && (
-                <div style={{ overflow: 'hidden' }}>
-                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</p>
-                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>{user?.role === 'admin' ? t('Quản trị viên') : user?.role === 'assistant' ? t('Trợ lý') : t('Người xem')}</p>
-                </div>
-              )}
-            </div>
-
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-profile-modal'))}
-                  style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#3b82f6')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                  title={t("Hồ sơ & Đổi mật khẩu")}
-                >
-                  <Key size={16} />
-                </button>
-                <button
-                  onClick={handleLogout}
-                  style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                  title={t("Đăng xuất")}
-                >
-                  <LogOut size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {isCollapsed && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }} onClick={e => e.stopPropagation()}>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-profile-modal'))}
-                style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#3b82f6')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                title={t("Hồ sơ & Đổi mật khẩu")}
-              >
-                <Key size={16} />
-              </button>
-              <button
-                onClick={handleLogout}
-                style={{ color: 'rgba(255,255,255,0.3)', padding: 6, borderRadius: 8, transition: 'all 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
-                title={t("Đăng xuất")}
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          )}
-        </div>
 
         {/* Pulse animation */}
         <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }`}</style>

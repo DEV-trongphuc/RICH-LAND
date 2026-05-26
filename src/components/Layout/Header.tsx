@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Key } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Avatar } from '../ui/Avatar';
@@ -20,9 +20,16 @@ const languagesList = [
 
 export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   useEffect(() => {
     if (!isLangOpen) return;
@@ -75,7 +82,6 @@ export const Header = ({ onActivityFeedClick }: { onActivityFeedClick: () => voi
   const [searchQuery, setSearchQuery] = useState('');
   const [leadResults, setLeadResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const navigate = useNavigate();
 
   // Listen to Cmd+K or Ctrl+K
   useEffect(() => {

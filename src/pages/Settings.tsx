@@ -94,6 +94,9 @@ export const Settings = () => {
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState(false);
   const [aiScreenerRules, setAiScreenerRules] = useState('');
   const [aiScreenerRounds, setAiScreenerRounds] = useState<number[]>([]);
+  const [aiScreenerMode, setAiScreenerMode] = useState('ai');
+  const [aiScreenerManualAction, setAiScreenerManualAction] = useState('hold');
+  const [aiScreenerManualRules, setAiScreenerManualRules] = useState<any[]>([]);
 
   // States
   const [provider, setProvider] = useState('appscript');
@@ -350,6 +353,24 @@ export const Settings = () => {
         } else {
           setAiScreenerRounds([]);
         }
+        setAiScreenerMode(json.data.ai_screener_mode || 'ai');
+        setAiScreenerManualAction(json.data.ai_screener_manual_action || 'hold');
+        if (json.data.ai_screener_manual_rules) {
+          try {
+            const parsed = typeof json.data.ai_screener_manual_rules === 'string'
+              ? JSON.parse(json.data.ai_screener_manual_rules)
+              : json.data.ai_screener_manual_rules;
+            if (Array.isArray(parsed)) {
+              setAiScreenerManualRules(parsed);
+            } else {
+              setAiScreenerManualRules([]);
+            }
+          } catch {
+            setAiScreenerManualRules([]);
+          }
+        } else {
+          setAiScreenerManualRules([]);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -414,7 +435,10 @@ export const Settings = () => {
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
       ai_screener_rules: aiScreenerRules,
-      ai_screener_rounds: aiScreenerRounds.join(',')
+      ai_screener_rounds: aiScreenerRounds.join(','),
+      ai_screener_mode: aiScreenerMode,
+      ai_screener_manual_action: aiScreenerManualAction,
+      ai_screener_manual_rules: aiScreenerManualRules
     };
 
     try {
@@ -916,128 +940,7 @@ export const Settings = () => {
                 </div>
               </div>
 
-              {/* AI Screener Gatekeeper Card */}
-              <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 6, borderRadius: 6 }}>
-                    <Shield size={16} />
-                  </span>
-                  {t('Trợ lý AI Lọc & Phê duyệt Gác Cổng')}
-                </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
-                  {t('Tự động đánh giá chất lượng lead khi đổ về webhook dựa trên quy tắc nghiệp vụ. Lead không đạt chuẩn sẽ được tạm giữ phê duyệt và gửi tin báo cho Quản trị viên.')}
-                </p>
 
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '1.25rem', background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
-                  <ToggleSwitch
-                    checked={aiScreenerEnabled}
-                    onChange={setAiScreenerEnabled}
-                  />
-                  <div>
-                    <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                      {t('Kích hoạt AI Gác Cổng (Pre-screener Gatekeeper)')}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                      {t('Khi bật, mọi data mới sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động. Nếu tắt, bỏ qua bộ lọc và phân bổ thẳng.')}
-                    </div>
-                  </div>
-                </div>
-
-                {aiScreenerEnabled && (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                        {t('Chọn các vòng áp dụng đánh giá AI')}
-                      </label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {rounds.map(r => {
-                          const roundId = Number(r.id);
-                          const isSelected = aiScreenerRounds.includes(roundId);
-                          return (
-                            <button
-                              key={roundId}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setAiScreenerRounds(aiScreenerRounds.filter(id => id !== roundId));
-                                } else {
-                                  setAiScreenerRounds([...aiScreenerRounds, roundId]);
-                                }
-                              }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                borderRadius: '20px',
-                                fontSize: '0.8125rem',
-                                fontWeight: 500,
-                                border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
-                                background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                                outline: 'none'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                  e.currentTarget.style.color = 'var(--color-text)';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = 'var(--color-border)';
-                                  e.currentTarget.style.color = 'var(--color-text-muted)';
-                                }
-                              }}
-                            >
-                              <div style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                background: isSelected ? 'var(--color-primary)' : 'var(--color-border)'
-                              }} />
-                              {r.round_name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Chỉ những lead thuộc các vòng được chọn mới đi qua bộ lọc AI. Các vòng khác sẽ được phân bổ tự động bình thường.')}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                        {t('Quy tắc & Tiêu chuẩn lọc của AI (Screener Rules)')}
-                      </label>
-                      <textarea
-                        value={aiScreenerRules}
-                        onChange={e => setAiScreenerRules(e.target.value)}
-                        placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã học tiếng Anh, có nền tảng)...")}
-                        rows={6}
-                        style={{
-                          padding: '10px 12px',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                          outline: 'none',
-                          background: 'var(--color-bg)',
-                          color: 'var(--color-text)',
-                          width: '100%',
-                          fontFamily: 'inherit',
-                          resize: 'vertical',
-                          lineHeight: 1.5
-                        }}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Mô tả chi tiết các tiêu chí để AI phân loại "passed" (được phân bổ ngay) hoặc "failed" (tạm giữ phê duyệt).')}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
 
             <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>

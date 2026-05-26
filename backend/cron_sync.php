@@ -1082,6 +1082,7 @@ foreach ($connections as $connItem) {
                         } else {
                             $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                         }
+                        $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
                         logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);
                         
                         $recordStmt->bind_param("is", $connItem['id'], $rowHash);
