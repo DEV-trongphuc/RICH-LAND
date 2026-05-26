@@ -639,7 +639,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         </div>
 
         <div style="text-align: center; margin-top: 24px;">
-            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
+            <p style="color: #ef4444; font-weight: 700; font-size: 15px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.5px;">Báo cáo Data</p>
+            <p style="color: #64748b; font-size: 14px; margin: 0 0 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
             <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
                 BÁO CÁO DATA
             </a>
