@@ -309,6 +309,13 @@ export const FairShareAudit = () => {
     setShowDateModal(false);
   };
 
+  const getDisplayDateFilterText = (filter: string) => {
+    if (filter.includes('đến')) {
+      return filter.replace(/\s*đến\s*/i, ` ${t('đến')} `);
+    }
+    return t(filter);
+  };
+
   const getFairnessLevel = (index: number) => {
     if (index >= 90) return { label: t('Rất công bằng'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', desc: t('Thuật toán đang phân phối data cực kỳ đồng đều.') };
     if (index >= 75) return { label: t('Bình thường'), color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', desc: t('Có sự chênh lệch nhẹ (thường do tỷ lệ thiết lập hoặc Sale tạm vắng).') };
@@ -329,7 +336,7 @@ export const FairShareAudit = () => {
 
   const defaultFilters = ['Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
   if (!defaultFilters.includes(dateFilter)) {
-    dateOptions.push({ value: dateFilter, label: dateFilter });
+    dateOptions.push({ value: dateFilter, label: getDisplayDateFilterText(dateFilter) });
   }
   dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
 

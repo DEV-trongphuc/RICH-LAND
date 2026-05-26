@@ -211,6 +211,13 @@ export const Tickets = () => {
     }, { replace: true });
   };
 
+  const getDisplayDateFilterText = (filter: string) => {
+    if (filter.includes('đến')) {
+      return filter.replace(/\s*đến\s*/i, ` ${t('đến')} `);
+    }
+    return t(filter);
+  };
+
   const dateOptions = [
     { value: 'all', label: t('Tất cả thời gian') },
     { value: 'Hôm nay', label: t('Hôm nay') },
@@ -226,7 +233,7 @@ export const Tickets = () => {
 
   const defaultFilters = ['all', 'Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
   if (!defaultFilters.includes(dateFilter)) {
-    dateOptions.push({ value: dateFilter, label: t(dateFilter) });
+    dateOptions.push({ value: dateFilter, label: getDisplayDateFilterText(dateFilter) });
   }
 
   dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });

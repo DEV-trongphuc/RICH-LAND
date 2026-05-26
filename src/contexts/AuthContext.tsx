@@ -19,6 +19,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // One-time forced relogin trigger
+  if (!localStorage.getItem('domation_relogin_done')) {
+    localStorage.setItem('domation_relogin_done', 'true');
+    localStorage.removeItem('domation_token');
+    localStorage.removeItem('domation_user');
+  }
+
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('domation_user');
     return storedUser ? JSON.parse(storedUser) : null;

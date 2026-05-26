@@ -32,19 +32,19 @@ export const AIChatbot: React.FC = () => {
 
   // Sidebar stats card config
   const statsConfig = [
-    { key: 'total_today', label: t('Tổng tiếp nhận'), color: '#6366f1', prompt: 'Hôm nay hệ thống nhận bao nhiêu data?' },
-    { key: 'distributed_today', label: t('Đã bàn giao'), color: '#10b981', prompt: 'Hôm nay đã chia bao nhiêu data cho Sale?' },
-    { key: 'duplicates', label: t('Trùng lặp'), color: '#f59e0b', prompt: 'Có bao nhiêu data trùng lặp hôm nay?' },
-    { key: 'blacklists', label: t('Chặn Blacklist'), color: '#6b7280', prompt: 'Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?' },
-    { key: 'ticket_count', label: t('Lỗi / Ticket'), color: '#ef4444', prompt: 'Hôm nay có bao nhiêu ticket báo lỗi?' }
+    { key: 'total_today', label: t('Tổng tiếp nhận'), color: '#6366f1', prompt: t('Hôm nay hệ thống nhận bao nhiêu data?') },
+    { key: 'distributed_today', label: t('Đã bàn giao'), color: '#10b981', prompt: t('Hôm nay đã chia bao nhiêu data cho Sale?') },
+    { key: 'duplicates', label: t('Trùng lặp'), color: '#f59e0b', prompt: t('Có bao nhiêu data trùng lặp hôm nay?') },
+    { key: 'blacklists', label: t('Chặn Blacklist'), color: '#6b7280', prompt: t('Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?') },
+    { key: 'ticket_count', label: t('Lỗi / Ticket'), color: '#ef4444', prompt: t('Hôm nay có bao nhiêu ticket báo lỗi?') }
   ];
 
   // Suggested prompts
   const quickPrompts = [
-    { label: t('📊 Thống kê data hôm nay'), text: 'Hôm nay hệ thống chia bao nhiêu data?' },
-    { label: t('💬 Cài đặt Zalo Bot'), text: 'Zalo Bot hoạt động thế nào?' },
-    { label: t('🛡️ Quản lý Blacklist'), text: 'Làm sao để cấu hình Blacklist?' },
-    { label: t('🎫 Ticket báo lỗi đền bù'), text: 'Quy trình xử lý Ticket lỗi thế nào?' }
+    { label: t('📊 Thống kê data hôm nay'), text: t('Hôm nay hệ thống chia bao nhiêu data?') },
+    { label: t('💬 Cài đặt Zalo Bot'), text: t('Zalo Bot hoạt động thế nào?') },
+    { label: t('🛡️ Quản lý Blacklist'), text: t('Làm sao để cấu hình Blacklist?') },
+    { label: t('🎫 Ticket báo lỗi đền bù'), text: t('Quy trình xử lý Ticket lỗi thế nào?') }
   ];
 
   // Responsive sidebar toggle

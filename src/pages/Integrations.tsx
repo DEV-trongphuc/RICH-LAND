@@ -1829,7 +1829,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         </div>
 
         <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-          <button className="btn outline" onClick={() => setShowAddApi(false)}>Hủy</button>
+          <button className="btn outline" onClick={() => setShowAddApi(false)}>{t('Hủy')}</button>
           <button className="btn primary" onClick={handleAddApiConnection} disabled={isSaving || !newApiName.trim()} style={{ background: 'var(--color-primary)', border: 'none' }}>
             {isSaving ? t('Đang tạo...') : t('Tạo API Endpoint')}
           </button>

@@ -535,7 +535,7 @@ export const Settings = () => {
           toast.error(t("File rỗng."));
         }
       } catch (err: any) {
-        toast.error("Lỗi khi đọc file: " + err.message);
+        toast.error(t("Lỗi khi đọc file: ") + err.message);
       }
     };
     reader.readAsBinaryString(file);
@@ -601,7 +601,7 @@ export const Settings = () => {
           toast.error(res.message || t("Lỗi khi tải và kiểm tra dữ liệu Google Sheet."));
         }
       } catch (err: any) {
-        toast.error("Lỗi: " + err.message);
+        toast.error(t("Lỗi: ") + err.message);
       }
       setChecking(false);
     }
@@ -685,14 +685,14 @@ export const Settings = () => {
 
     // Combine original rows with checking results
     const exportData = checkedResults.map((res, idx) => {
-      const original = selectedSheetId === 'local' ? (localRows[idx] || {}) : { 'Họ và tên': res.name, 'Số điện thoại': res.phone, 'Email': res.email };
+      const original = selectedSheetId === 'local' ? (localRows[idx] || {}) : { [t('Họ và tên')]: res.name, [t('Số điện thoại')]: res.phone, [t('Email')]: res.email };
       return {
         ...original,
-        'Trạng thái CRM': res.has_record ? 'TRÙNG LẶP' : 'MỚI HOÀN TOÀN',
-        'Sale cũ sở hữu': res.consultant_name || '',
-        'Trạng thái Sale cũ': res.consultant_status === 'active' ? 'Đang hoạt động' : (res.consultant_status === 'leave' ? 'Nghỉ phép' : 'Ngưng hoạt động'),
-        'Thời gian tương tác cuối': res.last_interaction_date || '',
-        'Số tháng kể từ tương tác cuối': res.months_since_last_interaction !== null ? Number(res.months_since_last_interaction).toFixed(1) : ''
+        [t('Trạng thái CRM')]: res.has_record ? t('TRÙNG LẶP') : t('MỚI HOÀN TOÀN'),
+        [t('Sale cũ sở hữu')]: res.consultant_name || '',
+        [t('Trạng thái Sale cũ')]: res.consultant_status === 'active' ? t('Đang hoạt động') : (res.consultant_status === 'leave' ? t('Nghỉ phép') : t('Ngưng hoạt động')),
+        [t('Thời gian tương tác cuối')]: res.last_interaction_date || '',
+        [t('Số tháng kể từ tương tác cuối')]: res.months_since_last_interaction !== null ? Number(res.months_since_last_interaction).toFixed(1) : ''
       };
     });
 
@@ -948,7 +948,7 @@ export const Settings = () => {
                           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                             <thead>
                               <tr style={{ background: 'var(--color-bg)' }}>
-                                <th style={{ ...thStyle, width: '50px' }}>STT</th>
+                                <th style={{ ...thStyle, width: '50px' }}>{t('STT')}</th>
                                 <th style={thStyle}>{t('Khách hàng')}</th>
                                 <th style={thStyle}>{t('Liên hệ')}</th>
                                 <th style={thStyle}>{t('Sale Sở Hữu')}</th>
@@ -960,8 +960,8 @@ export const Settings = () => {
                                 paginatedResults.map((item, idx) => {
                                   const globalIdx = (resultsPage - 1) * pageSize + idx + 1;
                                   const statusBadge = item.has_record
-                                    ? <span className="badge danger" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>TRÙNG CRM</span>
-                                    : <span className="badge success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>MỚI</span>;
+                                    ? <span className="badge danger" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>{t('TRÙNG CRM')}</span>
+                                    : <span className="badge success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>{t('MỚI')}</span>;
 
                                   let ownerStatusBadge = null;
                                   if (item.consultant_status) {
@@ -978,15 +978,15 @@ export const Settings = () => {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                           <Avatar name={item.name || t('Không có tên')} size={32} />
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                            <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                                            <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                                             <div>{statusBadge}</div>
                                           </div>
                                         </div>
                                       </td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
-                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
                                         </div>
                                       </td>
                                       <td style={{ padding: '10px 16px' }}>
@@ -1009,7 +1009,7 @@ export const Settings = () => {
                                     </tr>
                                   );
                                 })
-                              ) : <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Không tìm thấy kết quả phù hợp.</td></tr>}
+                              ) : <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t('Không tìm thấy kết quả phù hợp.')}</td></tr>}
                             </tbody>
                           </table>
                         </div>
@@ -1211,13 +1211,13 @@ export const Settings = () => {
                     {headers.length > 0 && (
                       <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <SettingsIcon size={14} /> Ánh xạ cột lọc trùng
+                          <SettingsIcon size={14} /> {t('Ánh xạ cột lọc trùng')}
                         </h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                           <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Số Điện Thoại (Bắt buộc)')}</label>
                             <CustomSelect
-                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              options={[{ value: '', label: t('-- Chọn cột --') }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={phoneCol}
                               onChange={val => setPhoneCol(String(val))}
                               width="100%"
@@ -1226,7 +1226,7 @@ export const Settings = () => {
                           <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Email (Tùy chọn)')}</label>
                             <CustomSelect
-                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              options={[{ value: '', label: t('-- Chọn cột --') }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={emailCol}
                               onChange={val => setEmailCol(String(val))}
                               width="100%"
@@ -1235,7 +1235,7 @@ export const Settings = () => {
                           <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>{t('Cột Họ Tên (Tùy chọn)')}</label>
                             <CustomSelect
-                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              options={[{ value: '', label: t('-- Chọn cột --') }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={nameCol}
                               onChange={val => setNameCol(String(val))}
                               width="100%"
@@ -1246,7 +1246,7 @@ export const Settings = () => {
                               {t('Cột Ngày (Tùy chọn)')}
                             </label>
                             <CustomSelect
-                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              options={[{ value: '', label: t('-- Chọn cột --') }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={dateCol}
                               onChange={val => setDateCol(String(val))}
                               width="100%"
@@ -1257,7 +1257,7 @@ export const Settings = () => {
                               {t('Cột Sale phụ trách (Tùy chọn)')}
                             </label>
                             <CustomSelect
-                              options={[{ value: '', label: '-- Chọn cột --' }, ...headers.map(h => ({ value: h, label: h }))]}
+                              options={[{ value: '', label: t('-- Chọn cột --') }, ...headers.map(h => ({ value: h, label: h }))]}
                               value={salepersonCol}
                               onChange={val => setSalepersonCol(String(val))}
                               width="100%"
@@ -1437,19 +1437,19 @@ export const Settings = () => {
                                     style={{ cursor: 'pointer' }}
                                   />
                                 </th>
-                                <th style={{ ...thStyle, width: '50px' }}>STT</th>
+                                <th style={{ ...thStyle, width: '50px' }}>{t('STT')}</th>
                                 <th style={thStyle}>{t('Khách hàng')}</th>
                                 <th style={thStyle}>{t('Liên hệ')}</th>
                                 <th style={thStyle}>{t('Sale Sở Hữu')}</th>
                                 <th style={thStyle}>{t('Tương Tác Cuối')}</th>
-                                <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>Hành động</th>
+                                <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>{t('Hành động')}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {loadingHistory ? (
                                 <tr>
                                   <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                                    Đang tải lịch sử nhập...
+                                    {t('Đang tải lịch sử nhập...')}
                                   </td>
                                 </tr>
                               ) : paginatedHistory.length > 0 ? (
@@ -1485,13 +1485,13 @@ export const Settings = () => {
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                           <Avatar name={item.name || t('Không có tên')} size={32} />
-                                          <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                                          <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                                         </div>
                                       </td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
-                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{item.phone ? maskPhone(item.phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{item.email ? maskEmail(item.email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
                                         </div>
                                       </td>
                                       <td style={{ padding: '10px 16px' }}>
@@ -1614,13 +1614,13 @@ export const Settings = () => {
                 {provider === 'appscript' && (
                   <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
                     <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Server size={18} color="#10b981" /> Cấu hình Webhook Apps Script
+                      <Server size={18} color="#10b981" /> {t('Cấu hình Webhook Apps Script')}
                     </h4>
 
                     <div style={{ marginBottom: '1rem' }}>
                       <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
                       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                        Mã dưới đây dùng để kích hoạt tính năng <strong>Gửi Email</strong> qua Google. Copy mã này vào Apps Script, chọn <strong>Deploy as web app</strong> (Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.
+                        {t('Mã dưới đây dùng để kích hoạt tính năng')} <strong>{t('Gửi Email')}</strong> {t('qua Google. Copy mã này vào Apps Script, chọn')} <strong>Deploy as web app</strong> {t('(Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.')}
                       </p>
 
                       {/* Collapsible Script Block */}
@@ -1746,11 +1746,11 @@ function doPost(e) {
                     />
                   </div>
                   <div>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Secret Token (Webhook bảo mật)</label>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Secret Token (Webhook bảo mật)')}</label>
                     <input
                       type="password"
                       className="form-input"
-                      placeholder="Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)"
+                      placeholder={t("Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)")}
                       value={zaloWebhookSecret}
                       onChange={e => setZaloWebhookSecret(e.target.value)}
                     />
@@ -1758,27 +1758,27 @@ function doPost(e) {
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Link Zalo Bot (zalo.me/xxx)</label>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Link Zalo Bot (zalo.me/xxx)')}</label>
                   <input
                     className="form-input"
-                    placeholder="VD: https://zalo.me/1185588456243371597"
+                    placeholder={t("VD: https://zalo.me/1185588456243371597")}
                     value={zaloBotLink}
                     onChange={e => setZaloBotLink(e.target.value)}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Link chèn vào Email chào mừng TVV.
+                    {t('Link chèn vào Email chào mừng TVV.')}
                   </p>
                 </div>
 
                 <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
-                  <label className="form-label">Link Webhook khai báo trên Zalo Bot Platform:</label>
+                  <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
                       https://open.domation.net/sale_data/zalo_webhook.php
                     </code>
                   </div>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                    Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.
+                    {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
                   </p>
                 </div>
               </div>
@@ -1792,12 +1792,12 @@ function doPost(e) {
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}><Clock size={16} /></span>
-                    Lịch gửi Báo cáo Tự động
+                    {t('Lịch gửi Báo cáo Tự động')}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '0.875rem 1rem', minWidth: 220 }}>
                       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>
-                        <strong>Cửa sổ thời gian:</strong> Nếu gửi lúc <strong>{zaloDailyReportTime || '17:00'}</strong>, hệ thống sẽ tổng kết chia số từ <strong>{zaloDailyReportTime || '17:00'} hôm qua</strong> đến <strong>{zaloDailyReportTime || '17:00'} hôm nay</strong> — không bỏ sót data đêm.
+                        <strong>{t('Cửa sổ thời gian:')}</strong> {t('Nếu gửi lúc')} <strong>{zaloDailyReportTime || '17:00'}</strong>, {t('hệ thống sẽ tổng kết chia số từ')} <strong>{zaloDailyReportTime || '17:00'} {t('hôm qua')}</strong> {t('đến')} <strong>{zaloDailyReportTime || '17:00'} {t('hôm nay')}</strong> — {t('không bỏ sót data đêm.')}
                       </p>
                     </div>
                     <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
@@ -1816,24 +1816,24 @@ function doPost(e) {
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ display: 'inline-flex', background: '#8b5cf6', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
-                    Lịch gửi Báo cáo Tuần (cho Sale)
+                    {t('Lịch gửi Báo cáo Tuần (cho Sale)')}
                   </h3>
                   <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                    Tự động gửi thống kê nhận data và tình trạng ticket đền bù của tuần qua trực tiếp cho từng Sale qua Email và Zalo.
+                    {t('Tự động gửi thống kê nhận data và tình trạng ticket đền bù của tuần qua trực tiếp cho từng Sale qua Email và Zalo.')}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label className="form-label">Ngày gửi trong tuần</label>
+                      <label className="form-label">{t('Ngày gửi trong tuần')}</label>
                       <CustomSelect
                         options={[
-                          { value: '0', label: 'Tắt báo cáo tuần' },
-                          { value: '1', label: 'Thứ 2 hàng tuần' },
-                          { value: '2', label: 'Thứ 3 hàng tuần' },
-                          { value: '3', label: 'Thứ 4 hàng tuần' },
-                          { value: '4', label: 'Thứ 5 hàng tuần' },
-                          { value: '5', label: 'Thứ 6 hàng tuần' },
-                          { value: '6', label: 'Thứ 7 hàng tuần' },
-                          { value: '7', label: 'Chủ Nhật hàng tuần' }
+                          { value: '0', label: t('Tắt báo cáo tuần') },
+                          { value: '1', label: t('Thứ 2 hàng tuần') },
+                          { value: '2', label: t('Thứ 3 hàng tuần') },
+                          { value: '3', label: t('Thứ 4 hàng tuần') },
+                          { value: '4', label: t('Thứ 5 hàng tuần') },
+                          { value: '5', label: t('Thứ 6 hàng tuần') },
+                          { value: '6', label: t('Thứ 7 hàng tuần') },
+                          { value: '7', label: t('Chủ Nhật hàng tuần') }
                         ]}
                         value={zaloWeeklyReportDay}
                         onChange={val => setZaloWeeklyReportDay(val.toString())}
@@ -1841,7 +1841,7 @@ function doPost(e) {
                       />
                     </div>
                     <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
-                      <label className="form-label">Giờ gửi báo cáo</label>
+                      <label className="form-label">{t('Giờ gửi báo cáo')}</label>
                       <input
                         type="time"
                         className="form-input"
@@ -1857,10 +1857,10 @@ function doPost(e) {
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ display: 'inline-flex', background: '#0ea5e9', color: 'white', padding: 4, borderRadius: 6 }}><Users size={16} /></span>
-                    Admin nhận Báo cáo
+                    {t('Admin nhận Báo cáo')}
                   </h3>
                   <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                    Chọn các tài khoản sẽ nhận báo cáo qua <strong>Email</strong> và <strong>Zalo Bot</strong>. Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.
+                    {t('Chọn các tài khoản sẽ nhận báo cáo qua')} <strong>{t('Email')}</strong> {t('và')} <strong>{t('Zalo Bot')}</strong>. {t('Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.')}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map((admin: any) => {
@@ -1899,29 +1899,29 @@ function doPost(e) {
                               )}
                               {admin.zalo_chat_id ? (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
-                                  <MessageCircle size={11} /> Zalo đã liên kết
+                                  <MessageCircle size={11} /> {t('Zalo đã liên kết')}
                                 </span>
                               ) : (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
-                                  <MessageCircle size={11} /> Chưa liên kết Zalo
+                                  <MessageCircle size={11} /> {t('Chưa liên kết Zalo')}
                                 </span>
                               )}
                             </div>
                           </div>
                           {isSelected && (
-                            <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>Đã chọn</span>
+                            <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>{t('Đã chọn')}</span>
                           )}
                         </label>
                       );
                     })}
                     {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).length === 0 && (
-                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>Chưa có tài khoản Admin nào trong hệ thống.</p>
+                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>{t('Chưa có tài khoản Admin nào trong hệ thống.')}</p>
                     )}
                   </div>
                   {dailyReportAdmins.length === 0 && (
                     <div style={{ marginTop: '0.75rem', padding: '0.625rem 0.875rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Activity size={14} style={{ color: '#b45309', flexShrink: 0 }} />
-                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho <strong>tất cả tài khoản Admin</strong>.</p>
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>{t('Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho')} <strong>{t('tất cả tài khoản Admin')}</strong>.</p>
                     </div>
                   )}
                 </div>
@@ -1965,10 +1965,10 @@ function doPost(e) {
                         onChange={() => setFallbackType('round')}
                         style={{ accentColor: '#ef4444', margin: 0 }}
                       />
-                      Phân bổ theo Vòng mặc định
+                      {t('Phân bổ theo Vòng mặc định')}
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
-                      Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.
+                      {t('Chia đều cho các sale trong Vòng được chọn theo cơ chế Round-Robin.')}
                     </span>
                   </label>
 
@@ -1994,10 +1994,10 @@ function doPost(e) {
                         onChange={() => setFallbackType('admin')}
                         style={{ accentColor: '#ef4444', margin: 0 }}
                       />
-                      Giao cho Admin
+                      {t('Giao cho Admin')}
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '22px' }}>
-                      Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.
+                      {t('Gửi trực tiếp đến Admin được chỉ định và gửi email CC đến các địa chỉ cấu hình.')}
                     </span>
                   </label>
                 </div>
@@ -2060,18 +2060,18 @@ function doPost(e) {
                   <span style={{ display: 'inline-flex', background: '#10b981', color: 'white', padding: 4, borderRadius: 6 }}>
                     <CheckCircle size={16} />
                   </span>
-                  Cấu hình Tự Động Duyệt Ticket
+                  {t('Cấu hình Tự Động Duyệt Ticket')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  Tự động phê duyệt và cộng lượt đền bù khi lý do báo lỗi của Sale chứa các từ khóa định sẵn. Đồng thời gửi thông báo Zalo/Email tự động.
+                  {t('Tự động phê duyệt và cộng lượt đền bù khi lý do báo lỗi của Sale chứa các từ khóa định sẵn. Đồng thời gửi thông báo Zalo/Email tự động.')}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>Kích hoạt Tự động duyệt</div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{t('Kích hoạt Tự động duyệt')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                        Cho phép hệ thống quét từ khóa và tự động duyệt khi Sale gửi ticket báo lỗi
+                        {t('Cho phép hệ thống quét từ khóa và tự động duyệt khi Sale gửi ticket báo lỗi')}
                       </div>
                     </div>
                     <div
@@ -2094,7 +2094,7 @@ function doPost(e) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                          Danh sách luật duyệt tự động
+                          {t('Danh sách luật duyệt tự động')}
                         </div>
                         <button
                           type="button"
@@ -2111,7 +2111,7 @@ function doPost(e) {
                           className="btn btn-primary"
                           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
                         >
-                          <Plus size={16} /> Thêm Luật Mới
+                          <Plus size={16} /> {t('Thêm Luật Mới')}
                         </button>
                       </div>
 
@@ -2120,23 +2120,23 @@ function doPost(e) {
                           textAlign: 'center', padding: '2rem', border: '2px dashed var(--color-border)',
                           borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
                         }}>
-                          Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.
+                          {t('Chưa có luật tự động duyệt nào. Nhấp "Thêm Luật Mới" để bắt đầu thiết lập.')}
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           {ticketAutoApproveRules.map((rule) => {
                             // Gather human-friendly names
                             const targetRounds = rule.rounds.includes('all')
-                              ? 'Tất cả vòng'
-                              : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || 'Không xác định';
+                              ? t('Tất cả vòng')
+                              : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || t('Không xác định');
 
                             const targetSales = rule.sales.includes('all')
-                              ? 'Tất cả Salepersons'
-                              : consultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || 'Không xác định';
+                              ? t('Tất cả Salepersons')
+                              : consultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || t('Không xác định');
 
                             const targetConns = (rule.connections || []).includes('all') || !rule.connections
-                              ? 'Tất cả nguồn'
-                              : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || 'Không xác định';
+                              ? t('Tất cả nguồn')
+                              : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || t('Không xác định');
 
                             const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
 
@@ -2157,7 +2157,7 @@ function doPost(e) {
                                       {rule.name}
                                       {!rule.active && (
                                         <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
-                                          Tắt
+                                          {t('Tắt')}
                                         </span>
                                       )}
                                     </h4>
@@ -2197,20 +2197,20 @@ function doPost(e) {
                                       }}
                                       style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
                                       className="btn-icon-hover"
-                                      title="Chỉnh sửa"
+                                      title={t("Chỉnh sửa")}
                                     >
                                       <Edit2 size={16} />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        if (window.confirm(`Bạn có chắc chắn muốn xóa luật "${rule.name}"?`)) {
+                                        if (window.confirm(t('Bạn có chắc chắn muốn xóa luật "{name}"?').replace('{name}', rule.name))) {
                                           setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
                                         }
                                       }}
                                       style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}
                                       className="btn-icon-hover"
-                                      title="Xóa"
+                                      title={t("Xóa")}
                                     >
                                       <Trash2 size={16} />
                                     </button>
@@ -2220,22 +2220,22 @@ function doPost(e) {
                                 {/* Details/Tags */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
                                   <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ color: 'var(--color-text-muted)' }}>Vòng:</span>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Vòng:')}</span>
                                     <span style={{ fontWeight: 600 }}>{targetRounds}</span>
                                   </div>
                                   <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ color: 'var(--color-text-muted)' }}>Sales:</span>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Sales:')}</span>
                                     <span style={{ fontWeight: 600 }}>{targetSales}</span>
                                   </div>
                                   <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ color: 'var(--color-text-muted)' }}>Nguồn:</span>
+                                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Nguồn:')}</span>
                                     <span style={{ fontWeight: 600 }}>{targetConns}</span>
                                   </div>
                                 </div>
 
                                 {/* Keywords list */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>Từ khóa ({kwList.length}):</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>{t('Từ khóa')} ({kwList.length}):</span>
                                   {kwList.map((kw: string, i: number) => (
                                     <span
                                       key={i}
@@ -2264,14 +2264,14 @@ function doPost(e) {
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
                     <RefreshCw size={16} />
                   </span>
-                  Cấu hình Nhận diện & Lọc Trùng Lặp
+                  {t('Cấu hình Nhận diện & Lọc Trùng Lặp')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.
+                  {t('Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.')}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div>
-                    <label className="form-label">Thời hạn nhận diện trùng lặp (Tháng)</label>
+                    <label className="form-label">{t('Thời hạn nhận diện trùng lặp (Tháng)')}</label>
                     <div style={{ position: 'relative', width: 200 }}>
                       <input
                         type="number"
@@ -2281,10 +2281,10 @@ function doPost(e) {
                         onChange={e => setDuplicateCheckMonths(Math.max(1, Number(e.target.value)))}
                         style={{ paddingRight: 60 }}
                       />
-                      <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Tháng</span>
+                      <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>{t('Tháng')}</span>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-                      Mặc định là 6 tháng. Đặt 12 tháng nếu muốn giữ khách cũ cho Sale trong vòng 1 năm.
+                      {t('Mặc định là 6 tháng. Đặt 12 tháng nếu muốn giữ khách cũ cho Sale trong vòng 1 năm.')}
                     </p>
                   </div>
 
@@ -2294,9 +2294,9 @@ function doPost(e) {
                       onChange={setReassignIfOwnerInactive}
                     />
                     <div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Giao lại khi Sale cũ không còn hoạt động (Mặc định BẬT)</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Giao lại khi Sale cũ không còn hoạt động (Mặc định BẬT)')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                        Nếu bật: Khi phát hiện trùng số nhưng Sale cũ phụ trách số đó đã ngừng hoạt động / nghỉ việc / nghỉ phép, lead sẽ được coi là mới và tự động chia lại cho Sale mới đang hoạt động. Nếu tắt: Giữ nguyên Sale cũ phụ trách, cập nhật tương tác mới và không phân bổ lại. (Lưu ý: Với dữ liệu ánh xạ/import lịch sử, lead luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo).
+                        {t('Nếu bật: Khi phát hiện trùng số nhưng Sale cũ phụ trách số đó đã ngừng hoạt động / nghỉ việc / nghỉ phép, lead sẽ được coi là mới và tự động chia lại cho Sale mới đang hoạt động. Nếu tắt: Giữ nguyên Sale cũ phụ trách, cập nhật tương tác mới và không phân bổ lại. (Lưu ý: Với dữ liệu ánh xạ/import lịch sử, lead luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo).')}
                       </div>
                     </div>
                   </div>
@@ -2309,19 +2309,19 @@ function doPost(e) {
                   <span style={{ display: 'inline-flex', background: '#374151', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Shield size={16} />
                   </span>
-                  Danh sách đen & Loại trừ Data
+                  {t('Danh sách đen & Loại trừ Data')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và <strong>KHÔNG</strong> được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).
+                  {t('Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và')} <strong>{t('KHÔNG')}</strong> {t('được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).')}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {/* Part 1: Exclusion Keys */}
                   <div>
                     <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Từ khóa loại trừ (Keys)</span>
+                      <span>{t('Từ khóa loại trừ (Keys)')}</span>
                       <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>
-                        Ngăn cách bằng dấu phẩy hoặc nhấn Enter khi nhập
+                        {t('Ngăn cách bằng dấu phẩy hoặc nhấn Enter khi nhập')}
                       </span>
                     </label>
                     
@@ -2329,7 +2329,7 @@ function doPost(e) {
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="Nhập từ khóa cần chặn (VD: spam, test, rac...)"
+                        placeholder={t("Nhập từ khóa cần chặn (VD: spam, test, rac...)")}
                         value={newKeyInput}
                         onChange={e => setNewKeyInput(e.target.value)}
                         onKeyDown={e => {
@@ -2357,7 +2357,7 @@ function doPost(e) {
                           }
                         }}
                       >
-                        Thêm
+                        {t('Thêm')}
                       </button>
                     </div>
 
@@ -2374,7 +2374,7 @@ function doPost(e) {
                       {(() => {
                         const keys = exclusionKeys ? exclusionKeys.split(',').map(k => k.trim()).filter(Boolean) : [];
                         if (keys.length === 0) {
-                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '4px' }}>Chưa có từ khóa loại trừ nào.</span>;
+                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '4px' }}>{t('Chưa có từ khóa loại trừ nào.')}</span>;
                         }
                         return keys.map((key, idx) => (
                           <span
@@ -2410,7 +2410,7 @@ function doPost(e) {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                        Số điện thoại / Email loại trừ
+                        {t('Số điện thoại / Email loại trừ')}
                       </label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input
@@ -2433,7 +2433,7 @@ function doPost(e) {
                             fontWeight: 600
                           }}
                         >
-                          <Upload size={14} /> Nhập từ Excel/CSV
+                          <Upload size={14} /> {t('Nhập từ Excel/CSV')}
                         </label>
                       </div>
                     </div>
@@ -2442,7 +2442,7 @@ function doPost(e) {
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="Nhập SĐT hoặc Email (VD: 0909123456 hoặc spam@gmail.com)"
+                        placeholder={t("Nhập SĐT hoặc Email (VD: 0909123456 hoặc spam@gmail.com)")}
                         value={newContactInput}
                         onChange={e => setNewContactInput(e.target.value)}
                         onKeyDown={e => {
@@ -2480,7 +2480,7 @@ function doPost(e) {
                           }
                         }}
                       >
-                        Thêm
+                        {t('Thêm')}
                       </button>
                     </div>
 
@@ -2494,7 +2494,7 @@ function doPost(e) {
                             <input
                               type="text"
                               className="form-input"
-                              placeholder="Tìm nhanh SĐT/Email trong danh sách đen..."
+                              placeholder={t("Tìm nhanh SĐT/Email trong danh sách đen...")}
                               value={blacklistSearchQuery}
                               onChange={e => setBlacklistSearchQuery(e.target.value)}
                               style={{ paddingLeft: '32px', height: '32px', fontSize: '0.8125rem' }}
@@ -2502,7 +2502,7 @@ function doPost(e) {
                             <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'var(--color-text-muted)' }} />
                           </div>
                           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                            Tổng số: {contacts.length} liên hệ
+                            {t('Tổng số: {count} liên hệ').replace('{count}', String(contacts.length))}
                           </span>
                         </div>
                       );
@@ -2535,7 +2535,7 @@ function doPost(e) {
                               gap: '6px'
                             }}
                           >
-                            Số điện thoại
+                            {t('Số điện thoại')}
                             <span style={{
                               fontSize: '0.7rem',
                               background: blacklistContactTab === 'phone' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
@@ -2566,7 +2566,7 @@ function doPost(e) {
                               gap: '6px'
                             }}
                           >
-                            Email
+                            {t('Email')}
                             <span style={{
                               fontSize: '0.7rem',
                               background: blacklistContactTab === 'email' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
@@ -2596,7 +2596,7 @@ function doPost(e) {
                       {(() => {
                         const contacts = exclusionContacts ? exclusionContacts.split(',').map(c => c.trim()).filter(Boolean) : [];
                         if (contacts.length === 0) {
-                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có liên hệ loại trừ nào.</span>;
+                          return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có liên hệ loại trừ nào.')}</span>;
                         }
                         
                         const phones = contacts.filter(c => !c.includes('@'));
@@ -2609,7 +2609,7 @@ function doPost(e) {
 
                         if (filtered.length === 0) {
                           return <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                            {blacklistSearchQuery ? 'Không tìm thấy liên hệ khớp với tìm kiếm.' : `Chưa có ${blacklistContactTab === 'phone' ? 'số điện thoại' : 'email'} nào trong danh sách.`}
+                            {blacklistSearchQuery ? t('Không tìm thấy liên hệ khớp với tìm kiếm.') : (blacklistContactTab === 'phone' ? t('Chưa có số điện thoại nào trong danh sách.') : t('Chưa có email nào trong danh sách.'))}
                           </span>;
                         }
 
@@ -2658,7 +2658,7 @@ function doPost(e) {
                                 fontStyle: 'italic',
                                 padding: '4px 0'
                               }}>
-                                ... và {filtered.length - maxDisplay} liên hệ khác. Sử dụng ô tìm kiếm để lọc thêm.
+                                {t('... và {count} liên hệ khác. Sử dụng ô tìm kiếm để lọc thêm.').replace('{count}', String(filtered.length - maxDisplay))}
                               </div>
                             )}
                           </>
@@ -2736,17 +2736,17 @@ function doPost(e) {
       <CustomModal
         isOpen={ruleModalOpen}
         onClose={() => setRuleModalOpen(false)}
-        title={editingRule ? "Chỉnh sửa Luật Tự Động Duyệt" : "Thêm Luật Tự Động Duyệt Mới"}
+        title={editingRule ? t("Chỉnh sửa Luật Tự Động Duyệt") : t("Thêm Luật Tự Động Duyệt Mới")}
         width="650px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
           {/* Name */}
           <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>Tên luật duyệt tự động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên luật duyệt tự động')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <input
               type="text"
               className="form-input"
-              placeholder="Ví dụ: Lỗi số điện thoại — Vòng A"
+              placeholder={t("Ví dụ: Lỗi số điện thoại — Vòng A")}
               value={ruleName}
               onChange={e => setRuleName(e.target.value)}
             />
@@ -2755,54 +2755,54 @@ function doPost(e) {
           {/* Scope: Rounds */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Vòng phân bổ"
+              label={t("Áp dụng cho Vòng phân bổ")}
               options={roundOptions}
               value={ruleRounds}
               onChange={setRuleRounds}
               multiple={true}
               searchable={true}
-              placeholder="Chọn vòng phân bổ..."
+              placeholder={t("Chọn vòng phân bổ...")}
             />
           </div>
 
           {/* Scope: Sales */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Tư vấn viên (Sales)"
+              label={t("Áp dụng cho Tư vấn viên (Sales)")}
               options={saleOptions}
               value={ruleSales}
               onChange={setRuleSales}
               multiple={true}
               searchable={true}
-              placeholder="Chọn tư vấn viên..."
+              placeholder={t("Chọn tư vấn viên...")}
             />
           </div>
 
           {/* Scope: Sources (Sheet Connections) */}
           <div>
             <CustomSelect
-              label="Áp dụng cho Nguồn dữ liệu (Sources)"
+              label={t("Áp dụng cho Nguồn dữ liệu (Sources)")}
               options={connectionOptions}
               value={ruleConnections}
               onChange={setRuleConnections}
               multiple={true}
               searchable={true}
-              placeholder="Chọn nguồn dữ liệu..."
+              placeholder={t("Chọn nguồn dữ liệu...")}
             />
           </div>
 
           {/* Keywords / Reasons */}
           <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t('Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy)')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <textarea
               className="form-input"
-              placeholder="Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được"
+              placeholder={t("Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được")}
               value={ruleKeywords}
               onChange={e => setRuleKeywords(e.target.value)}
               style={{ minHeight: 80, resize: 'vertical' }}
             />
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-              Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.
+              {t('Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.')}
             </span>
           </div>
 
@@ -2813,8 +2813,8 @@ function doPost(e) {
             borderRadius: 'var(--radius-lg)', marginTop: '0.25rem'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>Trạng thái hoạt động</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Kích hoạt hoặc tạm ngưng áp dụng luật này</span>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t('Trạng thái hoạt động')}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Kích hoạt hoặc tạm ngưng áp dụng luật này')}</span>
             </div>
             <div
               onClick={() => setRuleActive(!ruleActive)}
@@ -2840,30 +2840,30 @@ function doPost(e) {
               className="btn outline"
               onClick={() => setRuleModalOpen(false)}
             >
-              Hủy
+              {t('Hủy')}
             </button>
             <button
               type="button"
               className="btn btn-primary"
               onClick={() => {
                 if (!ruleName.trim()) {
-                  toast.error("Vui lòng nhập tên luật!");
+                  toast.error(t("Vui lòng nhập tên luật!"));
                   return;
                 }
                 if (!ruleKeywords.trim()) {
-                  toast.error("Vui lòng nhập từ khóa duyệt!");
+                  toast.error(t("Vui lòng nhập từ khóa duyệt!"));
                   return;
                 }
                 if (ruleRounds.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một vòng áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một vòng áp dụng!"));
                   return;
                 }
                 if (ruleSales.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một Sale áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một Sale áp dụng!"));
                   return;
                 }
                 if (ruleConnections.length === 0) {
-                  toast.error("Vui lòng chọn ít nhất một nguồn áp dụng!");
+                  toast.error(t("Vui lòng chọn ít nhất một nguồn áp dụng!"));
                   return;
                 }
 
@@ -2883,15 +2883,15 @@ function doPost(e) {
 
                 if (editingRule) {
                   setTicketAutoApproveRules(prev => prev.map(r => r.id === editingRule.id ? newRule : r));
-                  toast.success("Đã cập nhật luật thành công!");
+                  toast.success(t("Đã cập nhật luật thành công!"));
                 } else {
                   setTicketAutoApproveRules(prev => [...prev, newRule]);
-                  toast.success("Đã thêm luật mới thành công!");
+                  toast.success(t("Đã thêm luật mới thành công!"));
                 }
                 setRuleModalOpen(false);
               }}
             >
-              Xác nhận
+              {t('Xác nhận')}
             </button>
           </div>
         </div>
@@ -2901,38 +2901,38 @@ function doPost(e) {
         isOpen={confirmDeleteLogsOpen}
         onClose={() => setConfirmDeleteLogsOpen(false)}
         onConfirm={executeDeleteHistory}
-        title="Xác nhận xóa bản ghi"
+        title={t("Xác nhận xóa bản ghi")}
         message={logsToDelete.length === 1
-          ? "Bạn có chắc chắn muốn xóa bản ghi nhập này không? Thao tác này cũng sẽ xóa Lead tương ứng khỏi CRM."
-          : `Bạn có chắc chắn muốn xóa ${logsToDelete.length} bản ghi nhập đã chọn? Thao tác này cũng sẽ xóa các Lead tương ứng khỏi CRM.`}
-        confirmText="Xóa bản ghi"
-        cancelText="Hủy"
+          ? t("Bạn có chắc chắn muốn xóa bản ghi nhập này không? Thao tác này cũng sẽ xóa Lead tương ứng khỏi CRM.")
+          : t("Bạn có chắc chắn muốn xóa {count} bản ghi nhập đã chọn? Thao tác này cũng sẽ xóa các Lead tương ứng khỏi CRM.").replace('{count}', String(logsToDelete.length))}
+        confirmText={t("Xóa bản ghi")}
+        cancelText={t("Hủy")}
       />
 
       <ConfirmModal
         isOpen={confirmImportOpen}
         onClose={() => setConfirmImportOpen(false)}
         onConfirm={executeImportLeads}
-        title="Xác nhận nhập dữ liệu"
-        message={`Bạn có chắc chắn muốn nhập ${localRows.length} dòng dữ liệu từ file vào hệ thống không?`}
-        confirmText="Bắt đầu nhập"
-        cancelText="Hủy"
+        title={t("Xác nhận nhập dữ liệu")}
+        message={t("Bạn có chắc chắn muốn nhập {count} dòng dữ liệu từ file vào hệ thống không?").replace('{count}', String(localRows.length))}
+        confirmText={t("Bắt đầu nhập")}
+        cancelText={t("Hủy")}
         confirmType="primary"
         width="750px"
       >
         {localRows.length > 0 && (
           <div style={{ marginTop: '1rem', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-surface)' }}>
             <div style={{ background: 'var(--color-bg)', padding: '10px 16px', fontSize: '0.8rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-              Xem trước 5 dòng dữ liệu đầu tiên:
+              {t('Xem trước 5 dòng dữ liệu đầu tiên:')}
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Khách hàng</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Liên hệ</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Ngày</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Sale phụ trách</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Khách hàng')}</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Liên hệ')}</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Ngày')}</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Sale phụ trách')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2958,14 +2958,14 @@ function doPost(e) {
                       <tr key={idx} style={{ borderBottom: idx < Math.min(localRows.length, 5) - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
                         <td style={{ padding: '10px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar name={name || 'Không có tên'} size={32} />
-                            <span style={{ fontWeight: 600 }}>{name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Chưa cập nhật</em>}</span>
+                            <Avatar name={name || t('Không có tên')} size={32} />
+                            <span style={{ fontWeight: 600 }}>{name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                           </div>
                         </td>
                         <td style={{ padding: '10px 16px' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{phone ? maskPhone(phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
-                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{email ? maskEmail(email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>Trống</em>}</span>
+                            <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{phone ? maskPhone(phone) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{email ? maskEmail(email) : <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Trống')}</em>}</span>
                           </div>
                         </td>
                         <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>
@@ -3014,7 +3014,7 @@ function doPost(e) {
               padding: 0,
               boxShadow: '0 4px 14px 0 rgba(124, 58, 237, 0.4)'
             }}
-            title="Lưu cấu hình"
+            title={t("Lưu cấu hình")}
           >
             {saving ? <Activity size={24} className="spin" /> : <Save size={24} />}
           </button>

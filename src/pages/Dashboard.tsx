@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -289,7 +289,7 @@ export const Dashboard = () => {
 
   const defaultFilters = ['Hôm nay', 'Hôm qua', 'Tuần này', 'Tuần trước', 'Tuần trước nữa', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chỉnh'];
   if (!defaultFilters.includes(dateFilter)) {
-    dateOptions.push({ value: dateFilter, label: dateFilter });
+    dateOptions.push({ value: dateFilter, label: getDisplayDateFilterText(dateFilter) });
   }
 
   dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
@@ -324,6 +324,13 @@ export const Dashboard = () => {
         }
         .top-consultant-item:hover .consultant-name {
           color: var(--color-primary);
+        }
+        .top-consultant-item:hover .consultant-chart-icon {
+          opacity: 1 !important;
+          transform: scale(1.1);
+        }
+        .consultant-chart-icon {
+          transition: all 0.2s ease-in-out;
         }
       `}</style>
 
@@ -624,7 +631,10 @@ export const Dashboard = () => {
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
                         <Avatar src={c.avatar} name={c.name} size={24} />
-                        <span className="consultant-name" style={{ transition: 'color 0.2s ease' }}>{c.name}</span>
+                        <span className="consultant-name" style={{ transition: 'color 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {c.name}
+                          <BarChart2 size={14} className="consultant-chart-icon" style={{ opacity: 0.35, color: 'var(--color-primary)' }} />
+                        </span>
                       </span>
                       <span style={{ color: 'var(--color-text)' }}>{c.data} {t('lead')}</span>
                     </div>
