@@ -59,26 +59,36 @@ $admin5Name = ($admin5Res && $row = $admin5Res->fetch_assoc()) ? $row['name'] : 
 
 // 2 rejected tickets (Từ chối) currently resolved by "Hệ thống" -> turn to admin 3
 $rejectedPhones = ['0939312685', '0912457911'];
-foreach ($rejectedPhones as $phone) {
-    $conn->query("
-        UPDATE data_reports dr
-        JOIN leads l ON dr.lead_id = l.id
-        SET dr.resolved_by = '$admin3Name'
-        WHERE l.phone = '$phone' AND dr.status = 'rejected'
-    ");
-    echo "Successfully updated rejected data report for lead $phone to be resolved by $admin3Name (Admin ID 3).\n";
+$stmtRej = $conn->prepare("
+    UPDATE data_reports dr
+    JOIN leads l ON dr.lead_id = l.id
+    SET dr.resolved_by = ?
+    WHERE l.phone = ? AND dr.status = 'rejected'
+");
+if ($stmtRej) {
+    foreach ($rejectedPhones as $phone) {
+        $stmtRej->bind_param("ss", $admin3Name, $phone);
+        $stmtRej->execute();
+        echo "Successfully updated rejected data report for lead $phone to be resolved by $admin3Name (Admin ID 3).\n";
+    }
+    $stmtRej->close();
 }
 
 // 2 approved tickets (Đã duyệt) currently resolved by "Hệ thống" -> turn to admin 5
 $approvedPhones = ['0824866886', '0586044779'];
-foreach ($approvedPhones as $phone) {
-    $conn->query("
-        UPDATE data_reports dr
-        JOIN leads l ON dr.lead_id = l.id
-        SET dr.resolved_by = '$admin5Name'
-        WHERE l.phone = '$phone' AND dr.status = 'approved'
-    ");
-    echo "Successfully updated approved data report for lead $phone to be resolved by $admin5Name (Admin ID 5).\n";
+$stmtApp = $conn->prepare("
+    UPDATE data_reports dr
+    JOIN leads l ON dr.lead_id = l.id
+    SET dr.resolved_by = ?
+    WHERE l.phone = ? AND dr.status = 'approved'
+");
+if ($stmtApp) {
+    foreach ($approvedPhones as $phone) {
+        $stmtApp->bind_param("ss", $admin5Name, $phone);
+        $stmtApp->execute();
+        echo "Successfully updated approved data report for lead $phone to be resolved by $admin5Name (Admin ID 5).\n";
+    }
+    $stmtApp->close();
 }
 
 } catch (Throwable $e) {

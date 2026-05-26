@@ -1641,4 +1641,6 @@ export const en: Record<string, string> = {
   "Số Điện Thoại": "Phone Number",
   "Ghi Chú": "Notes",
   "Sale phụ trách (Trùng số nhắc lại)": "Assigned Sale (Recall duplicate)",
+  "Theo Kết nối": "By Connection",
+  "Theo Nguồn Lead": "By Lead Source",
 };

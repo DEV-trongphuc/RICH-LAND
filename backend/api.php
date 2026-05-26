@@ -2005,6 +2005,8 @@ switch ($action) {
             WHERE consultant_id = ? AND $ticketCondition
         ");
         $ticketsStats = ['total' => 0, 'approved' => 0, 'rejected' => 0, 'pending' => 0];
+        $activeCompSum = 0;
+        $blacklistCompCount = 0;
         if ($stmtTickets) {
             $bindTypes = "i" . $ticketTypes;
             $bindParams = array_merge([$consultantId], $ticketParams);
@@ -2020,7 +2022,6 @@ switch ($action) {
             $stmtTickets->close();
 
             // Cộng thêm "Bù chủ động" từ active_compensation_logs vào Đã bù (và tổng gửi đi)
-            $activeCompSum = 0;
             $sqlActiveComp = "
                 SELECT IFNULL(SUM(amount), 0) as active_comp_sum
                 FROM active_compensation_logs
@@ -2038,7 +2039,6 @@ switch ($action) {
             }
 
             // Cộng thêm "Bù blacklist" từ admin_logs vào Đã bù (và tổng gửi đi)
-            $blacklistCompCount = 0;
             $sqlBlacklistLogs = "
                 SELECT details FROM admin_logs
                 WHERE action = 'BLOCK_LEAD_BLACKLIST'
@@ -6108,6 +6108,27 @@ switch ($action) {
             }
         }
 
+        // Query true Lead Source Ratio (Optimized: No JOIN on sheet_connections needed)
+        $leadSourceSql = "SELECT COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source, COUNT(dl.id) as count 
+                          FROM distribution_logs dl 
+                          JOIN leads l ON dl.lead_id = l.id
+                          WHERE $dateCondition AND dl.status != 'silent'
+                          GROUP BY COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') ORDER BY count DESC";
+        $leadSourceResRaw = $conn->query($leadSourceSql);
+        $leadSourceStats = [];
+        if ($leadSourceResRaw) {
+            $colors = ['#8b5cf6', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+            $i = 0;
+            while ($row = $leadSourceResRaw->fetch_assoc()) {
+                $leadSourceStats[] = [
+                    'name' => $row['source'] ?: 'Không xác định',
+                    'value' => (int) $row['count'],
+                    'color' => $colors[$i % count($colors)]
+                ];
+                $i++;
+            }
+        }
+
         // Query Error Stats by Consultant (Approved tickets)
         $dateConditionResolved = str_replace('received_at', 'dr.resolved_at', $dateCondition);
         $errorSql = "SELECT c.name, COUNT(dr.id) as count 
@@ -6146,6 +6167,7 @@ switch ($action) {
                 'topConsultants' => $topConsultants,
                 'roundRatio' => $roundRatio,
                 'sourceStats' => $sourceStats,
+                'leadSourceStats' => $leadSourceStats,
                 'errorStats' => $errorStats
             ]
         ]);
@@ -6223,10 +6245,9 @@ switch ($action) {
 
         // Query distinct sources active in this period to build charts easily
         $sources = [];
-        $sourcesSql = "SELECT DISTINCT COALESCE(sc.sheet_name, l.source) as source 
+        $sourcesSql = "SELECT DISTINCT COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source 
                        FROM distribution_logs dl 
                        JOIN leads l ON dl.lead_id = l.id
-                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                        WHERE $dateCondition $roundCondition AND dl.status != 'silent'";
         $sourcesRes = $conn->query($sourcesSql);
         if ($sourcesRes) {
@@ -6277,13 +6298,12 @@ switch ($action) {
         unset($c);
 
         // Query source breakdown per consultant grouped by status
-        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(sc.sheet_name, l.source) as source, dl.status, COUNT(*) as cnt 
+        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source, dl.status, COUNT(*) as cnt 
                             FROM distribution_logs dl
                             JOIN leads l ON dl.lead_id = l.id
-                            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                             WHERE $dateCondition $roundCondition 
                               AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
-                            GROUP BY dl.assigned_to, COALESCE(sc.sheet_name, l.source), dl.status";
+                            GROUP BY dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định'), dl.status";
         $srcRes = $conn->query($sourceCountsSql);
         $consultantSourceStatusCounts = [];
         if ($srcRes) {

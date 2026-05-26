@@ -258,14 +258,27 @@ export const FairShareAudit = () => {
     try {
       const res = await fetchAPI('get_rounds');
       if (res.success) {
-        setRounds(res.data || []);
+        const roundsData = res.data || [];
+        setRounds(roundsData);
+        
+        // Auto-select the first round if no round_id is currently selected/passed
+        const roundIdParam = searchParams.get('round_id');
+        if (!roundIdParam && roundsData.length > 0) {
+          setRoundFilter(String(roundsData[0].id));
+        } else if (roundsData.length === 0) {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
       }
     } catch (e) {
       console.error('Error fetching rounds:', e);
+      setLoading(false);
     }
   };
 
   const fetchStats = async (signal?: AbortSignal) => {
+    if (!roundFilter) return; // Guard to prevent fetching before round filter is initialized
     setLoading(true);
     try {
       const url = `get_fair_share_stats&date=${encodeURIComponent(dateFilter)}&round_id=${roundFilter}`;
@@ -360,10 +373,7 @@ export const FairShareAudit = () => {
   }
   dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
 
-  const roundOptions = [
-    { value: '', label: t('Tất cả các Vòng') },
-    ...rounds.map(r => ({ value: String(r.id), label: r.round_name }))
-  ];
+  const roundOptions = rounds.map(r => ({ value: String(r.id), label: r.round_name }));
 
   const activeData = isSimulating ? simulatedData : data;
 

@@ -27,6 +27,7 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('Tháng này');
   const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
+  const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
   const displayChartMode = isSingleDay ? 'hour' : chartMode;
@@ -680,63 +681,102 @@ export const Dashboard = () => {
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
                   <GitBranch size={18} color="#8b5cf6" /> {t('Tỷ lệ Nguồn Data')}
                 </h3>
+                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)' }}>
+                  <button
+                    onClick={() => setSourceViewMode('connection')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: sourceViewMode === 'connection' ? 'var(--color-surface)' : 'transparent',
+                      color: sourceViewMode === 'connection' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: sourceViewMode === 'connection' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    {t('Theo Kết nối')}
+                  </button>
+                  <button
+                    onClick={() => setSourceViewMode('lead')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: sourceViewMode === 'lead' ? 'var(--color-surface)' : 'transparent',
+                      color: sourceViewMode === 'lead' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: sourceViewMode === 'lead' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    {t('Theo Nguồn Lead')}
+                  </button>
+                </div>
               </div>
               <div style={{ flex: 1, minHeight: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                {stats?.sourceStats && stats.sourceStats.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <PieChart>
-                        <Pie
-                          data={stats.sourceStats}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={70}
-                          paddingAngle={4}
-                          dataKey="value"
-                        >
-                          {stats.sourceStats.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                {(() => {
+                  const activeSourceData = sourceViewMode === 'connection' ? stats?.sourceStats : stats?.leadSourceStats;
+                  return activeSourceData && activeSourceData.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie
+                            data={activeSourceData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={70}
+                            paddingAngle={4}
+                            dataKey="value"
+                          >
+                            {activeSourceData.map((entry: any, index: number) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
 
-                    {/* Custom Legend - Chấm tròn, xếp hàng ngay ngắn */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-                      gap: '6px 12px',
-                      width: '100%',
-                      marginTop: '12px',
-                      padding: '0 12px',
-                      fontSize: '0.75rem',
-                      color: 'var(--color-text-light)'
-                    }}>
-                      {stats.sourceStats.map((entry: any, index: number) => (
-                        <div
-                          key={index}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
-                          title={`${t(entry.name)}: ${entry.value}`}
-                        >
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-                          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                            {t(entry.name)}
-                          </span>
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
-                            {entry.value} {t('data')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
-                )}
+                      {/* Custom Legend - Chấm tròn, xếp hàng ngay ngắn */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                        gap: '6px 12px',
+                        width: '100%',
+                        marginTop: '12px',
+                        padding: '0 12px',
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-light)'
+                      }}>
+                        {activeSourceData.map((entry: any, index: number) => (
+                          <div
+                            key={index}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
+                            title={`${t(entry.name)}: ${entry.value}`}
+                          >
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                              {t(entry.name)}
+                            </span>
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500, flexShrink: 0 }}>
+                              {entry.value} {t('data')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
+                  );
+                })()}
               </div>
             </div>
 
