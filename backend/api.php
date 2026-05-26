@@ -134,7 +134,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -183,7 +183,8 @@ if (!in_array($action, $publicActions)) {
         'get_zalo_send_logs',
         'ai_chat',
         'get_fair_share_stats',
-        'get_consultant_compensation_details'
+        'get_consultant_compensation_details',
+        'test_master_sync'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -781,11 +782,14 @@ switch ($action) {
         $sqlLeads = "
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
+                   l.is_accepted, l.accepted_at, l.last_interaction_date,
                    r.round_name,
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
-                   dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason
+                   dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason,
+                   IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
@@ -956,11 +960,27 @@ switch ($action) {
             }
         }
         
+        $vacationMode = 0;
+        if ($isSale) {
+            $stmtV = $conn->prepare("SELECT vacation_mode FROM consultants WHERE id = ?");
+            $stmtV->bind_param("i", $saleId);
+            $stmtV->execute();
+            $resV = $stmtV->get_result();
+            if ($rowV = $resV->fetch_assoc()) {
+                $vacationMode = (int)$rowV['vacation_mode'];
+            }
+            $stmtV->close();
+        }
+
+        $leadRecallMinutes = (int) get_system_setting($conn, 'lead_recall_minutes');
+        
         echo json_encode([
             'success' => true,
             'leads' => $leads,
             'rounds' => $rounds,
             'consultants' => $consultantsList,
+            'vacation_mode' => $vacationMode,
+            'lead_recall_minutes' => $leadRecallMinutes,
             'stats' => [
                 'total_received' => count($leads),
                 'tickets_total' => (int)($ticketStats['total'] ?? 0),
@@ -1722,6 +1742,88 @@ switch ($action) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
             }
             $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'toggle_consultant_vacation':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int) ($input['id'] ?? 0);
+            
+            // If logged in as sale, override ID to their own consultant record
+            if ($decodedUser['role'] === 'sale') {
+                $id = (int) $decodedUser['id'];
+            }
+            
+            if (!$id) {
+                echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+                break;
+            }
+            
+            // Get current vacation mode
+            $stmt = $conn->prepare("SELECT vacation_mode, name FROM consultants WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) {
+                $stmt->close();
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy tư vấn viên']);
+                break;
+            }
+            $row = $res->fetch_assoc();
+            $stmt->close();
+            
+            $newVacationMode = $row['vacation_mode'] ? 0 : 1;
+            
+            $stmtUp = $conn->prepare("UPDATE consultants SET vacation_mode = ? WHERE id = ?");
+            $stmtUp->bind_param("ii", $newVacationMode, $id);
+            $stmtUp->execute();
+            $stmtUp->close();
+            
+            if ($decodedUser['role'] === 'admin') {
+                logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONSULTANT_VACATION', ['id' => $id, 'name' => $row['name'], 'vacation_mode' => $newVacationMode]);
+            }
+            
+            echo json_encode(['success' => true, 'vacation_mode' => $newVacationMode]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'accept_lead':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $lead_id = (int) ($input['lead_id'] ?? 0);
+            
+            if (!$lead_id) {
+                echo json_encode(['success' => false, 'message' => 'ID Lead không hợp lệ']);
+                break;
+            }
+            
+            // If logged in as sale, verify the lead is assigned to them
+            if ($decodedUser['role'] === 'sale') {
+                $sale_id = (int) $decodedUser['id'];
+                $stmtChk = $conn->prepare("SELECT id FROM leads WHERE id = ? AND assigned_to = ? LIMIT 1");
+                $stmtChk->bind_param("ii", $lead_id, $sale_id);
+                $stmtChk->execute();
+                $resChk = $stmtChk->get_result();
+                $isMatched = $resChk->num_rows > 0;
+                $stmtChk->close();
+                
+                if (!$isMatched) {
+                    echo json_encode(['success' => false, 'message' => 'Bạn không được phép tiếp nhận Lead này']);
+                    break;
+                }
+            }
+            
+            $stmtUp = $conn->prepare("UPDATE leads SET is_accepted = 1, accepted_at = NOW() WHERE id = ?");
+            $stmtUp->bind_param("i", $lead_id);
+            $stmtUp->execute();
+            $stmtUp->close();
+            
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2768,9 +2870,12 @@ switch ($action) {
             $isSilent = (int) ($input['is_silent'] ?? 0);
             $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
             $emailTemplate = $input['email_template'] ?? null;
+            $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
+            $googleScriptUrl = $input['google_script_url'] ?? null;
+            $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
 
-            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, is_initialized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
-            $stmt->bind_param("sssiiissiis", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate);
+            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
+            $stmt->bind_param("sssiiissiisiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes);
             if ($stmt->execute()) {
                 $insertId = $stmt->insert_id;
                 logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $insertId, 'sheet_name' => $name]);
@@ -2798,9 +2903,12 @@ switch ($action) {
             $isSilent = (int) ($input['is_silent'] ?? 0);
             $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
             $emailTemplate = $input['email_template'] ?? null;
+            $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
+            $googleScriptUrl = $input['google_script_url'] ?? null;
+            $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
 
-            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
-            $stmt->bind_param("ssiiissiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $id);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
+            $stmt->bind_param("ssiiissiisiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
             }
@@ -3757,6 +3865,7 @@ switch ($action) {
         break;
 
     case 'approve_report':
+        require_once __DIR__ . '/webhook_logic.php';
         $input = json_decode(file_get_contents('php://input'), true);
         $report_id = (int) ($input['id'] ?? 0);
         $approval_reason = trim($input['approval_reason'] ?? '');
@@ -3870,6 +3979,8 @@ switch ($action) {
                 'new_consultant_id' => $new_consultant_id
             ]);
             $conn->commit();
+            // Trigger Live Two-Way Sync to Google Sheets
+            triggerTwoWaySync($conn, $report['lead_id']);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
@@ -4429,6 +4540,80 @@ switch ($action) {
         }
         logAdminAction($conn, $decodedUser['id'], 'SAVE_SETTINGS', ['keys' => array_keys($input)]);
         echo json_encode(['success' => true]);
+        break;
+
+    case 'test_master_sync':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $url = $input['google_script_url'] ?? '';
+            $sheetName = $input['sheet_name'] ?? '';
+
+            if (empty($url)) {
+                echo json_encode(['success' => false, 'message' => 'Thiếu URL Web App Apps Script']);
+                break;
+            }
+
+            // Tạo payload thử nghiệm
+            $payload = [
+                'sheet_name' => $sheetName,
+                'search_col_phone' => 'Số điện thoại',
+                'search_val_phone' => '0999999999',
+                'search_col_email' => 'Email',
+                'search_val_email' => 'test@domation.net',
+                'allow_insert' => true,
+                'updates' => [
+                    'Thời gian' => date('Y-m-d H:i:s'),
+                    'Nguồn' => 'TEST CONNECTION',
+                    'Vòng' => 'Vòng chia Test',
+                    'Sale phụ trách' => 'Sale Test',
+                    'Họ tên' => 'Khách hàng Thử nghiệm',
+                    'Số điện thoại' => '0999999999',
+                    'Email' => 'test@domation.net',
+                    'Ghi chú' => 'Đồng bộ thử nghiệm thành công! Kết nối hoạt động tốt.',
+                    'Trạng thái' => 'Kiểm thử'
+                ]
+            ];
+
+            $jsonData = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($jsonData)
+            ]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6); // Timeout 6s tối đa cho kiểm thử
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                $errDetail = !empty($curlError) ? " (Lỗi: $curlError)" : " (Mã phản hồi HTTP: $httpCode)";
+                echo json_encode(['success' => false, 'message' => 'Không thể kết nối đến Web App Apps Script' . $errDetail]);
+                break;
+            }
+
+            $resObj = json_decode($response, true);
+            if (!$resObj) {
+                echo json_encode(['success' => false, 'message' => 'Apps Script trả về định dạng phản hồi không hợp lệ: ' . substr($response, 0, 100)]);
+                break;
+            }
+
+            if (($resObj['status'] ?? '') === 'error') {
+                echo json_encode(['success' => false, 'message' => 'Apps Script trả về lỗi: ' . ($resObj['message'] ?? 'Không rõ lý do')]);
+                break;
+            }
+
+            echo json_encode(['success' => true, 'data' => $resObj]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'ai_chat':
@@ -6748,6 +6933,7 @@ switch ($action) {
         break;
 
     case 'reassign_lead':
+        require_once __DIR__ . '/webhook_logic.php';
         $input = json_decode(file_get_contents('php://input'), true);
         $log_id = (int) ($input['log_id'] ?? 0);
         $new_consultant_id = (int) ($input['new_consultant_id'] ?? 0);
@@ -6888,6 +7074,8 @@ switch ($action) {
                 'compensated' => $compensate_old_sale
             ]);
             $conn->commit();
+            // Trigger Live Two-Way Sync to Google Sheets
+            triggerTwoWaySync($conn, $lead_id);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
@@ -7962,18 +8150,18 @@ switch ($action) {
                             $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
                             $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
                             $duplicateCount++;
-                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).');
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).', false);
                         } else {
                             $ownerId = $fileConsultantId;
                             $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', '', null, $customDate);
                             $newCount++;
-                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).');
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).', false);
                         }
                     } else {
                         if ($crmCheck['isDuplicate']) {
                             $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
                             $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
-                            logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.');
+                            logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.', false);
                             $duplicateCount++;
                             
                             if ($syncSaleperson == 1 && !empty($assignedTo)) {
@@ -8008,7 +8196,7 @@ switch ($action) {
                             if ($assignedToId) {
                                 $roundId = ($isFromRules && isset($rulesResult['round_id'])) ? $rulesResult['round_id'] : null;
                                 $logMsg = $isFromRules ? 'Phan chia tu dong tu file Excel.' : 'Phan chia cho Sale tu file Excel.';
-                                logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg);
+                                logDistribution($conn, $leadId, $assignedToId, $roundId, 'success', $logMsg, false);
                                 
                                 $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
                                 $stmtC->bind_param("i", $assignedToId);
@@ -8022,12 +8210,15 @@ switch ($action) {
                                     sendLeadAssignedZaloMessageToSale($assignedToId, $cRow['name'], $name, $phone, 'Lead moi tu file Excel', 'Excel Import', '', $leadId, $roundId ?? 0, $email, 'Excel');
                                 }
                             } else {
-                                logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.');
+                                logDistribution($conn, $leadId, null, null, 'no_consultant', 'Khong co Sale nhan tu file Excel.', false);
                             }
                         }
                     }
                     $conn->commit();
                     $importedCount++;
+                    if (!empty($leadId)) {
+                        triggerTwoWaySync($conn, $leadId);
+                    }
                 } catch (Exception $e) {
                     $conn->rollback();
                     error_log("Excel Import error on lead (Phone: $phone): " . $e->getMessage());
@@ -8383,9 +8574,14 @@ switch ($action) {
                 
                 // Update last interaction
                 $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, null, null, $name);
-                logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).');
+                logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).', false);
                 $conn->commit();
                 $inTransaction = false;
+
+                // Post-commit: trigger live write-back
+                if (!empty($leadId)) {
+                    triggerTwoWaySync($conn, $leadId);
+                }
 
                 $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
                 $stmtC->bind_param("i", $assignedTo);
@@ -8526,10 +8722,15 @@ switch ($action) {
                     // Insert unassigned in leads (since fallback admin is in accounts, not consultants)
                     $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
 
-                    logDistribution($conn, $leadId, null, null, 'assigned', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name']);
+                    logDistribution($conn, $leadId, null, null, 'assigned', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'], false);
 
                     $conn->commit();
                     $inTransaction = false;
+
+                    // Post-commit: trigger live write-back
+                    if (!empty($leadId)) {
+                        triggerTwoWaySync($conn, $leadId);
+                    }
 
                     try {
                         require_once __DIR__ . '/mailer.php';
@@ -8608,15 +8809,15 @@ switch ($action) {
                     $roundName = $stmtRound->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
                     $stmtRound->close();
 
-                    // Log distribution
-                    $logMsg = $isFallback ? "Phân bổ qua Vòng mặc định (Fallback)" : "Nhập liệu thủ công từ Admin";
-                    if ($isOutsideWorkHours) {
-                        $logMsg .= ' (Delayed: outside working hours ' . $whStart . '-' . $whEnd . ')';
-                    }
-                    logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg);
+                    logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg, false);
 
                     $conn->commit();
                     $inTransaction = false;
+
+                    // Post-commit: trigger live write-back
+                    if (!empty($leadId)) {
+                        triggerTwoWaySync($conn, $leadId);
+                    }
 
                     // Fire skipped compensation notifications outside transaction
                     if ($skippedCompensationNotify) {

@@ -17,6 +17,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 
 export const SalePortal = () => {
   const navigate = useNavigate();
@@ -46,6 +47,14 @@ export const SalePortal = () => {
     by_round: [],
     by_hour: Array(24).fill(0)
   });
+
+  const [portalVacationMode, setPortalVacationMode] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Filters
   const [search, setSearch] = useState(getInitialSearch());
@@ -156,6 +165,7 @@ export const SalePortal = () => {
       const json = await fetchAPI(query);
       if (json.success) {
         setData(json);
+        if (json.vacation_mode !== undefined) setPortalVacationMode(Boolean(Number(json.vacation_mode)));
       } else {
         toast.error(json.message || t('Không thể tải dữ liệu'));
       }
@@ -165,6 +175,40 @@ export const SalePortal = () => {
       }
     }
     setLoading(false);
+  };
+
+  const handleTogglePortalVacation = async () => {
+    try {
+      const json = await fetchAPI('toggle_consultant_vacation', {
+        method: 'POST',
+        body: JSON.stringify({ id: user?.consultant_id })
+      });
+      if (json.success) {
+        toast.success(t('Đã thay đổi chế độ nghỉ phép nhanh'));
+        setPortalVacationMode(Boolean(Number(json.vacation_mode)));
+      } else {
+        toast.error(json.message || t('Lỗi thay đổi trạng thái'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
+
+  const handleAcceptLead = async (leadId: number) => {
+    try {
+      const json = await fetchAPI('accept_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: leadId })
+      });
+      if (json.success) {
+        toast.success(t('Tiếp nhận lead thành công!'));
+        loadPortalData();
+      } else {
+        toast.error(json.message || t('Lỗi tiếp nhận lead'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
   };
 
   useEffect(() => {
@@ -459,6 +503,17 @@ export const SalePortal = () => {
         </div>
 
         <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {user?.role === 'sale' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '6px 12px', marginRight: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: !portalVacationMode ? '#10b981' : '#f59e0b' }}>
+                {!portalVacationMode ? t('Nhận data') : t('Nghỉ phép nhanh')}
+              </span>
+              <ToggleSwitch
+                checked={!portalVacationMode}
+                onChange={handleTogglePortalVacation}
+              />
+            </div>
+          )}
           <Avatar src={user?.avatar} name={user?.name} size={36} />
           <div className="portal-header-user-info" style={{ textAlign: 'left' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>{user?.name}</div>
@@ -864,20 +919,81 @@ export const SalePortal = () => {
                       {/* KHÁCH HÀNG */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-                          title={t("Xem chi tiết")}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}
                         >
-                          <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: '#0f172a'
-                            }}
-                            onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                            onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                          >
-                            {lead.lead_name || t('Chưa cập nhật')}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} title={t("Xem chi tiết")}>
+                            <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: '#0f172a'
+                              }}
+                              onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                              onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                            >
+                              {lead.lead_name || t('Chưa cập nhật')}
+                            </span>
+                          </div>
+
+                          {/* Accept Button & Timer */}
+                          {user?.role === 'sale' && !Number(lead.is_accepted) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                              {(() => {
+                                const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+                                const limitMs = leadRecallMins * 60 * 1000;
+                                const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+                                const remainingMs = limitMs - elapsedMs;
+
+                                if (leadRecallMins > 0 && remainingMs <= 0) {
+                                  return (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                      {t('Quá hạn')}
+                                    </span>
+                                  );
+                                }
+
+                                const formatTime = (ms: number) => {
+                                  const totalSecs = Math.max(0, Math.floor(ms / 1000));
+                                  const mins = Math.floor(totalSecs / 60);
+                                  const secs = totalSecs % 60;
+                                  return `${mins}:${String(secs).padStart(2, '0')}`;
+                                };
+
+                                return (
+                                  <>
+                                    {leadRecallMins > 0 && (
+                                      <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Clock size={12} /> {formatTime(remainingMs)}
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() => handleAcceptLead(lead.lead_id)}
+                                      style={{
+                                        background: '#3b82f6', color: 'white', border: 'none',
+                                        borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem',
+                                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                                        display: 'flex', alignItems: 'center', gap: 4
+                                      }}
+                                      onMouseOver={e => e.currentTarget.style.background = '#2563eb'}
+                                      onMouseOut={e => e.currentTarget.style.background = '#3b82f6'}
+                                    >
+                                      {t('Tiếp nhận')}
+                                    </button>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {user?.role === 'sale' && Number(lead.is_accepted) && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 8px', borderRadius: '12px',
+                              background: '#e6f4ea', color: '#137333', fontSize: '0.725rem', fontWeight: 700
+                            }}>
+                              <CheckCircle2 size={12} /> {t('Đã tiếp nhận')}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -1176,6 +1292,15 @@ export const SalePortal = () => {
                 <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Nhận lúc:')}</span>
                 <span style={{ color: 'var(--color-text-light)' }}>
                   {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Tiếp nhận:')}</span>
+                <span style={{ fontWeight: 700, color: Number(activeDetailLead.is_accepted) ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                  {Number(activeDetailLead.is_accepted)
+                    ? `${t('Đã tiếp nhận lúc')} ${activeDetailLead.accepted_at ? new Date(activeDetailLead.accepted_at).toLocaleString('vi-VN') : ''}`
+                    : t('Chưa tiếp nhận')}
                 </span>
               </div>
 

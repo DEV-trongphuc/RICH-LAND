@@ -628,6 +628,7 @@ function getNextConsultantInRound($conn, $roundId) {
         WHERE rc.round_id = ? 
           AND rc.is_active = 1 
           AND c.status = 'active' 
+          AND c.vacation_mode = 0 
           AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
         ORDER BY c.id ASC
     ");
@@ -868,7 +869,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
-function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message) {
+function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true) {
     $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
     $stmt->execute();
@@ -876,6 +877,11 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
     
     if (function_exists('pruneAdminLogs')) {
         pruneAdminLogs($conn);
+    }
+
+    // Live Two-Way Sync to Google Sheets
+    if ($triggerSync && function_exists('triggerTwoWaySync')) {
+        triggerTwoWaySync($conn, $leadId);
     }
 }
 
@@ -908,6 +914,7 @@ function simulateNextConsultantInRound($conn, $roundId) {
         WHERE rc.round_id = ? 
           AND rc.is_active = 1 
           AND c.status = 'active' 
+          AND c.vacation_mode = 0 
           AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
         ORDER BY c.id ASC
     ");
@@ -1147,6 +1154,187 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
         $stmt->close();
     }
     return $timeline;
+}
+
+/**
+ * Gửi thông báo đồng bộ 2 chiều (write-back) ngược về Google Sheets thông qua Web App Apps Script
+ */
+function triggerTwoWaySync($conn, $leadId) {
+    if (empty($leadId)) return false;
+
+    // 1. Lấy thông tin chi tiết của Lead, Connection liên kết, và Vòng chia số
+    $stmt = $conn->prepare("
+        SELECT l.phone, l.email, l.name, l.note, l.type, l.assigned_to, l.connection_id, l.source,
+               sc.two_way_sync, sc.google_script_url, sc.sheet_name, sc.is_active as conn_is_active,
+               c.name as consultant_name,
+               (
+                   SELECT dr.round_name 
+                   FROM distribution_logs dl
+                   JOIN distribution_rounds dr ON dl.round_id = dr.id
+                   WHERE dl.lead_id = l.id
+                   ORDER BY dl.id DESC LIMIT 1
+               ) as round_name
+        FROM leads l
+        LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+        LEFT JOIN consultants c ON l.assigned_to = c.id
+        WHERE l.id = ? LIMIT 1
+    ");
+    if (!$stmt) return false;
+    $stmt->bind_param("i", $leadId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($res->num_rows === 0) {
+        $stmt->close();
+        return false;
+    }
+    $lead = $res->fetch_assoc();
+    $stmt->close();
+
+    $syncSuccess = false;
+
+    // A. Đồng bộ riêng cho Connection liên kết (nếu có cấu hình và đang hoạt động)
+    if (!empty($lead['connection_id']) && 
+        !empty($lead['two_way_sync']) && 
+        !empty($lead['google_script_url']) && 
+        !empty($lead['conn_is_active'])) {
+        
+        // 2. Lấy danh sách mapping của Connection này
+        $mapStmt = $conn->prepare("SELECT sheet_column, system_field FROM field_mappings WHERE connection_id = ?");
+        if ($mapStmt) {
+            $mapStmt->bind_param("i", $lead['connection_id']);
+            $mapStmt->execute();
+            $mapRes = $mapStmt->get_result();
+            
+            $mappings = [];
+            while ($mRow = $mapRes->fetch_assoc()) {
+                $mappings[$mRow['system_field']][] = $mRow['sheet_column'];
+            }
+            $mapStmt->close();
+
+            // Tìm tên các cột tương ứng trên Sheet đại diện cho SĐT và Email làm khóa tìm kiếm
+            $searchColPhone = !empty($mappings['phone']) ? $mappings['phone'][0] : '';
+            $searchColEmail = !empty($mappings['email']) ? $mappings['email'][0] : '';
+
+            if (!empty($searchColPhone) || !empty($searchColEmail)) {
+                // 3. Khởi tạo mảng các trường cần cập nhật
+                $updates = [];
+                
+                // Ghi chú (note)
+                if (!empty($mappings['note'])) {
+                    foreach ($mappings['note'] as $col) {
+                        $updates[$col] = $lead['note'];
+                    }
+                }
+                
+                // Trạng thái / Phân loại (type)
+                if (!empty($mappings['type'])) {
+                    foreach ($mappings['type'] as $col) {
+                        $updates[$col] = $lead['type'];
+                    }
+                }
+
+                // Tên Sale phụ trách (assigned_to hoặc saleperson)
+                $consultantName = $lead['consultant_name'] ?? '';
+                if (!empty($mappings['saleperson'])) {
+                    foreach ($mappings['saleperson'] as $col) {
+                        $updates[$col] = $consultantName;
+                    }
+                }
+                if (!empty($mappings['assigned_to'])) {
+                    foreach ($mappings['assigned_to'] as $col) {
+                        $updates[$col] = $consultantName;
+                    }
+                }
+
+                if (!empty($updates)) {
+                    // 4. Tạo payload gửi qua Google Apps Script Web App
+                    $payload = [
+                        'sheet_name' => $lead['sheet_name'],
+                        'search_col_phone' => $searchColPhone,
+                        'search_val_phone' => $lead['phone'] ?? '',
+                        'search_col_email' => $searchColEmail,
+                        'search_val_email' => $lead['email'] ?? '',
+                        'updates' => $updates
+                    ];
+
+                    $jsonData = json_encode($payload, JSON_UNESCAPED_UNICODE);
+                    
+                    // Thực hiện gọi CURL
+                    $ch = curl_init($lead['google_script_url']);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                        'Content-Type: application/json',
+                        'Content-Length: ' . strlen($jsonData)
+                    ]);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+                    
+                    curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+
+                    if ($httpCode === 200) {
+                        $syncSuccess = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // B. Đồng bộ 2 chiều Tổng (Master Sync)
+    $masterEnabled = (int) get_system_setting($conn, 'master_two_way_sync');
+    $masterUrl = get_system_setting($conn, 'master_google_script_url');
+    $masterSheetName = get_system_setting($conn, 'master_sheet_name');
+
+    if ($masterEnabled && !empty($masterUrl)) {
+        // Tạo payload Master
+        $masterPayload = [
+            'sheet_name' => $masterSheetName,
+            'search_col_phone' => 'Số điện thoại',
+            'search_val_phone' => $lead['phone'] ?? '',
+            'search_col_email' => 'Email',
+            'search_val_email' => $lead['email'] ?? '',
+            'allow_insert' => true,
+            'updates' => [
+                'Thời gian' => date('Y-m-d H:i:s'),
+                'Nguồn' => $lead['source'] ?? 'Hệ thống',
+                'Vòng' => $lead['round_name'] ?? 'Không rõ vòng',
+                'Sale phụ trách' => $lead['consultant_name'] ?? 'Chưa bàn giao',
+                'Họ tên' => $lead['name'] ?? '',
+                'Số điện thoại' => $lead['phone'] ?? '',
+                'Email' => $lead['email'] ?? '',
+                'Ghi chú' => $lead['note'] ?? '',
+                'Trạng thái' => $lead['type'] ?? 'Chờ tiếp nhận'
+            ]
+        ];
+
+        $jsonDataMaster = json_encode($masterPayload, JSON_UNESCAPED_UNICODE);
+        
+        $chM = curl_init($masterUrl);
+        curl_setopt($chM, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($chM, CURLOPT_POST, true);
+        curl_setopt($chM, CURLOPT_POSTFIELDS, $jsonDataMaster);
+        curl_setopt($chM, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($jsonDataMaster)
+        ]);
+        curl_setopt($chM, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
+        curl_setopt($chM, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+        
+        curl_exec($chM);
+        $httpCodeMaster = curl_getinfo($chM, CURLINFO_HTTP_CODE);
+        curl_close($chM);
+
+        if ($httpCodeMaster === 200) {
+            $syncSuccess = true;
+        }
+    }
+
+    return $syncSuccess;
 }
 
 

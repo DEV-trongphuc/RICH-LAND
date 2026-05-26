@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -35,6 +35,9 @@ type Connection = {
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   last_sync_at?: string;
+  two_way_sync?: number | boolean;
+  google_script_url?: string;
+  lead_recall_minutes?: number;
   sync_status?: 'idle' | 'syncing' | 'error' | string;
   last_error?: string | null;
   stats?: {
@@ -80,6 +83,229 @@ const generateDefaultTemplate = (
 
   return lines.join('\n');
 };
+
+const masterAppsScriptCode = `/**
+ * DOMATION CRM - Google Apps Script Two-Way Synchronization Script
+ * 
+ * HƯỚNG DẪN CẤU HÌNH:
+ * 1. Mở trang Google Sheet của bạn.
+ * 2. Vào Tiện ích mở rộng (Extensions) -> Apps Script.
+ * 3. Xóa mọi mã nguồn cũ và dán toàn bộ đoạn mã này vào.
+ * 4. Nhấn nút "Triển khai" (Deploy) ở góc phải trên -> "Triển khai mới" (New deployment).
+ * 5. Chọn loại triển khai là "Ứng dụng web" (Web app).
+ * 6. Cấu hình cấu hình ứng dụng web:
+ *    - Thực thi dưới danh nghĩa: "Tôi" (Me / tài khoản Google của bạn).
+ *    - Ai có quyền truy cập: "Mọi người" (Anyone - Bắt buộc để CRM có thể kết nối).
+ * 7. Nhấn "Triển khai" (Deploy), cấp quyền truy cập nếu Google yêu cầu.
+ * 8. Copy đường dẫn "URL ứng dụng web" (Web app URL) nhận được.
+ * 9. Dán URL này vào thiết lập Kết nối Sheets trong CRM (nút Sửa -> bật Đồng bộ 2 chiều hoặc trang Đồng bộ 2 chiều Tổng).
+ */
+
+function doPost(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return createJsonResponse({ status: "error", message: "Yêu cầu không chứa dữ liệu" });
+    }
+    
+    var payload = JSON.parse(e.postData.contents);
+    var sheetName = payload.sheet_name || "";
+    
+    var searchColPhone = payload.search_col_phone || "";
+    var searchValPhone = payload.search_val_phone ? normalizePhone(payload.search_val_phone) : "";
+    
+    var searchColEmail = payload.search_col_email || "";
+    var searchValEmail = payload.search_val_email ? payload.search_val_email.trim().toLowerCase() : "";
+    
+    var allowInsert = payload.allow_insert === true;
+    var updates = payload.updates || {};
+    
+    if (!searchValPhone && !searchValEmail) {
+      return createJsonResponse({ status: "error", message: "Thiếu thông tin khóa tìm kiếm (SĐT hoặc Email)" });
+    }
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet;
+    
+    if (sheetName) {
+      sheet = ss.getSheetByName(sheetName);
+    }
+    if (!sheet) {
+      sheet = ss.getSheets()[0]; // Lấy sheet đầu tiên nếu không khớp tên
+    }
+    
+    if (!sheet) {
+      return createJsonResponse({ status: "error", message: "Không tìm thấy Sheet phù hợp" });
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var lastColumn = sheet.getLastColumn();
+    
+    // Nếu sheet hoàn toàn trống
+    if (lastRow < 1 || lastColumn < 1) {
+      // Viết hàng tiêu đề mặc định
+      var defaultHeaders = ["Thời gian", "Nguồn", "Vòng", "Sale phụ trách", "Họ tên", "Số điện thoại", "Email", "Ghi chú", "Trạng thái"];
+      sheet.getRange(1, 1, 1, defaultHeaders.length).setValues([defaultHeaders]);
+      SpreadsheetApp.flush();
+      lastRow = 1;
+      lastColumn = defaultHeaders.length;
+    }
+    
+    // Đọc hàng tiêu đề (Headers)
+    var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    
+    // Tìm vị trí cột khóa SĐT và Email
+    var colPhoneIdx = -1;
+    var colEmailIdx = -1;
+    var columnIndexes = {};
+    
+    for (var i = 0; i < headers.length; i++) {
+      var headerName = (headers[i] || "").toString().trim();
+      columnIndexes[headerName] = i + 1; // 1-based index
+      
+      if (searchColPhone && headerName.toLowerCase() === searchColPhone.toLowerCase()) {
+        colPhoneIdx = i + 1;
+      }
+      if (searchColEmail && headerName.toLowerCase() === searchColEmail.toLowerCase()) {
+        colEmailIdx = i + 1;
+      }
+    }
+    
+    // Nếu tiêu đề tìm kiếm chưa tồn tại, tự động thêm vào cột mới
+    if (colPhoneIdx === -1 && searchColPhone) {
+      lastColumn++;
+      sheet.getRange(1, lastColumn).setValue(searchColPhone);
+      headers.push(searchColPhone);
+      columnIndexes[searchColPhone] = lastColumn;
+      colPhoneIdx = lastColumn;
+    }
+    if (colEmailIdx === -1 && searchColEmail) {
+      lastColumn++;
+      sheet.getRange(1, lastColumn).setValue(searchColEmail);
+      headers.push(searchColEmail);
+      columnIndexes[searchColEmail] = lastColumn;
+      colEmailIdx = lastColumn;
+    }
+    
+    // Kiểm tra xem tất cả các cột trong \`updates\` có tiêu đề chưa, nếu chưa thì thêm mới
+    for (var colName in updates) {
+      if (!columnIndexes[colName]) {
+        lastColumn++;
+        sheet.getRange(1, lastColumn).setValue(colName);
+        headers.push(colName);
+        columnIndexes[colName] = lastColumn;
+      }
+    }
+    
+    // Đọc toàn bộ dữ liệu để tìm kiếm (nếu có dữ liệu dòng 2 trở đi)
+    var targetRowIndex = -1; // 2-based index thực tế trên Sheet
+    if (lastRow >= 2) {
+      var dataRange = sheet.getRange(2, 1, lastRow - 1, lastColumn);
+      var rows = dataRange.getValues();
+      
+      for (var r = 0; r < rows.length; r++) {
+        var currentRow = rows[r];
+        var matched = false;
+        
+        // So khớp số điện thoại
+        if (colPhoneIdx > 0 && searchValPhone) {
+          var cellPhone = normalizePhone(currentRow[colPhoneIdx - 1]);
+          if (cellPhone && cellPhone === searchValPhone) {
+            matched = true;
+          }
+        }
+        
+        // So khớp email nếu số điện thoại chưa khớp hoặc bị thiếu
+        if (!matched && colEmailIdx > 0 && searchValEmail) {
+          var cellEmail = (currentRow[colEmailIdx - 1] || "").toString().trim().toLowerCase();
+          if (cellEmail && cellEmail === searchValEmail) {
+            matched = true;
+          }
+        }
+        
+        if (matched) {
+          targetRowIndex = r + 2; // +2 vì index trong mảng là 0-based và bỏ qua header
+          break; // Chỉ cập nhật dòng đầu tiên tìm thấy
+        }
+      }
+    }
+    
+    var isNewRow = false;
+    if (targetRowIndex === -1) {
+      if (!allowInsert) {
+        return createJsonResponse({ 
+          status: "error", 
+          message: "Không tìm thấy dòng tương ứng với SĐT: " + searchValPhone + " hoặc Email: " + searchValEmail 
+        });
+      } else {
+        targetRowIndex = lastRow + 1;
+        isNewRow = true;
+      }
+    }
+    
+    // Đọc dòng hiện tại hoặc khởi tạo dòng mới
+    var rowValues = [];
+    if (isNewRow) {
+      for (var k = 0; k < lastColumn; k++) {
+        rowValues.push("");
+      }
+      // Gán sẵn các khóa tìm kiếm cho dòng mới
+      if (colPhoneIdx > 0 && searchValPhone) {
+        rowValues[colPhoneIdx - 1] = payload.search_val_phone; // Giữ nguyên định dạng gốc của SĐT
+      }
+      if (colEmailIdx > 0 && searchValEmail) {
+        rowValues[colEmailIdx - 1] = payload.search_val_email;
+      }
+    } else {
+      rowValues = sheet.getRange(targetRowIndex, 1, 1, lastColumn).getValues()[0];
+    }
+    
+    // Cập nhật các cột được chỉ định vào mảng
+    var updateCount = 0;
+    for (var colName in updates) {
+      var colIdx = columnIndexes[colName];
+      if (colIdx) {
+        rowValues[colIdx - 1] = updates[colName];
+        updateCount++;
+      }
+    }
+    
+    // Ghi toàn bộ dòng dữ liệu
+    sheet.getRange(targetRowIndex, 1, 1, lastColumn).setValues([rowValues]);
+    
+    // Force spreadsheet to flush and write immediately
+    SpreadsheetApp.flush();
+    
+    return createJsonResponse({ 
+      status: "success", 
+      message: (isNewRow ? "Thêm mới thành công dòng " : "Cập nhật thành công dòng ") + targetRowIndex + " (" + updateCount + " cột)" 
+    });
+    
+  } catch (err) {
+    return createJsonResponse({ status: "error", message: err.toString() });
+  }
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput("OK");
+}
+
+function createJsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Chuẩn hóa số điện thoại: loại bỏ dấu cách, ký tự đặc biệt, chuyển đổi 84 -> 0
+ */
+function normalizePhone(phone) {
+  if (!phone) return "";
+  var clean = phone.toString().replace(/[\\s\\-\\.\\+\\(\\)]/g, "");
+  if (clean.indexOf("84") === 0) {
+    clean = "0" + clean.substr(2);
+  }
+  return clean;
+}
+}`;
 
 export const Integrations = () => {
   const { language, t } = useLanguage();
@@ -135,6 +361,16 @@ export const Integrations = () => {
   const [editIsSilent, setEditIsSilent] = useState(false);
   const [editSyncSaleperson, setEditSyncSaleperson] = useState(false);
   const [editEmailTemplate, setEditEmailTemplate] = useState('');
+  const [editTwoWaySync, setEditTwoWaySync] = useState(false);
+  const [editGoogleScriptUrl, setEditGoogleScriptUrl] = useState('');
+  const [editLeadRecallMinutes, setEditLeadRecallMinutes] = useState(0);
+
+  // Master Sync states
+  const [masterEnabled, setMasterEnabled] = useState(false);
+  const [masterUrl, setMasterUrl] = useState('');
+  const [masterSheetName, setMasterSheetName] = useState('');
+  const [isSavingMaster, setIsSavingMaster] = useState(false);
+  const [isTestingMaster, setIsTestingMaster] = useState(false);
 
   const getSelectFields = () => {
     const isSyncActive = selected?.sync_saleperson || (showEditConn && editSyncSaleperson) || (showAddConn && syncSaleperson);
@@ -146,9 +382,10 @@ export const Integrations = () => {
 
   const fetchData = async () => {
     try {
-      const [connRes, mapRes] = await Promise.all([
+      const [connRes, mapRes, settingsRes] = await Promise.all([
         fetchAPI('get_connections'),
-        fetchAPI('get_mappings')
+        fetchAPI('get_mappings'),
+        fetchAPI('get_settings')
       ]);
       if (connRes.success && mapRes.success) {
         const conns = connRes.data.map((c: any) => ({
@@ -161,9 +398,26 @@ export const Integrations = () => {
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
+
+        if (settingsRes && settingsRes.success && settingsRes.data) {
+          setMasterEnabled(settingsRes.data.master_two_way_sync === '1');
+          setMasterUrl(settingsRes.data.master_google_script_url || '');
+          setMasterSheetName(settingsRes.data.master_sheet_name || '');
+        }
+
         if (selected) {
-          const updatedSelected = conns.find((c: any) => Number(c.id) === Number(selected.id));
-          if (updatedSelected) setSelected(updatedSelected);
+          if (selected.id === -999) {
+            setSelected({
+              id: -999,
+              sheet_name: t('Đồng bộ 2 chiều Tổng'),
+              connection_type: 'master_sync',
+              webhook_token: 'SYSTEM_GLOBAL',
+              is_active: (settingsRes && settingsRes.data && settingsRes.data.master_two_way_sync === '1') ? 1 : 0
+            } as any);
+          } else {
+            const updatedSelected = conns.find((c: any) => Number(c.id) === Number(selected.id));
+            if (updatedSelected) setSelected(updatedSelected);
+          }
         } else if (conns.length > 0) {
           setSelected(conns[0]);
         }
@@ -233,7 +487,8 @@ export const Integrations = () => {
       sync_mode: isSilent ? 'all' : syncMode,
       is_silent: isSilent ? 1 : 0,
       sync_saleperson: syncSaleperson ? 1 : 0,
-      email_template: emailTemplate
+      email_template: emailTemplate,
+      lead_recall_minutes: 0
     };
 
     if (isSaving) return;
@@ -279,7 +534,8 @@ export const Integrations = () => {
       webhook_token: generateToken(),
       is_active: 1,
       sync_interval: 0,
-      connection_type: 'landing_page'
+      connection_type: 'landing_page',
+      lead_recall_minutes: 0
     };
 
     if (isSaving) return;
@@ -322,7 +578,10 @@ export const Integrations = () => {
       sync_mode: editIsSilent ? 'all' : editSyncMode,
       is_silent: editIsSilent ? 1 : 0,
       sync_saleperson: editSyncSaleperson ? 1 : 0,
-      email_template: editEmailTemplate
+      email_template: editEmailTemplate,
+      two_way_sync: editTwoWaySync ? 1 : 0,
+      google_script_url: editGoogleScriptUrl,
+      lead_recall_minutes: editLeadRecallMinutes
     };
 
     if (isSaving) return;
@@ -545,6 +804,48 @@ export const Integrations = () => {
           </div>
 
           <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
+            {/* Virtual Connection for Master Sync */}
+            <div
+              onClick={() => {
+                setSelected({
+                  id: -999,
+                  sheet_name: t('Đồng bộ 2 chiều Tổng'),
+                  connection_type: 'master_sync',
+                  webhook_token: 'SYSTEM_GLOBAL',
+                  is_active: masterEnabled ? 1 : 0
+                } as any);
+                setMobileActiveView('detail');
+              }}
+              style={{
+                background: selected && selected.id === -999 ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                border: `1px solid ${selected && selected.id === -999 ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                borderRadius: 12, padding: '0.875rem 1rem', cursor: 'pointer', transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden'
+              }}
+            >
+              {selected && selected.id === -999 && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--color-primary)' }} />}
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: selected && selected.id === -999 ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                border: selected && selected.id === -999 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
+              }}>
+                <Database size={20} color={selected && selected.id === -999 ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {t('Đồng bộ 2 chiều Tổng')}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  {masterEnabled ? t('Đang hoạt động') : t('Đang tắt')}
+                </p>
+              </div>
+              <ChevronRight size={14} color="var(--color-text-muted)" />
+            </div>
+
+            {/* Separator line between Master sync and other connections */}
+            <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+
             {connections.length === 0 ? (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', margin: '1rem 0' }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: 'var(--shadow-sm)' }}>
@@ -635,6 +936,175 @@ export const Integrations = () => {
                 <Webhook size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                 <p style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{t('Chọn một kết nối Sheets để cấu hình')}</p>
                 <p style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>{t('hoặc tạo kết nối mới ở cột trái')}</p>
+              </div>
+            </div>
+          ) : selected.id === -999 ? (
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <Database size={24} color="var(--color-primary)" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                    {t('Đồng bộ 2 chiều Tổng (Master Sync)')}
+                  </h2>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t('Ghi nhận và đồng bộ tất cả Lead từ mọi nguồn lên 1 Sheet duy nhất')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Configuration Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+                <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{t('Kích hoạt Đồng bộ 2 chiều Tổng')}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Tự động ghi nhận lead từ mọi nguồn và cập nhật thay đổi ngược lên Sheet.')}</div>
+                  </div>
+                  <ToggleSwitch
+                    checked={masterEnabled}
+                    onChange={(val) => setMasterEnabled(val)}
+                  />
+                </div>
+
+                {masterEnabled && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                        {t('Google Apps Script Web App URL')} <span style={{ color: 'var(--color-danger)' }}>*</span>
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder={t("https://script.google.com/macros/s/.../exec")}
+                          value={masterUrl}
+                          onChange={e => setMasterUrl(e.target.value)}
+                          style={{ flex: 1, background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                        />
+                        <button
+                          className="btn outline"
+                          style={{ height: 40, whiteSpace: 'nowrap', padding: '0 1rem', borderRadius: 10 }}
+                          disabled={isTestingMaster || !masterUrl.trim()}
+                          onClick={async () => {
+                            setIsTestingMaster(true);
+                            try {
+                              const res = await fetchAPI('test_master_sync', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                  google_script_url: masterUrl,
+                                  sheet_name: masterSheetName
+                                })
+                              });
+                              if (res.success) {
+                                toast.success(t('Kết nối thử nghiệm thành công! Hãy kiểm tra sheet của bạn.'));
+                              } else {
+                                toast.error(t('Kiểm thử thất bại: ') + (res.message || ''));
+                              }
+                            } catch (e: any) {
+                              toast.error(t('Lỗi kết nối thử nghiệm: ') + e.message);
+                            } finally {
+                              setIsTestingMaster(false);
+                            }
+                          }}
+                        >
+                          {isTestingMaster ? t('Đang kiểm tra...') : t('Kiểm thử')}
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('URL Web App Google Apps Script triển khai từ Sheet Tổng.')}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                        {t('Tên Trang tính (Sheet Name)')}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t("e.g. Sheet1, để trống để dùng trang tính đầu tiên")}
+                        value={masterSheetName}
+                        onChange={e => setMasterSheetName(e.target.value)}
+                        style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+                  <button
+                    className="btn primary"
+                    style={{ height: 38, padding: '0 1.5rem', background: 'var(--color-primary)', color: '#fff', borderRadius: 10, fontWeight: 600 }}
+                    disabled={isSavingMaster || (masterEnabled && !masterUrl.trim())}
+                    onClick={async () => {
+                      setIsSavingMaster(true);
+                      try {
+                        const res = await fetchAPI('save_settings', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            master_two_way_sync: masterEnabled ? '1' : '0',
+                            master_google_script_url: masterUrl,
+                            master_sheet_name: masterSheetName
+                          })
+                        });
+                        if (res.success) {
+                          toast.success(t('Đã lưu cấu hình Đồng bộ 2 chiều Tổng!'));
+                          // Refresh to update left list active label
+                          fetchData();
+                        } else {
+                          toast.error(t('Lưu thất bại: ') + (res.message || ''));
+                        }
+                      } catch (e: any) {
+                        toast.error(t('Lỗi kết nối: ') + e.message);
+                      } finally {
+                        setIsSavingMaster(false);
+                      }
+                    }}
+                  >
+                    {isSavingMaster ? t('Đang lưu...') : t('Lưu cài đặt')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Instructions & Code Block */}
+              <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1.25rem', borderRadius: 12, fontSize: '0.85rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, color: 'var(--color-primary)' }}>
+                  <Info size={16} /> Hướng dẫn cài đặt Google Apps Script cho Sheet Tổng:
+                </div>
+                <ol style={{ paddingLeft: '1.25rem', margin: '0 0 1rem 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <li>Tạo 1 bảng tính Google Sheet mới để chứa toàn bộ dữ liệu tổng.</li>
+                  <li>Chọn <strong>Tiện ích mở rộng (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
+                  <li>Xóa mã mặc định và dán đoạn mã bên dưới vào.</li>
+                  <li>Nhấp vào <strong>Triển khai (Deploy)</strong> &gt; <strong>Triển khai mới (New deployment)</strong>.</li>
+                  <li>Chọn loại cấu hình là <strong>Ứng dụng web (Web app)</strong>.</li>
+                  <li>Cấu hình: Người thực thi: <em>"Tôi" (Me)</em>, Ai có quyền truy cập: <em>"Bất kỳ ai" (Anyone)</em>.</li>
+                  <li>Nhấp Triển khai, phê duyệt quyền truy cập của Google, sau đó sao chép <strong>URL ứng dụng web (Web app URL)</strong> và dán vào cấu hình phía trên.</li>
+                </ol>
+
+                <div style={{ fontWeight: 700, marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Mã nguồn Google Apps Script:</span>
+                  <button
+                    className="btn outline"
+                    style={{ height: 26, padding: '0 8px', fontSize: '0.75rem', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(masterAppsScriptCode);
+                      toast.success(t('Đã sao chép mã nguồn Apps Script!'));
+                    }}
+                  >
+                    <Copy size={12} /> {t('Sao chép')}
+                  </button>
+                </div>
+                <pre style={{
+                  maxHeight: '200px', overflowY: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  padding: '10px', borderRadius: 8, fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-muted)'
+                }}>
+                  {masterAppsScriptCode}
+                </pre>
               </div>
             </div>
           ) : (
@@ -741,6 +1211,9 @@ export const Integrations = () => {
                         setEditSyncMode((selected.sync_mode as 'all' | 'new_only') || 'all');
                         setEditIsSilent(Boolean(Number(selected.is_silent)));
                         setEditSyncSaleperson(Boolean(Number(selected.sync_saleperson)));
+                        setEditTwoWaySync(Boolean(Number(selected.two_way_sync)));
+                        setEditGoogleScriptUrl(selected.google_script_url || '');
+                        setEditLeadRecallMinutes(Number(selected.lead_recall_minutes) || 0);
                         const existingTemplate = selected.email_template || '';
                         setEditEmailTemplate(
                           existingTemplate ||
@@ -1761,6 +2234,92 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                 </div>
               </>
             )}
+
+            {/* Đồng bộ 2 chiều (Two-Way Sync) */}
+            {selected?.connection_type !== 'landing_page' && (
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{t('Đồng bộ 2 chiều (Ghi ngược về Google Sheet)')}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Hệ thống tự động ghi nhận trạng thái và nhân viên phụ trách trực tiếp về file Sheet.')}</div>
+                  </div>
+                  <ToggleSwitch
+                    checked={editTwoWaySync}
+                    onChange={(val) => setEditTwoWaySync(val)}
+                  />
+                </div>
+
+                {editTwoWaySync && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                        {t('Google Script Web App URL')}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t("https://script.google.com/macros/s/.../exec")}
+                        value={editGoogleScriptUrl}
+                        onChange={e => setEditGoogleScriptUrl(e.target.value)}
+                        style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                        {t('URL triển khai từ Google Apps Script Web App để ghi dữ liệu về sheet.')}
+                      </span>
+                    </div>
+
+                    <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1rem', borderRadius: 12, fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--color-primary)' }}>
+                        <Info size={14} /> Hướng dẫn cài đặt Google Apps Script:
+                      </div>
+                      <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <li>Mở bảng tính Google Sheets của bạn.</li>
+                        <li>Chọn <strong>Tiện ích mở rộng (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
+                        <li>Sao chép toàn bộ code từ file <code>two_way_sync.gs</code> trong thư mục backend của hệ thống và dán vào.</li>
+                        <li>Nhấp vào <strong>Triển khai (Deploy)</strong> &gt; <strong>Triển khai mới (New deployment)</strong>.</li>
+                        <li>Chọn loại cấu hình là <strong>Ứng dụng web (Web app)</strong>.</li>
+                        <li>Cấu hình: Người thực thi: <em>"Tôi" (Me)</em>, Ai có quyền truy cập: <em>"Bất kỳ ai" (Anyone)</em>.</li>
+                        <li>Nhấp Triển khai và cấp quyền, sau đó sao chép <strong>URL ứng dụng web</strong> dán vào trường trên.</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tiếp nhận lead & Đếm ngược tự động thu hồi */}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editLeadRecallMinutes > 0 ? '1rem' : 0 }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{t('Tiếp nhận lead & Đếm ngược tự động thu hồi')}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Yêu cầu Sale bấm tiếp nhận lead trong khoảng thời gian quy định, nếu không hệ thống sẽ tự động thu hồi.')}</div>
+                </div>
+                <ToggleSwitch
+                  checked={editLeadRecallMinutes > 0}
+                  onChange={(val) => setEditLeadRecallMinutes(val ? 15 : 0)}
+                />
+              </div>
+
+              {editLeadRecallMinutes > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', animation: 'fadeIn 0.2s ease-out' }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                    {t('Thời gian chờ tiếp nhận (phút)')}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="form-input"
+                    placeholder={t("Nhập số phút (Ví dụ: 15)")}
+                    value={editLeadRecallMinutes}
+                    onChange={e => setEditLeadRecallMinutes(Math.max(1, parseInt(e.target.value) || 0))}
+                    style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    {t('Sau số phút này, nếu Sale chưa bấm tiếp nhận, lead sẽ bị thu hồi và chia cho Sale tiếp theo.')}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Mẫu nội dung Email */}
             <div>

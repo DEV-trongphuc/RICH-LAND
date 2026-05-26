@@ -68,7 +68,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 117) {
+        if ($dbVer >= 120) {
             $runMigration = false;
         }
     }
@@ -89,7 +89,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 117) {
+                    if ($dbVer >= 120) {
                         $runMigration = false;
                     }
                 }
@@ -490,9 +490,44 @@ if ($runMigration) {
         FOREIGN KEY (admin_id) REFERENCES accounts(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    // Auto-migrate: ensure two_way_sync columns in sheet_connections
+    $chkColTWS = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'two_way_sync'");
+    if ($chkColTWS && $chkColTWS->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN two_way_sync TINYINT(1) DEFAULT 0 COMMENT 'Đồng bộ 2 chiều ngược về Sheet'");
+    }
+    $chkColGSU = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'google_script_url'");
+    if ($chkColGSU && $chkColGSU->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN google_script_url VARCHAR(512) NULL COMMENT 'URL Web App Google Apps Script'");
+    }
+
+    // Auto-migrate: ensure lead_recall_minutes in sheet_connections
+    $chkColLRM = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'lead_recall_minutes'");
+    if ($chkColLRM && $chkColLRM->num_rows === 0) {
+        $conn->query("ALTER TABLE sheet_connections ADD COLUMN lead_recall_minutes INT DEFAULT 0 COMMENT 'Thời gian tự động thu hồi lead không tiếp nhận (phút, 0=tắt)'");
+    }
+
+    // Auto-migrate: ensure vacation_mode column in consultants
+    $chkColVM = $conn->query("SHOW COLUMNS FROM consultants LIKE 'vacation_mode'");
+    if ($chkColVM && $chkColVM->num_rows === 0) {
+        $conn->query("ALTER TABLE consultants ADD COLUMN vacation_mode TINYINT(1) DEFAULT 0 COMMENT 'Chế độ nghỉ phép nhanh'");
+    }
+
+    // Auto-migrate: ensure is_accepted and accepted_at in leads
+    $chkColIA = $conn->query("SHOW COLUMNS FROM leads LIKE 'is_accepted'");
+    if ($chkColIA && $chkColIA->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN is_accepted TINYINT(1) DEFAULT 0 COMMENT 'Sale đã bấm tiếp nhận'");
+    }
+    $chkColAA = $conn->query("SHOW COLUMNS FROM leads LIKE 'accepted_at'");
+    if ($chkColAA && $chkColAA->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN accepted_at DATETIME NULL COMMENT 'Thời gian Sale bấm tiếp nhận'");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '117') ON DUPLICATE KEY UPDATE setting_value = '117'");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_two_way_sync', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_google_script_url', '')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_sheet_name', '')");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '120') ON DUPLICATE KEY UPDATE setting_value = '120'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

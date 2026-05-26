@@ -154,6 +154,23 @@ export const Consultants = () => {
     setLoading(false);
   };
 
+  const handleToggleVacation = async (id: number) => {
+    try {
+      const json = await fetchAPI('toggle_consultant_vacation', {
+        method: 'POST',
+        body: JSON.stringify({ id })
+      });
+      if (json.success) {
+        toast.success(t('Đã thay đổi chế độ nghỉ phép nhanh'));
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, vacation_mode: json.vacation_mode } : u));
+      } else {
+        toast.error(json.message || t('Lỗi thay đổi trạng thái'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
+
   useEffect(() => { fetchUsers(); }, []);
 
   const openAddModal = () => {
@@ -530,28 +547,37 @@ export const Consultants = () => {
                         </div>
                       )}
                     </td>
-                    <td>
-                      {u.status === 'active' ? (
-                        <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                          {t('Đang nhận Data')}
-                        </span>
-                      ) : u.status === 'leave' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span className="badge warning" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                            <Clock size={12} /> {t('Nghỉ phép')}
-                          </span>
-                          {(u.leave_start || u.leave_end) && (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                              {u.leave_start ? new Date(u.leave_start).toLocaleDateString('vi-VN') : '...'} - {u.leave_end ? new Date(u.leave_end).toLocaleDateString('vi-VN') : '...'}
+                    <td onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {u.status === 'active' ? (
+                          Number(u.vacation_mode) ? (
+                            <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                              {t('Nghỉ phép nhanh')}
                             </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <UserX size={12} /> {t('Ngừng HĐ')}
-                        </span>
-                      )}
+                          ) : (
+                            <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                              {t('Đang nhận Data')}
+                            </span>
+                          )
+                        ) : u.status === 'leave' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span className="badge warning" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                              <Clock size={12} /> {t('Nghỉ phép')}
+                            </span>
+                            {(u.leave_start || u.leave_end) && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                {u.leave_start ? new Date(u.leave_start).toLocaleDateString('vi-VN') : '...'} - {u.leave_end ? new Date(u.leave_end).toLocaleDateString('vi-VN') : '...'}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                            <UserX size={12} /> {t('Ngừng HĐ')}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
@@ -915,7 +941,28 @@ export const Consultants = () => {
                       </p>
                     </div>
 
-                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                  {editingUser && formData.status === 'active' && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Trạng thái nhận data phân bổ hiện tại')}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ToggleSwitch
+                          checked={!Boolean(Number(editingUser.vacation_mode))}
+                          onChange={async () => {
+                            await handleToggleVacation(editingUser.id);
+                            setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
+                          }}
+                        />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: !Boolean(Number(editingUser.vacation_mode)) ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                          {!Boolean(Number(editingUser.vacation_mode)) ? t('Nhận data') : t('Nghỉ phép nhanh')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
                         <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Zalo Chat ID (Tự động cấp)')} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{t('(chỉ có thể hủy liên kết)')}</span>
                       </label>

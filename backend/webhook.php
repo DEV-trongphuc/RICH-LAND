@@ -349,8 +349,11 @@ if ($isSilent == 1) {
             $leadId = insertLead($conn, $data, $assignedToId, $phone, $email, $name, $source, $type, $note, $connectionId);
         }
         $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
-        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);
         $conn->commit();
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
@@ -396,8 +399,11 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     try {
         // Update last interaction
         $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId, null, $name);
-        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.');
+        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.', false);
         $conn->commit();
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
@@ -480,8 +486,11 @@ try {
     } else {
         $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);
     }
-    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message);
+    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
     $conn->commit();
+    if (!empty($leadId)) {
+        triggerTwoWaySync($conn, $leadId);
+    }
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);

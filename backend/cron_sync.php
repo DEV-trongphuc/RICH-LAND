@@ -276,10 +276,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         $compUpStmt->close();
                     }
                     
-                    // Log new distribution
-                    logDistribution($conn, $row['lead_id'], $assignedConsultantId, $row['round_id'], $newStatus, $logMsg);
+                    logDistribution($conn, $row['lead_id'], $assignedConsultantId, $row['round_id'], $newStatus, $logMsg, false);
                     
                     $conn->commit();
+                    
+                    // Post-commit: trigger live write-back
+                    triggerTwoWaySync($conn, $row['lead_id']);
                     
                     // Trigger notifications out-of-transaction to avoid locking DB during API/SMTP delay
                     if ($assignedConsultantId && $newStatus !== 'pending_work_hours') {
@@ -479,8 +481,261 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
     }
 }
 
+if (!function_exists('recallInactiveLeads')) {
+    function recallInactiveLeads($conn) {
+        logSync("Checking for inactive unaccepted leads to recall...");
+        
+        // Query all leads that have been assigned but not yet accepted, joining sheet_connections to check their specific recall duration
+        $sql = "SELECT l.id as lead_id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
+                       l.source as lead_source, l.type as lead_type, l.note as lead_note,
+                       l.assigned_to as old_consultant_id, l.connection_id,
+                       c.name as old_consultant_name, c.email as old_consultant_email,
+                       sc.lead_recall_minutes
+                FROM leads l
+                JOIN consultants c ON l.assigned_to = c.id
+                JOIN sheet_connections sc ON l.connection_id = sc.id
+                WHERE l.is_accepted = 0
+                  AND l.assigned_to IS NOT NULL
+                  AND sc.lead_recall_minutes > 0
+                  AND l.last_interaction_date <= DATE_SUB(NOW(), INTERVAL sc.lead_recall_minutes MINUTE)
+                ORDER BY l.id ASC";
+                
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            logSync("Error preparing recall query.");
+            return;
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $leads = $res->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        if (empty($leads)) {
+            logSync("No inactive unaccepted leads found.");
+            return;
+        }
+
+        logSync("Found " . count($leads) . " unaccepted leads that exceeded the recall threshold.");
+
+        foreach ($leads as $row) {
+            $leadId = $row['lead_id'];
+            $oldConsultantId = $row['old_consultant_id'];
+            $oldConsultantName = $row['old_consultant_name'];
+
+            $conn->begin_transaction();
+            try {
+                // Find latest distribution log for this lead
+                $logStmt = $conn->prepare("SELECT id, round_id FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
+                $logStmt->bind_param("ii", $leadId, $oldConsultantId);
+                $logStmt->execute();
+                $logRes = $logStmt->get_result();
+                $logData = $logRes->fetch_assoc();
+                $logStmt->close();
+
+                $roundId = $logData ? (int)$logData['round_id'] : 0;
+                $logId = $logData ? (int)$logData['id'] : 0;
+
+                // 1. Mark the old distribution log as 'recalled'
+                if ($logId > 0) {
+                    $upOldLog = $conn->prepare("UPDATE distribution_logs SET status = 'recalled', message = CONCAT(message, '\n[Thu hồi tự động do Sale không tiếp nhận sau ', ?, ' phút]') WHERE id = ?");
+                    $upOldLog->bind_param("ii", $row['lead_recall_minutes'], $logId);
+                    $upOldLog->execute();
+                    $upOldLog->close();
+                }
+
+                // 2. Increment compensation count for the lazy consultant in that round
+                if ($roundId > 0) {
+                    $chkComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                    $chkComp->bind_param("ii", $roundId, $oldConsultantId);
+                    $chkComp->execute();
+                    $chkComp->close();
+                }
+
+                // 3. Find next consultant in the round (or fallback to admin)
+                $newConsultantId = null;
+                $newStatus = 'assigned';
+                $newConsultantName = '';
+                $newConsultantEmail = '';
+                $roundName = 'Không rõ';
+                $ccEmails = '';
+                $isFallbackAdmin = false;
+                $fallbackAdminData = null;
+                $fallbackCcEmails = '';
+
+                if ($roundId > 0) {
+                    // Fetch round info
+                    $rStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+                    $rStmt->bind_param("i", $roundId);
+                    $rStmt->execute();
+                    $rRes = $rStmt->get_result()->fetch_assoc();
+                    if ($rRes) {
+                        $roundName = $rRes['round_name'];
+                        $ccEmails = $rRes['cc_emails'];
+                    }
+                    $rStmt->close();
+
+                    $assignResult = getNextConsultantInRound($conn, $roundId);
+                    if ($assignResult) {
+                        $newConsultantId = $assignResult['id'];
+                        $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                    }
+                }
+
+                if ($newConsultantId) {
+                    // Fetch new consultant info
+                    $ncStmt = $conn->prepare("SELECT name, email, work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                    $ncStmt->bind_param("i", $newConsultantId);
+                    $ncStmt->execute();
+                    $ncRow = $ncStmt->get_result()->fetch_assoc();
+                    if ($ncRow) {
+                        $newConsultantName = $ncRow['name'];
+                        $newConsultantEmail = $ncRow['email'];
+                        
+                        // Check working hours
+                        $currentTime = date('H:i');
+                        if (!isConsultantInWorkHours($currentTime, $ncRow['work_start_time'], $ncRow['work_end_time'], $ncRow['work_schedule'])) {
+                            $newStatus = 'pending_work_hours';
+                        }
+                    }
+                    $ncStmt->close();
+                } else {
+                    // Fallback to Admin
+                    $fbSettings = get_system_setting($conn);
+                    $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
+                    $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                    
+                    if ($fbAdminId > 0) {
+                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                        $admStmt->bind_param("i", $fbAdminId);
+                        $admStmt->execute();
+                        $admRes = $admStmt->get_result();
+                        if ($admRes->num_rows > 0) {
+                            $fallbackAdminData = $admRes->fetch_assoc();
+                            $newConsultantId = null;
+                            $isFallbackAdmin = true;
+                            $fallbackCcEmails = $fbCc;
+                        }
+                        $admStmt->close();
+                    }
+                }
+
+                // 4. Update leads table
+                $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                $upLead->bind_param("ii", $newConsultantId, $leadId);
+                $upLead->execute();
+                $upLead->close();
+
+                // 5. Log the new distribution
+                $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.";
+                if ($isFallbackAdmin && $fallbackAdminData) {
+                    $logMsg = "Thu hồi từ Sale {$oldConsultantName} và chuyển fallback về Admin: " . $fallbackAdminData['name'];
+                }
+                logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);
+
+                $conn->commit();
+
+                // Post-commit: trigger live write-back
+                triggerTwoWaySync($conn, $leadId);
+
+                // Send notifications
+                if ($newConsultantId && $newStatus !== 'pending_work_hours') {
+                    try {
+                        sendLeadAssignedEmailToSale(
+                            $newConsultantEmail,
+                            $newConsultantName,
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $ccEmails,
+                            $roundName,
+                            $leadId,
+                            $newConsultantId,
+                            $roundId
+                        );
+                    } catch (Exception $mailEx) {
+                        logSync("Error sending email to new consultant: " . $mailEx->getMessage());
+                    }
+                    try {
+                        sendLeadAssignedZaloMessageToSale(
+                            $newConsultantId,
+                            $newConsultantName,
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $roundName,
+                            $leadId,
+                            $roundId,
+                            $row['lead_email'] ?: '',
+                            $row['lead_type'] ?: ''
+                        );
+                    } catch (Exception $zaloEx) {
+                        logSync("Error sending Zalo to new consultant: " . $zaloEx->getMessage());
+                    }
+                } else if ($isFallbackAdmin && $fallbackAdminData) {
+                    try {
+                        sendLeadAssignedEmailToSale(
+                            $fallbackAdminData['email'],
+                            $fallbackAdminData['name'],
+                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                            $row['lead_phone'] ?: '',
+                            $row['lead_note'] ?: '',
+                            $row['lead_source'] ?: '',
+                            $fallbackCcEmails,
+                            'Fallback Admin',
+                            $leadId,
+                            0,
+                            0
+                        );
+                    } catch (Exception $mailEx) {
+                        logSync("Error sending email to fallback admin: " . $mailEx->getMessage());
+                    }
+                }
+                
+                // Notify the old consultant about the recall
+                try {
+                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                    
+                    $oldCZalo = null;
+                    $cZaloStmt = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                    $cZaloStmt->bind_param("i", $oldConsultantId);
+                    $cZaloStmt->execute();
+                    $cZaloRes = $cZaloStmt->get_result()->fetch_assoc();
+                    if ($cZaloRes) {
+                        $oldCZalo = $cZaloRes['zalo_chat_id'];
+                    }
+                    $cZaloStmt->close();
+
+                    if (!empty($botToken) && !empty($oldCZalo)) {
+                        $lName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
+                        $recallMsg = "⚠️ [ THÔNG BÁO THU HỒI DATA ] ⚠️\n"
+                                   . "━━━━━━━━━━━━━━━━━━━━━\n"
+                                   . "Chào $oldConsultantName,\n\n"
+                                   . "Data \"$lName\" đã bị hệ thống THU HỒI do bạn không tiếp nhận trong vòng " . $row['lead_recall_minutes'] . " phút.\n"
+                                   . "Hệ thống đã bù lại 1 lượt nhận data cho bạn tại vòng: $roundName.\n\n"
+                                   . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                   . "━━━━━━━━━━━━━━━━━━━━━";
+                        sendZaloMessage($botToken, $oldCZalo, $recallMsg);
+                    }
+                } catch (Exception $recZaloEx) {
+                    logSync("Error sending recall warning Zalo: " . $recZaloEx->getMessage());
+                }
+
+                logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully.");
+
+            } catch (Exception $e) {
+                $conn->rollback();
+                logSync("Error recalling lead ID $leadId: " . $e->getMessage());
+            }
+        }
+    }
+}
+
 logSync("Starting Google Sheets Sync Cronjob...");
 releasePendingWorkHoursLeads($conn);
+recallInactiveLeads($conn);
 
 // Get active connections
 $sql = "SELECT * FROM sheet_connections WHERE is_active = 1";
@@ -827,14 +1082,16 @@ foreach ($connections as $connItem) {
                         } else {
                             $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                         }
-                        $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
-                        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.');
+                        logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);
                         
                         $recordStmt->bind_param("is", $connItem['id'], $rowHash);
                         $recordStmt->execute();
                         $hashMap[$rowHash] = true;
                         
                         $conn->commit();
+                        
+                        // Post-commit: trigger live write-back
+                        triggerTwoWaySync($conn, $leadId);
                     } catch (Exception $txE) {
                         $conn->rollback();
                         logSync("Transaction failed for silent row: " . $txE->getMessage());
@@ -881,7 +1138,7 @@ foreach ($connections as $connItem) {
                     $conn->begin_transaction();
                     try {
                         $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
-                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (đồng bộ hệ thống).');
+                        logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (đồng bộ hệ thống).', false);
                         
                         // Record hash so we don't spam duplicate logs on next run
                         $recordStmt->bind_param("is", $connItem['id'], $rowHash);
@@ -889,6 +1146,9 @@ foreach ($connections as $connItem) {
                         $hashMap[$rowHash] = true;
                         
                         $conn->commit();
+                        
+                        // Post-commit: trigger live write-back
+                        triggerTwoWaySync($conn, $leadId);
                     } catch (Exception $txE) {
                         $conn->rollback();
                         logSync("Transaction failed for duplicate row: " . $txE->getMessage());
@@ -967,7 +1227,7 @@ foreach ($connections as $connItem) {
                     } else {
                         $leadId = insertLead($conn, $rowData, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                     }
-                    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage);
+                    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage, false);
                     
                     // Record hash so we don't process this row again on next cron run
                     $recordStmt->bind_param("is", $connItem['id'], $rowHash);
@@ -975,6 +1235,9 @@ foreach ($connections as $connItem) {
                     $hashMap[$rowHash] = true;
                     
                     $conn->commit();
+                    
+                    // Post-commit: trigger live write-back
+                    triggerTwoWaySync($conn, $leadId);
                 } catch (Exception $txE) {
                     $conn->rollback();
                     logSync("Transaction failed for row: " . $txE->getMessage());
