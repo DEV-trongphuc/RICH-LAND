@@ -331,42 +331,46 @@ export const ReportData = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {reasons.map(r => (
                         <label key={r.reason} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'stretch',
-                          gap: reason === r.reason ? 8 : 0,
-                          padding: '12px 14px',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 14px',
                           border: '1.5px solid', borderColor: reason === r.reason ? '#8b5cf6' : 'transparent',
                           background: reason === r.reason ? (theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))') : 'var(--color-bg)',
                           borderRadius: 12, cursor: 'pointer',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: reason === r.reason ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
                           flexShrink: 0
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <input type="radio" name="reason" value={r.reason} checked={reason === r.reason}
-                              onChange={() => setReason(r.reason)}
-                              style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.85rem', color: reason === r.reason ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r.reason ? 700 : 500 }}>{t(r.reason)}</span>
-                          </div>
-
-                          {reason === r.reason && r.note && (
-                            <div style={{
-                              paddingLeft: 26,
-                              fontSize: '0.78rem',
-                              lineHeight: 1.4,
-                              color: theme === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#4b5563',
-                              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(139, 92, 246, 0.15)',
-                              paddingTop: 8,
-                              animation: 'fadeIn 0.2s ease-out',
-                              whiteSpace: 'pre-wrap'
-                            }}>
-                              {t(r.note.replace(/{n}/g, String(context?.duplicate_check_months || 6)))}
-                            </div>
-                          )}
+                          <input type="radio" name="reason" value={r.reason} checked={reason === r.reason}
+                            onChange={() => setReason(r.reason)}
+                            style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.85rem', color: reason === r.reason ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r.reason ? 700 : 400 }}>{t(r.reason)}</span>
                         </label>
                       ))}
                     </div>
+
+                    {/* Selected Reason Guideline Note */}
+                    {(() => {
+                      const selectedObj = reasons.find(r => r.reason === reason);
+                      if (!selectedObj || !selectedObj.note) return null;
+                      const cleanNote = selectedObj.note.replace(/{n}/g, String(context?.duplicate_check_months || 6));
+                      return (
+                        <div style={{
+                          padding: '10px 12px',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '10px',
+                          fontSize: '0.8125rem',
+                          lineHeight: 1.4,
+                          color: 'var(--color-text-light)',
+                          marginTop: '4px',
+                          marginBottom: '4px',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t('Hướng dẫn:')} </span>
+                          {t(cleanNote)}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>{t("Ghi chú thêm")}</div>
                     <textarea 
