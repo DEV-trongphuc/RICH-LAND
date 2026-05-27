@@ -60,12 +60,13 @@ const maskEmail = (email: string) => {
 };
 
 const parseNote = (noteText: string) => {
-  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [] };
+  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [], warningNotes: [] };
   const normalized = noteText.replace(/\\n/g, '\n');
   const lines = normalized.split('\n');
   const cleanLines: string[] = [];
   const errorNotes: string[] = [];
   const blacklistNotes: string[] = [];
+  const warningNotes: string[] = [];
 
   lines.forEach(line => {
     const trimmed = line.trim();
@@ -81,6 +82,19 @@ const parseNote = (noteText: string) => {
       trimmed.toLowerCase().startsWith('[chặn bởi')
     ) {
       blacklistNotes.push(trimmed);
+    } else if (
+      trimmed.startsWith('[Lưu ý:') ||
+      trimmed.startsWith('Lưu ý:') ||
+      trimmed.toLowerCase().startsWith('[lưu ý:') ||
+      trimmed.toLowerCase().startsWith('lưu ý:') ||
+      trimmed.startsWith('[Chú ý:') ||
+      trimmed.toLowerCase().startsWith('[chú ý:')
+    ) {
+      let cleanWarn = trimmed;
+      if (cleanWarn.startsWith('[') && cleanWarn.endsWith(']')) {
+        cleanWarn = cleanWarn.substring(1, cleanWarn.length - 1).trim();
+      }
+      warningNotes.push(cleanWarn);
     } else {
       cleanLines.push(line);
     }
@@ -89,7 +103,8 @@ const parseNote = (noteText: string) => {
   return {
     cleanNote: cleanLines.join('\n').trim(),
     errorNotes,
-    blacklistNotes
+    blacklistNotes,
+    warningNotes
   };
 };
 
@@ -3007,10 +3022,43 @@ export const Gatekeeper = () => {
                 </div>
 
                 {(() => {
-                  const { cleanNote, blacklistNotes } = parseNote(selectedLead.note || '');
+                  const { cleanNote, blacklistNotes, warningNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
 
+
+                      {/* Warning Notes Card */}
+                      {warningNotes && warningNotes.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                          {warningNotes.map((warn, index) => (
+                            <div key={index} style={{
+                              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
+                              border: '1px dashed var(--color-warning)',
+                              padding: '1rem 1.25rem',
+                              borderRadius: '16px',
+                              display: 'flex',
+                              gap: '0.75rem',
+                              alignItems: 'center'
+                            }}>
+                              <div style={{
+                                background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+                                padding: '6px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--color-warning)',
+                                flexShrink: 0
+                              }}>
+                                <AlertTriangle size={16} strokeWidth={2.5} />
+                              </div>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: theme === 'dark' ? '#f3f4f6' : '#78350f', lineHeight: 1.4 }}>
+                                {warn}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Clean Note Card */}
                       <div style={{
