@@ -1058,7 +1058,7 @@ export const Tickets = () => {
                 </div>
 
                 {/* Mobile Card List View */}
-                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 1rem 5rem 1rem' }}>
                   {filteredReports.map(r => (
                     <div 
                       key={r.id}

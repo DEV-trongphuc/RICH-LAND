@@ -179,7 +179,7 @@ export const Dashboard = () => {
       monday.setDate(now.getDate() + distanceToMonday);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      
+
       mode = 'custom';
       start = monday.toISOString().split('T')[0];
       end = sunday.toISOString().split('T')[0];
@@ -450,19 +450,19 @@ export const Dashboard = () => {
       ) : (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px' }}>
               <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>{t('Biểu đồ thể hiện lưu lượng Data đổ về')} {dateFilter === 'Tùy chỉnh' ? t('trong khoảng thời gian đã chọn') : `${t('trong')} ${getDisplayDateFilterText(dateFilter).toLowerCase()}`}.</p>
               </div>
               {!isSingleDay && (
-                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
                   <button
                     onClick={() => setChartMode('day')}
                     style={{
-                      padding: '6px 12px',
+                      padding: isMobile ? '4px 8px' : '6px 12px',
                       borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.8125rem',
+                      fontSize: isMobile ? '0.7rem' : '0.8125rem',
                       fontWeight: 600,
                       border: 'none',
                       cursor: 'pointer',
@@ -477,9 +477,9 @@ export const Dashboard = () => {
                   <button
                     onClick={() => setChartMode('hour')}
                     style={{
-                      padding: '6px 12px',
+                      padding: isMobile ? '4px 8px' : '6px 12px',
                       borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.8125rem',
+                      fontSize: isMobile ? '0.7rem' : '0.8125rem',
                       fontWeight: 600,
                       border: 'none',
                       cursor: 'pointer',
@@ -498,12 +498,12 @@ export const Dashboard = () => {
               <ResponsiveContainer width="100%" height={260}>
                 <ComposedChart data={stats.chartData} margin={{ left: -10, right: 5, top: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis 
-                    dataKey="time" 
-                    tick={{ fontSize: isMobile ? 8 : 11, fill: 'var(--color-text-light)' }} 
-                    axisLine={false} 
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: isMobile ? 8 : 11, fill: 'var(--color-text-light)' }}
+                    axisLine={false}
                     tickLine={false}
-                    interval={isMobile ? 'preserveStartEnd' : 'preserveEnd'} 
+                    interval={isMobile ? 'preserveStartEnd' : 'preserveEnd'}
                   />
                   <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
                   <Tooltip content={({ active, payload, label }) => {
@@ -550,16 +550,16 @@ export const Dashboard = () => {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
                     >
-                      <Avatar 
+                      <Avatar
                         src={
-                          log.status === 'pending_approval' 
-                            ? '/imgs/warn_icon.png' 
-                            : log.status === 'rejected' 
-                              ? 'https://crm-domation.vercel.app/LOGO.jpg' 
-                              : log.status === 'blacklisted' 
-                                ? '/imgs/angry_icon.jpg' 
+                          log.status === 'pending_approval'
+                            ? '/imgs/warn_icon.png'
+                            : log.status === 'rejected'
+                              ? 'https://crm-domation.vercel.app/LOGO.jpg'
+                              : log.status === 'blacklisted'
+                                ? '/imgs/angry_icon.jpg'
                                 : log.assigned_to_avatar
-                        } 
+                        }
                         name={
                           log.status === 'pending_approval'
                             ? 'Domation AI - Screener'
@@ -568,8 +568,8 @@ export const Dashboard = () => {
                               : log.status === 'blacklisted'
                                 ? 'Domation AI - Angry'
                                 : (log.assigned_to_name || t('Hệ thống'))
-                        } 
-                        size={32} 
+                        }
+                        size={32}
                       />
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
@@ -664,7 +664,7 @@ export const Dashboard = () => {
             {/* Top Consultants */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
                   <Users size={18} color="var(--color-primary)" /> {t('Top Tư vấn viên nhận Data')}
                 </h3>
               </div>
@@ -712,7 +712,7 @@ export const Dashboard = () => {
             {/* Round Assignment Ratio */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
                   <GitBranch size={18} color="#3b82f6" /> {t('Tỷ lệ theo Vòng Phân Bổ')}
                 </h3>
               </div>
@@ -737,17 +737,17 @@ export const Dashboard = () => {
           <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
             {/* Source Pie Chart */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
                   <GitBranch size={18} color="#8b5cf6" /> {t('Tỷ lệ Nguồn Data')}
                 </h3>
-                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
                   <button
                     onClick={() => setSourceViewMode('connection')}
                     style={{
-                      padding: '4px 10px',
+                      padding: isMobile ? '3px 6px' : '4px 10px',
                       borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
+                      fontSize: isMobile ? '0.65rem' : '0.75rem',
                       fontWeight: 600,
                       border: 'none',
                       cursor: 'pointer',
@@ -762,9 +762,9 @@ export const Dashboard = () => {
                   <button
                     onClick={() => setSourceViewMode('lead')}
                     style={{
-                      padding: '4px 10px',
+                      padding: isMobile ? '3px 6px' : '4px 10px',
                       borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
+                      fontSize: isMobile ? '0.65rem' : '0.75rem',
                       fontWeight: 600,
                       border: 'none',
                       cursor: 'pointer',
@@ -843,8 +843,8 @@ export const Dashboard = () => {
             {/* Error Tickets by TVV (Vertical Column Chart) */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <CheckCircle size={18} color="#10b981" /> {t('Thống kê lỗi Ticket (Được duyệt)')}
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <CheckCircle size={18} color="#10b981" /> {t('Thống kê lỗi Ticket')}
                 </h3>
               </div>
               <div style={{ flex: 1, minHeight: 260 }}>

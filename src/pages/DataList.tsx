@@ -826,15 +826,35 @@ export const DataList = () => {
             >
               <Download size={13} /> <span>{t('Xuất')}<span className="hide-on-mobile"> CSV</span></span>
             </button>
+
+            {/* Separator line for mobile filter toggle */}
+            <div className="mobile-only" style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 6px' }} />
+
+            {/* Compact Filter Toggle Button (Mobile only) */}
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 8px',
+                borderRadius: '6px',
+                border: 'none',
+                background: showMobileFilters ? 'var(--color-primary-light)' : 'transparent',
+                color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                height: '28px',
+                width: '32px'
+              }}
+              title={showMobileFilters ? t('Ẩn bộ lọc') : t('Hiện bộ lọc')}
+              className="mobile-only"
+            >
+              <Filter size={13} style={{ color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)' }} />
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Mobile Filter Toggle */}
-      <div className="filter-mobile-only" style={{ marginBottom: '1rem' }}>
-        <button className="btn outline" onClick={() => setShowMobileFilters(!showMobileFilters)} style={{ width: '100%', justifyContent: 'center', background: 'var(--color-surface)', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
-          <Filter size={16} /> {showMobileFilters ? t('Ẩn bộ lọc') : t('Hiện bộ lọc')}
-        </button>
       </div>
 
       {/* Filters */}

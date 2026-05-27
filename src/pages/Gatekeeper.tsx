@@ -225,6 +225,7 @@ export const Gatekeeper = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const ITEMS_PER_PAGE = 50;
 
@@ -594,7 +595,7 @@ export const Gatekeeper = () => {
         </div>
 
         {/* Header Actions */}
-        <div className="mobile-flex-wrap" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="mobile-flex-wrap hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
           {/* Guide Button */}
           <button
@@ -1115,12 +1116,126 @@ export const Gatekeeper = () => {
         )}
       </div>
 
+      {/* Mobile control bar */}
+      <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+          {/* Status Dropdown (Matches Tickets style) */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CustomSelect
+              options={[
+                {
+                  value: 'held',
+                  label: `${t('Tạm giữ')} (${heldLeadsTotalCount})`,
+                  icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444' }} />
+                }
+              ]}
+              value="held"
+              onChange={() => { }}
+              width="100%"
+            />
+          </div>
+
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid',
+              borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
+              background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <Filter size={16} />
+          </button>
+
+          {/* Reload Button */}
+          <button
+            onClick={fetchHeldLeads}
+            disabled={heldLeadsLoading}
+            title={t("Làm mới")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-muted)',
+              cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+          </button>
+
+          {/* Stats Button */}
+          <button
+            onClick={() => setIsStatsModalOpen(true)}
+            title={t("Thống kê")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid var(--color-primary)',
+              background: 'rgba(124,58,237,0.08)',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <BarChart2 size={16} />
+          </button>
+
+          {/* Settings Button */}
+          <button
+            onClick={() => {
+              fetchSettings();
+              setIsSettingsModalOpen(true);
+            }}
+            title={t("Cấu hình quy tắc")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid var(--color-primary)',
+              background: 'rgba(124,58,237,0.08)',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <Settings size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* ── Main content card showing held queue ── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', minHeight: '500px' }}>
 
 
         {/* Filter bar */}
-        <div className="responsive-filter-row" style={{
+        <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
           position: 'relative', zIndex: 100,
           display: 'flex', gap: 12, padding: '14px 18px',
           background: 'linear-gradient(135deg, rgba(124,58,237,0.04) 0%, rgba(99,102,241,0.02) 100%)',
@@ -1134,7 +1249,7 @@ export const Gatekeeper = () => {
           <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
 
           <div className="mobile-stack" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
-            {/* Search Input + Refresh Button */}
+            {/* Search Input */}
             <div className="mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: 350 }}>
               <input
                 type="text"
@@ -1144,31 +1259,9 @@ export const Gatekeeper = () => {
                 className="form-input mobile-w-full"
                 style={{ height: 44, fontSize: '0.85rem', width: '100%', maxWidth: 350, borderRadius: 'var(--radius-lg)', padding: '0 1rem', flex: 1 }}
               />
-              <button
-                onClick={fetchHeldLeads}
-                disabled={heldLeadsLoading}
-                title={t("Làm mới")}
-                className="btn outline mobile-only"
-                style={{
-                  padding: 0,
-                  borderRadius: 'var(--radius-lg)',
-                  borderColor: 'var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text-muted)',
-                  cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 44,
-                  height: 44,
-                  flexShrink: 0
-                }}
-              >
-                <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
-              </button>
             </div>
 
-            {/* Date Select + Stats Button */}
+            {/* Date Select */}
             <div className="mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: 180 }}>
               <div style={{ position: 'relative', width: '100%' }} className="mobile-flex-1">
                 <CustomSelect
@@ -1184,28 +1277,57 @@ export const Gatekeeper = () => {
                   width="100%"
                 />
               </div>
+            </div>
 
+            {/* Guide & Toggle Switch on Mobile (Only shown on mobile when filter is expanded) */}
+            <div className="mobile-only mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <button
-                onClick={() => setIsStatsModalOpen(true)}
-                className="btn primary mobile-only"
+                onClick={() => setIsGuideModalOpen(true)}
+                className="btn outline mobile-flex-1"
+                style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.85rem', borderRadius: 'var(--radius-lg)', width: '100%' }}
+              >
+                <Sparkles size={14} color="var(--color-primary)" />
+                <span>{t('Hướng dẫn')}</span>
+              </button>
+
+              <div
+                onClick={() => {
+                  fetchSettings();
+                  setIsSettingsModalOpen(true);
+                }}
+                className="mobile-flex-1"
                 style={{
-                  height: 44,
-                  fontSize: '0.825rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  flex: 1,
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                  border: 'none',
-                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                  color: '#fff',
-                  fontWeight: 600
+                  gap: 8,
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 8,
+                  height: 44,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  width: '100%'
                 }}
               >
-                <BarChart2 size={15} />
-                <span>{t('Thống kê')}</span>
-              </button>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                  {t('Lọc AI')}
+                </span>
+                <div
+                  style={{
+                    width: 36, height: 20, borderRadius: 10,
+                    background: aiScreenerEnabled ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                    position: 'relative', transition: 'background 0.2s',
+                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                    background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    left: aiScreenerEnabled ? 19 : 3, transition: 'left 0.2s'
+                  }} />
+                </div>
+              </div>
             </div>
 
             {/* Desktop filter buttons */}
@@ -1336,7 +1458,7 @@ export const Gatekeeper = () => {
                             </span>
                           ) : (
                             <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <ShieldAlert size={12} /> {t('Dưới chuẩn (AI Held)')}
+                              <ShieldAlert size={12} /> {t('Dưới chuẩn')}
                             </span>
                           )}
                           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
@@ -1405,7 +1527,7 @@ export const Gatekeeper = () => {
             </div>
 
             {/* Mobile Card List View */}
-            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 1rem 5rem 1rem' }}>
               {heldLeads.map((l: any) => (
                 <div
                   key={l.id}
@@ -1453,7 +1575,7 @@ export const Gatekeeper = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
                         <Clock size={12} style={{ opacity: 0.6 }} />
@@ -1494,12 +1616,12 @@ export const Gatekeeper = () => {
                         <>
                           <ShieldAlert size={12} color="var(--color-danger)" />
                           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
-                            {t('Dưới chuẩn (AI Held)')}
+                            {t('Dưới chuẩn')}
                           </span>
                         </>
                       )}
                     </div>
-                    
+
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
                       <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
                       {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
@@ -1508,21 +1630,21 @@ export const Gatekeeper = () => {
 
                   {/* Actions footer */}
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                    <button 
+                    <button
                       onClick={() => {
                         setActioningHeldLead(l);
                         setHeldActionReason('');
                         setHeldActionModalOpen('blacklist');
                       }}
-                      className="btn outline sm" 
-                      style={{ 
-                        color: 'var(--color-danger)', 
-                        borderColor: 'var(--color-danger)', 
-                        boxShadow: 'none', 
-                        width: 36, 
-                        height: 36, 
-                        padding: 0, 
-                        borderRadius: 10, 
+                      className="btn outline sm"
+                      style={{
+                        color: 'var(--color-danger)',
+                        borderColor: 'var(--color-danger)',
+                        boxShadow: 'none',
+                        width: 36,
+                        height: 36,
+                        padding: 0,
+                        borderRadius: 10,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1532,14 +1654,14 @@ export const Gatekeeper = () => {
                     >
                       <ShieldAlert size={16} />
                     </button>
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         setActioningHeldLead(l);
                         setHeldActionReason('');
                         setHeldActionModalOpen('reject');
                       }}
-                      className="btn primary sm" 
+                      className="btn primary sm"
                       style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                       title={t('Dưới chuẩn')}
                     >
@@ -1547,9 +1669,9 @@ export const Gatekeeper = () => {
                       <span>{t('Dưới chuẩn')}</span>
                     </button>
 
-                    <button 
+                    <button
                       onClick={() => handleOpenApproveHeldLead(l)}
-                      className="btn primary sm" 
+                      className="btn primary sm"
                       style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                       title={t('Duyệt')}
                     >
@@ -2238,8 +2360,8 @@ export const Gatekeeper = () => {
                                     <CustomSelect
                                       options={[
                                         { value: '', label: `-- ${t('Chọn Vòng phân bổ fallback')} --` },
-                                        ...rounds.map((r: any) => ({ 
-                                          value: String(r.id), 
+                                        ...rounds.map((r: any) => ({
+                                          value: String(r.id),
                                           label: r.round_name,
                                           disabled: Number(r.is_active) !== 1,
                                           disabledType: 'round' as const
@@ -2476,16 +2598,21 @@ export const Gatekeeper = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '12px 16px',
+            padding: '10px 14px',
             background: 'rgba(124, 58, 237, 0.06)',
             border: '1px solid rgba(124, 58, 237, 0.15)',
             borderRadius: '10px',
-            marginBottom: '4px'
+            marginBottom: '4px',
+            flexWrap: 'wrap',
+            gap: '8px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <Filter size={16} color="var(--color-primary)" />
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="hide-on-mobile">
                 {t('Đang áp dụng bộ lọc thời gian:')}
+              </span>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="mobile-only">
+                {t('Bộ lọc:')}
               </span>
               <span style={{
                 background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
@@ -2823,8 +2950,8 @@ export const Gatekeeper = () => {
               {t('Vòng phân phối:')}
             </label>
             <CustomSelect
-              options={rounds.map((r: any) => ({ 
-                value: String(r.id), 
+              options={rounds.map((r: any) => ({
+                value: String(r.id),
                 label: r.round_name,
                 disabled: Number(r.is_active) !== 1,
                 disabledType: 'round' as const

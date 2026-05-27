@@ -336,39 +336,121 @@ export const Rounds = () => {
         </div>
 
         <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          {/* View Toggle */}
-          <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: 4, borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '10px',
+            padding: '3px 4px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            height: '38px'
+          }}>
+            {/* View Mode Toggle Buttons */}
+            <div style={{
+              display: 'flex',
+              background: 'transparent',
+              borderRadius: '8px',
+              padding: '0',
+              height: '32px',
+              alignItems: 'center'
+            }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'grid' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'grid' ? 'white' : 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <LayoutGrid size={13} /> <span className="hide-on-mobile">{t("Lưới")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'list' ? 'white' : 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <List size={13} /> <span className="hide-on-mobile">{t("Danh sách")}</span>
+              </button>
+            </div>
+
+            {/* Separator line */}
+            <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 6px' }} />
+
+            {/* Đối soát công bằng Button */}
             <button
-              onClick={() => setViewMode('grid')}
+              type="button"
+              onClick={() => navigate('/fair-share')}
               style={{
-                padding: '6px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
-                background: viewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
-                color: viewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                boxShadow: viewMode === 'grid' ? 'var(--shadow-xs)' : 'none',
-                fontWeight: viewMode === 'grid' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--color-primary)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                height: '28px'
               }}
             >
-              <LayoutGrid size={16} /> <span className="hide-on-mobile">{t("Lưới")}</span>
+              <Scale size={13} /> <span>{t("Đối soát")}<span className="hide-on-mobile"> {t("công bằng")}</span></span>
             </button>
+
+            {/* Separator line */}
+            <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 6px' }} />
+
+            {/* Thêm Vòng Button */}
             <button
-              onClick={() => setViewMode('list')}
+              type="button"
+              onClick={openAddModal}
               style={{
-                padding: '6px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
-                background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-                color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                boxShadow: viewMode === 'list' ? 'var(--shadow-xs)' : 'none',
-                fontWeight: viewMode === 'list' ? 600 : 500, fontSize: '0.875rem', transition: 'all 0.2s'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--color-primary)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                height: '28px'
               }}
             >
-              <List size={16} /> <span className="hide-on-mobile">{t("Danh sách")}</span>
+              <Plus size={13} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
             </button>
           </div>
-          <button className="btn outline" onClick={() => navigate('/fair-share')} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <Scale size={16} /> <span>{t("Đối soát")}<span className="hide-on-mobile"> {t("công bằng")}</span></span>
-          </button>
-          <button className="btn primary" onClick={openAddModal} style={{ flexShrink: 0 }}>
-            <Plus size={18} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
-          </button>
         </div>
       </div>
 
