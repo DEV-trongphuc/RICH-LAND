@@ -2914,7 +2914,7 @@ export const Gatekeeper = () => {
 
                   {/* Pagination Footer */}
                   {statsData.recent_below_standard && statsData.recent_below_standard.length > STATS_ITEMS_PER_PAGE && (
-                    <div style={{
+                    <div className="responsive-pagination" style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',

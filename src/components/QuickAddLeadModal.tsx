@@ -1038,7 +1038,7 @@ export const QuickAddLeadModal = () => {
       title={t("Thêm Data Thủ Công")}
       width="650px"
     >
-      <div style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
+      <div className="quick-add-modal-body" style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
         {/* Dán nhanh thông tin */}
         <div style={{
           marginBottom: '1.25rem',
@@ -1156,7 +1156,7 @@ export const QuickAddLeadModal = () => {
           </div>
         </div>
 
-        <div style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: '1.5rem' }}>
+        <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: '1.5rem' }}>
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview
           </h4>

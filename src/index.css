@@ -2537,3 +2537,24 @@ th.col-check {
   }
 }
 
+/* Custom responsive adjustments for Settings page header and Quick Add Lead Modal */
+@media (max-width: 768px) {
+  .settings-page-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  .settings-page-header > div:first-child {
+    max-width: calc(100% - 50px) !important;
+  }
+  .quick-add-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .quick-add-preview-box {
+    order: -1 !important;
+    margin-top: 0 !important;
+    margin-bottom: 1.25rem !important;
+  }
+}
+

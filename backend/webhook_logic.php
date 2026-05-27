@@ -1996,17 +1996,39 @@ function runManualScreener($conn, $leadData, $customRulesJson = null, $customAct
             // Translate operator
             $opVi = str_replace('_', ' ', $op);
             switch ($op) {
-                case 'contains': $opVi = 'có chứa'; break;
-                case 'not_contains': $opVi = 'không chứa'; break;
-                case 'equals': $opVi = 'là'; break;
-                case 'not_equals': $opVi = 'khác'; break;
-                case 'starts_with': $opVi = 'bắt đầu bằng'; break;
-                case 'ends_with': $opVi = 'kết thúc bằng'; break;
-                case 'is_empty': $opVi = 'để trống'; break;
-                case 'is_not_empty': $opVi = 'không để trống'; break;
-                case 'date_before': $opVi = 'trước ngày'; break;
-                case 'date_after': $opVi = 'sau ngày'; break;
-                case 'date_equals': $opVi = 'bằng ngày'; break;
+                case 'contains':
+                    $opVi = 'có chứa';
+                    break;
+                case 'not_contains':
+                    $opVi = 'không chứa';
+                    break;
+                case 'equals':
+                    $opVi = 'là';
+                    break;
+                case 'not_equals':
+                    $opVi = 'khác';
+                    break;
+                case 'starts_with':
+                    $opVi = 'bắt đầu bằng';
+                    break;
+                case 'ends_with':
+                    $opVi = 'kết thúc bằng';
+                    break;
+                case 'is_empty':
+                    $opVi = 'để trống';
+                    break;
+                case 'is_not_empty':
+                    $opVi = 'không để trống';
+                    break;
+                case 'date_before':
+                    $opVi = 'trước ngày';
+                    break;
+                case 'date_after':
+                    $opVi = 'sau ngày';
+                    break;
+                case 'date_equals':
+                    $opVi = 'bằng ngày';
+                    break;
             }
 
             $prefix = $colNameVi !== '' ? "$colNameVi " : "";

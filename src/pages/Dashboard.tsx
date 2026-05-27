@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale, Activity,
+  FileSpreadsheet, MessageCircle, Database, Server
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -30,6 +31,10 @@ export const Dashboard = () => {
   const [dateFilter, setDateFilter] = useState('Tháng này');
   const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>(null);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [showHealthModal, setShowHealthModal] = useState(false);
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
   const displayChartMode = isSingleDay ? 'hour' : chartMode;
@@ -105,14 +110,25 @@ export const Dashboard = () => {
     return t(filter);
   };
 
+  const fetchRounds = async () => {
+    try {
+      const json = await fetchAPI('get_rounds');
+      if (json.success) setRounds(json.data || []);
+    } catch (e) {
+      console.error('Lỗi tải vòng xoay:', e);
+    }
+  };
+
   const fetchDashboard = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       // BUG-04 fix: Dùng Promise.all để gọi song song, tiết kiệm ~1-2s
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
-      const [statsJson, logsJson] = await Promise.all([
+      const [statsJson, logsJson, settingsJson, connectionsJson] = await Promise.all([
         fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}`),
-        fetchAPI('get_logs&exclude_status=silent')
+        fetchAPI('get_logs&exclude_status=silent'),
+        fetchAPI('get_settings'),
+        fetchAPI('get_connections')
       ]);
 
       // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
@@ -126,6 +142,9 @@ export const Dashboard = () => {
         setRecentLogs(nonSilentLogs.slice(0, 5));
       }
       else console.error('Lỗi tải nhật ký:', logsJson.message);
+
+      if (settingsJson.success) setSettings(settingsJson.data);
+      if (connectionsJson.success) setConnections(connectionsJson.data || []);
     } catch (e: any) {
       // BUG-04 fix: Bỏ qua lỗi AbortError (do user đổi filter nhanh) - đây KHÔNG phải lỗi thực sự
       if (e?.name !== 'AbortError') {
@@ -140,6 +159,7 @@ export const Dashboard = () => {
       // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
       const abortController = new AbortController();
       fetchDashboard(abortController.signal);
+      fetchRounds();
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
   }, [dateFilter, chartMode, isActive]);
@@ -342,6 +362,14 @@ export const Dashboard = () => {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(330%); }
         }
+        @keyframes pulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .ping-dot {
+          animation: pulse 2s infinite;
+        }
         .top-consultant-item {
           cursor: pointer;
         }
@@ -378,6 +406,15 @@ export const Dashboard = () => {
               width="100%"
             />
           </div>
+          {/* Button to open Connection Health Modal */}
+          <button
+            className="btn outline"
+            onClick={() => setShowHealthModal(true)}
+            title={t("Kiểm tra kết nối hệ thống")}
+            style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <Server size={16} />
+          </button>
           <button
             className="btn outline"
             onClick={() => fetchDashboard()}
@@ -1359,12 +1396,106 @@ export const Dashboard = () => {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-              <button type="button" className="btn primary sm" onClick={() => setStatsModalOpen(false)}>{t('Đóng')}</button>
-            </div>
           </div>
         </div>,
         document.body
+      )}
+
+      {showHealthModal && (
+        <CustomModal
+          isOpen={showHealthModal}
+          onClose={() => setShowHealthModal(false)}
+          title={t("Trạng thái kết nối hệ thống")}
+          width="480px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+              {t("Kiểm tra trạng thái cấu hình và kết nối thời gian thực của các kênh tích hợp.")}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {/* 1. Google Sheets Connection */}
+              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
+                    <FileSpreadsheet size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Google Sheets Script</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Webhook nhận dữ liệu từ Sheets")}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {connections && connections.length > 0 ? `${connections.length} ${t('kết nối')}` : t('Chưa kết nối')}
+                  </span>
+                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: connections && connections.length > 0 ? 'var(--color-success)' : 'var(--color-warning)' }} />
+                </div>
+              </div>
+
+              {/* 2. Zalo Notification Bot */}
+              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: settings?.zalo_bot_token ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    <MessageCircle size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Zalo Notification Bot</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gửi thông báo phân bổ Lead cho Sale")}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {settings?.zalo_bot_token ? t('Đang hoạt động') : t('Chưa cấu hình')}
+                  </span>
+                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }} />
+                </div>
+              </div>
+
+              {/* 3. AI Pre-screener Filter */}
+              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                    <Zap size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>AI Pre-screener (Gemini)</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lọc và kiểm tra chất lượng bằng AI")}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {(settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? t('Đang hoạt động') : t('Đang tắt')}
+                  </span>
+                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }} />
+                </div>
+              </div>
+
+              {/* 4. Core Distribution System */}
+              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
+                    <Database size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Distribution Engine</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lõi điều tuyến chia số tự động")}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t('Đang hoạt động')}
+                  </span>
+                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+              <button className="btn primary sm" onClick={() => setShowHealthModal(false)}>{t("Đóng")}</button>
+            </div>
+          </div>
+        </CustomModal>
       )}
     </div>
   );

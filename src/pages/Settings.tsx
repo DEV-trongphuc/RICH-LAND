@@ -802,7 +802,7 @@ export const Settings = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
-      <div className="page-header" style={{
+      <div className="page-header settings-page-header" style={{
         position: 'sticky',
         top: '-2rem',
         zIndex: 90,
@@ -1635,7 +1635,7 @@ export const Settings = () => {
 
                         {/* Pagination Footer */}
                         {totalHistoryPages > 1 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                          <div className="responsive-pagination" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
                             <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
                               Hiển thị {(historyPage - 1) * historyPageSize + 1} - {Math.min(historyPage * historyPageSize, totalHistoryCount)} trên {totalHistoryCount} dòng
                             </span>

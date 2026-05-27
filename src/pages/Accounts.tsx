@@ -411,7 +411,7 @@ export const Accounts = () => {
           {loading ? (
             <TableSkeleton cols={6} rows={5} />
           ) : (
-            <div className="table-wrap responsive-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
+            <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
@@ -789,7 +789,7 @@ export const Accounts = () => {
 
             {/* Pagination */}
             {!loadingLogs && totalLogPages > 0 && (
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+              <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                   {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(logsPage - 1) * LOGS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(logsPage * LOGS_PER_PAGE, logs.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{logs.length}</span>
                 </div>

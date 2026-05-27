@@ -637,11 +637,11 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         $hasAiPlaceholder = !empty($emailTemplate) && (strpos(strtolower($emailTemplate), '{ai_evaluation}') !== false);
         if (!$hasAiPlaceholder) {
             $aiBlock = '
-            <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
-                <p style="color: #14532d; font-size: 16px; margin: 0 0 12px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #dcfce7; padding-bottom: 8px;">
+            <div style="background-color: #f5f3ff; border-left: 4px solid #7c3aed; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
+                <p style="color: #6d28d9; font-size: 16px; margin: 0 0 12px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #ddd6fe; padding-bottom: 8px;">
                     🤖 Đánh giá AI:
                 </p>
-                <p style="color: #166534; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 500;">
+                <p style="color: #5b21b6; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 500;">
                     ' . nl2br(htmlspecialchars($aiEvaluation)) . '
                 </p>
             </div>';
