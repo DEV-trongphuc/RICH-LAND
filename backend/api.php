@@ -7935,6 +7935,19 @@ switch ($action) {
         // Convert Gini to Fairness Index
         $fairnessIndex = (1 - $giniNormalized) * 100;
 
+        // Filter sources to only include those that actually have a count > 0 for at least one consultant in the final counts
+        $activeSources = [];
+        foreach ($consultants as $c) {
+            if (isset($c['sources'])) {
+                foreach ($c['sources'] as $src => $val) {
+                    if ($val > 0) {
+                        $activeSources[$src] = true;
+                    }
+                }
+            }
+        }
+        $sources = array_keys($activeSources);
+
         echo json_encode([
             'success' => true,
             'data' => [
