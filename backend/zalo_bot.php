@@ -157,23 +157,40 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         return false; // Sale chưa liên kết Zalo
     }
 
-    // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
+    // Lấy email, loại data (type) và đánh giá AI từ DB
     $email = $leadEmail;
     $type = $leadType;
-    if (empty($email) || empty($type)) {
-        if ($leadId > 0) {
-            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
-            if ($stmt) {
-                $stmt->bind_param("i", $leadId);
-                $stmt->execute();
-                $res = $stmt->get_result();
-                if ($res && $res->num_rows > 0) {
-                    $row = $res->fetch_assoc();
-                    if (empty($email)) $email = $row['email'] ?? '';
-                    if (empty($type)) $type = $row['type'] ?? '';
-                }
-                $stmt->close();
+    $aiScreenerStatus = '';
+    $aiEvaluation = '';
+    if ($leadId > 0) {
+        $stmt = $conn->prepare("SELECT email, type, ai_screener_status, ai_evaluation FROM leads WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                if (empty($email)) $email = $row['email'] ?? '';
+                if (empty($type)) $type = $row['type'] ?? '';
+                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
+                $aiEvaluation = $row['ai_evaluation'] ?? '';
             }
+            $stmt->close();
+        }
+    } else if (!empty($leadPhone)) {
+        $stmt = $conn->prepare("SELECT email, type, ai_screener_status, ai_evaluation FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $leadPhone);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                if (empty($email)) $email = $row['email'] ?? '';
+                if (empty($type)) $type = $row['type'] ?? '';
+                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
+                $aiEvaluation = $row['ai_evaluation'] ?? '';
+            }
+            $stmt->close();
         }
     }
 
@@ -186,6 +203,13 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 
     $emailLine = !empty($email) ? "  • Email: $email\n" : "";
     $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
+
+    $aiSection = '';
+    if ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) {
+        $indentedEval = str_replace("\n", "\n  ", trim($aiEvaluation));
+        $aiSection = "\n🤖 ĐÁNH GIÁ AI:\n"
+            . "  " . $indentedEval . "\n";
+    }
 
     // Build Report URL
     $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
@@ -208,6 +232,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . $typeLine
         . "  • Nguồn: $fSource\n"
         . $roundLine
+        . $aiSection
         . "\n📝 GHI CHÚ:\n"
         . "  $fNote\n\n"
         . "⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"

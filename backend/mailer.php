@@ -414,36 +414,44 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
 {
     global $conn;
 
-    // Fetch additional fields (email, type, connection_id) from DB to display completely
+    // Fetch additional fields (email, type, connection_id, AI evaluation) from DB to display completely
     $email = '';
     $type = '';
     $connectionId = 0;
+    $aiScreenerStatus = '';
+    $aiEvaluation = '';
     if ($leadId > 0) {
-        $stmt = $conn->prepare("SELECT email, type, connection_id FROM leads WHERE id = ?");
+        $stmt = $conn->prepare("SELECT email, type, connection_id, ai_screener_status, ai_evaluation FROM leads WHERE id = ?");
         if ($stmt) {
             $stmt->bind_param("i", $leadId);
             $stmt->execute();
             $res = $stmt->get_result();
-            if ($res->num_rows > 0) {
+            if ($res && $res->num_rows > 0) {
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
                 $connectionId = (int) ($row['connection_id'] ?? 0);
+                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
+                $aiEvaluation = $row['ai_evaluation'] ?? '';
             }
+            $stmt->close();
         }
     } else {
         // Fallback by phone if ID not provided
-        $stmt = $conn->prepare("SELECT email, type, connection_id FROM leads WHERE phone = ?");
+        $stmt = $conn->prepare("SELECT email, type, connection_id, ai_screener_status, ai_evaluation FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("s", $leadPhone);
             $stmt->execute();
             $res = $stmt->get_result();
-            if ($res->num_rows > 0) {
+            if ($res && $res->num_rows > 0) {
                 $row = $res->fetch_assoc();
                 $email = $row['email'] ?? '';
                 $type = $row['type'] ?? '';
                 $connectionId = (int) ($row['connection_id'] ?? 0);
+                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
+                $aiEvaluation = $row['ai_evaluation'] ?? '';
             }
+            $stmt->close();
         }
     }
 
@@ -480,6 +488,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             '{assigned_to}' => htmlspecialchars($consultantName),
             '{round}' => htmlspecialchars($roundName),
             '{round_name}' => htmlspecialchars($roundName),
+            '{ai_evaluation}' => ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) ? nl2br(htmlspecialchars($aiEvaluation)) : '',
         ];
 
         $actualNote = '';
@@ -622,6 +631,23 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
     $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
     $portalUrl = $frontendUrl . "/sale-portal";
 
+    $aiBlock = '';
+    if ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) {
+        // If a custom template is used and it already contains {ai_evaluation}, do not show the duplicate aiBlock below
+        $hasAiPlaceholder = !empty($emailTemplate) && (strpos(strtolower($emailTemplate), '{ai_evaluation}') !== false);
+        if (!$hasAiPlaceholder) {
+            $aiBlock = '
+            <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
+                <p style="color: #14532d; font-size: 16px; margin: 0 0 12px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #dcfce7; padding-bottom: 8px;">
+                    🤖 Đánh giá AI (Đạt chuẩn):
+                </p>
+                <p style="color: #166534; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 500;">
+                    ' . nl2br(htmlspecialchars($aiEvaluation)) . '
+                </p>
+            </div>';
+        }
+    }
+
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
             Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
@@ -634,6 +660,8 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             </p>
             ' . $detailBlock . '
         </div>
+
+        ' . $aiBlock . '
 
         <div style="text-align: center; margin-bottom: 20px;">
         </div>

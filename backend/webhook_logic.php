@@ -483,9 +483,22 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     ];
 }
 
+function stripAccents($str)
+{
+    $str = preg_replace('/(à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ)/u', 'a', $str);
+    $str = preg_replace('/(è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ)/u', 'e', $str);
+    $str = preg_replace('/(ì|í|ị|ỉ|ĩ)/u', 'i', $str);
+    $str = preg_replace('/(ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ)/u', 'o', $str);
+    $str = preg_replace('/(ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ)/u', 'u', $str);
+    $str = preg_replace('/(ỳ|ý|ỵ|ỷ|ỹ)/u', 'y', $str);
+    $str = preg_replace('/(đ)/u', 'd', $str);
+    return $str;
+}
+
 function normalizeTextForComparison($str)
 {
     $str = mb_strtolower($str, 'UTF-8');
+    $str = stripAccents($str);
     // Thay thế các ký tự phân tách phổ biến (: ; - ,) bằng khoảng trắng
     $str = str_replace([':', ';', '-', ',', '–'], ' ', $str);
     // Rút gọn nhiều khoảng trắng liên tiếp thành 1 khoảng trắng duy nhất

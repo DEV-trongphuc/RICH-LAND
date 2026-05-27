@@ -51,6 +51,16 @@ export const SalePortal = () => {
 
   const [portalVacationMode, setPortalVacationMode] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -894,64 +904,149 @@ export const SalePortal = () => {
             </span>
           </div>
 
-          <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ overflowX: 'auto' }}>
+          <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ overflowX: isMobile ? 'visible' : 'auto' }}>
             {loading ? (
               <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
-              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
-                    {user?.role === 'sale' ? (
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('VÒNG')}</th>
-                    ) : (
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
-                    )}
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
-                    <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem' }}>
                   {data.leads.map((lead: any, index: number) => (
-                    <tr
+                    <div
                       key={lead.log_id}
                       onClick={() => {
                         setActiveDetailLead(lead);
                         setDetailModalOpen(true);
                       }}
                       style={{
-                        borderBottom: '1px solid var(--color-border-light)',
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        borderRadius: '12px',
                         background: index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)',
-                        transition: 'background 0.2s',
-                        cursor: 'pointer'
+                        border: '1px solid var(--color-border-light)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
                       }}
-                      onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-primary-light)')}
-                      onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)')}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                      }}
                     >
-                      {/* KHÁCH HÀNG */}
-                      <td data-label={t('KHÁCH HÀNG')} style={{ padding: '1rem 1.25rem' }}>
-                        <div
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} title={t("Xem chi tiết")}>
-                            <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                color: '#0f172a'
-                              }}
-                              onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                              onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                            >
-                              {lead.lead_name || t('Chưa cập nhật')}
-                            </span>
+                      {/* Top Row: Avatar + Name + Timer/Status + Round Badge */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                          <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {lead.lead_name || t('Chưa cập nhật')}
+                              </span>
+                              {user?.role === 'sale' && Number(lead.is_accepted) && (
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 2,
+                                  padding: '1px 6px', borderRadius: '8px',
+                                  background: '#e6f4ea', color: '#137333', fontSize: '0.65rem', fontWeight: 700
+                                }}>
+                                  <CheckCircle2 size={10} /> {t('Đã tiếp nhận')}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '1px' }}>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700, fontSize: '0.75rem' }}>{lead.phone}</span>
+                              {lead.lead_email && (
+                                <>
+                                  <span style={{ color: '#cbd5e1', fontSize: '0.7rem' }}>•</span>
+                                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px' }} title={lead.lead_email}>
+                                    {lead.lead_email}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
+                        </div>
 
-                          {/* Accept Button & Timer */}
+                        {/* Round / Compensation Badges */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            padding: '3px 8px',
+                            borderRadius: '8px',
+                            background: '#e0e7ff',
+                            color: '#4338ca',
+                            fontSize: '0.675rem',
+                            fontWeight: 700
+                          }}>
+                            {lead.round_name || t('Mặc định')}
+                          </span>
+                          {lead.status === 'compensation' && (
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: '#d1fae5',
+                              color: '#065f46',
+                              fontSize: '0.625rem',
+                              fontWeight: 700
+                            }}>
+                              {t('Data bù')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle row: Nguồn / Phân loại & Assigned to (if Admin) & Time */}
+                      <div style={{
+                        borderTop: '1px dotted var(--color-border-light)',
+                        paddingTop: '0.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div>
+                            <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{t('Nguồn')}: </span>
+                            <span>{lead.source || 'N/A'}</span>
+                            {lead.type && <span style={{ color: '#94a3b8' }}> ({lead.type})</span>}
+                          </div>
+                          {user?.role !== 'sale' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{t('Sale')}: </span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{lead.sale_name || t('Chưa nhận')}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', color: '#64748b' }}>
+                          {lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' }) : 'N/A'}
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Actions (Accept button, Ticket status/button) */}
+                      {((user?.role === 'sale' && !Number(lead.is_accepted)) || lead.report_status || (isAllowedToReport && 
+                        (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
+                        (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)))) && (
+                        <div
+                          onClick={e => e.stopPropagation()}
+                          style={{
+                            borderTop: '1px solid var(--color-border-light)',
+                            paddingTop: '0.5rem',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}
+                        >
+                          {/* Timer & Accept Button */}
                           {user?.role === 'sale' && !Number(lead.is_accepted) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {(() => {
                                 const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
                                 const limitMs = leadRecallMins * 60 * 1000;
@@ -999,151 +1094,331 @@ export const SalePortal = () => {
                             </div>
                           )}
 
-                          {user?.role === 'sale' && Number(lead.is_accepted) && (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '2px 8px', borderRadius: '12px',
-                              background: '#e6f4ea', color: '#137333', fontSize: '0.725rem', fontWeight: 700
-                            }}>
-                              <CheckCircle2 size={12} /> {t('Đã tiếp nhận')}
-                            </span>
-                          )}
+                          {/* Ticket buttons / statuses */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {lead.report_status === 'pending' && (
+                              <span
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  padding: '4px 8px', borderRadius: '6px',
+                                  background: '#fef3c7', color: '#d97706',
+                                  fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
+                                }}
+                                title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")}
+                                onClick={() => {
+                                  setActiveDetailLead(lead);
+                                  setDetailModalOpen(true);
+                                }}
+                              >
+                                <Clock size={12} /> {t('Chờ duyệt')}
+                              </span>
+                            )}
+                            {lead.report_status === 'approved' && (
+                              <span
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  padding: '4px 8px', borderRadius: '6px',
+                                  background: 'var(--color-success-light)', color: 'var(--color-success)',
+                                  fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
+                                }}
+                                title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")}
+                                onClick={() => {
+                                  setActiveDetailLead(lead);
+                                  setDetailModalOpen(true);
+                                }}
+                              >
+                                <CheckCircle2 size={12} /> {t('Đã bù')}
+                              </span>
+                            )}
+                            {lead.report_status === 'rejected' && (
+                              <span
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  padding: '4px 8px', borderRadius: '6px',
+                                  background: 'var(--color-danger-light)', color: 'var(--color-danger)',
+                                  fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
+                                }}
+                                title={`${t('Ticket từ chối bù:')} ${lead.report_reject_reason || t('Không cung cấp')} ${t('(Bấm để xem chi tiết)')}`}
+                                onClick={() => {
+                                  setActiveDetailLead(lead);
+                                  setDetailModalOpen(true);
+                                }}
+                              >
+                                <XCircle size={12} /> {t('Từ chối')}
+                              </span>
+                            )}
+                            {!lead.report_status && isAllowedToReport &&
+                              (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
+                              (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
+                              <button
+                                onClick={() => handleOpenReportModal(lead)}
+                                style={{
+                                  background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none',
+                                  borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem',
+                                  fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-danger)', e.currentTarget.style.color = '#ffffff')}
+                                onMouseOut={(e) => (e.currentTarget.style.background = 'var(--color-danger-light)', e.currentTarget.style.color = 'var(--color-danger)')}
+                              >
+                                <AlertCircle size={12} /> {t('Báo lỗi')}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </td>
-
-                      {/* LIÊN HỆ */}
-                      <td data-label={t('LIÊN HỆ')} style={{ padding: '1rem 1.25rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ color: '#d97706', fontWeight: 700 }}>{lead.phone}</span>
-                          <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{lead.lead_email || '—'}</span>
-                        </div>
-                      </td>
-
-                      {/* VÒNG / PHÂN BỔ CHO */}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
                       {user?.role === 'sale' ? (
-                        <td data-label={t('VÒNG')} style={{ padding: '1rem 1.25rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              background: '#e0e7ff',
-                              color: '#4338ca',
-                              fontSize: '0.75rem',
-                              fontWeight: 700
-                            }}>
-                              {lead.round_name || t('Mặc định')}
-                            </span>
+                        <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('VÒNG')}</th>
+                      ) : (
+                        <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
+                      )}
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
+                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.leads.map((lead: any, index: number) => (
+                      <tr
+                        key={lead.log_id}
+                        onClick={() => {
+                          setActiveDetailLead(lead);
+                          setDetailModalOpen(true);
+                        }}
+                        style={{
+                          borderBottom: '1px solid var(--color-border-light)',
+                          background: index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)',
+                          transition: 'background 0.2s',
+                          cursor: 'pointer'
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-primary-light)')}
+                        onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? 'var(--color-surface)' : 'var(--color-bg)')}
+                      >
+                        {/* KHÁCH HÀNG */}
+                        <td data-label={t('KHÁCH HÀNG')} style={{ padding: '1rem 1.25rem' }}>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} title={t("Xem chi tiết")}>
+                              <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color: '#0f172a'
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                                onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                              >
+                                {lead.lead_name || t('Chưa cập nhật')}
+                              </span>
+                            </div>
+
+                            {/* Accept Button & Timer */}
+                            {user?.role === 'sale' && !Number(lead.is_accepted) && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                                {(() => {
+                                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+                                  const limitMs = leadRecallMins * 60 * 1000;
+                                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+                                  const remainingMs = limitMs - elapsedMs;
+
+                                  if (leadRecallMins > 0 && remainingMs <= 0) {
+                                    return (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                        {t('Quá hạn')}
+                                      </span>
+                                    );
+                                  }
+
+                                  const formatTime = (ms: number) => {
+                                    const totalSecs = Math.max(0, Math.floor(ms / 1000));
+                                    const mins = Math.floor(totalSecs / 60);
+                                    const secs = totalSecs % 60;
+                                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                                  };
+
+                                  return (
+                                    <>
+                                      {leadRecallMins > 0 && (
+                                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                          <Clock size={12} /> {formatTime(remainingMs)}
+                                        </span>
+                                      )}
+                                      <button
+                                        onClick={() => handleAcceptLead(lead.lead_id)}
+                                        style={{
+                                          background: '#3b82f6', color: 'white', border: 'none',
+                                          borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem',
+                                          fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                                          display: 'flex', alignItems: 'center', gap: 4
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background = '#2563eb'}
+                                        onMouseOut={e => e.currentTarget.style.background = '#3b82f6'}
+                                      >
+                                        {t('Tiếp nhận')}
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {user?.role === 'sale' && Number(lead.is_accepted) && (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '2px 8px', borderRadius: '12px',
+                                background: '#e6f4ea', color: '#137333', fontSize: '0.725rem', fontWeight: 700
+                              }}>
+                                <CheckCircle2 size={12} /> {t('Đã tiếp nhận')}
+                              </span>
+                            )}
                           </div>
                         </td>
-                      ) : (
-                        <td data-label={t('PHÂN BỔ CHO')} style={{ padding: '1rem 1.25rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={lead.sale_avatar} name={lead.sale_name || t('Chưa nhận')} size="sm" />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
-                                {lead.sale_name || t('Chưa nhận')}
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+
+                        {/* LIÊN HỆ */}
+                        <td data-label={t('LIÊN HỆ')} style={{ padding: '1rem 1.25rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ color: '#d97706', fontWeight: 700 }}>{lead.phone}</span>
+                            <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{lead.lead_email || '—'}</span>
+                          </div>
+                        </td>
+
+                        {/* VÒNG / PHÂN BỔ CHO */}
+                        {user?.role === 'sale' ? (
+                          <td data-label={t('VÒNG')} style={{ padding: '1rem 1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                background: '#e0e7ff',
+                                color: '#4338ca',
+                                fontSize: '0.75rem',
+                                fontWeight: 700
+                              }}>
                                 {lead.round_name || t('Mặc định')}
                               </span>
                             </div>
+                          </td>
+                        ) : (
+                          <td data-label={t('PHÂN BỔ CHO')} style={{ padding: '1rem 1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Avatar src={lead.sale_avatar} name={lead.sale_name || t('Chưa nhận')} size="sm" />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
+                                  {lead.sale_name || t('Chưa nhận')}
+                                </span>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  {lead.round_name || t('Mặc định')}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* NGUỒN / PHÂN LOẠI */}
+                        <td data-label={t('NGUỒN / PHÂN LOẠI')} style={{ padding: '1rem 1.25rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ color: '#475569', fontSize: '0.8rem', fontWeight: 500 }}>
+                              {lead.source || 'N/A'}
+                            </span>
+                            {lead.type && (
+                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                                {lead.type}
+                              </span>
+                            )}
                           </div>
                         </td>
-                      )}
 
-                      {/* NGUỒN / PHÂN LOẠI */}
-                      <td data-label={t('NGUỒN / PHÂN LOẠI')} style={{ padding: '1rem 1.25rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ color: '#475569', fontSize: '0.8rem', fontWeight: 500 }}>
-                            {lead.source || 'N/A'}
-                          </span>
-                          {lead.type && (
-                            <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-                              {lead.type}
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        {/* THỜI GIAN NHẬN */}
+                        <td data-label={t('THỜI GIAN NHẬN')} style={{ padding: '1rem 1.25rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: '#64748b' }}>
+                            <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : 'N/A'}</span>
+                            {lead.status === 'compensation' && (
+                              <span style={{
+                                alignSelf: 'flex-start',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: '#d1fae5',
+                                color: '#065f46',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                marginTop: '2px'
+                              }}>
+                                {t('Data bù')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* THỜI GIAN NHẬN */}
-                      <td data-label={t('THỜI GIAN NHẬN')} style={{ padding: '1rem 1.25rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: '#64748b' }}>
-                          <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : 'N/A'}</span>
-                          {lead.status === 'compensation' && (
-                            <span style={{
-                              alignSelf: 'flex-start',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: '#d1fae5',
-                              color: '#065f46',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              marginTop: '2px'
-                            }}>
-                              {t('Data bù')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* TICKET (Trạng thái / Báo lỗi) */}
-                      <td className="col-actions" data-label={t('TICKET')} style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {lead.report_status === 'pending' && (
-                            <div
-                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706' }}
-                              title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")}
-                            >
-                              <Clock size={16} />
-                            </div>
-                          )}
-                          {lead.report_status === 'approved' && (
-                            <div
-                              style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-success-light)', color: 'var(--color-success)' }}
-                              title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")}
-                            >
-                              <CheckCircle2 size={16} />
-                            </div>
-                          )}
-                          {lead.report_status === 'rejected' && (
-                            <div
+                        {/* TICKET (Trạng thái / Báo lỗi) */}
+                        <td className="col-actions" data-label={t('TICKET')} style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            {lead.report_status === 'pending' && (
+                              <div
+                                style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706' }}
+                                title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")}
+                              >
+                                <Clock size={16} />
+                              </div>
+                            )}
+                            {lead.report_status === 'approved' && (
+                              <div
+                                style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-success-light)', color: 'var(--color-success)' }}
+                                title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")}
+                              >
+                                <CheckCircle2 size={16} />
+                              </div>
+                            )}
+                            {lead.report_status === 'rejected' && (
+                              <div
+                                  style={{
+                                    display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-danger-light)', color: 'var(--color-danger)'
+                                  }}
+                                title={`${t('Ticket từ chối bù:')} ${lead.report_reject_reason || t('Không cung cấp')} ${t('(Bấm để xem chi tiết)')}`}
+                              >
+                                <XCircle size={16} />
+                              </div>
+                            )}
+                            {!lead.report_status && isAllowedToReport && 
+                              (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
+                              (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
+                              <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenReportModal(lead);
+                                  }}
                                 style={{
-                                  display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-danger-light)', color: 'var(--color-danger)'
+                                  background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none',
+                                  borderRadius: '50%', width: '32px', height: '32px',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  cursor: 'pointer', transition: 'all 0.2s'
                                 }}
-                              title={`${t('Ticket từ chối bù:')} ${lead.report_reject_reason || t('Không cung cấp')} ${t('(Bấm để xem chi tiết)')}`}
-                            >
-                              <XCircle size={16} />
-                            </div>
-                          )}
-                          {!lead.report_status && isAllowedToReport && 
-                            (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
-                            (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
-                            <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenReportModal(lead);
-                                }}
-                              style={{
-                                background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none',
-                                borderRadius: '50%', width: '32px', height: '32px',
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: 'pointer', transition: 'all 0.2s'
-                              }}
-                              title={t("Gửi báo cáo lỗi data")}
-                              onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-danger)', e.currentTarget.style.color = '#ffffff')}
-                              onMouseOut={(e) => (e.currentTarget.style.background = 'var(--color-danger-light)', e.currentTarget.style.color = 'var(--color-danger)')}
-                            >
-                              <AlertCircle size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                                title={t("Gửi báo cáo lỗi data")}
+                                onMouseOver={(e) => (e.currentTarget.style.background = 'var(--color-danger)', e.currentTarget.style.color = '#ffffff')}
+                                onMouseOut={(e) => (e.currentTarget.style.background = 'var(--color-danger-light)', e.currentTarget.style.color = 'var(--color-danger)')}
+                              >
+                                <AlertCircle size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             ) : (
+
               <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
                 <AlertCircle size={32} style={{ margin: '0 auto 10px', display: 'block' }} />
                 <span>{t('Không tìm thấy dữ liệu nào khớp với bộ lọc hiện tại.')}</span>

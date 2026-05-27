@@ -182,6 +182,16 @@ export const DataList = () => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const handleThemeChange = () => {
       const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -1102,8 +1112,156 @@ export const DataList = () => {
         </div>
       ) : (
         <div className="card fade-in-view" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflow: 'auto' }} className="table-wrap custom-scrollbar">
-            <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
+          <div style={{ flex: 1, overflow: isMobile ? 'visible' : 'auto' }} className="table-wrap custom-scrollbar">
+            {isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem' }}>
+                {loading ? (
+                  [...Array(6)].map((_, i) => (
+                    <div key={`skel-${i}`} style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', animation: 'pulse 1.5s infinite', opacity: 0.5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-border)' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ width: 100, height: 14, background: 'var(--color-border)', borderRadius: 4, marginBottom: 6 }} />
+                          <div style={{ width: 70, height: 10, background: 'var(--color-border-light)', borderRadius: 4 }} />
+                        </div>
+                      </div>
+                      <div style={{ width: '100%', height: 1, background: 'var(--color-border-light)', margin: '8px 0' }} />
+                      <div style={{ width: 150, height: 12, background: 'var(--color-border-light)', borderRadius: 4 }} />
+                    </div>
+                  ))
+                ) : paginatedLeads.length > 0 ? (
+                  paginatedLeads.map(lead => (
+                    <div
+                      key={lead.id}
+                      onClick={() => setSelectedLead(lead)}
+                      style={{
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        borderRadius: '12px',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                      }}
+                    >
+                      {/* Top Row: Avatar + Name + Status Badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                          <Avatar name={lead.name} size={32} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              {lead.name}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status badge */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                          {getStatusBadge(lead.status, lead.report_status)}
+                          {lead.status !== 'assigned' && lead.report_status === 'pending' && (
+                            <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
+                              {t('Chờ duyệt')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle row: Source & Received Time */}
+                      <div style={{
+                        borderTop: '1px dotted var(--color-border-light)',
+                        paddingTop: '0.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)'
+                      }}>
+                        <div>
+                          <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{t('Nguồn')}: </span>
+                          <span>{lead.source || 'N/A'}</span>
+                          {lead.type && lead.type !== '-' && <span style={{ color: '#94a3b8' }}> ({lead.type})</span>}
+                        </div>
+                        <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.65rem' }}>
+                          {lead.created_at}
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Phân bổ cho */}
+                      <div style={{
+                        borderTop: '1px solid var(--color-border-light)',
+                        paddingTop: '0.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>{t('Giao cho')}:</span>
+                          {lead.status === 'pending_approval' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</span>
+                            </div>
+                          ) : lead.status === 'fallback' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</span>
+                            </div>
+                          ) : lead.status === 'rejected' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</span>
+                            </div>
+                          ) : lead.status === 'blacklisted' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</span>
+                            </div>
+                          ) : lead.assigned_to_name !== '-' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{lead.assigned_to_name}</span>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                          )}
+                        </div>
+                        {lead.round_name && lead.round_name !== '-' && (
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: '#e0e7ff',
+                            color: '#4338ca',
+                            fontSize: '0.65rem',
+                            fontWeight: 700
+                          }}>
+                            {lead.round_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                    {t('Không tìm thấy dữ liệu phù hợp.')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
                 <tr>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
@@ -1227,6 +1385,7 @@ export const DataList = () => {
                 )}
               </tbody>
             </table>
+          )}
           </div>
           {/* Pagination */}
           {totalPages > 0 && (
@@ -1344,28 +1503,30 @@ export const DataList = () => {
                   </div>
                 </div>
 
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> Phone</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.75rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> Phone</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                     </div>
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> Email</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> Email</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
                       {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
                     </div>
                   </div>
-                </div>
-
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t('Nguồn Data')}</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><ExternalLink size={12} /> {t('Nguồn')}</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t('Trạng thái')}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
                       {getStatusBadge(selectedLead.status, selectedLead.report_status)}
                     </div>
