@@ -1293,7 +1293,7 @@ export const Gatekeeper = () => {
       </div>
 
       {/* ── Main content card showing held queue ── */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', minHeight: '500px' }}>
+      <div className="card mobile-flat-container" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)' }}>
 
 
         {/* Filter bar */}
@@ -1589,7 +1589,7 @@ export const Gatekeeper = () => {
             </div>
 
             {/* Mobile Card List View */}
-            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 1rem 5rem 1rem' }}>
+            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0 5rem 0' }}>
               {heldLeads.map((l: any) => (
                 <div
                   key={l.id}
@@ -1612,18 +1612,18 @@ export const Gatekeeper = () => {
                   }}
                   style={{
                     background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '16px',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
                     padding: '1.25rem',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '1rem',
-                    boxShadow: 'var(--shadow-sm)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
                     cursor: 'pointer',
                     position: 'relative',
                     transition: 'transform 0.2s, box-shadow 0.2s'
                   }}
-                  className="hover-lift"
+                  className=""
                 >
                   {/* Header: Lead Info */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -1639,12 +1639,9 @@ export const Gatekeeper = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
-                        <Clock size={12} style={{ opacity: 0.6 }} />
-                        <span>
-                          {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
-                          {new Date(l.created_at).toLocaleDateString('vi-VN')}
-                        </span>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
+                        {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
+                        {new Date(l.created_at).toLocaleDateString('vi-VN')}
                       </div>
                       {l.round_name && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
@@ -1659,7 +1656,6 @@ export const Gatekeeper = () => {
                   {/* AI Evaluation details callout */}
                   <div style={{
                     background: l.ai_screener_status === 'error' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(239, 68, 68, 0.04)',
-                    borderLeft: `3px solid ${l.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)'}`,
                     padding: '10px 12px',
                     borderRadius: '8px',
                     display: 'flex',
@@ -1748,8 +1744,8 @@ export const Gatekeeper = () => {
         )}
 
         {/* Pagination */}
-        {!heldLeadsLoading && heldLeadsTotalCount > ITEMS_PER_PAGE && (
-          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+        {!heldLeadsLoading && heldLeadsTotalCount > 0 && (
+          <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
               {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, heldLeadsTotalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{heldLeadsTotalCount}</span>
             </div>

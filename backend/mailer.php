@@ -639,7 +639,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
             $aiBlock = '
             <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
                 <p style="color: #14532d; font-size: 16px; margin: 0 0 12px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #dcfce7; padding-bottom: 8px;">
-                    🤖 Đánh giá AI (Đạt chuẩn):
+                    🤖 Đánh giá AI:
                 </p>
                 <p style="color: #166534; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 500;">
                     ' . nl2br(htmlspecialchars($aiEvaluation)) . '

@@ -1792,7 +1792,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
         . "Nếu dữ liệu không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích lý do tại sao cho passed/failed.";
+        . "- reason: giải thích ngắn gọn chuyên nghiệp lý do tại sao cho passed/failed (không lập lại thô cứng quy tắc).";
 
     $payload = [
         'contents' => [
@@ -1975,7 +1975,46 @@ function runManualScreener($conn, $leadData, $customRulesJson = null, $customAct
                 $branchMatch = false;
                 break;
             }
-            $branchDetails[] = "$col " . str_replace('_', ' ', $op) . " '$val'";
+            // Translate column name
+            $colNameVi = '';
+            if ($col === 'note') {
+                if ($op === 'contains' || $op === 'not_contains') {
+                    $colNameVi = ''; // Omit column name for cleaner "có chứa '...'"
+                } else {
+                    $colNameVi = 'ghi chú';
+                }
+            } elseif ($col === 'source') {
+                $colNameVi = 'nguồn';
+            } elseif ($col === 'type') {
+                $colNameVi = 'loại';
+            } elseif ($col === 'connection_id') {
+                $colNameVi = 'kết nối';
+            } else {
+                $colNameVi = $col; // Fallback to raw column name for custom columns
+            }
+
+            // Translate operator
+            $opVi = str_replace('_', ' ', $op);
+            switch ($op) {
+                case 'contains': $opVi = 'có chứa'; break;
+                case 'not_contains': $opVi = 'không chứa'; break;
+                case 'equals': $opVi = 'là'; break;
+                case 'not_equals': $opVi = 'khác'; break;
+                case 'starts_with': $opVi = 'bắt đầu bằng'; break;
+                case 'ends_with': $opVi = 'kết thúc bằng'; break;
+                case 'is_empty': $opVi = 'để trống'; break;
+                case 'is_not_empty': $opVi = 'không để trống'; break;
+                case 'date_before': $opVi = 'trước ngày'; break;
+                case 'date_after': $opVi = 'sau ngày'; break;
+                case 'date_equals': $opVi = 'bằng ngày'; break;
+            }
+
+            $prefix = $colNameVi !== '' ? "$colNameVi " : "";
+            if ($op === 'is_empty' || $op === 'is_not_empty') {
+                $branchDetails[] = "$prefix$opVi";
+            } else {
+                $branchDetails[] = "$prefix$opVi $val";
+            }
         }
 
         if ($branchMatch) {
@@ -1986,17 +2025,17 @@ function runManualScreener($conn, $leadData, $customRulesJson = null, $customAct
     }
 
     if ($isMatch) {
-        $detailStr = implode(' AND ', $matchedDetails);
+        $detailStr = implode(' và ', $matchedDetails);
         if ($manualAction === 'hold') {
             return [
                 'status' => 'failed',
-                'reason' => 'Khớp điều kiện bộ lọc thủ công (Tạm giữ): ' . $detailStr,
+                'reason' => 'Không đạt vì ' . $detailStr,
                 'is_match' => true
             ];
         } else {
             return [
                 'status' => 'passed',
-                'reason' => 'Khớp điều kiện bộ lọc thủ công (Đạt chuẩn): ' . $detailStr,
+                'reason' => 'Đạt vì ' . $detailStr,
                 'is_match' => true
             ];
         }

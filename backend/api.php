@@ -5005,7 +5005,7 @@ switch ($action) {
 
             // 2. Update Lead Table
             $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'passed', target_round_id = ? WHERE id = ?");
-            $updLead->bind_param("isiii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
+            $updLead->bind_param("isii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
             $updLead->execute();
             $updLead->close();
 

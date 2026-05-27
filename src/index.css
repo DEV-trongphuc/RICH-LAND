@@ -7,7 +7,7 @@
   .responsive-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
   .responsive-grid-6-4 { grid-template-columns: 1fr !important; }
   .responsive-grid-5 { grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; }
-  .responsive-main { padding: 1.5rem !important; }
+  .responsive-main { padding: 1.5rem 1.5rem 6.5rem 1.5rem !important; }
   .responsive-hide-mobile { display: none !important; }
   
   .responsive-sidebar {
@@ -73,7 +73,7 @@
   .responsive-mapping-header, .responsive-mapping-row { min-width: 600px !important; }
   .responsive-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
   .responsive-search-box { min-width: 40px !important; justify-content: center !important; }
-  .responsive-main { padding: 1rem !important; }
+  .responsive-main { padding: 1rem 1rem 7.5rem 1rem !important; }
   .responsive-grid-3 { grid-template-columns: 1fr !important; }
   .responsive-grid-auto-400 { grid-template-columns: 1fr !important; }
   
@@ -2509,3 +2509,31 @@ th.col-check {
     width: 32px !important;
   }
 }
+
+/* Flat mobile card container & custom responsive pagination */
+@media (max-width: 768px) {
+  .mobile-flat-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .responsive-pagination {
+    margin-top: 1rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--color-border-light) !important;
+    background: var(--color-surface) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.01) !important;
+    padding: 0.875rem 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-pagination {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+}
+
