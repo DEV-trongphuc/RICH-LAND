@@ -154,6 +154,22 @@ export const DataList = () => {
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  const [searchInput, setSearchInput] = useState(searchTerm);
+
+  useEffect(() => {
+    setSearchInput(searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchInput !== searchTerm) {
+        updateParams('search', searchInput);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchInput, searchTerm]);
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [rounds, setRounds] = useState<{ id: number; round_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -789,8 +805,8 @@ export const DataList = () => {
             className="form-input"
             placeholder={t("Tìm theo tên, SĐT, email...")}
             style={{ paddingLeft: 36, width: '100%', height: 38, fontSize: '0.875rem' }}
-            value={searchTerm}
-            onChange={e => updateParams('search', e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
           />
         </div>
 
@@ -1792,9 +1808,9 @@ export const DataList = () => {
                           .filter(c => c.name !== selectedLead?.assigned_to_name)
                           .map(c => ({
                             value: c.id.toString(),
-                            label: c.name,
+                            label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
                             avatar: c.avatar,
-                            disabled: c.status !== 'active',
+                            disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
                             disabledType: 'sale' as const
                           }))
                       ]}

@@ -1246,9 +1246,9 @@ export const QuickAddLeadModal = () => {
                                       .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
                                       .map(c => ({
                                         value: c.id.toString(),
-                                        label: c.name,
+                                        label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
                                         avatar: c.avatar,
-                                        disabled: c.status !== 'active',
+                                        disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
                                         disabledType: 'sale' as const
                                       }))
                                   ]}

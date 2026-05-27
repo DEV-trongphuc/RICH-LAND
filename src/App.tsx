@@ -64,8 +64,16 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper'];
+  const userPaths = ['/', '/data'];
+  const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
+  // Fallback for unrecognized paths
+  if (!allPaths.includes(currentPath)) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Admin route protection check
   if (isAdminPath && user?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
@@ -74,45 +82,88 @@ const AppTabs = () => {
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* User Pages */}
       <div style={{ display: currentPath === '/' ? 'block' : 'none' }}>
-        {visitedPaths.includes('/') && <Dashboard />}
+        {visitedPaths.includes('/') && (
+          <Suspense fallback={<PageLoader />}>
+            <Dashboard />
+          </Suspense>
+        )}
       </div>
       <div style={{ display: currentPath === '/data' ? 'block' : 'none' }}>
-        {visitedPaths.includes('/data') && <DataList />}
+        {visitedPaths.includes('/data') && (
+          <Suspense fallback={<PageLoader />}>
+            <DataList />
+          </Suspense>
+        )}
       </div>
 
       {/* Admin Pages */}
       {user?.role === 'admin' && (
         <>
           <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/consultants') && <Consultants />}
+            {visitedPaths.includes('/consultants') && (
+              <Suspense fallback={<PageLoader />}>
+                <Consultants />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/rounds' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/rounds') && <Rounds />}
+            {visitedPaths.includes('/rounds') && (
+              <Suspense fallback={<PageLoader />}>
+                <Rounds />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/tickets') && <Tickets />}
+            {visitedPaths.includes('/tickets') && (
+              <Suspense fallback={<PageLoader />}>
+                <Tickets />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/rules' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/rules') && <RuleSettings />}
+            {visitedPaths.includes('/rules') && (
+              <Suspense fallback={<PageLoader />}>
+                <RuleSettings />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/integrations' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/integrations') && <Integrations />}
+            {visitedPaths.includes('/integrations') && (
+              <Suspense fallback={<PageLoader />}>
+                <Integrations />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/settings' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/settings') && <Settings />}
+            {visitedPaths.includes('/settings') && (
+              <Suspense fallback={<PageLoader />}>
+                <Settings />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/accounts') && <Accounts />}
+            {visitedPaths.includes('/accounts') && (
+              <Suspense fallback={<PageLoader />}>
+                <Accounts />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/gatekeeper' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/gatekeeper') && <Gatekeeper />}
+            {visitedPaths.includes('/gatekeeper') && (
+              <Suspense fallback={<PageLoader />}>
+                <Gatekeeper />
+              </Suspense>
+            )}
           </div>
           <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }}>
-            {visitedPaths.includes('/fair-share') && <FairShareAudit />}
+            {visitedPaths.includes('/fair-share') && (
+              <Suspense fallback={<PageLoader />}>
+                <FairShareAudit />
+              </Suspense>
+            )}
           </div>
         </>
       )}
-
     </div>
   );
 };
@@ -373,23 +424,9 @@ export default function App() {
                 <Route path="/demo" element={<DemoEntry />} />
                 <Route path="/sale-portal" element={<SalePortal />} />
                 
-                {/* Admin only routes */}
-                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                  <Route path="/consultants" element={<AppTabs />} />
-                  <Route path="/rounds" element={<AppTabs />} />
-                  <Route path="/tickets" element={<AppTabs />} />
-                  <Route path="/rules" element={<AppTabs />} />
-                  <Route path="/integrations" element={<AppTabs />} />
-                  <Route path="/settings" element={<AppTabs />} />
-                  <Route path="/accounts" element={<AppTabs />} />
-                  <Route path="/gatekeeper" element={<AppTabs />} />
-                  <Route path="/fair-share" element={<AppTabs />} />
-                </Route>
-
-                {/* All authenticated users */}
+                {/* All authenticated users (sharing a single persistent AppTabs instance) */}
                 <Route element={<ProtectedRoute />}>
-                  <Route path="/" element={<AppTabs />} />
-                  <Route path="/data" element={<AppTabs />} />
+                  <Route path="/*" element={<AppTabs />} />
                 </Route>
               </Routes>
               <KeyboardShortcutsController />

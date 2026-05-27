@@ -1354,8 +1354,8 @@ export const Gatekeeper = () => {
                               setHeldActionReason('');
                               setHeldActionModalOpen('reject');
                             }}
-                            className="btn outline sm"
-                            style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}
+                            className="btn primary sm"
+                            style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none' }}
                             title={t("Không duyệt và đánh dấu dưới chuẩn")}
                           >
                             {t('Xác nhận dưới chuẩn')}
@@ -1519,8 +1519,8 @@ export const Gatekeeper = () => {
                         setHeldActionReason('');
                         setHeldActionModalOpen('reject');
                       }}
-                      className="btn outline sm" 
-                      style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                      className="btn primary sm" 
+                      style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                       title={t('Dưới chuẩn')}
                     >
                       <XCircle size={14} />
@@ -3124,8 +3124,8 @@ export const Gatekeeper = () => {
                       setHeldActionReason('');
                       setHeldActionModalOpen('reject');
                     }}
-                    className="btn outline"
-                    style={{ width: '100%', height: 46, borderColor: 'var(--color-warning)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                    className="btn primary"
+                    style={{ width: '100%', height: 46, background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
                   >
                     <XCircle size={18} />
                     {t("Xác nhận dưới chuẩn")}

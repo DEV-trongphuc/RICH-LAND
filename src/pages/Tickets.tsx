@@ -529,9 +529,9 @@ export const Tickets = () => {
     { value: 'all', label: t('Tất cả Salepersons'), icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...allConsultants.map(c => ({
       value: Number(c.id),
-      label: c.name,
+      label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
       icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />,
-      disabled: c.status !== 'active',
+      disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
       disabledType: 'sale' as const
     }))
   ];
@@ -1386,10 +1386,10 @@ export const Tickets = () => {
                       })
                       .map(c => ({
                         value: String(c.id),
-                        label: c.name,
+                        label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
                         sublabel: c.email,
                         avatar: c.avatar,
-                        disabled: c.status !== 'active',
+                        disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
                         disabledType: 'sale' as const
                       }))
                   ]}
@@ -1968,9 +1968,9 @@ export const Tickets = () => {
                           ...allConsultants
                             .map(c => ({
                               value: c.id.toString(),
-                              label: c.name,
+                              label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
                               avatar: c.avatar,
-                              disabled: c.status !== 'active',
+                              disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
                               disabledType: 'sale' as const
                             }))
                         ]}
