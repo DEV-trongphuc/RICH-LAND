@@ -203,6 +203,10 @@ export const Gatekeeper = () => {
   const [statsPage, setStatsPage] = useState<number>(1);
   const STATS_ITEMS_PER_PAGE = 50;
 
+  // Dashboard stats state for AI evaluation strip
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [dashboardStatsLoading, setDashboardStatsLoading] = useState<boolean>(false);
+
   const paginatedRecentLeads = useMemo(() => {
     if (!statsData?.recent_below_standard) return [];
     const start = (statsPage - 1) * STATS_ITEMS_PER_PAGE;
@@ -325,6 +329,24 @@ export const Gatekeeper = () => {
     setHeldLeadsLoading(false);
   };
 
+  const fetchDashboardStats = async () => {
+    setDashboardStatsLoading(true);
+    try {
+      const res = await fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`);
+      if (res.success) {
+        setDashboardStats(res.data);
+      }
+    } catch (e: any) {
+      console.error('Error fetching dashboard stats for AI pre-screener rate:', e);
+    }
+    setDashboardStatsLoading(false);
+  };
+
+  const refreshHeldLeadsAndStats = () => {
+    fetchHeldLeads();
+    fetchDashboardStats();
+  };
+
   const fetchSettings = async () => {
     setSettingsLoading(true);
     try {
@@ -400,6 +422,7 @@ export const Gatekeeper = () => {
   useEffect(() => {
     if (isActive) {
       fetchHeldLeads();
+      fetchDashboardStats();
     }
   }, [searchParams, heldLeadsSearch, isActive]);
 
@@ -457,7 +480,7 @@ export const Gatekeeper = () => {
       });
       if (res.success) {
         toast.success(t('Đã duyệt và phân bổ lead thành công!'));
-        fetchHeldLeads();
+        refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
       } else {
         toast.error(res.message || t('Lỗi khi duyệt lead'));
@@ -484,7 +507,7 @@ export const Gatekeeper = () => {
       if (res.success) {
         toast.success(t('Đã xác nhận dưới chuẩn thành công!'));
         setHeldActionReason('');
-        fetchHeldLeads();
+        refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
       } else {
         toast.error(res.message || t('Lỗi khi xác nhận dưới chuẩn'));
@@ -511,7 +534,7 @@ export const Gatekeeper = () => {
       if (res.success) {
         toast.success(t('Đã chặn số và đưa vào Blacklist thành công!'));
         setHeldActionReason('');
-        fetchHeldLeads();
+        refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
       } else {
         toast.error(res.message || t('Lỗi khi chặn lead'));
@@ -580,6 +603,12 @@ export const Gatekeeper = () => {
   };
 
 
+  const aiPassed = dashboardStats?.ai_passed_count || 0;
+  const aiFailed = dashboardStats?.ai_failed_count || 0;
+  const aiTotal = aiPassed + aiFailed;
+  const aiPassedPercent = aiTotal > 0 ? Math.round((aiPassed / aiTotal) * 100) : 0;
+  const aiFailedPercent = aiTotal > 0 ? 100 - aiPassedPercent : 0;
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
 
@@ -590,7 +619,7 @@ export const Gatekeeper = () => {
             <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
               <Shield size={24} />
             </span>
-            {t('Bộ Lọc AI (Pre-screener)')}
+            {t('AI Pre-screener')}
           </h1>
         </div>
 
@@ -775,19 +804,7 @@ export const Gatekeeper = () => {
               {/* Step 1 */}
               <div className="flow-step-card">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                    color: '#fff',
-                    fontWeight: 800,
-                    width: 24, height: 24,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                    flexShrink: 0
-                  }}>1</span>
+                  <span className="flow-step-number">1</span>
                   <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                     {t('Webhook tiếp nhận')}
                   </span>
@@ -818,19 +835,7 @@ export const Gatekeeper = () => {
               <div className="flow-step-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{
-                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      width: 24, height: 24,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                      flexShrink: 0
-                    }}>2</span>
+                    <span className="flow-step-number">2</span>
                     <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                       {t('Kiểm tra bộ lọc AI')}
                     </span>
@@ -939,19 +944,7 @@ export const Gatekeeper = () => {
               <div className="flow-step-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{
-                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      width: 24, height: 24,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                      flexShrink: 0
-                    }}>3</span>
+                    <span className="flow-step-number">3</span>
                     <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                       {t('Đánh giá chất lượng')}
                     </span>
@@ -1062,19 +1055,7 @@ export const Gatekeeper = () => {
               <div className="flow-step-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{
-                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      width: 24, height: 24,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                      flexShrink: 0
-                    }}>4</span>
+                    <span className="flow-step-number">4</span>
                     <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                       {t('Phân bổ & Hàng chờ')}
                     </span>
@@ -1115,6 +1096,87 @@ export const Gatekeeper = () => {
           </div>
         )}
       </div>
+
+      {/* AI Pre-screener evaluation strip */}
+      {!dashboardStatsLoading && dashboardStats && (
+        <div className="card" style={{
+          padding: '1rem 1.5rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          animation: 'fadeIn 0.3s ease-out',
+          background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
+          border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img
+                src="https://crm-domation.vercel.app/LOGO.jpg"
+                alt="DOMATION AI Logo"
+                style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+              />
+              <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('Đánh giá chất lượng từ AI Pre-screener')}
+              </span>
+            </div>
+            {aiTotal > 0 && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                {t('Tổng số đánh giá:')} <strong style={{ color: 'var(--color-text)' }}>{aiTotal}</strong>
+              </span>
+            )}
+          </div>
+
+          {aiTotal > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* Progress bar */}
+              <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
+                <div
+                  style={{
+                    width: `${aiPassedPercent}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
+                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
+                />
+                <div
+                  style={{
+                    width: `${aiFailedPercent}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
+                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  title={`${t('Tạm giữ')}: ${aiFailedPercent}%`}
+                />
+              </div>
+
+              {/* Labels/Stats detail */}
+              <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
+                  <span>
+                    {t('Đạt chuẩn (Passed):')} <strong>{aiPassedPercent}%</strong> ({aiPassed} lead)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                  <span>
+                    {t('Tạm giữ (Held):')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-text-muted)', opacity: 0.5 }} />
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                {t('Không có dữ liệu đánh giá từ AI Pre-screener trong khoảng thời gian này.')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mobile control bar */}
       <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
@@ -3379,14 +3441,89 @@ export const Gatekeeper = () => {
         }
         .flow-step-card {
           background: var(--color-surface);
-          border-radius: 8px;
-          padding: 1rem;
+          border-radius: 12px !important;
+          padding: 1.25rem;
           border: 1px solid var(--color-border);
           display: flex;
           flex-direction: column;
           gap: 10px;
           box-shadow: var(--shadow-sm);
           cursor: default;
+          position: relative;
+          transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease !important;
+          animation: flowPulse 6s infinite ease-in-out;
+        }
+
+        .flow-step-card:nth-child(1) { animation-delay: 0s; }
+        .flow-step-card:nth-child(2) { animation-delay: 1.5s; }
+        .flow-step-card:nth-child(3) { animation-delay: 3s; }
+        .flow-step-card:nth-child(4) { animation-delay: 4.5s; }
+
+        @keyframes flowPulse {
+          0%, 100% {
+            border-color: var(--color-border);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(0);
+          }
+          15%, 35% {
+            border-color: var(--color-primary);
+            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12), 0 2px 4px rgba(124, 58, 237, 0.06);
+            transform: translateY(-4px);
+          }
+          50% {
+            border-color: var(--color-border);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(0);
+          }
+        }
+
+        .flow-step-number {
+          position: relative;
+          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+          color: #fff;
+          font-weight: 800;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+          flex-shrink: 0;
+          z-index: 2;
+        }
+
+        .flow-step-number::after {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          border: 2px solid var(--color-primary);
+          opacity: 0;
+          z-index: 1;
+          pointer-events: none;
+          animation: numberPulse 6s infinite ease-in-out;
+        }
+
+        .flow-step-card:nth-child(1) .flow-step-number::after { animation-delay: 0s; }
+        .flow-step-card:nth-child(2) .flow-step-number::after { animation-delay: 1.5s; }
+        .flow-step-card:nth-child(3) .flow-step-number::after { animation-delay: 3s; }
+        .flow-step-card:nth-child(4) .flow-step-number::after { animation-delay: 4.5s; }
+
+        @keyframes numberPulse {
+          0%, 100% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          15%, 35% {
+            transform: scale(1.2);
+            opacity: 0.6;
+          }
+          50% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
         }
       `}</style>
 

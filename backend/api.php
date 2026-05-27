@@ -7345,6 +7345,21 @@ switch ($action) {
             $prevAutoBlacklistCnt = (int) $row['cnt'];
         }
 
+        // Query AI Pre-screener statistics (passed vs failed)
+        $aiPassedCount = 0;
+        $aiFailedCount = 0;
+        $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionCreated AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
+        $aiScreenerRes = $conn->query($aiScreenerSql);
+        if ($aiScreenerRes) {
+            while ($row = $aiScreenerRes->fetch_assoc()) {
+                if ($row['ai_screener_status'] === 'passed') {
+                    $aiPassedCount = (int) $row['cnt'];
+                } else if ($row['ai_screener_status'] === 'failed') {
+                    $aiFailedCount = (int) $row['cnt'];
+                }
+            }
+        }
+
         // ticket_count counts ALL tickets created in the date range (for Chatbot card)
         $todayTickets = 0;
         $ticketRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE $dateConditionCreated");
@@ -7612,6 +7627,13 @@ switch ($action) {
             }
         }
 
+        // Query if AI Pre-screener is enabled
+        $aiEnabled = 0;
+        $aiEnabledRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'ai_screener_enabled'");
+        if ($aiEnabledRes && $row = $aiEnabledRes->fetch_assoc()) {
+            $aiEnabled = (int)$row['setting_value'];
+        }
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -7625,6 +7647,9 @@ switch ($action) {
                 'ticket_count' => $todayTickets,
                 'blacklists' => (int) $blacklistCnt,
                 'under_standard' => (int) $underStandard,
+                'ai_passed_count' => $aiPassedCount,
+                'ai_failed_count' => $aiFailedCount,
+                'ai_screener_enabled' => $aiEnabled,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
                 'duplicates_change' => $calcChange($statsRes['duplicates'], $prevStatsRes['duplicates']),
