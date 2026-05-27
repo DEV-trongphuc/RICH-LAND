@@ -1099,9 +1099,9 @@ export const DataList = () => {
                       <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                         {lead.status === 'pending_approval' ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="/imgs/warn_icon.png" name="Domation AI" size={28} />
+                            <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={28} />
                             <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Screener</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
                             </div>
                           </div>
@@ -1115,17 +1115,17 @@ export const DataList = () => {
                           </div>
                         ) : lead.status === 'rejected' ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={28} />
+                            <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={28} />
                             <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('(Lọc khớp dưới chuẩn)')}</div>
                             </div>
                           </div>
-                        ) : (lead.status === 'blacklisted' && lead.assigned_to_name === '-') ? (
+                        ) : lead.status === 'blacklisted' ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="/imgs/angry_icon.jpg" name="Domation AI" size={28} />
+                            <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={28} />
                             <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Angry</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
                             </div>
                           </div>
@@ -1676,10 +1676,10 @@ export const DataList = () => {
                 {selectedLead.status === 'pending_approval' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="/imgs/warn_icon.png" name="Domation AI" size={36} />
+                      <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</div>
                       </div>
                     </div>
 
@@ -1703,10 +1703,10 @@ export const DataList = () => {
                 ) : selectedLead.status === 'rejected' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={36} />
+                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                       </div>
                     </div>
 
@@ -1727,13 +1727,13 @@ export const DataList = () => {
                       </div>
                     </div>
                   </div>
-                ) : (selectedLead.status === 'blacklisted' && selectedLead.assigned_to_name === '-') ? (
+                ) : selectedLead.status === 'blacklisted' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="/imgs/angry_icon.jpg" name="Domation AI" size={36} />
+                      <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</div>
                       </div>
                     </div>
 

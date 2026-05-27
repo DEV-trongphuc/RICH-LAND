@@ -550,20 +550,30 @@ export const Dashboard = () => {
                             ? '/imgs/warn_icon.png' 
                             : log.status === 'rejected' 
                               ? 'https://crm-domation.vercel.app/LOGO.jpg' 
-                              : (log.status === 'blacklisted' && (!log.assigned_to_name || log.assigned_to_name === '-')) 
+                              : log.status === 'blacklisted' 
                                 ? '/imgs/angry_icon.jpg' 
                                 : log.assigned_to_avatar
                         } 
                         name={
-                          (log.status === 'pending_approval' || log.status === 'rejected' || (log.status === 'blacklisted' && (!log.assigned_to_name || log.assigned_to_name === '-'))) 
-                            ? 'Domation AI' 
-                            : (log.assigned_to_name || t('Hệ thống'))
+                          log.status === 'pending_approval'
+                            ? 'Domation AI - Screener'
+                            : log.status === 'rejected'
+                              ? 'Domation AI - Evaluator'
+                              : log.status === 'blacklisted'
+                                ? 'Domation AI - Angry'
+                                : (log.assigned_to_name || t('Hệ thống'))
                         } 
                         size={32} 
                       />
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                          {(log.status === 'pending_approval' || log.status === 'rejected' || (log.status === 'blacklisted' && (!log.assigned_to_name || log.assigned_to_name === '-'))) ? 'Domation AI' : (log.assigned_to_name || t('Hệ thống'))}
+                          {log.status === 'pending_approval'
+                            ? 'Domation AI - Screener'
+                            : log.status === 'rejected'
+                              ? 'Domation AI - Evaluator'
+                              : log.status === 'blacklisted'
+                                ? 'Domation AI - Angry'
+                                : (log.assigned_to_name || t('Hệ thống'))}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {log.lead_name || t('Khách hàng')} • {new Date(log.created_at).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')}
