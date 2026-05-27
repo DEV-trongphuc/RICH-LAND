@@ -2205,7 +2205,12 @@ export const Gatekeeper = () => {
                                     <CustomSelect
                                       options={[
                                         { value: '', label: `-- ${t('Chọn Vòng phân bổ fallback')} --` },
-                                        ...rounds.map((r: any) => ({ value: String(r.id), label: r.round_name }))
+                                        ...rounds.map((r: any) => ({ 
+                                          value: String(r.id), 
+                                          label: r.round_name,
+                                          disabled: Number(r.is_active) !== 1,
+                                          disabledType: 'round' as const
+                                        }))
                                       ]}
                                       value={config.below_standard_fallback_round_id ? String(config.below_standard_fallback_round_id) : ''}
                                       onChange={val => {
@@ -2785,7 +2790,12 @@ export const Gatekeeper = () => {
               {t('Vòng phân phối:')}
             </label>
             <CustomSelect
-              options={rounds.map((r: any) => ({ value: String(r.id), label: r.round_name }))}
+              options={rounds.map((r: any) => ({ 
+                value: String(r.id), 
+                label: r.round_name,
+                disabled: Number(r.is_active) !== 1,
+                disabledType: 'round' as const
+              }))}
               value={selectedApproveRoundId ? String(selectedApproveRoundId) : ''}
               onChange={val => {
                 if (val) {

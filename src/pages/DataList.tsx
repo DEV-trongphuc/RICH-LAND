@@ -286,7 +286,7 @@ export const DataList = () => {
     try {
       const json = await fetchAPI('get_consultants');
       if (json.success) {
-        setConsultants(json.data.filter((c: any) => c.status === 'active'));
+        setConsultants(json.data);
       }
     } catch (e: any) {
       console.error(e.message);
@@ -411,10 +411,11 @@ export const DataList = () => {
           lead.status === 'assigned' ? t('Đã chia') :
             lead.status === 'compensation' ? t('Data Bù') :
               lead.status === 'pending' ? t('Chờ chia') :
-                lead.status === 'silent' ? t('Chỉ đồng bộ') :
-                  lead.status === 'reminder' ? t('Nhắc lại') :
-                    lead.status === 'pending_approval' ? t('Chờ duyệt') :
-                      lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
+                lead.status === 'fallback' ? t('Fallback') :
+                  lead.status === 'silent' ? t('Chỉ đồng bộ') :
+                    lead.status === 'reminder' ? t('Nhắc lại') :
+                      lead.status === 'pending_approval' ? t('Chờ duyệt') :
+                        lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
           lead.source || '',
           lead.note || '',
           lead.created_at
@@ -484,6 +485,7 @@ export const DataList = () => {
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
       case 'pending_approval': return <span className="badge warning">{t('Chờ duyệt')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
+      case 'fallback': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>{t('Fallback')}</span>;
       default: return null;
     }
   };
@@ -1082,6 +1084,14 @@ export const DataList = () => {
                             <div>
                               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Tạm giữ')}</div>
+                            </div>
+                          </div>
+                        ) : lead.status === 'fallback' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={28} />
+                            <div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
                             </div>
                           </div>
                         ) : lead.status === 'rejected' ? (
@@ -1783,7 +1793,9 @@ export const DataList = () => {
                           .map(c => ({
                             value: c.id.toString(),
                             label: c.name,
-                            avatar: c.avatar
+                            avatar: c.avatar,
+                            disabled: c.status !== 'active',
+                            disabledType: 'sale' as const
                           }))
                       ]}
                       value={reassignConsId}

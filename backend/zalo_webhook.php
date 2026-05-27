@@ -982,7 +982,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     if ($admRes->num_rows > 0) {
                                         $fallbackAdminData = $admRes->fetch_assoc();
                                         $isFallbackAdmin = true;
-                                        $status = 'assigned';
+                                        $status = 'fallback';
                                         $message = 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
                                         $fallbackCcEmails = $fbCc;
                                     }
@@ -1564,7 +1564,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                 'silent' => '🔇 Đồng bộ ẩn',
                                 'assigned' => '👤 Chỉ định trực tiếp',
                                 'no_consultant' => '⚠️ Không có Sale nhận',
-                                'pending_work_hours' => '⏳ Chờ ngoài giờ'
+                                'pending_work_hours' => '⏳ Chờ ngoài giờ',
+                                'fallback' => '⚠️ Fallback dự phòng'
                             ];
                             $statusEmoji = $statusMap[$distStatus] ?? $distStatus;
                             $checkMsg .= "  • Trạng thái: " . $statusEmoji . "\n";

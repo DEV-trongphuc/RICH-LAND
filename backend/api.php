@@ -55,6 +55,17 @@ function getSafeErrorMsg($e)
     return $e->getMessage();
 }
 
+function getSystemFallbackRoundIds($conn)
+{
+    require_once __DIR__ . '/webhook_logic.php';
+    $roundIds = getAllFallbackRoundIds($conn);
+    $mainFbRoundId = (int) get_system_setting($conn, 'fallback_round_id');
+    if ($mainFbRoundId > 0) {
+        $roundIds[] = $mainFbRoundId;
+    }
+    return array_unique($roundIds);
+}
+
 function create_jwt($payload, $secret)
 {
     $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
@@ -1758,6 +1769,37 @@ switch ($action) {
                 $work_end_time = '23:59';
             $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
 
+            if ($status === 'inactive' || $status === 'leave') {
+                $fallbackRounds = getSystemFallbackRoundIds($conn);
+                if (!empty($fallbackRounds)) {
+                    $inRounds = implode(',', array_map('intval', $fallbackRounds));
+                    $stmtF = $conn->prepare("SELECT rc.round_id, r.round_name FROM round_consultants rc JOIN distribution_rounds r ON rc.round_id = r.id WHERE rc.consultant_id = ? AND rc.round_id IN ($inRounds)");
+                    $stmtF->bind_param("i", $id);
+                    $stmtF->execute();
+                    $resF = $stmtF->get_result();
+                    while ($rowF = $resF->fetch_assoc()) {
+                        $rId = $rowF['round_id'];
+                        $rName = $rowF['round_name'];
+                        
+                        $stmtOther = $conn->prepare("
+                            SELECT COUNT(*) as cnt 
+                            FROM round_consultants rc 
+                            JOIN consultants c ON rc.consultant_id = c.id 
+                            WHERE rc.round_id = ? AND rc.consultant_id != ? AND c.status = 'active'
+                        ");
+                        $stmtOther->bind_param("ii", $rId, $id);
+                        $stmtOther->execute();
+                        $otherActiveCount = (int)($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
+                        $stmtOther->close();
+                        
+                        if ($otherActiveCount === 0) {
+                            throw new Exception("Không thể ngưng hoạt động hoặc cho tạm nghỉ TVV này vì họ là người hoạt động duy nhất trong vòng dự phòng (fallback): $rName.");
+                        }
+                    }
+                    $stmtF->close();
+                }
+            }
+
             $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
             $stmt->bind_param("ssssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $id);
             if ($stmt->execute()) {
@@ -1867,6 +1909,35 @@ switch ($action) {
             $checkLog->close();
             if ($hasLogs) {
                 throw new Exception("TVV này đã nhận Data, không thể xóa để bảo toàn thống kê. Vui lòng chọn 'Ngưng hoạt động'.");
+            }
+
+            $fallbackRounds = getSystemFallbackRoundIds($conn);
+            if (!empty($fallbackRounds)) {
+                $inRounds = implode(',', array_map('intval', $fallbackRounds));
+                $stmtF = $conn->prepare("SELECT rc.round_id, r.round_name FROM round_consultants rc JOIN distribution_rounds r ON rc.round_id = r.id WHERE rc.consultant_id = ? AND rc.round_id IN ($inRounds)");
+                $stmtF->bind_param("i", $id);
+                $stmtF->execute();
+                $resF = $stmtF->get_result();
+                while ($rowF = $resF->fetch_assoc()) {
+                    $rId = $rowF['round_id'];
+                    $rName = $rowF['round_name'];
+                    
+                    $stmtOther = $conn->prepare("
+                        SELECT COUNT(*) as cnt 
+                        FROM round_consultants rc 
+                        JOIN consultants c ON rc.consultant_id = c.id 
+                        WHERE rc.round_id = ? AND rc.consultant_id != ? AND c.status = 'active'
+                    ");
+                    $stmtOther->bind_param("ii", $rId, $id);
+                    $stmtOther->execute();
+                    $otherActiveCount = (int)($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $stmtOther->close();
+                    
+                    if ($otherActiveCount === 0) {
+                        throw new Exception("Không thể xóa TVV này vì họ là người hoạt động duy nhất trong vòng dự phòng (fallback): $rName.");
+                    }
+                }
+                $stmtF->close();
             }
 
             $stmtD1 = $conn->prepare("DELETE FROM round_consultants WHERE consultant_id = ?");
@@ -2411,6 +2482,24 @@ switch ($action) {
             $consultants = $input['consultants'] ?? [];
             $starting_consultant_id = $input['starting_consultant_id'] ?? null;
 
+            $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if ($is_fallback) {
+                if ((int)$status !== 1) {
+                    throw new Exception("Không thể tắt hoạt động của vòng dự phòng (fallback).");
+                }
+                $hasActiveConsultant = false;
+                if (!empty($consultants)) {
+                    $inClause = implode(',', array_map('intval', $consultants));
+                    $chkActive = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE id IN ($inClause) AND status = 'active'");
+                    if ($chkActive && (int)$chkActive->fetch_assoc()['cnt'] > 0) {
+                        $hasActiveConsultant = true;
+                    }
+                }
+                if (!$hasActiveConsultant) {
+                    throw new Exception("Vòng dự phòng (fallback) phải có ít nhất một tư vấn viên đang hoạt động.");
+                }
+            }
+
             $last_assigned = null;
             if ($starting_consultant_id && !empty($consultants)) {
                 $sorted_consultants = $consultants;
@@ -2478,6 +2567,25 @@ switch ($action) {
             $status = $input['is_active'] ?? 1;
             $consultants = $input['consultants'] ?? [];
             $starting_consultant_id = $input['starting_consultant_id'] ?? null;
+
+            $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $isFallbackRound = $is_fallback || in_array($id, getSystemFallbackRoundIds($conn));
+            if ($isFallbackRound) {
+                if ((int)$status !== 1) {
+                    throw new Exception("Không thể tắt hoạt động của vòng dự phòng (fallback).");
+                }
+                $hasActiveConsultant = false;
+                if (!empty($consultants)) {
+                    $inClause = implode(',', array_map('intval', $consultants));
+                    $chkActive = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE id IN ($inClause) AND status = 'active'");
+                    if ($chkActive && (int)$chkActive->fetch_assoc()['cnt'] > 0) {
+                        $hasActiveConsultant = true;
+                    }
+                }
+                if (!$hasActiveConsultant) {
+                    throw new Exception("Vòng dự phòng (fallback) phải có ít nhất một tư vấn viên đang hoạt động.");
+                }
+            }
 
             $last_assigned = null;
             if ($starting_consultant_id && !empty($consultants)) {
@@ -2803,6 +2911,12 @@ switch ($action) {
             $checkLog->close();
             if ($logCount > 0) {
                 throw new Exception("Vòng này đã phân bổ Data, không thể xóa để bảo toàn thống kê. Vui lòng chuyển sang Ngừng hoạt động.");
+            }
+
+            // Check if this round is a fallback round
+            $fallbackRounds = getSystemFallbackRoundIds($conn);
+            if (in_array($id, $fallbackRounds)) {
+                throw new Exception("Không thể xóa vòng này vì nó đang được cấu hình làm vòng dự phòng (fallback). Vui lòng cấu hình vòng dự phòng sang vòng khác trước.");
             }
 
             $stmt1 = $conn->prepare("DELETE FROM round_consultants WHERE round_id=?");
@@ -4871,7 +4985,7 @@ switch ($action) {
                             if ($admRes->num_rows > 0) {
                                 $fallbackAdminData = $admRes->fetch_assoc();
                                 $isFallbackAdmin = true;
-                                $status = 'assigned';
+                                $status = 'fallback';
                                 $message = 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
                                 $fallbackCcEmails = $fbCc;
                             }
@@ -5472,6 +5586,70 @@ switch ($action) {
                     break 2;
                 }
             }
+            if ($k === 'fallback_round_id') {
+                $val = (int)$v;
+                if ($val > 0) {
+                    $chk = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+                    $chk->bind_param("i", $val);
+                    $chk->execute();
+                    $r = $chk->get_result()->fetch_assoc();
+                    $chk->close();
+                    if (!$r) {
+                        echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ dự phòng (ID: $val)."]);
+                        break 2;
+                    }
+                    if ((int)$r['is_active'] !== 1) {
+                        echo json_encode(['success' => false, 'message' => "Vòng phân bổ dự phòng '{$r['round_name']}' đang ngưng hoạt động, không thể chọn làm fallback."]);
+                        break 2;
+                    }
+                    $chkActive = $conn->prepare("
+                        SELECT COUNT(*) as cnt 
+                        FROM round_consultants rc 
+                        JOIN consultants c ON rc.consultant_id = c.id 
+                        WHERE rc.round_id = ? AND c.status = 'active'
+                    ");
+                    $chkActive->bind_param("i", $val);
+                    $chkActive->execute();
+                    $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $chkActive->close();
+                    if ($activeCount === 0) {
+                        echo json_encode(['success' => false, 'message' => "Vòng phân bổ dự phòng '{$r['round_name']}' phải có ít nhất một TVV đang hoạt động."]);
+                        break 2;
+                    }
+                }
+            }
+            if ($k === 'ai_screener_below_standard_fallback_round_id') {
+                $val = (int)$v;
+                if ($val > 0) {
+                    $chk = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+                    $chk->bind_param("i", $val);
+                    $chk->execute();
+                    $r = $chk->get_result()->fetch_assoc();
+                    $chk->close();
+                    if (!$r) {
+                        echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ dưới chuẩn (ID: $val)."]);
+                        break 2;
+                    }
+                    if ((int)$r['is_active'] !== 1) {
+                        echo json_encode(['success' => false, 'message' => "Vòng phân bổ dưới chuẩn '{$r['round_name']}' đang ngưng hoạt động, không thể chọn làm fallback."]);
+                        break 2;
+                    }
+                    $chkActive = $conn->prepare("
+                        SELECT COUNT(*) as cnt 
+                        FROM round_consultants rc 
+                        JOIN consultants c ON rc.consultant_id = c.id 
+                        WHERE rc.round_id = ? AND c.status = 'active'
+                    ");
+                    $chkActive->bind_param("i", $val);
+                    $chkActive->execute();
+                    $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $chkActive->close();
+                    if ($activeCount === 0) {
+                        echo json_encode(['success' => false, 'message' => "Vòng phân bổ dưới chuẩn '{$r['round_name']}' phải có ít nhất một TVV đang hoạt động."]);
+                        break 2;
+                    }
+                }
+            }
             if ($k === 'ai_screener_configs') {
                 $configs = is_array($v) ? $v : json_decode($v, true);
                 if (!is_array($configs)) {
@@ -5511,6 +5689,35 @@ switch ($action) {
                         $appliedRounds = array_map('intval', $cfg['rounds']);
                         if (in_array($fb_round, $appliedRounds)) {
                             echo json_encode(['success' => false, 'message' => "Vòng fallback (ID: $fb_round) không được trùng với các vòng áp dụng của nhóm '$cfgName'."]);
+                            break 3;
+                        }
+
+                        // Validate active round & active consultants
+                        $chk = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+                        $chk->bind_param("i", $fb_round);
+                        $chk->execute();
+                        $r = $chk->get_result()->fetch_assoc();
+                        $chk->close();
+                        if (!$r) {
+                            echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ fallback (ID: $fb_round) cho nhóm '$cfgName'."]);
+                            break 3;
+                        }
+                        if ((int)$r['is_active'] !== 1) {
+                            echo json_encode(['success' => false, 'message' => "Vòng phân bổ fallback '{$r['round_name']}' của nhóm '$cfgName' đang ngưng hoạt động, không thể chọn làm fallback."]);
+                            break 3;
+                        }
+                        $chkActive = $conn->prepare("
+                            SELECT COUNT(*) as cnt 
+                            FROM round_consultants rc 
+                            JOIN consultants c ON rc.consultant_id = c.id 
+                            WHERE rc.round_id = ? AND c.status = 'active'
+                        ");
+                        $chkActive->bind_param("i", $fb_round);
+                        $chkActive->execute();
+                        $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                        $chkActive->close();
+                        if ($activeCount === 0) {
+                            echo json_encode(['success' => false, 'message' => "Vòng phân bổ fallback '{$r['round_name']}' của nhóm '$cfgName' phải có ít nhất một TVV đang hoạt động."]);
                             break 3;
                         }
                     }
@@ -7192,11 +7399,11 @@ switch ($action) {
         }
 
         // Query Top Consultants
-        $topConsultantsSql = "SELECT c.id, c.name, c.email, c.avatar, dl.status, COUNT(dl.id) as cnt 
+        $topConsultantsSql = "SELECT c.id, c.name, c.email, c.avatar, c.status as c_status, c.vacation_mode as c_vacation_mode, dl.status as dl_status, COUNT(dl.id) as cnt 
                               FROM distribution_logs dl 
                               JOIN consultants c ON dl.assigned_to = c.id 
                               WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
-                              GROUP BY c.id, dl.status";
+                              GROUP BY c.id, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
         if ($topConsultantsRes) {
@@ -7208,6 +7415,8 @@ switch ($action) {
                         'name' => $row['name'],
                         'email' => $row['email'],
                         'avatar' => $row['avatar'],
+                        'status' => $row['c_status'],
+                        'vacation_mode' => (int) $row['c_vacation_mode'],
                         'assigned' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
@@ -7215,9 +7424,9 @@ switch ($action) {
                         'error' => 0
                     ];
                 }
-                $status = $row['status'];
-                if (isset($consultantStats[$cId][$status])) {
-                    $consultantStats[$cId][$status] = (int) $row['cnt'];
+                $dl_status = $row['dl_status'];
+                if (isset($consultantStats[$cId][$dl_status])) {
+                    $consultantStats[$cId][$dl_status] = (int) $row['cnt'];
                 }
             }
         }
@@ -7230,6 +7439,8 @@ switch ($action) {
                 'name' => $cStats['name'],
                 'email' => $cStats['email'],
                 'avatar' => $cStats['avatar'],
+                'status' => $cStats['status'],
+                'vacation_mode' => $cStats['vacation_mode'],
                 'data' => $data_count
             ];
         }
@@ -7250,6 +7461,8 @@ switch ($action) {
                 'name' => $row['name'],
                 'email' => $row['email'],
                 'avatar' => $row['avatar'],
+                'status' => $row['status'],
+                'vacation_mode' => $row['vacation_mode'],
                 'data' => (int) $row['data'],
                 'percent' => $percent,
                 'color' => $colors[$i % 4]
@@ -9589,6 +9802,19 @@ switch ($action) {
             } else {
                 $assignedRoundId = $ruleResult;
             }
+
+            if ($assignedRoundId) {
+                $chkRound = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+                if ($chkRound) {
+                    $chkRound->bind_param("i", $assignedRoundId);
+                    $chkRound->execute();
+                    $chkRes = $chkRound->get_result()->fetch_assoc();
+                    $chkRound->close();
+                    if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+                        $assignedRoundId = null;
+                    }
+                }
+            }
         }
 
         if (!$assignedRoundId) {
@@ -9615,12 +9841,22 @@ switch ($action) {
                         $isFallbackAdmin = true;
                         $fallbackCcEmails = $fbCc;
                     }
+                    $admStmt->close();
                 }
             } else {
                 $fbRoundId = (int) ($fbSettings['fallback_round_id'] ?? 0);
                 if ($fbRoundId > 0) {
-                    $assignedRoundId = $fbRoundId;
-                    $isFallback = true;
+                    $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+                    if ($chkFb) {
+                        $chkFb->bind_param("i", $fbRoundId);
+                        $chkFb->execute();
+                        $chkFbRes = $chkFb->get_result()->fetch_assoc();
+                        $chkFb->close();
+                        if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                            $assignedRoundId = $fbRoundId;
+                            $isFallback = true;
+                        }
+                    }
                 }
             }
         }
@@ -9920,7 +10156,7 @@ switch ($action) {
                             $updAi->close();
                         }
 
-                        logDistribution($conn, $leadId, null, null, 'assigned', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'], false);
+                        logDistribution($conn, $leadId, null, null, 'fallback', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'], false);
 
                         $conn->commit();
                         $inTransaction = false;
@@ -10148,6 +10384,9 @@ switch ($action) {
                             $updAi->execute();
                             $updAi->close();
                         }
+                        $status = (isset($isFallback) && $isFallback) ? 'fallback' : 'pending';
+                        $logMsg = (isset($isFallback) && $isFallback) ? 'No active consultants in fallback round.' : 'No active consultants in this round.';
+                        logDistribution($conn, $leadId, null, $assignedRoundId ? $assignedRoundId : null, $status, $logMsg, false);
                         $conn->commit();
                         $inTransaction = false;
                         echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.']);

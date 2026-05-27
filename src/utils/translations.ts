@@ -3847,7 +3847,8 @@ export const ja: Record<string, string> = {
   "Trùng của tôi (Trùng Saleperson)": "自分の重複 (同一セールスパーソン)",
   "Trùng của người khác (Saleperson khác đã chăm)": "他者の重複 (別のセールスパーソンが担当)",
   "Spam ảo / Junk lead": "スパム / ジャンクリード",
-  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "その他 (メモに詳細をご記入ください)"
+  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "その他 (メモに詳細をご記入ください)",
+  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "システムはコンサルタント間で順次リードを割り当てます。「Ratio: X」は、コンサルタントが1つのリードを受け取った後、次の(X - 1)回の割り当てラウンドを待機することを意味します。"
 };
 
 export const zh: Record<string, string> = {
@@ -5750,5 +5751,6 @@ export const zh: Record<string, string> = {
   "Trùng của tôi (Trùng Saleperson)": "我的重复 (同一销售)",
   "Trùng của người khác (Saleperson khác đã chăm)": "他人的重复 (其他销售已跟进)",
   "Spam ảo / Junk lead": "虚假垃圾 / 垃圾线索",
-  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "其他 (请在备注中注明)"
+  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "其他 (请在备注中注明)",
+  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "系统按顺序在顾问之间分配线索。“Ratio: X”意味着顾问在收到1个线索后，将在接下来的(X - 1)轮分配中等待。"
 };

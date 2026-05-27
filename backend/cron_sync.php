@@ -996,6 +996,21 @@ foreach ($connections as $connItem) {
                     $targetRoundId = $ruleResult;
                 }
 
+                $inactiveRoundName = '';
+                if ($targetRoundId) {
+                    $chkRound = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+                    if ($chkRound) {
+                        $chkRound->bind_param("i", $targetRoundId);
+                        $chkRound->execute();
+                        $chkRes = $chkRound->get_result()->fetch_assoc();
+                        $chkRound->close();
+                        if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+                            $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
+                            $targetRoundId = null;
+                        }
+                    }
+                }
+
                 if (!$targetRoundId) {
                     $fbSettings = get_system_setting($conn);
                     
@@ -1018,16 +1033,32 @@ foreach ($connections as $connItem) {
                             $fallbackAdminData = $fallbackAdminCache[$fbAdminId];
                             if ($fallbackAdminData) {
                                 $isFallbackAdmin = true;
-                                $cronStatus = 'assigned';
-                                $cronMessage = 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
+                                $cronStatus = 'fallback';
+                                $cronMessage = !empty($inactiveRoundName)
+                                    ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang Admin dự phòng: " . $fallbackAdminData['name']
+                                    : 'No matching rule. Routed directly to fallback Admin via cron_sync: ' . $fallbackAdminData['name'];
                                 $fallbackCcEmails = $fbCc;
                             }
                         }
                     } else {
                         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
                         if ($fbRoundId > 0) {
-                            $targetRoundId = $fbRoundId;
-                            $cronMessage = 'No matching rule found. Routed to fallback round.';
+                            $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+                            if ($chkFb) {
+                                $chkFb->bind_param("i", $fbRoundId);
+                                $chkFb->execute();
+                                $chkFbRes = $chkFb->get_result()->fetch_assoc();
+                                $chkFb->close();
+                                if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                                    $targetRoundId = $fbRoundId;
+                                    $isFallbackRound = true;
+                                    $cronMessage = !empty($inactiveRoundName)
+                                        ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang vòng dự phòng."
+                                        : 'No matching rule found. Routed to fallback round.';
+                                } else {
+                                    $targetRoundId = null;
+                                }
+                            }
                         }
                     }
                 }
@@ -1279,8 +1310,8 @@ foreach ($connections as $connItem) {
                             $whStmt->close();
                         } else {
                             $assignedConsultantId = null;
-                            $cronStatus = 'pending';
-                            $cronMessage = 'No active consultants in this round via cron_sync.';
+                            $cronStatus = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
+                            $cronMessage = (isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round via cron_sync.';
                         }
                     }
 

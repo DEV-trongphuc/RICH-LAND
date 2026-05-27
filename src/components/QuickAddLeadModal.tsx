@@ -905,7 +905,7 @@ export const QuickAddLeadModal = () => {
     try {
       const json = await fetchAPI('get_consultants');
       if (json.success) {
-        setConsultants(json.data.filter((c: any) => c.status === 'active'));
+        setConsultants(json.data);
       }
     } catch (e: any) {
       console.error(e.message);
@@ -1247,7 +1247,9 @@ export const QuickAddLeadModal = () => {
                                       .map(c => ({
                                         value: c.id.toString(),
                                         label: c.name,
-                                        avatar: c.avatar
+                                        avatar: c.avatar,
+                                        disabled: c.status !== 'active',
+                                        disabledType: 'sale' as const
                                       }))
                                   ]}
                                   showAvatars={true}

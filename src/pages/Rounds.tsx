@@ -413,7 +413,15 @@ export const Rounds = () => {
             const color = ROUND_COLORS[idx % ROUND_COLORS.length];
 
             return viewMode === 'grid' ? (
-              <div key={r.id} className="card hover-glow" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div key={r.id} className="card hover-glow" style={{ 
+                overflow: 'hidden', 
+                display: 'flex', 
+                flexDirection: 'column',
+                opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
+                filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
+                border: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
+                background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
+              }}>
                 <div style={{ height: 4, background: color }} />
                 <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -529,7 +537,9 @@ export const Rounds = () => {
                                     size={32}
                                     style={{
                                       border: '2px solid var(--color-surface)',
-                                      boxShadow: 'var(--shadow-sm)'
+                                      boxShadow: 'var(--shadow-sm)',
+                                      filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                                      opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
                                     }}
                                   />
                                 </span>
@@ -611,7 +621,10 @@ export const Rounds = () => {
             ) : (
               <div key={r.id} className="card hover-glow responsive-flex-row responsive-height-auto" style={{
                 display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.5rem',
-                borderLeft: `4px solid ${color}`
+                borderLeft: `4px solid ${Number(r.is_active) !== 1 ? '#9ca3af' : color}`,
+                opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
+                filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
+                background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
               }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Zap size={20} color={color} />
@@ -722,7 +735,9 @@ export const Rounds = () => {
                             size={32}
                             style={{
                               border: '2px solid white',
-                              boxShadow: 'var(--shadow-sm)'
+                              boxShadow: 'var(--shadow-sm)',
+                              filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                              opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
                             }}
                           />
                         </span>
@@ -988,14 +1003,23 @@ export const Rounds = () => {
                             return (
                               <div
                                 key={user.id}
-                                onClick={() => toggleUserSelection(user.id)}
-                                style={{
-                                  padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
-                                  background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                                  transition: 'background 0.1s'
+                                onClick={() => {
+                                  if (user.status !== 'active') {
+                                    toast.error(t('Sale không hoạt động'));
+                                    return;
+                                  }
+                                  toggleUserSelection(user.id);
                                 }}
-                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                style={{
+                                  padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                  cursor: user.status === 'active' ? 'pointer' : 'not-allowed',
+                                  background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                  transition: 'background 0.1s',
+                                  opacity: user.status === 'active' ? 1 : 0.55,
+                                  filter: user.status === 'active' ? 'none' : 'grayscale(1)'
+                                }}
+                                onMouseEnter={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                onMouseLeave={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'transparent'; }}
                               >
                                 <Avatar src={user.avatar} name={user.name} size={28} />
                                 <div style={{ flex: 1 }}>

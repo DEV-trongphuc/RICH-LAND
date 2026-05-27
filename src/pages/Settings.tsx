@@ -482,7 +482,9 @@ export const Settings = () => {
     ...rounds.map(r => ({
       value: Number(r.id),
       label: r.round_name,
-      icon: <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />
+      icon: <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />,
+      disabled: Number(r.is_active) !== 1,
+      disabledType: 'round' as const
     }))
   ];
 
@@ -491,7 +493,9 @@ export const Settings = () => {
     ...consultants.map(c => ({
       value: Number(c.id),
       label: c.name,
-      icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />
+      icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />,
+      disabled: c.status !== 'active',
+      disabledType: 'sale' as const
     }))
   ];
 
@@ -2129,7 +2133,9 @@ function doPost(e) {
                         { value: '', label: t('-- Không sử dụng (Để trống trạng thái Chưa phân bổ) --') },
                         ...rounds.map(r => ({
                           value: r.id.toString(),
-                          label: `${r.round_name} (${Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')})`
+                          label: `${r.round_name} (${Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')})`,
+                          disabled: Number(r.is_active) !== 1,
+                          disabledType: 'round' as const
                         }))
                       ]}
                       value={fallbackRoundId}

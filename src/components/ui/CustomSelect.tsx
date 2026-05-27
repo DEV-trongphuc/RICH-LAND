@@ -4,6 +4,7 @@ import styles from './CustomSelect.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from './Avatar';
 import { useLanguage } from '../../contexts/LanguageContext';
+import toast from 'react-hot-toast';
 
 export interface SelectOption {
   value: string | number;
@@ -11,6 +12,9 @@ export interface SelectOption {
   icon?: React.ReactNode;
   avatar?: string;
   sublabel?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  disabledType?: 'round' | 'sale';
 }
 
 interface CustomSelectProps {
@@ -66,8 +70,17 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     return value == val;
   };
 
-  const handleSelect = (val: string | number, e: React.MouseEvent) => {
+  const handleSelect = (option: SelectOption, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (option.disabled) {
+      const reason = option.disabledReason || 
+        (option.disabledType === 'round' ? t('Vòng không hoạt động') : 
+         option.disabledType === 'sale' ? t('Sale không hoạt động') : 
+         t('Lựa chọn này không hoạt động'));
+      toast.error(reason);
+      return;
+    }
+    const val = option.value;
     if (multiple) {
       const arr = Array.isArray(value) ? [...value] : [];
       if (val === 'all') {
@@ -173,8 +186,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
               {filtered.length > 0 ? filtered.map((option) => (
                 <div 
                   key={option.value}
-                  className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''}`}
-                  onClick={(e) => handleSelect(option.value, e)}
+                  className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''} ${option.disabled ? styles.optionDisabled : ''}`}
+                  onClick={(e) => handleSelect(option, e)}
                 >
                   <div className={styles.optionLabel}>
                     {showAvatars ? (

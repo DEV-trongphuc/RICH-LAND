@@ -469,7 +469,15 @@ export const Consultants = () => {
                   >
                     <td data-label={t('Tên TVV')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Avatar src={u.avatar} name={u.name} size={32} />
+                        <Avatar
+                          src={u.avatar}
+                          name={u.name}
+                          size={32}
+                          style={{
+                            filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                            opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
+                          }}
+                        />
                         <div>
                           <div
                             style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
@@ -1058,7 +1066,15 @@ export const Consultants = () => {
             {/* Header */}
             <div className="stats-header-container" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
+                <Avatar
+                  src={statsConsultant.avatar}
+                  name={statsConsultant.name}
+                  size={44}
+                  style={{
+                    filter: (statsConsultant.status === 'inactive' || statsConsultant.status === 'leave' || Number(statsConsultant.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                    opacity: (statsConsultant.status === 'inactive' || statsConsultant.status === 'leave' || Number(statsConsultant.vacation_mode) === 1) ? 0.5 : 1
+                  }}
+                />
                 <div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Báo cáo hiệu suất TVV')}</h3>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

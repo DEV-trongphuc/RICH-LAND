@@ -260,6 +260,21 @@ if (is_array($ruleResult)) {
     $targetRoundId = $ruleResult;
 }
 
+$inactiveRoundName = '';
+if ($targetRoundId) {
+    $chkRound = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+    if ($chkRound) {
+        $chkRound->bind_param("i", $targetRoundId);
+        $chkRound->execute();
+        $chkRes = $chkRound->get_result()->fetch_assoc();
+        $chkRound->close();
+        if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+            $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
+            $targetRoundId = null;
+        }
+    }
+}
+
 $isFallbackAdmin = false;
 $fallbackAdminData = null;
 $fallbackCcEmails = '';
@@ -287,8 +302,10 @@ if (!$targetRoundId) {
                 if ($admRes->num_rows > 0) {
                     $fallbackAdminData = $admRes->fetch_assoc();
                     $isFallbackAdmin = true;
-                    $status = 'assigned';
-                    $message = 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
+                    $status = 'fallback';
+                    $message = !empty($inactiveRoundName)
+                        ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang Admin dự phòng: " . $fallbackAdminData['name']
+                        : 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'];
                     $fallbackCcEmails = $fbCc;
                 }
                 $admStmt->close();
@@ -297,8 +314,22 @@ if (!$targetRoundId) {
     } else {
         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
         if ($fbRoundId > 0) {
-            $targetRoundId = $fbRoundId;
-            $message = 'No matching rule found. Routed to fallback round.';
+            $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+            if ($chkFb) {
+                $chkFb->bind_param("i", $fbRoundId);
+                $chkFb->execute();
+                $chkFbRes = $chkFb->get_result()->fetch_assoc();
+                $chkFb->close();
+                if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                    $targetRoundId = $fbRoundId;
+                    $isFallbackRound = true;
+                    $message = !empty($inactiveRoundName)
+                        ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang vòng dự phòng."
+                        : 'No matching rule found. Routed to fallback round.';
+                } else {
+                    $targetRoundId = null;
+                }
+            }
         }
     }
 }
@@ -548,8 +579,8 @@ try {
             }
             $whStmt->close();
         } else {
-            $status = 'pending';
-            $message = 'No active consultants in this round.';
+            $status = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
+            $message = (isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round.';
         }
     }
 
@@ -587,7 +618,7 @@ try {
     exit();
 }
 
-if ($status === 'unassigned' || $status === 'pending') {
+if ($status === 'unassigned' || $status === 'pending' || ($status === 'fallback' && !$isFallbackAdmin)) {
     echo json_encode(["success" => true, "status" => $status, "message" => $message]);
     releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     exit();

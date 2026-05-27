@@ -985,7 +985,12 @@ export const RuleSettings = () => {
           <div>
             <label className="form-label">{t("Hành động: Phân bổ vào")}</label>
             <CustomSelect
-              options={rounds.map(r => ({ value: r.id.toString(), label: r.name || r.round_name }))}
+              options={rounds.map(r => ({
+                value: r.id.toString(),
+                label: r.name || r.round_name,
+                disabled: Number(r.is_active) !== 1,
+                disabledType: 'round' as const
+              }))}
               value={targetRound.toString()}
               onChange={(v) => setTargetRound(Number(v))}
               placeholder={t("Chọn vòng phân bổ...")}

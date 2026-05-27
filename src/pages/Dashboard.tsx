@@ -667,7 +667,15 @@ export const Dashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, alignItems: 'center' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
-                        <Avatar src={c.avatar} name={c.name} size={24} />
+                        <Avatar
+                          src={c.avatar}
+                          name={c.name}
+                          size={24}
+                          style={{
+                            filter: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                            opacity: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 0.5 : 1
+                          }}
+                        />
                         <span className="consultant-name" style={{ transition: 'color 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           {c.name}
                           <BarChart2 size={14} className="consultant-chart-icon" style={{ opacity: 0.35, color: 'var(--color-primary)' }} />
@@ -919,7 +927,15 @@ export const Dashboard = () => {
             {/* Header */}
             <div className="stats-header-container" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                <Avatar src={statsConsultant.avatar} name={statsConsultant.name} size={44} />
+                <Avatar
+                  src={statsConsultant.avatar}
+                  name={statsConsultant.name}
+                  size={44}
+                  style={{
+                    filter: (statsConsultant.status === 'inactive' || statsConsultant.status === 'leave' || Number(statsConsultant.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                    opacity: (statsConsultant.status === 'inactive' || statsConsultant.status === 'leave' || Number(statsConsultant.vacation_mode) === 1) ? 0.5 : 1
+                  }}
+                />
                 <div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Báo cáo hiệu suất TVV')}</h3>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

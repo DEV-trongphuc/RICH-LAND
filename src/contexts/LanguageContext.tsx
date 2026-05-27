@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { en, ja, zh } from '../utils/translations';
 
 type Language = 'vi' | 'en' | 'ja' | 'zh';
 
@@ -7,6 +6,7 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  isTranslationLoading: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -15,6 +15,37 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('domation_lang') as Language) || 'vi';
   });
+
+  const [loadedTranslations, setLoadedTranslations] = useState<Record<string, Record<string, string>> | null>(null);
+  const [isTranslationLoading, setIsTranslationLoading] = useState(false);
+
+  // Lazy-load translations bundle on-demand
+  useEffect(() => {
+    if (language === 'vi') {
+      setIsTranslationLoading(false);
+      return;
+    }
+
+    if (loadedTranslations) {
+      setIsTranslationLoading(false);
+      return;
+    }
+
+    setIsTranslationLoading(true);
+    import('../utils/translations')
+      .then((module) => {
+        setLoadedTranslations({
+          en: module.en,
+          ja: module.ja,
+          zh: module.zh,
+        });
+        setIsTranslationLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load translations dynamically:', err);
+        setIsTranslationLoading(false);
+      });
+  }, [language, loadedTranslations]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
@@ -34,15 +65,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [language]);
 
   const t = (key: string): string => {
-    if (language === 'vi') return key;
-    if (language === 'en') return en[key] || key;
-    if (language === 'ja') return ja[key] || key;
-    if (language === 'zh') return zh[key] || key;
-    return key;
+    if (language === 'vi' || !loadedTranslations) return key;
+    const dict = loadedTranslations[language];
+    return (dict && dict[key]) || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isTranslationLoading }}>
       {children}
     </LanguageContext.Provider>
   );

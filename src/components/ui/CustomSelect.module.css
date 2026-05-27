@@ -164,6 +164,17 @@
   font-weight: 700;
 }
 
+.optionDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.optionDisabled:hover {
+  background: transparent !important;
+}
+
+
 .optionLabel {
   display: flex;
   align-items: center;

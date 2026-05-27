@@ -519,7 +519,9 @@ export const Tickets = () => {
     ...rounds.map(r => ({
       value: Number(r.id),
       label: r.round_name,
-      icon: <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />
+      icon: <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />,
+      disabled: Number(r.is_active) !== 1,
+      disabledType: 'round' as const
     }))
   ];
 
@@ -528,7 +530,9 @@ export const Tickets = () => {
     ...allConsultants.map(c => ({
       value: Number(c.id),
       label: c.name,
-      icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />
+      icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />,
+      disabled: c.status !== 'active',
+      disabledType: 'sale' as const
     }))
   ];
 
@@ -1378,13 +1382,15 @@ export const Tickets = () => {
                     ...allConsultants
                       .filter(c => {
                         const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
-                        return Number(c.id) !== Number(currentReport?.consultant_id) && c.status === 'active';
+                        return Number(c.id) !== Number(currentReport?.consultant_id);
                       })
                       .map(c => ({
                         value: String(c.id),
                         label: c.name,
                         sublabel: c.email,
-                        avatar: c.avatar
+                        avatar: c.avatar,
+                        disabled: c.status !== 'active',
+                        disabledType: 'sale' as const
                       }))
                   ]}
                   value={reassignConsultantId}
@@ -1960,11 +1966,12 @@ export const Tickets = () => {
                         options={[
                           { value: '', label: t('-- Chọn Tư vấn viên --') },
                           ...allConsultants
-                            .filter(c => c.status === 'active')
                             .map(c => ({
                               value: c.id.toString(),
                               label: c.name,
-                              avatar: c.avatar
+                              avatar: c.avatar,
+                              disabled: c.status !== 'active',
+                              disabledType: 'sale' as const
                             }))
                         ]}
                         value={reassignConsId}
