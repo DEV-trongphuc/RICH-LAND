@@ -1297,7 +1297,7 @@ export const Gatekeeper = () => {
                           <Avatar name={l.name} size={36} />
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{l.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{l.phone}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskPhone(l.phone)}</div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
                               {new Date(l.created_at).toLocaleString('vi-VN')}
                             </div>
@@ -1430,7 +1430,7 @@ export const Gatekeeper = () => {
                         <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{l.name}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                           <Phone size={12} style={{ opacity: 0.6 }} />
-                          <span>{l.phone ? (user?.role === 'admin' ? l.phone : maskPhone(l.phone)) : '-'}</span>
+                          <span>{l.phone ? maskPhone(l.phone) : '-'}</span>
                         </div>
                       </div>
                     </div>
@@ -2685,7 +2685,7 @@ export const Gatekeeper = () => {
                                 <td style={{ padding: '10px 14px' }}>
                                   <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
                                   <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
-                                    {user?.role === 'admin' ? l.phone : maskPhone(l.phone)}
+                                    {maskPhone(l.phone)}
                                   </div>
                                 </td>
                                 <td style={{ padding: '10px 14px' }}>

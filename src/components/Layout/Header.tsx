@@ -18,6 +18,15 @@ const languagesList = [
   { code: 'zh', name: '简体中文', flag: cnFlag }
 ] as const;
 
+const maskPhone = (phone: string) => {
+  if (!phone || phone === '-') return phone;
+  const clean = phone.replace(/[^\d+]/g, '');
+  if (clean.length < 8) return phone;
+  const start = clean.slice(0, clean.length - 6);
+  const end = clean.slice(-3);
+  return `${start}***${end}`;
+};
+
 export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedClick: () => void; onMenuClick?: () => void }) => {
   const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
@@ -706,7 +715,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
                             {lead.lead_name || t('Ẩn danh')}
                           </span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
-                            SĐT: {lead.phone || '-'} | Email: {lead.email || '-'}
+                            SĐT: {lead.phone ? maskPhone(lead.phone) : '-'} | Email: {lead.email || '-'}
                           </span>
                           {lead.note && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>

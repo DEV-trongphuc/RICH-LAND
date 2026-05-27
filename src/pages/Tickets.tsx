@@ -921,7 +921,7 @@ export const Tickets = () => {
                               <div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
-                                  <span>{r.lead_phone}</span>
+                                  <span>{maskPhone(r.lead_phone)}</span>
                                 </div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
                                   {new Date(r.created_at).toLocaleString('vi-VN')}
@@ -1057,7 +1057,7 @@ export const Tickets = () => {
                             <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{r.lead_name}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                               <Phone size={12} style={{ opacity: 0.6 }} />
-                              <span>{r.lead_phone}</span>
+                              <span>{maskPhone(r.lead_phone)}</span>
                             </div>
                           </div>
                         </div>
