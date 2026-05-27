@@ -1384,7 +1384,8 @@ switch ($action) {
                 c.avatar as sale_avatar, 
                 r.reason, 
                 r.status, 
-                r.created_at
+                r.created_at,
+                l.ai_screener_status
             FROM data_reports r
             LEFT JOIN leads l ON r.lead_id = l.id
             LEFT JOIN consultants c ON r.consultant_id = c.id
@@ -1402,7 +1403,8 @@ switch ($action) {
                     'sale_avatar' => $row['sale_avatar'],
                     'reason' => $row['reason'],
                     'status' => $row['status'],
-                    'created_at' => $row['created_at']
+                    'created_at' => $row['created_at'],
+                    'ai_screener_status' => $row['ai_screener_status']
                 ];
             }
         }
@@ -1423,7 +1425,8 @@ switch ($action) {
                 l.email,
                 dl.status,
                 dl.message,
-                dl.received_at
+                dl.received_at,
+                l.ai_screener_status
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             $blacklistJoin
@@ -1440,7 +1443,8 @@ switch ($action) {
                     'email' => $row['email'] ?: '-',
                     'status' => $row['status'],
                     'message' => $row['message'],
-                    'received_at' => $row['received_at']
+                    'received_at' => $row['received_at'],
+                    'ai_screener_status' => $row['ai_screener_status']
                 ];
             }
         }
@@ -3961,7 +3965,7 @@ switch ($action) {
         $recordsSql = "
             SELECT r.*, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                    l.source as lead_source, l.type as lead_type, l.note as lead_note,
-                   l.created_at as lead_created_at,
+                   l.created_at as lead_created_at, l.ai_screener_status, l.ai_evaluation,
                    c.name as consultant_name, c.zalo_chat_id, c.avatar as consultant_avatar, dr.round_name,
                    (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
                    (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
@@ -5204,8 +5208,8 @@ switch ($action) {
                 $adminNote = "\n[Xác nhận dưới chuẩn - Fallback]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
                 $note = $lead['note'] . $adminNote;
 
-                $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed' WHERE id = ?");
-                $upd->bind_param("iisi", $targetRoundId, $assignedConsultantId, $note, $lead_id);
+                $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
+                $upd->bind_param("iissi", $targetRoundId, $assignedConsultantId, $note, $reason, $lead_id);
                 $upd->execute();
                 $upd->close();
 
@@ -5279,8 +5283,8 @@ switch ($action) {
                 $adminNote = "\n[Từ chối AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
                 $note = $lead['note'] . $adminNote;
 
-                $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ? WHERE id = ?");
-                $upd->bind_param("si", $note, $lead_id);
+                $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ?, ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
+                $upd->bind_param("ssi", $note, $reason, $lead_id);
                 $upd->execute();
                 $upd->close();
 
@@ -5360,8 +5364,8 @@ switch ($action) {
             $adminNote = "\n[Blacklist AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
             $note = $lead['note'] . $adminNote;
 
-            $upd = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ? WHERE id = ?");
-            $upd->bind_param("si", $note, $lead_id);
+            $upd = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ?, ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
+            $upd->bind_param("ssi", $note, $reason, $lead_id);
             $upd->execute();
             $upd->close();
 
@@ -8681,8 +8685,8 @@ switch ($action) {
                 $noteSuffix .= "\n[Hệ thống: Không cộng bù do Lead đã có trạng thái Ticket]";
             }
             $newNote = trim(($log_data['lead_note'] ?? '') . $noteSuffix);
-            $updLead = $conn->prepare("UPDATE leads SET note = ? WHERE id = ?");
-            $updLead->bind_param("si", $newNote, $lead_id);
+            $updLead = $conn->prepare("UPDATE leads SET note = ?, status = 'blacklisted', ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
+            $updLead->bind_param("ssi", $newNote, $reason, $lead_id);
             $updLead->execute();
             $updLead->close();
 

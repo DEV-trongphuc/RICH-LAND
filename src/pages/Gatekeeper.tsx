@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchAPI } from '../utils/api';
@@ -132,6 +132,8 @@ interface AIScreenerConfig {
 export const Gatekeeper = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const location = useLocation();
+  const isActive = location.pathname === '/gatekeeper';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -380,8 +382,10 @@ export const Gatekeeper = () => {
   }, []);
 
   useEffect(() => {
-    fetchHeldLeads();
-  }, [searchParams, heldLeadsSearch]);
+    if (isActive) {
+      fetchHeldLeads();
+    }
+  }, [searchParams, heldLeadsSearch, isActive]);
 
   // ── Lead Action Handlers ──
   const handleOpenApproveHeldLead = async (lead: any) => {
@@ -2965,7 +2969,7 @@ export const Gatekeeper = () => {
               {/* Cột Trái: Chi Tiết */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <Avatar name={selectedLead.name} size={48} />
+                  <Avatar name={selectedLead.name} size={48} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
@@ -3006,31 +3010,7 @@ export const Gatekeeper = () => {
                   const { cleanNote, blacklistNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
-                      {/* AI Screener Evaluation Details */}
-                      {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && (
-                        <div style={{
-                          marginBottom: '1.25rem',
-                          padding: '1.25rem',
-                          background: selectedLead.ai_screener_status === 'error'
-                            ? 'linear-gradient(to bottom right, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))'
-                            : 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02))',
-                          border: selectedLead.ai_screener_status === 'error'
-                            ? '1px solid rgba(245, 158, 11, 0.15)'
-                            : '1px solid rgba(239, 68, 68, 0.15)',
-                          borderRadius: '12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.5rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem' }}>
-                            {selectedLead.ai_screener_status === 'error' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
-                            <span>{selectedLead.ai_screener_status === 'error' ? t('Lỗi Kết Nối AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}</span>
-                          </div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-                            <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
-                          </div>
-                        </div>
-                      )}
+
 
                       {/* Clean Note Card */}
                       <div style={{
@@ -3116,6 +3096,39 @@ export const Gatekeeper = () => {
 
               {/* Cột Phải: Thao tác Duyệt nhanh */}
               <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2rem' }}>
+                {/* AI Screener Evaluation Details */}
+                {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && (
+                  <div style={{
+                    marginBottom: '1.25rem',
+                    padding: '1.25rem',
+                    background: selectedLead.ai_screener_status === 'error'
+                      ? 'linear-gradient(to bottom right, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))'
+                      : 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02))',
+                    border: selectedLead.ai_screener_status === 'error'
+                      ? '1px solid rgba(245, 158, 11, 0.15)'
+                      : '1px solid rgba(239, 68, 68, 0.15)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Screener" size={36} />
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}
+                        </div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {t('Domation AI - Screener')}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+                      <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                    </div>
+                  </div>
+                )}
+
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem' }}>{t("Xử lý phê duyệt")}</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 

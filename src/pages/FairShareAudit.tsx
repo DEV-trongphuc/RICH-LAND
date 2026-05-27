@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers,
@@ -20,6 +20,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 export const FairShareAudit = () => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const isActive = location.pathname === '/fair-share';
   const [data, setData] = useState<any>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,37 +303,43 @@ export const FairShareAudit = () => {
   }, []);
 
   useEffect(() => {
-    const roundIdParam = searchParams.get('round_id');
-    if (roundIdParam !== null) {
-      setRoundFilter(roundIdParam);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const openCompId = searchParams.get('open_comp_id');
-    const dateMode = searchParams.get('date_mode');
-    if (openCompId) {
-      let resolvedDateFilter = dateFilter;
-      if (dateMode) {
-        switch (dateMode) {
-          case 'today': resolvedDateFilter = 'Hôm nay'; break;
-          case 'yesterday': resolvedDateFilter = 'Hôm qua'; break;
-          case '7_days': resolvedDateFilter = '7 ngày qua'; break;
-          case '30_days': resolvedDateFilter = '30 ngày qua'; break;
-          case 'this_month': resolvedDateFilter = 'Tháng này'; break;
-          case 'last_month': resolvedDateFilter = 'Tháng trước'; break;
-        }
-        setDateFilter(resolvedDateFilter);
+    if (isActive) {
+      const roundIdParam = searchParams.get('round_id');
+      if (roundIdParam !== null) {
+        setRoundFilter(roundIdParam);
       }
-      handleOpenDetailsModal(Number(openCompId), resolvedDateFilter);
     }
-  }, [searchParams]);
+  }, [searchParams, isActive]);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    fetchStats(abortController.signal);
-    return () => abortController.abort();
-  }, [dateFilter, roundFilter]);
+    if (isActive) {
+      const openCompId = searchParams.get('open_comp_id');
+      const dateMode = searchParams.get('date_mode');
+      if (openCompId) {
+        let resolvedDateFilter = dateFilter;
+        if (dateMode) {
+          switch (dateMode) {
+            case 'today': resolvedDateFilter = 'Hôm nay'; break;
+            case 'yesterday': resolvedDateFilter = 'Hôm qua'; break;
+            case '7_days': resolvedDateFilter = '7 ngày qua'; break;
+            case '30_days': resolvedDateFilter = '30 ngày qua'; break;
+            case 'this_month': resolvedDateFilter = 'Tháng này'; break;
+            case 'last_month': resolvedDateFilter = 'Tháng trước'; break;
+          }
+          setDateFilter(resolvedDateFilter);
+        }
+        handleOpenDetailsModal(Number(openCompId), resolvedDateFilter);
+      }
+    }
+  }, [searchParams, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      const abortController = new AbortController();
+      fetchStats(abortController.signal);
+      return () => abortController.abort();
+    }
+  }, [dateFilter, roundFilter, isActive]);
 
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) return toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));

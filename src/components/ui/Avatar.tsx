@@ -9,6 +9,7 @@ interface AvatarProps {
   style?: React.CSSProperties;
   title?: string;
   color?: string;
+  aiScreened?: boolean;
 }
 
 const getInitials = (name: string) => {
@@ -39,7 +40,7 @@ const getColorFromName = (name: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title, color }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title, color, aiScreened }) => {
   const [hasError, setHasError] = React.useState(false);
   const sizeMap = {
     sm: 24,
@@ -69,7 +70,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
     setHasError(false);
   }, [resolvedSrc]);
 
-  return (
+  const avatarEl = (
     <div 
       className={`${styles.avatar} ${className}`}
       title={title}
@@ -93,4 +94,32 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
       )}
     </div>
   );
+
+  if (aiScreened) {
+    const badgeSize = Math.max(14, Math.floor(finalSize * 0.48));
+    return (
+      <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+        {avatarEl}
+        <img
+          src="https://crm-domation.vercel.app/LOGO.jpg"
+          alt="AI Evaluation"
+          style={{
+            position: 'absolute',
+            bottom: -2,
+            right: -2,
+            width: badgeSize,
+            height: badgeSize,
+            borderRadius: '50%',
+            border: '1.5px solid var(--color-surface, #ffffff)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            zIndex: 1,
+            backgroundColor: '#ffffff',
+            objectFit: 'cover'
+          }}
+        />
+      </div>
+    );
+  }
+
+  return avatarEl;
 };

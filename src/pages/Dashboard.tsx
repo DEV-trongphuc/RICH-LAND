@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
@@ -22,6 +22,8 @@ import { Avatar } from '../components/ui/Avatar';
 export const Dashboard = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isActive = location.pathname === '/';
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,19 +136,23 @@ export const Dashboard = () => {
   };
 
   useEffect(() => {
-    // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
-    const abortController = new AbortController();
-    fetchDashboard(abortController.signal);
-    return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
-  }, [dateFilter, chartMode]);
+    if (isActive) {
+      // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
+      const abortController = new AbortController();
+      fetchDashboard(abortController.signal);
+      return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
+    }
+  }, [dateFilter, chartMode, isActive]);
 
   useEffect(() => {
     const handleLeadAdded = () => {
-      fetchDashboard();
+      if (isActive) {
+        fetchDashboard();
+      }
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, [dateFilter, chartMode]);
+  }, [dateFilter, chartMode, isActive]);
 
   const syncDateFilterToModal = (filter: string) => {
     let mode = 'this_month';
