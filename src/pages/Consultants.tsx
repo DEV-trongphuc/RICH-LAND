@@ -270,6 +270,8 @@ export const Consultants = () => {
       if (json.success) {
         toast.success(t('Đã hủy liên kết Zalo thành công!'));
         fetchUsers();
+        setFormData(prev => ({ ...prev, zalo_chat_id: '' }));
+        setEditingUser((prev: any) => prev ? { ...prev, zalo_chat_id: null } : null);
       } else {
         toast.error(json.message || t('Lỗi khi hủy liên kết'));
       }
@@ -777,36 +779,32 @@ export const Consultants = () => {
                       </div>
                     )}
 
-                    {editingUser && (
+                    {editingUser && formData.zalo_chat_id && (
                       <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           <Send size={14} color="var(--color-primary)" /> {t('Tương tác nhanh với Sale')}
                         </label>
                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 8 }}>
-                          {(editingUser.zalo_chat_id || editingUser.email) && (
-                            <button
-                              type="button"
-                              onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
-                              className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                            >
-                              <MessageCircle size={14} /> {t('Nhắn tin nhanh')}
-                            </button>
-                          )}
-                          {editingUser.zalo_chat_id && (
-                            <button
-                              type="button"
-                              onClick={() => confirmUnlinkZalo(editingUser.id)}
-                              className="btn outline"
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                            >
-                              <Link2Off size={14} /> {t('Hủy liên kết Zalo')}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
+                            className="btn outline"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                          >
+                            <MessageCircle size={14} /> {t('Nhắn tin nhanh')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmUnlinkZalo(editingUser.id)}
+                            className="btn outline"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                          >
+                            <Link2Off size={14} /> {t('Hủy liên kết Zalo')}
+                          </button>
                         </div>
                       </div>
                     )}

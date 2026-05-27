@@ -1945,7 +1945,9 @@ export const en: Record<string, string> = {
   "Trùng của tôi (Trùng Saleperson)": "Duplicate of mine (Same Saleperson)",
   "Trùng của người khác (Saleperson khác đã chăm)": "Duplicate of others (Another Saleperson)",
   "Spam ảo / Junk lead": "Spam / Junk lead",
-  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "Other (Please specify in notes)"
+  "Khác (Vui lòng ghi rõ ở phần ghi chú)": "Other (Please specify in notes)",
+  "Đánh giá": "Evaluation",
+  "Ticket Review": "Ticket Review"
 };
 
 export const ja: Record<string, string> = {
@@ -3848,7 +3850,9 @@ export const ja: Record<string, string> = {
   "Trùng của người khác (Saleperson khác đã chăm)": "他者の重複 (別のセールスパーソンが担当)",
   "Spam ảo / Junk lead": "スパム / ジャンクリード",
   "Khác (Vui lòng ghi rõ ở phần ghi chú)": "その他 (メモに詳細をご記入ください)",
-  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "システムはコンサルタント間で順次リードを割り当てます。「Ratio: X」は、コンサルタントが1つのリードを受け取った後、次の(X - 1)回の割り当てラウンドを待機することを意味します。"
+  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "システムはコンサルタント間で順次リードを割り当てます。「Ratio: X」は、コンサルタントが1つのリードを受け取った後、次の(X - 1)回の割り当てラウンドを待機することを意味します。",
+  "Đánh giá": "評価",
+  "Ticket Review": "チケット審査"
 };
 
 export const zh: Record<string, string> = {
@@ -3901,7 +3905,7 @@ export const zh: Record<string, string> = {
   "Không hoạt động": "不活跃",
   "Trực ca": "值班",
   "Nghỉ ca": "换班休息",
-  "Trạng thái": "地位",
+  "Trạng thái": "状态",
   "Hành động": "行为",
   "Thời gian": "时间",
   "Người thực hiện": "实施者",
@@ -3923,7 +3927,7 @@ export const zh: Record<string, string> = {
   "Chờ xử lý": "等待处理",
   "Chờ giờ làm": "等待上班时间",
   "Chỉ đồng bộ": "仅同步",
-  "Trùng lặp": "复制",
+  "Trùng lặp": "重复",
   "Blacklist": "黑名单",
   "Dưới chuẩn": "低于标准",
   "dưới chuẩn": "低于标准",
@@ -3934,9 +3938,9 @@ export const zh: Record<string, string> = {
   "Tổng quan": "概述",
   "Thống kê & Phân tích": "统计与分析",
   "Vòng chia": "开口环",
-  "TẤT CẢ VÒNG": "全方位",
-  "Tất cả vòng": "全方位",
-  "Tất cả TVV": "所有电视V",
+  "TẤT CẢ VÒNG": "所有轮次",
+  "Tất cả vòng": "所有轮次",
+  "Tất cả TVV": "所有顾问",
   "TƯ VẤN VIÊN:": "顾问：",
   "VÒNG:": "戒指：",
   "THỜI GIAN:": "时间：",
@@ -4176,7 +4180,7 @@ export const zh: Record<string, string> = {
   "Không có dữ liệu thống kê.": "没有可用的统计数据。",
   "Thành công": "成功",
   "Data đã bàn giao": "资料已移交",
-  "Nhắc lại": "重复",
+  "Nhắc lại": "重新提醒",
   "Yêu cầu gọi lại": "请求回电",
   "Lỗi": "错误",
   "Trùng lặp / Lỗi chia": "重复/除法错误",
@@ -4437,8 +4441,8 @@ export const zh: Record<string, string> = {
   "Hủy liên kết": "取消链接",
   "Làm mới dữ liệu": "刷新数据",
   "Bù": "卜",
-  "Chờ chia": "等待分割",
-  "Lỗi tải dữ liệu lịch: ": "加载日历数据时出错：",
+  "Chờ chia": "等待分配",
+  "Lỗi tải dữ liệu lịch: ": "加载日历 data 时出错：",
   "Lỗi tải chi tiết ngày: ": "加载日期详细信息时出错：",
   "Họ Tên": "全名",
   "SĐT": "电话号码",
@@ -5752,5 +5756,7 @@ export const zh: Record<string, string> = {
   "Trùng của người khác (Saleperson khác đã chăm)": "他人的重复 (其他销售已跟进)",
   "Spam ảo / Junk lead": "虚假垃圾 / 垃圾线索",
   "Khác (Vui lòng ghi rõ ở phần ghi chú)": "其他 (请在备注中注明)",
-  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "系统按顺序在顾问之间分配线索。“Ratio: X”意味着顾问在收到1个线索后，将在接下来的(X - 1)轮分配中等待。"
+  "Hệ thống chia lead tuần tự từ TVV này sang TVV kia. \"Ratio: X\" nghĩa là TVV nhận 1 lead rồi nghỉ (X - 1) lượt chia tiếp theo.": "系统按顺序在顾问之间分配线索。“Ratio: X”意味着顾问在收到1个线索后，将在接下来的(X - 1)轮分配中等待。",
+  "Đánh giá": "评估",
+  "Ticket Review": "工单审核"
 };
