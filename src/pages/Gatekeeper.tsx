@@ -1257,14 +1257,14 @@ export const Gatekeeper = () => {
         ) : (
           <>
             {/* Desktop View Table */}
-            <div className="table-wrap hide-on-mobile" style={{ flex: 1, overflowY: 'auto' }}>
+            <div className="table-wrap hide-on-mobile" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 5 }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap' }}>{t('Thông tin Lead')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 180, minWidth: 180, whiteSpace: 'nowrap' }}>{t('Vòng phân bổ dự kiến')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lý do AI tạm giữ')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280 }}>{t('Thao tác')}</th>
+                  <tr style={{ background: 'var(--color-bg)' }}>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 180, minWidth: 180, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Vòng phân bổ dự kiến')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Lý do AI tạm giữ')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1385,7 +1385,7 @@ export const Gatekeeper = () => {
             </div>
 
             {/* Mobile Card List View */}
-            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
               {heldLeads.map((l: any) => (
                 <div
                   key={l.id}

@@ -531,7 +531,7 @@ export const Dashboard = () => {
                 onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
               >{t('Xem tất cả')}</span>
             </div>
-            <div style={{ flex: 1, padding: '0.5rem', overflowY: 'auto', maxHeight: 260 }}>
+            <div style={{ flex: 1, padding: '0.5rem 0.5rem 1.25rem 0.5rem', overflowY: 'auto', maxHeight: 280 }}>
               {recentLogs.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   {recentLogs.map((log) => (

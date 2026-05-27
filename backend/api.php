@@ -7527,12 +7527,21 @@ switch ($action) {
             $j++;
         }
         // Query Source Ratio (fallback to l.source if sc.sheet_name is null)
-        $sourceSql = "SELECT COALESCE(sc.sheet_name, l.source) as source, COUNT(dl.id) as count 
+        $sourceSql = "SELECT 
+                        CASE 
+                            WHEN sc.id IS NOT NULL THEN sc.sheet_name
+                            ELSE 'Nhập tay'
+                        END as source, COUNT(dl.id) as count 
                       FROM distribution_logs dl 
                       JOIN leads l ON dl.lead_id = l.id
                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                       WHERE $dateCondition AND dl.status != 'silent'
-                      GROUP BY COALESCE(sc.sheet_name, l.source) ORDER BY count DESC";
+                      GROUP BY 
+                        CASE 
+                            WHEN sc.id IS NOT NULL THEN sc.sheet_name
+                            ELSE 'Nhập tay'
+                        END
+                      ORDER BY count DESC";
         $sourceResRaw = $conn->query($sourceSql);
         $sourceStats = [];
         if ($sourceResRaw) {
