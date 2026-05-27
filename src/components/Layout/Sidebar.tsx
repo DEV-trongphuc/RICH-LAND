@@ -80,8 +80,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         onMouseLeave={() => setIsHovered(false)}
         style={{
           width: isCollapsed ? 72 : 260,
-          background: '#1e1246',
-          color: 'white',
+          background: 'var(--sidebar-bg)',
+          color: '#dadada',
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -193,7 +193,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           className="responsive-hide-mobile"
           style={{
             position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: 'white', color: '#1e1246',
+            width: 24, height: 24, borderRadius: '50%', background: 'white', color: 'var(--sidebar-bg)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', zIndex: 200, border: '1px solid rgba(0,0,0,0.1)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
@@ -244,7 +244,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       display: 'flex', alignItems: 'center', gap: '0.875rem',
                       padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
                       justifyContent: isCollapsed ? 'center' : 'flex-start',
-                      color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
+                      color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
                       textDecoration: 'none', fontSize: '0.9375rem',
                       fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
                       position: 'relative',
@@ -269,14 +269,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0, transition: 'all 0.2s', position: 'relative'
                         }}>
-                          <Icon size={18} color={isActive ? 'white' : 'rgba(255,255,255,0.5)'} />
+                          <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
                           {/* Collapsed badge dot */}
                           {isCollapsed && badgeCount > 0 && (
                             <span style={{
                               position: 'absolute', top: 4, right: 4,
                               width: 8, height: 8, borderRadius: '50%',
                               background: '#ef4444',
-                              boxShadow: '0 0 0 2px #1e1246'
+                              boxShadow: '0 0 0 2px var(--sidebar-bg)'
                             }} />
                           )}
                         </div>

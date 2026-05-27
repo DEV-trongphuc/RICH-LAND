@@ -235,7 +235,7 @@ export const DataList = () => {
   };
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
+  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string; vacation_mode?: number }[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
@@ -786,6 +786,8 @@ export const DataList = () => {
       <div
         className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`}
         style={{
+          position: 'relative',
+          zIndex: 100,
           display: viewMode === 'calendar' ? 'none' : 'flex',
           gap: '0.75rem',
           marginBottom: '1.25rem',
@@ -1330,7 +1332,7 @@ export const DataList = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t('Loại Data:')}</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
@@ -1358,7 +1360,7 @@ export const DataList = () => {
                                 glow: 'none',
                                 accent: '#34d399',
                                 title: '#34d399',
-                                text: '#e2e8f0',
+                                text: '#dadada',
                                 badgeBg: 'rgba(16, 185, 129, 0.15)',
                                 badgeText: '#34d399',
                                 badgeBorder: '1px solid rgba(16, 185, 129, 0.2)',
@@ -1382,7 +1384,7 @@ export const DataList = () => {
                                 glow: 'none',
                                 accent: '#f87171',
                                 title: '#f87171',
-                                text: '#e2e8f0',
+                                text: '#dadada',
                                 badgeBg: 'rgba(239, 68, 68, 0.15)',
                                 badgeText: '#f87171',
                                 badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',
@@ -1556,7 +1558,7 @@ export const DataList = () => {
                               glow: 'none',
                               accent: '#f87171',
                               title: '#f87171',
-                              text: '#e2e8f0',
+                              text: '#dadada',
                               badgeBg: 'rgba(239, 68, 68, 0.15)',
                               badgeText: '#f87171',
                               badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',

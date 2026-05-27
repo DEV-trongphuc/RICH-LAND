@@ -99,7 +99,7 @@ export const QuickAddLeadModal = () => {
   }, []);
 
   const [isOpen, setIsOpen] = useState(false);
-  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string }[]>([]);
+  const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string; vacation_mode?: number }[]>([]);
   const [manualData, setManualData] = useState({ name: '', phone: '', email: '', source: '', type: '', note: '' });
   const [quickInput, setQuickInput] = useState('');
   const [previewCons, setPreviewCons] = useState<any>(null);

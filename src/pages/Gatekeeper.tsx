@@ -1102,6 +1102,7 @@ export const Gatekeeper = () => {
 
         {/* Filter bar */}
         <div className="responsive-filter-row" style={{
+          position: 'relative', zIndex: 100,
           display: 'flex', gap: 12, padding: '14px 18px',
           background: 'linear-gradient(135deg, rgba(124,58,237,0.04) 0%, rgba(99,102,241,0.02) 100%)',
           borderBottom: '1px solid var(--color-border)',
@@ -1724,14 +1725,14 @@ export const Gatekeeper = () => {
                                         borderRadius: '9999px',
                                         fontSize: '0.8125rem',
                                         fontWeight: 600,
-                                        border: '1px solid rgba(124, 58, 237, 0.25)',
-                                        background: 'rgba(124, 58, 237, 0.08)',
-                                        color: '#a78bfa',
-                                        boxShadow: '0 2px 8px rgba(124, 58, 237, 0.05)',
+                                        border: '1px solid var(--color-primary)',
+                                        background: 'var(--color-primary)',
+                                        color: '#ffffff',
+                                        boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
                                         transition: 'all 0.2s ease'
                                       }}
                                     >
-                                      <Tag size={12} style={{ opacity: 0.8 }} />
+                                      <Tag size={12} style={{ opacity: 0.9 }} />
                                       {r.round_name}
                                       <button
                                         type="button"
@@ -1742,8 +1743,8 @@ export const Gatekeeper = () => {
                                         }}
                                         style={{
                                           border: 'none',
-                                          background: 'rgba(255, 255, 255, 0.06)',
-                                          color: 'var(--color-text-muted)',
+                                          background: 'rgba(255, 255, 255, 0.15)',
+                                          color: '#ffffff',
                                           cursor: 'pointer',
                                           display: 'inline-flex',
                                           alignItems: 'center',
@@ -1755,12 +1756,12 @@ export const Gatekeeper = () => {
                                           transition: 'all 0.15s ease'
                                         }}
                                         onMouseEnter={(e) => {
-                                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-                                          e.currentTarget.style.color = 'var(--color-danger)';
+                                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.9)';
+                                          e.currentTarget.style.color = '#ffffff';
                                         }}
                                         onMouseLeave={(e) => {
-                                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                                          e.currentTarget.style.color = 'var(--color-text-muted)';
+                                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                          e.currentTarget.style.color = '#ffffff';
                                         }}
                                       >
                                         <X size={10} />
@@ -1841,6 +1842,7 @@ export const Gatekeeper = () => {
 
                                         return availableRounds.map((r: any) => {
                                           const roundId = Number(r.id);
+                                          const isInactive = Number(r.is_active) !== 1;
                                           // Check if selected in another config
                                           const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
 
@@ -1848,7 +1850,7 @@ export const Gatekeeper = () => {
                                             <button
                                               key={roundId}
                                               type="button"
-                                              disabled={selectedElsewhere}
+                                              disabled={selectedElsewhere || isInactive}
                                               onClick={() => {
                                                 const updated = [...aiScreenerConfigs];
                                                 updated[index].rounds = [...config.rounds, roundId];
@@ -1863,9 +1865,9 @@ export const Gatekeeper = () => {
                                                 textAlign: 'left',
                                                 border: 'none',
                                                 background: 'transparent',
-                                                color: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-text)',
-                                                opacity: selectedElsewhere ? 0.4 : 1,
-                                                cursor: selectedElsewhere ? 'not-allowed' : 'pointer',
+                                                color: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                                opacity: (selectedElsewhere || isInactive) ? 0.45 : 1,
+                                                cursor: (selectedElsewhere || isInactive) ? 'not-allowed' : 'pointer',
                                                 borderRadius: '8px',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -1875,23 +1877,35 @@ export const Gatekeeper = () => {
                                                 outline: 'none'
                                               }}
                                               onMouseEnter={(e) => {
-                                                if (!selectedElsewhere) {
+                                                if (!selectedElsewhere && !isInactive) {
                                                   e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
                                                   e.currentTarget.style.color = 'var(--color-primary)';
                                                 }
                                               }}
                                               onMouseLeave={(e) => {
-                                                if (!selectedElsewhere) {
+                                                if (!selectedElsewhere && !isInactive) {
                                                   e.currentTarget.style.background = 'transparent';
                                                   e.currentTarget.style.color = 'var(--color-text)';
                                                 }
                                               }}
                                             >
                                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: selectedElsewhere ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
+                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
                                                 {r.round_name}
                                               </span>
-                                              {selectedElsewhere && (
+                                              {isInactive ? (
+                                                <span style={{
+                                                  fontSize: '0.6875rem',
+                                                  color: 'var(--color-text-muted)',
+                                                  background: 'rgba(0, 0, 0, 0.05)',
+                                                  padding: '2px 6px',
+                                                  borderRadius: '4px',
+                                                  fontWeight: 600,
+                                                  flexShrink: 0
+                                                }}>
+                                                  {t('Không hoạt động')}
+                                                </span>
+                                              ) : selectedElsewhere && (
                                                 <span style={{
                                                   fontSize: '0.6875rem',
                                                   color: 'var(--color-danger)',
@@ -3047,7 +3061,7 @@ export const Gatekeeper = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>

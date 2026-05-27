@@ -351,7 +351,7 @@
   /* Brand & Layout Backgrounds */
   --color-bg: #0b0f19;             /* Premium cosmic space background */
   --color-surface: #121826;        /* Slate dark surface, standing out beautifully from bg */
-  --sidebar-bg: #080b13;           /* Ultra dark sidebar for neat left column separation */
+  --sidebar-bg: #161d31;           /* Deep navy-slate sidebar (not too dark/black) */
   --sidebar-hover: rgba(255, 255, 255, 0.06);
   --sidebar-active: rgba(99, 102, 241, 0.85); /* Premium indigo theme active */
 
@@ -359,9 +359,8 @@
   --color-border: rgba(255, 255, 255, 0.08);       /* Clean refined border */
   --color-border-light: rgba(255, 255, 255, 0.04); /* Finer separator line */
 
-  /* Optimized Typography Contrast (WCAG AA compliant) */
-  --color-text: #f9fafb;           /* Pure white for maximum screen reading comfort */
-  --color-text-light: #d1d5db;     /* Slate-300 high contrast body text */
+  --color-text: #dadada;           /* Soft light grey text (not too white) */
+  --color-text-light: #cbd5e1;     /* Soft secondary grey text */
   --color-text-muted: #9ca3af;     /* Slate-400 for secondary text and descriptions */
 
   /* Rich Color Accent */

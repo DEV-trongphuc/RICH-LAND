@@ -715,6 +715,7 @@ export const Tickets = () => {
         </div>
 
       <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
+          position: 'relative', zIndex: 100,
           display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
           padding: '14px 18px',
           background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
@@ -1558,7 +1559,7 @@ export const Tickets = () => {
                                 glow: 'none',
                                 accent: '#34d399',
                                 title: '#34d399',
-                                text: '#e2e8f0',
+                                text: '#dadada',
                                 badgeBg: 'rgba(16, 185, 129, 0.15)',
                                 badgeText: '#34d399',
                                 badgeBorder: '1px solid rgba(16, 185, 129, 0.2)',
@@ -1582,7 +1583,7 @@ export const Tickets = () => {
                                 glow: 'none',
                                 accent: '#f87171',
                                 title: '#f87171',
-                                text: '#e2e8f0',
+                                text: '#dadada',
                                 badgeBg: 'rgba(239, 68, 68, 0.15)',
                                 badgeText: '#f87171',
                                 badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',
@@ -1774,7 +1775,7 @@ export const Tickets = () => {
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#e2e8f0' : '#78350f' }}>
+                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
@@ -1799,7 +1800,7 @@ export const Tickets = () => {
                               glow: 'none',
                               accent: '#f87171',
                               title: '#f87171',
-                              text: '#e2e8f0',
+                              text: '#dadada',
                               badgeBg: 'rgba(239, 68, 68, 0.15)',
                               badgeText: '#f87171',
                               badgeBorder: '1px solid rgba(239, 68, 68, 0.2)',

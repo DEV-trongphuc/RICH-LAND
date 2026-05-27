@@ -1730,7 +1730,7 @@ export const Settings = () => {
 
                           {showInputScript && (
                             <pre style={{
-                              background: '#1e293b', color: '#e2e8f0', padding: '1rem', margin: 0,
+                              background: '#1e293b', color: '#dadada', padding: '1rem', margin: 0,
                               fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
                             }}>
                               {`// ==========================================

@@ -1455,7 +1455,7 @@ export const Integrations = () => {
                     >
                       {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? t('Đã copy') : t('Copy Code')}
                     </button>
-                    <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.8125rem', fontFamily: 'monospace', marginTop: 12 }}>
+                    <pre style={{ margin: 0, color: '#dadada', fontSize: '0.8125rem', fontFamily: 'monospace', marginTop: 12 }}>
                       {`// Gửi dữ liệu bằng JS fetch API (JSON)
 fetch("${webhookUrl(selected.webhook_token)}", {
   method: "POST",
