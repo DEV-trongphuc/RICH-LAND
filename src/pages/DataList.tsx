@@ -430,7 +430,7 @@ export const DataList = () => {
                 lead.status === 'fallback' ? t('Fallback') :
                   lead.status === 'silent' ? t('Chỉ đồng bộ') :
                     lead.status === 'reminder' ? t('Nhắc lại') :
-                      lead.status === 'pending_approval' ? t('Chờ duyệt') :
+                      lead.status === 'pending_approval' ? t('Tạm giữ') :
                         lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
           lead.source || '',
           lead.note || '',
@@ -485,6 +485,9 @@ export const DataList = () => {
   const paginatedLeads = leads;
 
   const getStatusBadge = (status: string, reportStatus?: string) => {
+    if (status === 'assigned' && reportStatus === 'pending') {
+      return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
+    }
     if (status === 'error' && reportStatus === 'approved') {
       return <span className="badge warning">{t('Ticket')}</span>;
     }
@@ -499,7 +502,7 @@ export const DataList = () => {
       case 'rule_6_month': return <span className="badge cold">{t('Quy định 6 tháng')}</span>;
       case 'silent': return <span className="badge cold">{t('Chỉ đồng bộ')}</span>;
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
-      case 'pending_approval': return <span className="badge warning">{t('Chờ duyệt')}</span>;
+      case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
       case 'fallback': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>{t('Fallback')}</span>;
       default: return null;
@@ -841,12 +844,10 @@ export const DataList = () => {
               { value: 'pending_work_hours', label: t('Chờ giờ làm') },
               { value: 'pending', label: t('Chờ chia') },
               { value: 'reminder', label: t('Nhắc lại') },
-              { value: 'duplicate', label: t('Trùng lặp') },
-              { value: 'rule_6_month', label: t('Quy định 6 tháng') },
               { value: 'silent', label: t('Chỉ đồng bộ') },
               { value: 'error', label: t('Ticket') },
               { value: 'blacklisted', label: t('Blacklist') },
-              { value: 'pending_approval', label: t('Chờ duyệt') },
+              { value: 'pending_approval', label: t('Tạm giữ') },
               { value: 'rejected', label: t('Dưới chuẩn') }
             ]}
             value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
@@ -1092,7 +1093,7 @@ export const DataList = () => {
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                           {getStatusBadge(lead.status, lead.report_status)}
-                          {lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
+                          {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                         </div>
                       </td>
                       <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
@@ -1101,7 +1102,7 @@ export const DataList = () => {
                             <Avatar src="/imgs/warn_icon.png" name="Domation AI" size={28} />
                             <div>
                               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Tạm giữ')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
                             </div>
                           </div>
                         ) : lead.status === 'fallback' ? (
@@ -1689,7 +1690,7 @@ export const DataList = () => {
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Tạm giữ')}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chờ duyệt')}</div>
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>

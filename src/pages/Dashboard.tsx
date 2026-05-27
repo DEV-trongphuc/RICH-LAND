@@ -591,7 +591,7 @@ export const Dashboard = () => {
                               case 'silent':
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: t('Chỉ đồng bộ') };
                               case 'pending_approval':
-                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: t('Chờ duyệt') };
+                                return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: t('Tạm giữ') };
                               case 'rejected':
                                 return { bg: 'var(--color-danger-light)', color: 'var(--color-danger)', text: t('Dưới chuẩn') };
                               case 'reminder':

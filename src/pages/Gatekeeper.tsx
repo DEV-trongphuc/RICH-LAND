@@ -2660,7 +2660,7 @@ export const Gatekeeper = () => {
                             if (l.status === 'pending_approval') {
                               statusBadge = (
                                 <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
-                                  {t('Chờ duyệt')}
+                                  {t('Tạm giữ')}
                                 </span>
                               );
                             } else if (l.status === 'rejected') {
