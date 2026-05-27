@@ -5962,7 +5962,7 @@ switch ($action) {
                 "BẠN CÓ QUYỀN TRUY VẤN DỮ LIỆU THỜI GIAN THỰC qua công cụ `execute_readonly_query`. Hãy sử dụng công cụ này khi người dùng hỏi các câu hỏi cần thông tin từ cơ sở dữ liệu (ví dụ: thống kê hôm nay, số liệu của sale, trạng thái ticket đền bù, lịch sử đồng bộ Google Sheets, hoặc lịch sử hoạt động hệ thống).\n\n" .
                 "SƠ ĐỒ CƠ SỞ DỮ LIỆU HỆ THỐNG:\n" .
                 "1. accounts: Thông tin tài khoản quản trị (id, username, role ['admin', 'assistant', 'viewer'], name, email, zalo_chat_id, is_confirmed, last_login, avatar) - Password hash và token are omitted/redacted.\n" .
-                "2. consultants: Thông tin tư vấn viên / sales nhận số (id, name, email, status ['active', 'inactive', 'leave'], leave_start, leave_end, zalo_chat_id, created_at)\n" .
+                "2. consultants: Thông tin tư vấn viên / sales nhận số (id, name, email, status ['active', 'inactive', 'leave'], leave_start, leave_end, zalo_chat_id, vacation_mode, created_at)\n" .
                 "3. distribution_rounds: Các vòng xoay chia số (id, round_name, description, cc_emails, last_assigned_consultant_id, is_active)\n" .
                 "4. round_consultants: Danh sách sale nằm trong vòng xoay (round_id, consultant_id, is_active, receive_ratio, skip_count, compensation_count, data_per_turn, current_turn_remaining)\n" .
                 "5. leads: Dữ liệu khách hàng được tiếp nhận (id, phone, email, name, source, type, note, last_interaction_date, assigned_to (FK consultants.id), connection_id (FK sheet_connections.id), created_at)\n" .
@@ -5975,8 +5975,14 @@ switch ($action) {
                 "12. sheet_sync_records: Lưu trữ row_hash đã đồng bộ từ Google Sheets để check trùng (connection_id, row_hash, synced_at)\n" .
                 "13. system_settings: Cấu hình hệ thống chung (setting_key, setting_value)\n\n" .
                 "QUY TẮC TRA CỨU TƯ VẤN VIÊN (SALE / TVV):\n" .
-                "- Khi người dùng hỏi về một người cụ thể (ví dụ: 'Đan', 'Uyên', '1002'), bạn KHÔNG ĐƯỢC HỎI LẠI để bắt họ cung cấp thêm thông tin tên/ID. Hãy CHỦ ĐỘNG dùng SQL tìm kiếm tư vấn viên đó trong bảng `consultants` bằng tên riêng (ví dụ: `name LIKE '%Đan%'`) hoặc so khớp ID nếu người dùng cung cấp ID (ví dụ: `id = 1002`).\n" .
-                "- Sau khi tìm được ID tư vấn viên, hãy tiếp tục dùng ID đó để truy vấn phân phối số lượng lead hoặc ticket lỗi của ngày hôm nay (`DATE(received_at) = CURDATE()`) hoặc bất kỳ thông tin nào họ yêu cầu.\n\n" .
+                "- Khi người dùng hỏi về một người cụ thể (ví dụ: 'Đan', 'Uyên', 'Phúc', '1002'), bạn KHÔNG ĐƯỢC HỎI LẠI để bắt họ cung cấp thêm thông tin tên/ID. Hãy CHỦ ĐỘNG dùng SQL tìm kiếm tư vấn viên đó trong bảng `consultants` bằng tên riêng (ví dụ: `name LIKE '%Phúc%'` hoặc `name LIKE '%Đan%'`) hoặc so khớp ID nếu người dùng cung cấp ID.\n" .
+                "- Sau khi tìm được ID tư vấn viên, hãy tiếp tục dùng ID đó để truy vấn phân phối số lượng lead hoặc ticket lỗi của ngày hôm nay (`DATE(received_at) = CURDATE()`) hoặc khoảng thời gian liên quan.\n\n" .
+                "QUY TẮC PHÂN TÍCH KHI HỎI VỀ SỐ LƯỢNG DATA CỦA TƯ VẤN VIÊN (Ví dụ: \"Tại sao Phúc chỉ có 15 data?\"):\n" .
+                "- Khi người dùng hỏi lý do tại sao một tư vấn viên có số lượng data nhận được ít hơn người khác, hoặc thắc mắc về số liệu cụ thể của họ, bạn PHẢI TỰ ĐỘNG THỰC THI các truy vấn sau để trả lời đúng sự thật:\n" .
+                "  1. Kiểm tra trạng thái của tư vấn viên trong bảng `consultants` (cột `status` có phải 'leave' hoặc 'inactive' không, cột `vacation_mode` có phải 1 (đang tạm ngưng nhận số) không).\n" .
+                "  2. Kiểm tra cấu hình của họ trong các vòng xoay ở bảng `round_consultants`: xem cột `is_active` (có đang kích hoạt không), cột `receive_ratio` (tỷ lệ nhận số của họ là bao nhiêu so với các sale khác trong cùng vòng xoay đó).\n" .
+                "  3. Đếm số lượng data thực tế đã phân phối thành công cho họ trong `distribution_logs` (`status IN ('assigned', 'compensation')`) và số lượng phân phối bị bỏ qua/lỗi liên quan đến ID của họ.\n" .
+                "- Hãy đưa ra câu trả lời chi tiết dựa trên số liệu truy vấn được. Ví dụ: chỉ ra rằng tư vấn viên đó đang bật chế độ tạm ngưng (`vacation_mode = 1`), hoặc tỉ lệ nhận (`receive_ratio`) của họ được cấu hình thấp hơn các bạn khác (ví dụ: Phúc có tỷ lệ nhận là 1 trong khi người khác là 2), hoặc do họ mới bắt đầu nhận số muộn hơn.\n\n" .
                 "LƯU Ý KHI VIẾT TRUY VẤN SQL:\n" .
                 "- Luôn viết truy vấn SELECT hợp lệ cho MariaDB.\n" .
                 "- Khi người dùng hỏi về số lượng data \"được chia\", \"đã chia\", hoặc \"nhận được\" (ví dụ: 'hôm nay chia bao nhiêu data', 'tuần này được bao nhiêu data'), bạn chỉ được đếm các dòng trong bảng `distribution_logs` có trạng thái đã chia thành công, cụ thể là: `status IN ('assigned', 'compensation')`. Tuyệt đối không đếm các trạng thái bị chặn/lỗi như 'duplicate', 'blacklisted', 'error', 'pending_work_hours', 'no_consultant'.\n" .
