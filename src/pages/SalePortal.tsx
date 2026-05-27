@@ -55,7 +55,7 @@ export const SalePortal = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
+      setIsMobile(window.innerWidth < 768);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -894,7 +894,7 @@ export const SalePortal = () => {
         </section>
 
         {/* Detailed Data List Table */}
-        <section className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', overflow: 'hidden' }}>
+        <section className="card mobile-flat-container" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
               {t('DANH SÁCH DỮ LIỆU ĐƯỢC PHÂN BỔ')}
@@ -909,7 +909,7 @@ export const SalePortal = () => {
               <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
               isMobile ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0 5rem 0' }}>
                   {data.leads.map((lead: any, index: number) => (
                     <div
                       key={lead.log_id}
