@@ -3113,7 +3113,7 @@ export const Gatekeeper = () => {
                     gap: '0.75rem'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Screener" size={36} />
+                      <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
                         <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}

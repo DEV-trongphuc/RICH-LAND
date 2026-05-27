@@ -1775,11 +1775,11 @@ function runAIScreener($conn, $leadData, $customRules = null)
         . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
         . "Loại data: " . ($leadData['type'] ?? '') . "\n"
         . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
-        . "QUY TẮC ĐÁNH GIÁ DUY NHẤT ĐẠT HOẶC KHÔNG ĐẠT BÁM SÁT THEO:\n" . $aiRules . "\n\n"
+        . "QUY TẮC ĐÁNH GIÁ DUY NHẤT PASSED HOẶC FAILED BÁM SÁT THEO:\n" . $aiRules . "\n\n"
         . "Nếu dữ liệu không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích lý do tại sao cho pass/failed.";
+        . "- reason: giải thích lý do tại sao cho passed/failed.";
 
     $payload = [
         'contents' => [
