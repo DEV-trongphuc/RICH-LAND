@@ -602,7 +602,8 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $saleList[] = [
             'name' => $stats['name'],
             'normal_total' => $normalTotal,
-            'reminder_total' => $reminderTotal
+            'reminder_total' => $reminderTotal,
+            'compensation' => $stats['compensation']
         ];
     }
 
@@ -620,13 +621,14 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     foreach ($saleList as $saleItem) {
         $normalTotal = $saleItem['normal_total'];
         $reminderTotal = $saleItem['reminder_total'];
+        $compensation = $saleItem['compensation'];
+        $roundTotal = max(0, $normalTotal - $compensation);
 
-        if ($reminderTotal > 0) {
-            $total = $normalTotal + $reminderTotal;
-            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
-        } else {
-            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-        }
+        $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
+        $saleStats .= "    └─> " . $roundTotal . " chia vòng\n";
+        $saleStats .= "    └─> " . $compensation . " bù\n";
+        $saleStats .= "    └─> " . $reminderTotal . " nhắc lại\n";
+
         $totalData += $normalTotal;
         $totalReminder += $reminderTotal;
     }
@@ -681,16 +683,15 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     }
 
     $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ] 📊\n";
-    $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
+    $msg .= "━━━━━━━━━━\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
     $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
     if ($totalReminder > 0) {
-        $msg .= "  • Tổng cộng: " . ($totalData + $totalReminder) . " data\n";
-        $msg .= "    (Chia số mới: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
+        $msg .= "  • Tổng số data: " . $totalData . " data (Nhắc lại: " . $totalReminder . ")\n";
     } else {
         $msg .= "  • Tổng số data: $totalData data\n";
     }
-    $msg .= "─────────────────────\n";
+    $msg .= "──────────\n";
     $msg .= $saleStats . "\n";
     $msg .= "🎫 BÁO CÁO LỖI (TICKETS):\n";
     if ($totalTicket > 0) {
@@ -703,7 +704,7 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     }
     $msg .= "🚫 CHẶN DATA (BLACKLIST):\n";
     $msg .= "  • Tổng số data bị chặn: $totalBlocked\n";
-    $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
+    $msg .= "━━━━━━━━━━\n";
     $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
     $msg .= "💡 Gõ /tools để xem các câu lệnh nhanh.";
 

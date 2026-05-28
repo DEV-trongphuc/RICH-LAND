@@ -807,9 +807,11 @@ function getNextConsultantInRound($conn, $roundId)
 
     $starvationCounts = [];
     if ($starvationEnabled === 1 && !empty($consultants)) {
-        $consultantIds = array_map(function($c) { return (int)$c['id']; }, $consultants);
+        $consultantIds = array_map(function ($c) {
+            return (int) $c['id'];
+        }, $consultants);
         $placeholders = implode(',', array_fill(0, count($consultantIds), '?'));
-        
+
         $logStmt = $conn->prepare("
             SELECT assigned_to, COUNT(*) as cnt 
             FROM distribution_logs 
@@ -825,7 +827,7 @@ function getNextConsultantInRound($conn, $roundId)
             $logStmt->execute();
             $logRes = $logStmt->get_result();
             while ($logRow = $logRes->fetch_assoc()) {
-                $starvationCounts[(int)$logRow['assigned_to']] = (int)$logRow['cnt'];
+                $starvationCounts[(int) $logRow['assigned_to']] = (int) $logRow['cnt'];
             }
             $logStmt->close();
         }
@@ -853,7 +855,7 @@ function getNextConsultantInRound($conn, $roundId)
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
         if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
-                $hourlyCount = $starvationCounts[(int)$row['id']] ?? 0;
+                $hourlyCount = $starvationCounts[(int) $row['id']] ?? 0;
                 if ($hourlyCount < $starvationMaxPerHour) {
                     $starvationConsultant = $row;
                 }
@@ -1213,9 +1215,11 @@ function simulateNextConsultantInRound($conn, $roundId)
 
     $starvationCounts = [];
     if ($starvationEnabled === 1 && !empty($consultants)) {
-        $consultantIds = array_map(function($c) { return (int)$c['id']; }, $consultants);
+        $consultantIds = array_map(function ($c) {
+            return (int) $c['id'];
+        }, $consultants);
         $placeholders = implode(',', array_fill(0, count($consultantIds), '?'));
-        
+
         $logStmt = $conn->prepare("
             SELECT assigned_to, COUNT(*) as cnt 
             FROM distribution_logs 
@@ -1231,7 +1235,7 @@ function simulateNextConsultantInRound($conn, $roundId)
             $logStmt->execute();
             $logRes = $logStmt->get_result();
             while ($logRow = $logRes->fetch_assoc()) {
-                $starvationCounts[(int)$logRow['assigned_to']] = (int)$logRow['cnt'];
+                $starvationCounts[(int) $logRow['assigned_to']] = (int) $logRow['cnt'];
             }
             $logStmt->close();
         }
@@ -1258,7 +1262,7 @@ function simulateNextConsultantInRound($conn, $roundId)
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
         if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
-                $hourlyCount = $starvationCounts[(int)$row['id']] ?? 0;
+                $hourlyCount = $starvationCounts[(int) $row['id']] ?? 0;
                 if ($hourlyCount < $starvationMaxPerHour) {
                     $starvationConsultant = $row;
                 }
@@ -1871,7 +1875,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
         . "Nếu dữ liệu nghi ngờ spam, rác, phá hoặc không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích lý do (nhận định chuyên nghiệp như một người kiểm duyệt không lập lại quy tắc một cách máy móc).";
+        . "- reason: giải thích ngắn gọn lý do passed/failed - TUYỆT ĐỐI KHÔNG LẬP LẠI THÔ QUY TẮC";
 
     $payload = [
         'contents' => [

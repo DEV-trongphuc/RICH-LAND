@@ -5486,7 +5486,7 @@ switch ($action) {
             $note = $lead['note'] . $adminNote;
 
             // 2. Update Lead Table
-            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), target_round_id = ? WHERE id = ?");
+            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), target_round_id = ?, ai_screener_status = 'passed' WHERE id = ?");
             $updLead->bind_param("isii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
             $updLead->execute();
             $updLead->close();

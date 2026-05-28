@@ -20,6 +20,16 @@ import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 import { Avatar } from '../components/ui/Avatar';
 
+const parseServerDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const trimmed = dateStr.trim();
+  if (trimmed.includes('T') || trimmed.includes('+') || trimmed.includes('Z')) {
+    return new Date(trimmed);
+  }
+  const isoStr = trimmed.replace(' ', 'T') + '+07:00';
+  return new Date(isoStr);
+};
+
 export const Dashboard = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -755,9 +765,9 @@ export const Dashboard = () => {
                             }
                             if (status === 'pending_approval' && aiScreenerStatus === 'pending') {
                               const now = new Date();
-                              const created = createdAt ? new Date(createdAt.replace(/-/g, '/')) : now;
+                              const created = createdAt ? parseServerDate(createdAt) : now;
                               const diffMins = (now.getTime() - created.getTime()) / 60000;
-                              if (diffMins < 5) {
+                              if (diffMins >= -2 && diffMins < 5) {
                                 return { bg: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', text: t('Chờ AI đánh giá') };
                               }
                             }

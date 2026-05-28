@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { fetchAPI } from '../utils/api';
 
 export const DemoEntry: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,9 @@ export const DemoEntry: React.FC = () => {
     const demoUser = { id: 1, email: 'admin@domation.net', role: 'admin' as const, is_confirmed: 1, username: 'admin', name: 'Admin Demo' };
     
     login(demoToken, demoUser);
+    
+    // Reset database to ensure latest presets and clean slate
+    fetchAPI('reset_demo').catch(err => console.error('Failed to reset demo DB:', err));
     
     setTimeout(() => {
       navigate('/', { replace: true });

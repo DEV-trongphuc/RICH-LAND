@@ -32,6 +32,16 @@ type Lead = {
   ai_evaluation?: string;
 };
 
+const parseServerDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const trimmed = dateStr.trim();
+  if (trimmed.includes('T') || trimmed.includes('+') || trimmed.includes('Z')) {
+    return new Date(trimmed);
+  }
+  const isoStr = trimmed.replace(' ', 'T') + '+07:00';
+  return new Date(isoStr);
+};
+
 const maskPhone = (phone: string) => {
   if (!phone || phone === '-') return phone;
   const clean = phone.replace(/[^\d+]/g, '');
@@ -2134,9 +2144,9 @@ export const Tickets = () => {
                           {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : (
                             (selectedLead.ai_screener_status === 'pending' && (() => {
                               const now = new Date();
-                              const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
+                              const created = selectedLead.created_at ? parseServerDate(selectedLead.created_at) : now;
                               const diffMins = (now.getTime() - created.getTime()) / 60000;
-                              return diffMins < 5;
+                              return diffMins >= -2 && diffMins < 5;
                             })())
                               ? t('Chờ AI đánh giá')
                               : t('Tạm giữ')
@@ -2155,9 +2165,9 @@ export const Tickets = () => {
                             : (
                                 (selectedLead.ai_screener_status === 'pending' && (() => {
                                   const now = new Date();
-                                  const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
+                                  const created = selectedLead.created_at ? parseServerDate(selectedLead.created_at) : now;
                                   const diffMins = (now.getTime() - created.getTime()) / 60000;
-                                  return diffMins < 5;
+                                  return diffMins >= -2 && diffMins < 5;
                                 })())
                                   ? t('Đang chờ AI đánh giá...')
                                   : t('Không đạt chuẩn phân chia.')

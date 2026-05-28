@@ -32,6 +32,16 @@ type Lead = {
 
 import { fetchAPI } from '../utils/api';
 
+const parseServerDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const trimmed = dateStr.trim();
+  if (trimmed.includes('T') || trimmed.includes('+') || trimmed.includes('Z')) {
+    return new Date(trimmed);
+  }
+  const isoStr = trimmed.replace(' ', 'T') + '+07:00';
+  return new Date(isoStr);
+};
+
 const maskPhone = (phone: string) => {
   if (!phone || phone === '-') return phone;
   const clean = phone.replace(/[^\d+]/g, '');
@@ -197,6 +207,74 @@ const parseBlacklistNote = (note: string) => {
   }
 
   return { admin, time, reason };
+};
+
+const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: (key: string) => string) => {
+  if (!selectedLead) return null;
+  if (selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation) {
+    return {
+      avatar: "https://crm-domation.vercel.app/LOGO.jpg",
+      title: "Domation AI",
+      badgeText: t("Đạt tiêu chuẩn"),
+      badgeBg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      badgeColor: '#ffffff',
+      content: selectedLead.ai_evaluation,
+      accentColor: '#8b5cf6',
+      textAccentColor: theme === 'dark' ? '#a78bfa' : '#6d28d9',
+      topAccentGradient: 'linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)' : 'linear-gradient(135deg, #faf5ff 0%, #eef2ff 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(139, 92, 246, 0.15)',
+    };
+  } else if (selectedLead.status === 'pending_approval') {
+    const isPendingEvaluation = selectedLead.ai_screener_status === 'pending' && (() => {
+      const now = new Date();
+      const created = selectedLead.created_at ? parseServerDate(selectedLead.created_at) : now;
+      const diffMins = (now.getTime() - created.getTime()) / 60000;
+      return diffMins >= -2 && diffMins < 5;
+    })();
+    return {
+      avatar: "/imgs/warn_icon.png",
+      title: "Domation AI",
+      badgeText: t("Chờ duyệt"),
+      badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      badgeColor: '#ffffff',
+      content: selectedLead.ai_evaluation || (isPendingEvaluation ? t('Đang chờ AI đánh giá...') : t('Tạm giữ')),
+      accentColor: '#f59e0b',
+      textAccentColor: theme === 'dark' ? '#fbbf24' : '#b45309',
+      topAccentGradient: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.08) 100%)' : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(245, 158, 11, 0.15)',
+    };
+  } else if (selectedLead.status === 'rejected') {
+    return {
+      avatar: "https://crm-domation.vercel.app/LOGO.jpg",
+      title: "Domation AI",
+      badgeText: t("Từ chối"),
+      badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      badgeColor: '#ffffff',
+      content: selectedLead.ai_evaluation || t('Không đủ điều kiện'),
+      accentColor: '#ef4444',
+      textAccentColor: theme === 'dark' ? '#f87171' : '#be123c',
+      topAccentGradient: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.08) 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.15)',
+    };
+  } else if (selectedLead.status === 'blacklisted') {
+    return {
+      avatar: "/imgs/angry_icon.jpg",
+      title: "Domation AI",
+      badgeText: t("Bị chặn"),
+      badgeBg: 'linear-gradient(135deg, #374151 0%, #111827 100%)',
+      badgeColor: '#ffffff',
+      content: selectedLead.ai_evaluation || t('Chặn tự động'),
+      accentColor: '#4b5563',
+      textAccentColor: theme === 'dark' ? '#9ca3af' : '#4b5563',
+      topAccentGradient: 'linear-gradient(90deg, #4b5563 0%, #1f2937 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(55, 65, 81, 0.08) 0%, rgba(17, 24, 39, 0.08) 100%)' : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(55, 65, 81, 0.25)' : '1px solid rgba(55, 65, 81, 0.15)',
+    };
+  }
+  return null;
 };
 
 export const DataList = () => {
@@ -548,11 +626,15 @@ export const DataList = () => {
                   lead.status === 'silent' ? t('Chỉ đồng bộ') :
                     lead.status === 'reminder' ? t('Nhắc lại') :
                       lead.status === 'pending_approval' ? (
-                      lead.ai_screener_status === 'pending' && 
-                      (new Date().getTime() - new Date(lead.created_at.replace(/-/g, '/')).getTime()) / 60000 < 5 
-                        ? t('Chờ AI đánh giá') 
-                        : t('Tạm giữ')
-                    ) :
+                        lead.ai_screener_status === 'pending' && (() => {
+                          const now = new Date();
+                          const created = lead.created_at ? parseServerDate(lead.created_at) : now;
+                          const diffMins = (now.getTime() - created.getTime()) / 60000;
+                          return diffMins >= -2 && diffMins < 5;
+                        })()
+                          ? t('Chờ AI đánh giá')
+                          : t('Tạm giữ')
+                      ) :
                         lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
           lead.source || '',
           lead.note || '',
@@ -635,9 +717,9 @@ export const DataList = () => {
     }
     if (status === 'pending_approval' && aiScreenerStatus === 'pending') {
       const now = new Date();
-      const created = createdAt ? new Date(createdAt.replace(/-/g, '/')) : now;
+      const created = createdAt ? parseServerDate(createdAt) : now;
       const diffMins = (now.getTime() - created.getTime()) / 60000;
-      if (diffMins < 5) {
+      if (diffMins >= -2 && diffMins < 5) {
         return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Chờ AI đánh giá')}</span>;
       }
     }
@@ -1377,130 +1459,130 @@ export const DataList = () => {
               </div>
             ) : (
               <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
-                <tr>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Phân bổ cho')}</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? [...Array(8)].map((_, i) => (
-                  <tr key={`skel-${i}`}>
-                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                        <div>
-                          <div style={{ width: 120, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                          <div style={{ width: 80, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                      <div style={{ width: 100, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                      <div style={{ width: 140, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                    </td>
-                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                      <div style={{ width: 80, height: 24, background: 'var(--color-border)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                    </td>
-                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                        <div style={{ width: 90, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                      <div style={{ width: 110, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
-                    </td>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                  <tr>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Phân bổ cho')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
                   </tr>
-                )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
-                  return (
-                    <tr
-                      key={lead.id}
-                      className="lead-row"
-                      onClick={() => setSelectedLead(lead)}
-                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
-                    >
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <Avatar name={lead.name} size={32} />
-                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
+                </thead>
+                <tbody>
+                  {loading ? [...Array(8)].map((_, i) => (
+                    <tr key={`skel-${i}`}>
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                          <div>
+                            <div style={{ width: 120, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                            <div style={{ width: 80, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                          </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          {maskPhone(lead.phone)}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ width: 100, height: 16, background: 'var(--color-border)', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                        <div style={{ width: 140, height: 12, background: 'var(--color-border-light)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                          {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
-                          {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ width: 80, height: 24, background: 'var(--color-border)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      </td>
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                          <div style={{ width: 90, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                         </div>
                       </td>
-                      <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                        {lead.status === 'pending_approval' ? (
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ width: 110, height: 14, background: 'var(--color-border)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      </td>
+                    </tr>
+                  )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
+                    return (
+                      <tr
+                        key={lead.id}
+                        className="lead-row"
+                        onClick={() => setSelectedLead(lead)}
+                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
+                      >
+                        <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={32} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Screener</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
-                            </div>
+                            <Avatar name={lead.name} size={32} />
+                            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
                           </div>
-                        ) : lead.status === 'fallback' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={32} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
-                            </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {maskPhone(lead.phone)}
                           </div>
-                        ) : lead.status === 'rejected' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
-                            </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                            {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
+                            {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
-                        ) : lead.status === 'blacklisted' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={32} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Angry</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
-                            </div>
-                          </div>
-                        ) : lead.assigned_to_name !== '-' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                {(lead.status === 'reminder' && (!lead.round_name || lead.round_name === '-')) ? 'Reminder' : lead.round_name}
+                        </td>
+                        <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                          {lead.status === 'pending_approval' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Screener</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                        )}
+                          ) : lead.status === 'fallback' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
+                              </div>
+                            </div>
+                          ) : lead.status === 'rejected' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
+                              </div>
+                            </div>
+                          ) : lead.status === 'blacklisted' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Angry</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
+                              </div>
+                            </div>
+                          ) : lead.assigned_to_name !== '-' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                  {(lead.status === 'reminder' && (!lead.round_name || lead.round_name === '-')) ? 'Reminder' : lead.round_name}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                        {t('Không tìm thấy dữ liệu phù hợp.')}
                       </td>
-                      <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
                     </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-                      {t('Không tìm thấy dữ liệu phù hợp.')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
           {/* Pagination */}
           {totalPages > 0 && (
@@ -1733,11 +1815,11 @@ export const DataList = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                           {aiDecisionNotes.map((note, index) => {
                             const parsed = parseAIDecisionNote(note);
-                            
+
                             const isApprove = parsed.type === 'ai_approve';
                             const isBlacklist = parsed.type === 'ai_blacklist';
                             const isFallback = parsed.type === 'ai_fallback';
-                            
+
                             let cardBg = 'rgba(239, 68, 68, 0.08)';
                             let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
                             let iconBg = 'rgba(239, 68, 68, 0.15)';
@@ -1745,7 +1827,7 @@ export const DataList = () => {
                             let titleColor = 'var(--color-danger)';
                             let titleText = t("Từ chối bởi AI");
                             let IconComponent = Sparkles;
-                            
+
                             if (isApprove) {
                               cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
                               cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
@@ -1791,12 +1873,12 @@ export const DataList = () => {
                                   <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
                                 </div>
 
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '12px', 
-                                  paddingTop: '0.5rem', 
-                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  paddingTop: '0.5rem',
+                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)',
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
@@ -2141,55 +2223,139 @@ export const DataList = () => {
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t('Thông tin Phân bổ')}</h3>
 
-                {selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation && (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={36} />
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</div>
+                {/* Đánh giá AI - Nằm bên trên người tiếp nhận */}
+                {(() => {
+                  const aiConfig = getAICardConfig(selectedLead, theme, t);
+                  if (!aiConfig) return null;
+                  return (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      marginBottom: '1.5rem',
+                      background: aiConfig.bgGradient,
+                      border: aiConfig.borderColor,
+                      borderRadius: '16px',
+                      padding: '1.25rem',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      boxShadow: theme === 'dark' ? '0 8px 32px 0 rgba(0, 0, 0, 0.15)' : '0 10px 25px -5px rgba(139, 92, 246, 0.05), 0 8px 10px -6px rgba(139, 92, 246, 0.03)',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      {/* Top glowing accent bar */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 3,
+                        background: aiConfig.topAccentGradient
+                      }} />
+
+                      {/* Header */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '1rem',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Avatar src={aiConfig.avatar} name={aiConfig.title} size={36} />
+                            <div style={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              background: aiConfig.accentColor,
+                              borderRadius: '50%',
+                              padding: '2px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff',
+                              border: '1.5px solid var(--color-surface)'
+                            }}>
+                              <Sparkles size={8} />
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: aiConfig.textAccentColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('ĐÁNH GIÁ AI')}</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{aiConfig.title}</div>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span style={{
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
+                          background: aiConfig.badgeBg,
+                          color: aiConfig.badgeColor,
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.03em',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                        }}>
+                          {aiConfig.badgeText}
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div style={{
+                        background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.6)',
+                        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        padding: '0.875rem 1rem',
+                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.02)'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          color: aiConfig.textAccentColor,
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em',
+                          marginBottom: 6
+                        }}>
+                          <Tag size={12} strokeWidth={2.5} style={{ color: aiConfig.accentColor }} /> {t('Phân tích kết quả')}
+                        </div>
+                        <div style={{
+                          fontSize: '0.85rem',
+                          color: 'var(--color-text)',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.6,
+                          fontWeight: 500,
+                          letterSpacing: '-0.005em'
+                        }}>
+                          {aiConfig.content}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} strokeWidth={2} /> {t('Nội dung AI đánh giá')}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
-                        {selectedLead.ai_evaluation}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {selectedLead.status === 'pending_approval' ? (
                   <div style={{
                     background: 'var(--color-surface)',
-                    border: '1.5px solid var(--color-primary)',
+                    border: '1px solid var(--color-border)',
                     padding: '1.25rem',
                     borderRadius: 12
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
-                          {selectedLead.ai_evaluation || (
-                            (selectedLead.ai_screener_status === 'pending' && (() => {
-                              const now = new Date();
-                              const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
-                              const diffMins = (now.getTime() - created.getTime()) / 60000;
-                              return diffMins < 5;
-                            })())
-                              ? t('Đang chờ AI đánh giá...')
-                              : t('Tạm giữ')
-                          )}
-                        </div>
-                      </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chờ duyệt')}</div>
@@ -2203,22 +2369,16 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.status === 'rejected' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
-                          {selectedLead.ai_evaluation || t('Failed')}
-                        </div>
-                      </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Failed - Đã hủy')}</div>
@@ -2232,22 +2392,16 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.status === 'blacklisted' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
-                          {selectedLead.ai_evaluation || t('Blacklist')}
-                        </div>
-                      </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Blacklist')}</div>
@@ -2296,10 +2450,10 @@ export const DataList = () => {
                     </div>
 
                     {/* Tình trạng thông báo Zalo & Email */}
-                    <div style={{ 
-                      marginTop: '1rem', 
-                      paddingTop: '1rem', 
-                      borderTop: '1px dashed var(--color-border-light)' 
+                    <div style={{
+                      marginTop: '1rem',
+                      paddingTop: '1rem',
+                      borderTop: '1px dashed var(--color-border-light)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem' }}>
                         <RefreshCw size={12} className={notifLoading ? "spin" : ""} style={{ color: 'var(--color-primary)' }} />
@@ -2315,15 +2469,15 @@ export const DataList = () => {
                           {/* Email Status */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                              <img 
-                                src="/imgs/gmail-icon-free-png.webp" 
-                                alt="Gmail" 
-                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                              <img
+                                src="/imgs/gmail-icon-free-png.webp"
+                                alt="Gmail"
+                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                               />
                               <span style={{ flexShrink: 0 }}>Email:</span>
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
-                                {notificationStatus.email.status === 'sent' 
-                                  ? (notificationStatus.email.sent_at || '-') 
+                                {notificationStatus.email.status === 'sent'
+                                  ? (notificationStatus.email.sent_at || '-')
                                   : (notificationStatus.email.status === 'pending' ? t('Đang chờ gửi...') : '-')}
                               </span>
                             </div>
@@ -2354,15 +2508,15 @@ export const DataList = () => {
                           {/* Zalo Status */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                              <img 
-                                src="https://stc-zpl.zdn.vn/favicon.ico" 
-                                alt="Zalo" 
-                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                              <img
+                                src="https://stc-zpl.zdn.vn/favicon.ico"
+                                alt="Zalo"
+                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                               />
                               <span style={{ flexShrink: 0 }}>Zalo:</span>
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
-                                {notificationStatus.zalo.status === 'sent' 
-                                  ? (notificationStatus.zalo.sent_at || '-') 
+                                {notificationStatus.zalo.status === 'sent'
+                                  ? (notificationStatus.zalo.sent_at || '-')
                                   : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : (notificationStatus.zalo.status === 'pending' ? t('Đang chờ gửi...') : '-'))}
                               </span>
                             </div>
@@ -2412,7 +2566,6 @@ export const DataList = () => {
                     {t('Chưa có thông tin phân bổ cho Khách hàng này.')}
                   </div>
                 )}
-
                 {/* Reassignment section */}
                 <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                   <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -3214,64 +3367,64 @@ export const DataList = () => {
                         const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
                         return history && history.length > 0 ? (
                           history.map((h: any) => {
-                          const lastDateStr = h.last_interaction_date || h.created_at;
-                          const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                          const now = new Date();
-                          const diffMs = now.getTime() - lastInt.getTime();
-                          const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+                            const lastDateStr = h.last_interaction_date || h.created_at;
+                            const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                            const now = new Date();
+                            const diffMs = now.getTime() - lastInt.getTime();
+                            const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
 
-                          let statusClass = 'muted';
-                          let statusText = h.status;
-                          if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
-                          else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
-                          else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
-                          else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
+                            let statusClass = 'muted';
+                            let statusText = h.status;
+                            if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
+                            else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
+                            else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
+                            else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
 
-                          return (
-                            <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <Avatar name={h.name} size={32} />
-                                  <div>
-                                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                            return (
+                              <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Avatar name={h.name} size={32} />
+                                    <div>
+                                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                {h.consultant_name ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
-                                    <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {h.consultant_name ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
+                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                  <div>{h.created_at}</div>
+                                  <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
+                                    {diffMonths} {t("tháng trước")}
                                   </div>
-                                ) : (
-                                  <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                )}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                <div>{h.created_at}</div>
-                                <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
-                                  {diffMonths} {t("tháng trước")}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                            {t("Không có dữ liệu lịch sử.")}
-                          </td>
-                        </tr>
-                      );
-                    })()}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              {t("Không có dữ liệu lịch sử.")}
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>

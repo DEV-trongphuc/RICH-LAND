@@ -115,14 +115,20 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $zaloMsg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n"
                         . "⏱️ Kỳ báo cáo: {$reportTimeDisplay} " . date('d/m/Y', strtotime('-1 day')) . " → {$reportTimeDisplay} " . date('d/m/Y') . "\n\n"
                         . "📥 TỔNG QUAN CHIA SỐ:\n"
-                        . "   (Tổng cộng: 5 | Chia số: 4 | Nhắc lại: 1)\n"
-                        . "------------------------------\n"
+                        . "   (Tổng số data: 4 data | Nhắc lại: 1)\n"
+                        . "----------\n"
                         . "  👤 Nguyễn Văn A: 3 data\n"
-                        . "  👤 Trần Thị B: 2 data (Chia số: 1 | Nhắc lại: 1)\n\n"
+                        . "    └─> 3 chia vòng\n"
+                        . "    └─> 0 bù\n"
+                        . "    └─> 0 nhắc lại\n"
+                        . "  👤 Trần Thị B: 1 data\n"
+                        . "    └─> 1 chia vòng\n"
+                        . "    └─> 0 bù\n"
+                        . "    └─> 1 nhắc lại\n\n"
                         . "🎫 BÁO CÁO LỖI (TICKET):\n"
                         . "  • Tổng ticket phát sinh: 2 ⚠️\n"
                         . "    (Đã duyệt: 1 | Từ chối: 0 | Chờ duyệt: 1)\n\n"
-                        . "-------------------\n"
+                        . "----------\n"
                         . "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n"
                         . "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
                     sendZaloMessage($botToken, $chatId, $zaloMsg);
@@ -202,16 +208,16 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
 
                 if (empty($cmdArg) || $cmdArg === 'homnay' || $cmdArg === 'today') {
-                    // Từ $reportTime ngày hôm trước (hoặc ngày hiện tại nếu trước $reportTime) đến hiện tại
-                    $today = date('Y-m-d');
+                    // Từ $reportTime ngày hôm trước (hoặc ngày hiện tại nếu trước $reportTime) đến hiện tại hoặc đến $reportTime hôm nay
                     $currentTime = date('H:i');
+                    $startTimestamp = date('Y-m-d H:i:s', strtotime('yesterday ' . $reportTime));
                     if ($currentTime >= $reportTime) {
-                        $startTimestamp = date('Y-m-d H:i:s', strtotime('today ' . $reportTime));
+                        $endTimestamp = date('Y-m-d H:i:s', strtotime('today ' . $reportTime));
+                        $windowLabel = date('H:i d/m/Y', strtotime($startTimestamp)) . " → " . date('H:i d/m/Y', strtotime($endTimestamp));
                     } else {
-                        $startTimestamp = date('Y-m-d H:i:s', strtotime('yesterday ' . $reportTime));
+                        $endTimestamp = date('Y-m-d H:i:s');
+                        $windowLabel = date('H:i d/m/Y', strtotime($startTimestamp)) . " → Hiện tại";
                     }
-                    $endTimestamp = date('Y-m-d H:i:s');
-                    $windowLabel = date('H:i d/m/Y', strtotime($startTimestamp)) . " → Hiện tại";
                 } else if ($cmdArg === 'homqua' || $cmdArg === 'yesterday') {
                     // Từ $reportTime hôm kia đến $reportTime hôm qua
                     $startTimestamp = date('Y-m-d H:i:s', strtotime('yesterday -1 day ' . $reportTime));

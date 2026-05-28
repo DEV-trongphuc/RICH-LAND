@@ -99,7 +99,8 @@ function runDailyReportCron($conn)
             $saleList[] = [
                 'name' => $stats['name'],
                 'normal_total' => $normalTotal,
-                'reminder_total' => $reminderTotal
+                'reminder_total' => $reminderTotal,
+                'compensation' => $stats['compensation']
             ];
         }
 
@@ -118,15 +119,18 @@ function runDailyReportCron($conn)
         foreach ($saleList as $saleItem) {
             $normalTotal = $saleItem['normal_total'];
             $reminderTotal = $saleItem['reminder_total'];
+            $compensation = $saleItem['compensation'];
+            $roundTotal = max(0, $normalTotal - $compensation);
 
-            if ($reminderTotal > 0) {
-                $total = $normalTotal + $reminderTotal;
-                $saleStats .= "  👤 " . $saleItem['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
-                $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")</li>";
-            } else {
-                $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-                $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $normalTotal . " data</li>";
-            }
+            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
+            $saleStats .= "    └─> " . $roundTotal . " chia vòng\n";
+            $saleStats .= "    └─> " . $compensation . " bù\n";
+            $saleStats .= "    └─> " . $reminderTotal . " nhắc lại\n";
+
+            $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $normalTotal . " data<br>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $roundTotal . " chia vòng<br>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $compensation . " bù<br>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $reminderTotal . " nhắc lại</li>";
 
             $totalData += $normalTotal;
             $totalReminder += $reminderTotal;
@@ -246,11 +250,11 @@ function runDailyReportCron($conn)
             $msg .= "⏱️ Kỳ báo cáo: $windowStart → $windowEnd\n\n";
             $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
             if ($totalReminder > 0) {
-                $msg .= "   (Tổng cộng: " . ($totalData + $totalReminder) . " | Chia số: " . $totalData . " | Nhắc lại: " . $totalReminder . ")\n";
+                $msg .= "   (Tổng số data: " . $totalData . " data | Nhắc lại: " . $totalReminder . ")\n";
             } else {
                 $msg .= "   ($totalData data)\n";
             }
-            $msg .= "------------------------------\n";
+            $msg .= "----------\n";
             $msg .= $saleStats . "\n";
             $msg .= "🤖 AI PRE-SCREENER:\n";
             $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
@@ -264,7 +268,7 @@ function runDailyReportCron($conn)
             }
             $msg .= "CHẶN DATA (BLACKLIST):\n";
             $msg .= "  • Tổng số data bị chặn: $totalBlocked\n\n";
-            $msg .= "-------------------\n";
+            $msg .= "----------\n";
             $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
             $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
 
