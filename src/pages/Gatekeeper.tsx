@@ -36,6 +36,7 @@ type Lead = {
   last_activity_at?: string | null;
   ai_screener_status?: string;
   ai_evaluation?: string;
+  target_round_id?: number | null;
 };
 
 const maskPhone = (phone: string) => {
@@ -1976,7 +1977,8 @@ export const Gatekeeper = () => {
                           type: l.type || '-',
                           note: l.note || '',
                           ai_screener_status: l.ai_screener_status,
-                          ai_evaluation: l.ai_evaluation
+                          ai_evaluation: l.ai_evaluation,
+                          target_round_id: l.target_round_id
                         });
                       }}
                       style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
@@ -2237,7 +2239,8 @@ export const Gatekeeper = () => {
                       type: l.type || '-',
                       note: l.note || '',
                       ai_screener_status: l.ai_screener_status,
-                      ai_evaluation: l.ai_evaluation
+                      ai_evaluation: l.ai_evaluation,
+                      target_round_id: l.target_round_id
                     });
                   }}
                   style={{
