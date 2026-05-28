@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
+  GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
   FileSpreadsheet, MessageCircle, Database, Server
 } from 'lucide-react';
 import {
@@ -563,11 +563,24 @@ export const Dashboard = () => {
                     </span>
                   </div>
                 )}
-                <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`} style={{ marginTop: 'auto' }}>
-                  {card.up !== false ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                  {card.change || '+0%'}
-                  <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>{getComparisonLabel(dateFilter)}</span>
-                </div>
+                {(() => {
+                  const isIncrease = (card.change || '').startsWith('+');
+                  return (
+                    <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`} style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {isIncrease ? (
+                        <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                          <path d="M12 5l9 14H3z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                          <path d="M12 19L3 5h18z" />
+                        </svg>
+                      )}
+                      {card.change || '+0%'}
+                      <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>{getComparisonLabel(dateFilter)}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
