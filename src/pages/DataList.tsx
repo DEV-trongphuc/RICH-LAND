@@ -2102,19 +2102,24 @@ export const DataList = () => {
                 )}
 
                 {selectedLead.status === 'pending_approval' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{
+                    background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)',
+                    border: theme === 'dark' ? '1.5px solid rgba(245, 158, 11, 0.2)' : '1.5px solid #fcd34d',
+                    padding: '1.25rem',
+                    borderRadius: 12
+                  }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</div>
+                        <div style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#d97706', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: theme === 'dark' ? '#f3f4f6' : '#78350f' }}>Domation AI - Screener</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                           {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || t('Tạm giữ')}
                         </div>
                       </div>
@@ -2189,7 +2194,7 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.assigned_to_name !== '-' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                       <div>

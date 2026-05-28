@@ -61,7 +61,7 @@ const parseNote = (noteText: string) => {
   const blacklistNotes: string[] = [];
   const warningNotes: string[] = [];
   const aiDecisionNotes: string[] = [];
-  
+
   lines.forEach(line => {
     const trimmed = line.trim();
     if (/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(trimmed)) {
@@ -100,7 +100,7 @@ const parseNote = (noteText: string) => {
       cleanLines.push(line);
     }
   });
-  
+
   return {
     cleanNote: cleanLines.join('\n').trim(),
     errorNotes,
@@ -157,7 +157,7 @@ const extractManualReason = (note: string) => {
   if (!note) return '';
   const normalized = note.replace(/\\n/g, '\n');
   const lines = normalized.split('\n');
-  
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.includes('Bị chặn bởi Admin') || trimmed.includes('Chặn bởi Admin')) {
@@ -184,7 +184,7 @@ const parseErrorNote = (err: string) => {
   const parts = err.split(' | ');
   let admin = '';
   let time = '';
-  
+
   parts.forEach(part => {
     const trimmed = part.trim();
     if (trimmed.startsWith('Admin duyệt:') || trimmed.startsWith('Admin từ chối:')) {
@@ -475,8 +475,8 @@ export const Tickets = () => {
     try {
       const res = await fetchAPI('approve_report', {
         method: 'POST',
-        body: JSON.stringify({ 
-          id: approvingId, 
+        body: JSON.stringify({
+          id: approvingId,
           approval_reason: approveReason,
           new_consultant_id: reassignConsultantId ? Number(reassignConsultantId) : null
         })
@@ -560,8 +560,8 @@ export const Tickets = () => {
         })
       });
       if (res.success) {
-        toast.success(compensate 
-          ? t('Giao lại Tư vấn viên & Đền bù thành công!') 
+        toast.success(compensate
+          ? t('Giao lại Tư vấn viên & Đền bù thành công!')
           : t('Giao lại Tư vấn viên thành công!')
         );
         setSelectedLead(null);
@@ -691,7 +691,7 @@ export const Tickets = () => {
           </p>
         </div>
       </div>
-      
+
       <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
         {FILTER_TABS.map(tab => (
           <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8.5rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
@@ -726,393 +726,269 @@ export const Tickets = () => {
         </div>
       </div>
 
-        <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-            {/* Status Dropdown */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <CustomSelect
-                options={FILTER_TABS.map(tab => ({
-                  value: tab.key,
-                  label: `${t(tab.label)} (${stats[tab.key] || 0})`,
-                  icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
-                }))}
-                value={activeFilter}
-                onChange={val => updateParams('status', val.toString())}
-                width="100%"
-              />
-            </div>
-            
-            {/* Filter Toggle Button (Icon only) */}
-            <button
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
-              style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid',
-                borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
-                background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
-              }}
-            >
-              <Filter size={16} />
-            </button>
-
-            {/* Reload Button */}
-            <button
-              onClick={fetchReports}
-              disabled={loading}
-              title={t("Làm mới")}
-              style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text-muted)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
-              }}
-            >
-              <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-            </button>
-
-            {/* Settings Button */}
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              title={t("Thiết lập thông báo Ticket")}
-              style={{
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid var(--color-primary)',
-                background: 'rgba(124,58,237,0.08)',
-                color: 'var(--color-primary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 38,
-                height: 38,
-                flexShrink: 0
-              }}
-            >
-              <Settings2 size={16} />
-            </button>
-          </div>
-        </div>
-
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
-          position: 'relative', zIndex: 100,
-          display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
-          padding: '14px 18px',
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
-          border: '1px solid rgba(124,58,237,0.15)',
-          borderRadius: 16,
-          backdropFilter: 'blur(8px)',
-          boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
-            <Filter size={14} />
-            <span>{t('Bộ lọc')}</span>
-          </div>
-
-          <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
-
-          {/* Sale filter */}
-          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+          {/* Status Dropdown */}
+          <div style={{ flex: 1, minWidth: 0 }}>
             <CustomSelect
-              options={[
-                { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
-                ...consultantOptions.map(name => {
-                  const matched = allConsultants.find(c => c.name === name);
-                  return {
-                    value: name,
-                    label: name,
-                    avatar: matched?.avatar || ''
-                  };
-                })
-              ]}
-              value={saleFilter}
-              onChange={val => updateParams('consultant', val.toString())}
-              showAvatars={true}
-              searchable={true}
-              width={200}
-            />
-          </div>
-
-          {/* Date Filter */}
-          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
-            <CustomSelect
-              options={dateOptions}
-              value={dateFilter}
-              onChange={val => {
-                if (val === 'Tùy chỉnh') {
-                  setShowDateModal(true);
-                  return;
-                }
-                updateParams('date', val.toString());
-              }}
+              options={FILTER_TABS.map(tab => ({
+                value: tab.key,
+                label: `${t(tab.label)} (${stats[tab.key] || 0})`,
+                icon: <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: tab.color }} />
+              }))}
+              value={activeFilter}
+              onChange={val => updateParams('status', val.toString())}
               width="100%"
             />
           </div>
 
-          {/* Clear filters */}
-          {hasActiveFilters && (
-            <button onClick={() => {
-              setSearchParams(prev => {
-                prev.delete('consultant');
-                prev.delete('date');
-                prev.delete('page');
-                return prev;
-              }, { replace: true });
+          {/* Filter Toggle Button (Icon only) */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            title={showMobileFilters ? t("Ẩn bộ lọc") : t("Hiện bộ lọc")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid',
+              borderColor: showMobileFilters ? 'var(--color-primary)' : 'var(--color-border)',
+              background: showMobileFilters ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
             }}
-              style={{
-                fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
-                border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
-                color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4,
-                boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
-                transition: 'all 0.15s'
-              }}>
-              ✕ {t('Xóa lọc')}
-            </button>
-          )}
+          >
+            <Filter size={16} />
+          </button>
 
-          <div className="mobile-ml-0" style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            {/* Auto duyệt Toggle */}
-            <div 
-              onClick={() => setShowAutoApproveModal(true)}
-              title={t("Cấu hình quy tắc tự động duyệt")}
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 8,
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: 8,
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
-                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-                if (label) label.style.color = 'var(--color-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-                if (label) label.style.color = 'var(--color-text-muted)';
+          {/* Reload Button */}
+          <button
+            onClick={fetchReports}
+            disabled={loading}
+            title={t("Làm mới")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-muted)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+          </button>
+
+          {/* Settings Button */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            title={t("Thiết lập thông báo Ticket")}
+            style={{
+              padding: 0,
+              borderRadius: 8,
+              border: '1px solid var(--color-primary)',
+              background: 'rgba(124,58,237,0.08)',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              flexShrink: 0
+            }}
+          >
+            <Settings2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
+        position: 'relative', zIndex: 100,
+        display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
+        padding: '14px 18px',
+        background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
+        border: '1px solid rgba(124,58,237,0.15)',
+        borderRadius: 16,
+        backdropFilter: 'blur(8px)',
+        boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
+          <Filter size={14} />
+          <span>{t('Bộ lọc')}</span>
+        </div>
+
+        <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+
+        {/* Sale filter */}
+        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <CustomSelect
+            options={[
+              { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
+              ...consultantOptions.map(name => {
+                const matched = allConsultants.find(c => c.name === name);
+                return {
+                  value: name,
+                  label: name,
+                  avatar: matched?.avatar || ''
+                };
+              })
+            ]}
+            value={saleFilter}
+            onChange={val => updateParams('consultant', val.toString())}
+            showAvatars={true}
+            searchable={true}
+            width={200}
+          />
+        </div>
+
+        {/* Date Filter */}
+        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
+          <CustomSelect
+            options={dateOptions}
+            value={dateFilter}
+            onChange={val => {
+              if (val === 'Tùy chỉnh') {
+                setShowDateModal(true);
+                return;
+              }
+              updateParams('date', val.toString());
+            }}
+            width="100%"
+          />
+        </div>
+
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <button onClick={() => {
+            setSearchParams(prev => {
+              prev.delete('consultant');
+              prev.delete('date');
+              prev.delete('page');
+              return prev;
+            }, { replace: true });
+          }}
+            style={{
+              fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
+              border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
+              color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4,
+              boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
+              transition: 'all 0.15s'
+            }}>
+            ✕ {t('Xóa lọc')}
+          </button>
+        )}
+
+        <div className="mobile-ml-0" style={{
+          marginLeft: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          {/* Auto duyệt Toggle */}
+          <div
+            onClick={() => setShowAutoApproveModal(true)}
+            title={t("Cấu hình quy tắc tự động duyệt")}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 8,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-text-muted)';
+            }}
+          >
+            <span
+              className="auto-approve-label"
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--color-text-muted)',
+                transition: 'color 0.2s',
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted'
               }}
             >
-              <span 
-                className="auto-approve-label"
-                style={{ 
-                  fontSize: '0.8rem', 
-                  fontWeight: 700, 
-                  color: 'var(--color-text-muted)',
-                  transition: 'color 0.2s',
-                  textDecoration: 'underline',
-                  textDecorationStyle: 'dotted'
-                }}
-              >
-                {t('Auto duyệt')}
-              </span>
-              <div 
-                style={{
-                  width: 36, height: 20, borderRadius: 10,
-                  background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
-                  position: 'relative', transition: 'background 0.2s',
-                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-                }}
-              >
-                <div style={{
-                  position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
-                }} />
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
-
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-              {t('Tổng cộng:')} {totalCount} {t('tickets')}
+              {t('Auto duyệt')}
             </span>
+            <div
+              style={{
+                width: 36, height: 20, borderRadius: 10,
+                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                position: 'relative', transition: 'background 0.2s',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+              }} />
+            </div>
           </div>
+
+          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+            {t('Tổng cộng:')} {totalCount} {t('tickets')}
+          </span>
         </div>
+      </div>
 
       {/* ── Table / Held leads list ── */}
       <div className="card mobile-flat-container" style={{ padding: 0, overflow: 'hidden' }}>
-            {loading ? (
-              <TableSkeleton rows={4} cols={5} />
-            ) : filteredReports.length === 0 ? (
-              <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                  <CheckCircle size={40} color="#10b981" />
-                </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-                  {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
-                </h3>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
-                  {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop View Table */}
-                <div className="table-wrap hide-on-mobile" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-                  <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-bg)' }}>
-                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
-                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Tư vấn viên')}</th>
-                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Vòng phân bổ')}</th>
-                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Lý do lỗi')}</th>
-                        <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredReports.map(r => (
-                        <tr 
-                          key={r.id} 
-                          onClick={() => {
-                            setSelectedLead({
-                              id: r.log_id || 0,
-                              name: r.lead_name,
-                              phone: r.lead_phone,
-                              email: r.lead_email || '-',
-                              source: r.lead_source || '-',
-                              status: r.log_status || 'assigned',
-                              assigned_to_name: r.consultant_name,
-                              assigned_to_avatar: r.consultant_avatar,
-                              round_name: r.round_name || '-',
-                              created_at: r.log_received_at || r.created_at,
-                              type: r.lead_type || '-',
-                              note: r.lead_note || '',
-                              report_status: r.status,
-                              resolved_by: r.resolved_by,
-                              resolved_at: r.resolved_at,
-                              last_activity_at: r.last_activity_at,
-                              ai_screener_status: r.ai_screener_status,
-                              ai_evaluation: r.ai_evaluation
-                            });
-                          }}
-                          style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
-                          className="lead-row"
-                        >
-                          <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
-                               <Avatar name={r.lead_name} size={36} />
-                              <div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
-                                  <span>{maskPhone(r.lead_phone)}</span>
-                                </div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
-                                  {new Date(r.created_at).toLocaleString('vi-VN')}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                              <Avatar src={r.consultant_avatar} name={r.consultant_name} size={28} aiScreened={!!(r.ai_screener_status && r.ai_screener_status !== 'not_screened')} /> {r.consultant_name}
-                            </div>
-                          </td>
-                          <td style={{ padding: '1.25rem 1.5rem' }}>
-                            {r.round_name && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
-                                <Zap size={12} /> {r.round_name}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '1.25rem 1.5rem' }}>
-                            <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
-                              <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                                background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
-                                color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
-                              }}>
-                                {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
-                              </div>
-                              {r.status === 'rejected' && r.reject_reason && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                                  {t('Lý do:')} {r.reject_reason}
-                                </div>
-                              )}
-                              {r.status === 'approved' && r.approval_reason && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
-                                  {t('Lý do:')} {r.approval_reason}
-                                </div>
-                              )}
-                            </div>
-                            {r.status !== 'pending' && (
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
-                                <span>
-                                  {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
-                                </span>
-                                {r.resolved_at && (
-                                  <>
-                                    <span style={{ opacity: 0.5 }}>•</span>
-                                    <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {r.status === 'pending' ? (
-                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                {r.zalo_chat_id && (
-                                  <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                    <Bell size={14} />
-                                  </button>
-                                )}
-                                <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
-                                  {t('Từ chối')}
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
-                                  {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                                {r.zalo_chat_id && (
-                                  <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                    <Bell size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Card List View */}
-                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0 5rem 0' }}>
+        {loading ? (
+          <TableSkeleton rows={4} cols={5} />
+        ) : filteredReports.length === 0 ? (
+          <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <CheckCircle size={40} color="#10b981" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+              {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
+            </h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
+              {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop View Table */}
+            <div className="table-wrap hide-on-mobile" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg)' }}>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Tư vấn viên')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Vòng phân bổ')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Lý do lỗi')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {filteredReports.map(r => (
-                    <div 
+                    <tr
                       key={r.id}
                       onClick={() => {
                         setSelectedLead({
@@ -1136,255 +1012,379 @@ export const Tickets = () => {
                           ai_evaluation: r.ai_evaluation
                         });
                       }}
-                      style={{
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '12px',
-                        padding: '1.25rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '1rem',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        transition: 'transform 0.2s, box-shadow 0.2s'
-                      }}
-                      className=""
+                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                      className="lead-row"
                     >
-                      {/* Header: Lead Info */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <Avatar name={r.lead_name} size={32} />
+                      <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
+                          <Avatar name={r.lead_name} size={36} />
                           <div>
-                            <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{r.lead_name}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                              <Phone size={12} style={{ opacity: 0.6 }} />
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{r.lead_name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
                               <span>{maskPhone(r.lead_phone)}</span>
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                              {new Date(r.created_at).toLocaleString('vi-VN')}
                             </div>
                           </div>
                         </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
-                            {new Date(r.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
-                            {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          <Avatar src={r.consultant_avatar} name={r.consultant_name} size={28} aiScreened={!!(r.ai_screener_status && r.ai_screener_status !== 'not_screened')} /> {r.consultant_name}
+                        </div>
+                      </td>
+                      <td style={{ padding: '1.25rem 1.5rem' }}>
+                        {r.round_name && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                            <Zap size={12} /> {r.round_name}
                           </div>
-                          {r.round_name && (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                              <Zap size={10} /> {r.round_name}
+                        )}
+                      </td>
+                      <td style={{ padding: '1.25rem 1.5rem' }}>
+                        <div style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>{r.reason}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: r.status !== 'pending' ? 6 : 0 }}>
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                            background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
+                            color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                          }}>
+                            {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                          </div>
+                          {r.status === 'rejected' && r.reject_reason && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                              {t('Lý do:')} {r.reject_reason}
+                            </div>
+                          )}
+                          {r.status === 'approved' && r.approval_reason && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                              {t('Lý do:')} {r.approval_reason}
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
-
-                      {/* Consultant details */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--color-text-light)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <User size={12} style={{ opacity: 0.6 }} />
-                          {t('Người báo lỗi:')}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontWeight: 600 }}>
-                          <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} aiScreened={!!(r.ai_screener_status && r.ai_screener_status !== 'not_screened')} />
-                          <span>{r.consultant_name}</span>
-                        </div>
-                      </div>
-
-                      {/* Error Reason & Status Callout */}
-                      <div style={{
-                        background: r.status === 'pending' ? 'rgba(245, 158, 11, 0.04)' : r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
-                          </span>
-                        </div>
-                        
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', fontWeight: 600, marginTop: 2 }}>
-                          {r.reason}
-                        </div>
-
-                        {/* Resolve Info */}
                         {r.status !== 'pending' && (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', borderTop: '1px dashed var(--color-border-light)', paddingTop: 6, marginTop: 4 }}>
-                            <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={14} />
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
                             <span>
-                              {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
+                              {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
                             </span>
                             {r.resolved_at && (
-                              <span>• {new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                              <>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                              </>
                             )}
                           </div>
                         )}
-                        
-                        {r.status === 'rejected' && r.reject_reason && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, background: 'rgba(239, 68, 68, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
-                            {t('Lý do từ chối:')} {r.reject_reason}
-                          </div>
-                        )}
-                        {r.status === 'approved' && r.approval_reason && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
-                            {t('Ghi chú duyệt:')} {r.approval_reason}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions footer */}
-                      {r.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                          {r.zalo_chat_id && (
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); 
-                                setQuickMessageOpen(true); 
-                              }} 
-                              className="btn ghost sm" 
-                              style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }} 
-                              title={t("Nhắn Zalo Bot")}
-                            >
-                              <Bell size={16} />
+                      </td>
+                      <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {r.status === 'pending' ? (
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {r.zalo_chat_id && (
+                              <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                <Bell size={14} />
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                              {t('Từ chối')}
                             </button>
-                          )}
-                          
-                          <button 
-                            onClick={(e) => { 
-                               e.stopPropagation(); 
-                               openRejectModal(r.id); 
-                            }} 
-                            disabled={isActioning === r.id} 
-                            className="btn outline sm" 
-                            style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                            title={t('Từ chối')}
-                          >
-                            <XCircle size={14} />
-                            <span>{t('Từ chối')}</span>
-                          </button>
+                            <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
+                              {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                            {r.zalo_chat_id && (
+                              <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
+                                <Bell size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-                          <button 
-                            onClick={(e) => { 
-                               e.stopPropagation(); 
-                               openApproveModal(r.id); 
-                            }} 
-                            disabled={isActioning === r.id} 
-                            className="btn primary sm" 
-                            style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                            title={t('Duyệt')}
-                          >
-                            <CheckCircle2 size={14} />
-                            <span>{t('Duyệt')}</span>
-                          </button>
+            {/* Mobile Card List View */}
+            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0 5rem 0' }}>
+              {filteredReports.map(r => (
+                <div
+                  key={r.id}
+                  onClick={() => {
+                    setSelectedLead({
+                      id: r.log_id || 0,
+                      name: r.lead_name,
+                      phone: r.lead_phone,
+                      email: r.lead_email || '-',
+                      source: r.lead_source || '-',
+                      status: r.log_status || 'assigned',
+                      assigned_to_name: r.consultant_name,
+                      assigned_to_avatar: r.consultant_avatar,
+                      round_name: r.round_name || '-',
+                      created_at: r.log_received_at || r.created_at,
+                      type: r.lead_type || '-',
+                      note: r.lead_note || '',
+                      report_status: r.status,
+                      resolved_by: r.resolved_by,
+                      resolved_at: r.resolved_at,
+                      last_activity_at: r.last_activity_at,
+                      ai_screener_status: r.ai_screener_status,
+                      ai_evaluation: r.ai_evaluation
+                    });
+                  }}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  className=""
+                >
+                  {/* Header: Lead Info */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Avatar name={r.lead_name} size={32} />
+                      <div>
+                        <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{r.lead_name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          <Phone size={12} style={{ opacity: 0.6 }} />
+                          <span>{maskPhone(r.lead_phone)}</span>
                         </div>
-                      )}
+                      </div>
+                    </div>
 
-                      {r.status !== 'pending' && r.zalo_chat_id && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); 
-                              setQuickMessageOpen(true); 
-                            }} 
-                            className="btn ghost sm" 
-                            style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }} 
-                            title={t("Nhắn Zalo Bot")}
-                          >
-                            <Bell size={16} />
-                          </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
+                        {new Date(r.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
+                        {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                      </div>
+                      {r.round_name && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          <Zap size={10} /> {r.round_name}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Pagination */}
-            {!loading && totalPages > 0 && (
-              <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button 
-                    onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
-                    disabled={currentPage === 1}
-                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let startPage = 1;
-                      if (totalPages > 5) {
-                        if (currentPage > 3) {
-                          startPage = currentPage - 2;
-                          if (startPage + 4 > totalPages) {
-                            startPage = totalPages - 4;
-                          }
-                        }
-                      }
-                      const pageNum = startPage + i;
-                      return (
-                         <button
-                           key={pageNum}
-                           onClick={() => updateParams('page', pageNum.toString())}
-                           style={{ 
-                             width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
-                             border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                             background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                             color: currentPage === pageNum ? 'white' : 'var(--color-text)',
-                             cursor: 'pointer'
-                           }}
-                         >
-                           {pageNum}
-                         </button>
-                      );
-                    })}
                   </div>
-                  <button 
-                    onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+
+                  <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+                  {/* Consultant details */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text-light)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <User size={12} style={{ opacity: 0.6 }} />
+                      {t('Người báo lỗi:')}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontWeight: 600 }}>
+                      <Avatar src={r.consultant_avatar} name={r.consultant_name} size={24} aiScreened={!!(r.ai_screener_status && r.ai_screener_status !== 'not_screened')} />
+                      <span>{r.consultant_name}</span>
+                    </div>
+                  </div>
+
+                  {/* Error Reason & Status Callout */}
+                  <div style={{
+                    background: r.status === 'pending' ? 'rgba(245, 158, 11, 0.04)' : r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', fontWeight: 600, marginTop: 2 }}>
+                      {r.reason}
+                    </div>
+
+                    {/* Resolve Info */}
+                    {r.status !== 'pending' && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', borderTop: '1px dashed var(--color-border-light)', paddingTop: 6, marginTop: 4 }}>
+                        <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={14} />
+                        <span>
+                          {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
+                        </span>
+                        {r.resolved_at && (
+                          <span>• {new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {r.status === 'rejected' && r.reject_reason && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600, background: 'rgba(239, 68, 68, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                        {t('Lý do từ chối:')} {r.reject_reason}
+                      </div>
+                    )}
+                    {r.status === 'approved' && r.approval_reason && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                        {t('Ghi chú duyệt:')} {r.approval_reason}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions footer */}
+                  {r.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                      {r.zalo_chat_id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name });
+                            setQuickMessageOpen(true);
+                          }}
+                          className="btn ghost sm"
+                          style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}
+                          title={t("Nhắn Zalo Bot")}
+                        >
+                          <Bell size={16} />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openRejectModal(r.id);
+                        }}
+                        disabled={isActioning === r.id}
+                        className="btn outline sm"
+                        style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                        title={t('Từ chối')}
+                      >
+                        <XCircle size={14} />
+                        <span>{t('Từ chối')}</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openApproveModal(r.id);
+                        }}
+                        disabled={isActioning === r.id}
+                        className="btn primary sm"
+                        style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                        title={t('Duyệt')}
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>{t('Duyệt')}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {r.status !== 'pending' && r.zalo_chat_id && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name });
+                          setQuickMessageOpen(true);
+                        }}
+                        className="btn ghost sm"
+                        style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}
+                        title={t("Nhắn Zalo Bot")}
+                      >
+                        <Bell size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 0 && (
+          <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+              {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                onClick={() => updateParams('page', String(Math.max(currentPage - 1, 1)))}
+                disabled={currentPage === 1}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let startPage = 1;
+                  if (totalPages > 5) {
+                    if (currentPage > 3) {
+                      startPage = currentPage - 2;
+                      if (startPage + 4 > totalPages) {
+                        startPage = totalPages - 4;
+                      }
+                    }
+                  }
+                  const pageNum = startPage + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => updateParams('page', pageNum.toString())}
+                      style={{
+                        width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                        border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                        background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                        color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-        </div>
+              <button
+                onClick={() => updateParams('page', String(Math.min(currentPage + 1, totalPages)))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       <TicketSettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
 
       {/* Custom Date Picker Modal */}
-      <CustomModal 
-        isOpen={showDateModal} 
-        onClose={() => setShowDateModal(false)} 
+      <CustomModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
         title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">{t("Từ ngày")}</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
             />
           </div>
           <div>
             <label className="form-label">{t("Đến ngày")}</label>
-            <input 
-              type="date" 
-              className="form-input" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -1630,7 +1630,7 @@ export const Tickets = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                           {errorNotes.map((err, index) => {
                             const isApproved = err.includes('DUYỆT');
-                            
+
                             // Rich harmonious color palettes
                             const colors = isApproved ? (
                               theme === 'dark' ? {
@@ -1686,7 +1686,7 @@ export const Tickets = () => {
 
                             const { cleanText, admin: noteAdmin, time: noteTime } = parseErrorNote(err);
                             const displayAdmin = noteAdmin || selectedLead?.resolved_by || 'Hệ thống';
-                            
+
                             let displayTime = noteTime;
                             if (!displayTime) {
                               if (selectedLead?.resolved_at) {
@@ -1732,18 +1732,18 @@ export const Tickets = () => {
                             }
 
                             return (
-                              <div key={index} style={{ 
-                                background: colors.gradient, 
+                              <div key={index} style={{
+                                background: colors.gradient,
                                 border: colors.border,
                                 boxShadow: colors.glow,
-                                padding: '1.25rem', 
+                                padding: '1.25rem',
                                 borderRadius: '16px',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '0.75rem',
                                 position: 'relative'
                               }}
-                              className="premium-alert-card"
+                                className="premium-alert-card"
                               >
                                 {/* Top header info */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
@@ -1763,13 +1763,13 @@ export const Tickets = () => {
                                       {isApproved ? t('Thông tin lỗi - Đã Duyệt') : t('Thông tin lỗi - Từ Chối')}
                                     </span>
                                   </div>
-                                  <span style={{ 
-                                    fontSize: '0.7rem', 
-                                    fontWeight: 700, 
-                                    color: colors.badgeText, 
-                                    background: colors.badgeBg, 
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    color: colors.badgeText,
+                                    background: colors.badgeBg,
                                     border: colors.badgeBorder,
-                                    padding: '3px 8px', 
+                                    padding: '3px 8px',
                                     borderRadius: '8px',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
@@ -1784,10 +1784,10 @@ export const Tickets = () => {
                                     {t("Lỗi:")} <span style={{ fontWeight: 600, color: colors.text }}>{coreError}</span>
                                   </div>
                                   {actionReason && (
-                                    <div style={{ 
-                                      fontSize: '0.85rem', 
-                                      color: theme === 'dark' ? 'var(--color-text-muted)' : '#475569', 
-                                      fontWeight: 400, 
+                                    <div style={{
+                                      fontSize: '0.85rem',
+                                      color: theme === 'dark' ? 'var(--color-text-muted)' : '#475569',
+                                      fontWeight: 400,
                                       lineHeight: 1.5,
                                       background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
                                       padding: '8px 12px',
@@ -1801,13 +1801,13 @@ export const Tickets = () => {
                                 </div>
 
                                 {/* Footer metadata */}
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '12px', 
-                                  paddingTop: '0.75rem', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  paddingTop: '0.75rem',
                                   marginTop: '0.25rem',
-                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)',
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
@@ -1860,17 +1860,17 @@ export const Tickets = () => {
                       )}
 
                       {/* Clean Note Card */}
-                      <div style={{ 
-                        background: 'var(--color-warning-light)', 
+                      <div style={{
+                        background: 'var(--color-warning-light)',
                         border: '1px solid var(--color-warning-light)',
-                        padding: '1.25rem', 
+                        padding: '1.25rem',
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
                         boxShadow: 'none'
                       }}
-                      className="premium-alert-card"
+                        className="premium-alert-card"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{
@@ -1886,13 +1886,13 @@ export const Tickets = () => {
                           </div>
                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t("Ghi chú & Phân loại")}</span>
                         </div>
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t("Loại Data:")}</span>
                             <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
                           </div>
-                          
+
                           <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
                             <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t("Nội dung ghi chú:")}</span>
                             <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
@@ -1907,11 +1907,11 @@ export const Tickets = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                           {aiDecisionNotes.map((note, index) => {
                             const parsed = parseAIDecisionNote(note);
-                            
+
                             const isApprove = parsed.type === 'ai_approve';
                             const isBlacklist = parsed.type === 'ai_blacklist';
                             const isFallback = parsed.type === 'ai_fallback';
-                            
+
                             let cardBg = 'rgba(239, 68, 68, 0.08)';
                             let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
                             let iconBg = 'rgba(239, 68, 68, 0.15)';
@@ -1919,7 +1919,7 @@ export const Tickets = () => {
                             let titleColor = 'var(--color-danger)';
                             let titleText = t("Từ chối bởi AI");
                             let IconComponent = Sparkles;
-                            
+
                             if (isApprove) {
                               cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
                               cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
@@ -1970,12 +1970,12 @@ export const Tickets = () => {
                                   <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
                                 </div>
 
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '12px', 
-                                  paddingTop: '0.5rem', 
-                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  paddingTop: '0.5rem',
+                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)',
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
@@ -2024,18 +2024,18 @@ export const Tickets = () => {
                             };
 
                             return (
-                              <div key={index} style={{ 
-                                background: blacklistColors.gradient, 
+                              <div key={index} style={{
+                                background: blacklistColors.gradient,
                                 border: blacklistColors.border,
                                 boxShadow: blacklistColors.glow,
-                                padding: '1.25rem', 
+                                padding: '1.25rem',
                                 borderRadius: '16px',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '0.75rem',
                                 position: 'relative'
                               }}
-                              className="premium-alert-card"
+                                className="premium-alert-card"
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'space-between' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -2054,13 +2054,13 @@ export const Tickets = () => {
                                       {t("Thông tin chặn (Blacklist)")}
                                     </span>
                                   </div>
-                                  <span style={{ 
-                                    fontSize: '0.75rem', 
-                                    fontWeight: 700, 
-                                    color: blacklistColors.badgeText, 
-                                    background: blacklistColors.badgeBg, 
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    color: blacklistColors.badgeText,
+                                    background: blacklistColors.badgeBg,
                                     border: blacklistColors.badgeBorder,
-                                    padding: '3px 8px', 
+                                    padding: '3px 8px',
                                     borderRadius: '8px',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
@@ -2071,10 +2071,10 @@ export const Tickets = () => {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                   {parsed.reason && (
-                                    <div style={{ 
-                                      fontSize: '0.875rem', 
-                                      color: theme === 'dark' ? 'var(--color-text)' : '#1e293b', 
-                                      fontWeight: 500, 
+                                    <div style={{
+                                      fontSize: '0.875rem',
+                                      color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
+                                      fontWeight: 500,
                                       lineHeight: 1.5,
                                       background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
                                       padding: '8px 12px',
@@ -2086,13 +2086,13 @@ export const Tickets = () => {
                                   )}
                                 </div>
 
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '12px', 
-                                  paddingTop: '0.75rem', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  paddingTop: '0.75rem',
                                   marginTop: '0.25rem',
-                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                  borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)',
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
@@ -2137,7 +2137,7 @@ export const Tickets = () => {
                       <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
                         <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}
+                          {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('Tạm giữ')}
                         </div>
                         <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
                           {t('Domation AI - Screener')}
@@ -2151,7 +2151,7 @@ export const Tickets = () => {
                 )}
 
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t("Thông tin Phân bổ")}</h3>
-                
+
                 {selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation && (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
@@ -2179,7 +2179,7 @@ export const Tickets = () => {
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
                       </div>
                     </div>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t("Vòng chia")}</div>
@@ -2219,7 +2219,7 @@ export const Tickets = () => {
                       {t("Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).")}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <CustomSelect 
+                      <CustomSelect
                         options={[
                           { value: '', label: t('-- Chọn Tư vấn viên --') },
                           ...allConsultants
@@ -2238,8 +2238,8 @@ export const Tickets = () => {
                         width="100%"
                         direction="up"
                       />
-                      <button 
-                        className="btn primary" 
+                      <button
+                        className="btn primary"
                         onClick={() => setConfirmReassignOpen(true)}
                         disabled={isReassigning || !reassignConsId}
                         style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
@@ -2252,7 +2252,7 @@ export const Tickets = () => {
                 )}
               </div>
             </div>
-            
+
           </div>
         )}
       </CustomModal>
@@ -2266,9 +2266,9 @@ export const Tickets = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ 
-              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', 
-              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
+              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
             }}>
               <AlertTriangle size={20} />
             </div>
@@ -2286,19 +2286,19 @@ export const Tickets = () => {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t("Hủy")}</button>
-            
+
             {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
               <>
-                <button 
-                  className="btn secondary" 
+                <button
+                  className="btn secondary"
                   onClick={() => handleReassign(false)}
                   style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
                 >
                   {t("Chuyển luôn, Không bù")}
                 </button>
-                <button 
-                  className="btn success" 
+                <button
+                  className="btn success"
                   onClick={() => handleReassign(true)}
                   style={{ background: '#10b981', color: '#fff', border: 'none' }}
                   disabled={isReassigning}
@@ -2307,8 +2307,8 @@ export const Tickets = () => {
                 </button>
               </>
             ) : (
-              <button 
-                className="btn primary" 
+              <button
+                className="btn primary"
                 onClick={() => handleReassign(false)}
                 disabled={isReassigning}
               >
@@ -2332,9 +2332,9 @@ export const Tickets = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-            <div style={{ 
-              width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)', 
-              color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)',
+              color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
             }}>
               <AlertTriangle size={20} />
             </div>
@@ -2372,13 +2372,13 @@ export const Tickets = () => {
 
           <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Hình thức chặn:")}</div>
-            
+
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-              <input 
-                type="radio" 
-                name="blockType" 
-                checked={!compensateBlock} 
-                onChange={() => setCompensateBlock(false)} 
+              <input
+                type="radio"
+                name="blockType"
+                checked={!compensateBlock}
+                onChange={() => setCompensateBlock(false)}
                 style={{ marginTop: '3px' }}
               />
               <div>
@@ -2387,18 +2387,18 @@ export const Tickets = () => {
               </div>
             </label>
 
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'flex-start', 
-              gap: '8px', 
-              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer', 
-              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1 
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
+              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
             }}>
-              <input 
-                type="radio" 
-                name="blockType" 
-                checked={compensateBlock} 
-                onChange={() => setCompensateBlock(true)} 
+              <input
+                type="radio"
+                name="blockType"
+                checked={compensateBlock}
+                onChange={() => setCompensateBlock(true)}
                 disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
                 style={{ marginTop: '3px' }}
               />
@@ -2409,7 +2409,7 @@ export const Tickets = () => {
                 </p>
               </div>
             </label>
-            
+
             {selectedLead?.assigned_to_name === '-' && (
               <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <AlertTriangle size={12} /> {t("Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.")}
@@ -2443,8 +2443,8 @@ export const Tickets = () => {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button 
-              className="btn outline" 
+            <button
+              className="btn outline"
               onClick={() => {
                 setConfirmBlockOpen(false);
                 setBlockReason('');
@@ -2454,8 +2454,8 @@ export const Tickets = () => {
             >
               {t("Hủy")}
             </button>
-            <button 
-              className="btn danger" 
+            <button
+              className="btn danger"
               onClick={handleBlockLead}
               disabled={isBlocking || !blockReason.trim()}
               style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -2475,7 +2475,7 @@ export const Tickets = () => {
         width="680px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
-          
+
           {/* Main switch toggle */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -2488,7 +2488,7 @@ export const Tickets = () => {
                 {t("Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.")}
               </span>
             </div>
-            <div 
+            <div
               onClick={() => setTicketAutoApprove(!ticketAutoApprove)}
               style={{
                 width: 48, height: 26, borderRadius: 13,

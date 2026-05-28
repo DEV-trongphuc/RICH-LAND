@@ -183,6 +183,25 @@ const parseBlacklistNote = (note: string) => {
   return { admin, time, reason };
 };
 
+const getResolutionDetail = (noteText: string) => {
+  if (!noteText) return null;
+  const normalized = noteText.replace(/\\n/g, '\n');
+  const lines = normalized.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (
+      trimmed.startsWith('[Duyệt AI]:') ||
+      trimmed.startsWith('[Từ chối AI]:') ||
+      trimmed.startsWith('[Blacklist AI]:') ||
+      trimmed.startsWith('[Xác nhận dưới chuẩn - Fallback]:')
+    ) {
+      return parseAIDecisionNote(trimmed);
+    }
+  }
+  return null;
+};
+
 const getUserAvatarByName = (_name: string) => {
   return undefined;
 };
@@ -261,6 +280,7 @@ export const Gatekeeper = () => {
   // Active tab state: queue (Hàng chờ duyệt), substandard (Dưới chuẩn), assigned (Giao lead)
   const [activeTab, setActiveTab] = useState<'queue' | 'substandard' | 'assigned'>('queue');
   const [tabCounts, setTabCounts] = useState<{ queue: number; substandard: number; assigned: number }>({ queue: 0, substandard: 0, assigned: 0 });
+  const [adminAvatars, setAdminAvatars] = useState<Record<string, string>>({});
 
   // Dashboard stats state for AI evaluation strip
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -385,6 +405,9 @@ export const Gatekeeper = () => {
         if (res.counts) {
           setTabCounts(res.counts);
         }
+        if (res.admin_avatars) {
+          setAdminAvatars(res.admin_avatars);
+        }
         if (data.length === 0 && !heldLeadsSearch) {
           setIsDynamicFlowExpanded(true);
         }
@@ -505,6 +528,7 @@ export const Gatekeeper = () => {
   const handleOpenApproveHeldLead = async (lead: any) => {
     setActioningHeldLead(lead);
     setHeldActionModalOpen('approve');
+    setHeldActionReason('');
     setSelectedApproveRoundId(lead.target_round_id ? Number(lead.target_round_id) : null);
     setPreviewLoadingId(lead.id);
     setPreviewedConsultant(null);
@@ -550,7 +574,8 @@ export const Gatekeeper = () => {
         method: 'POST',
         body: JSON.stringify({
           lead_id: currentLeadId,
-          round_id: selectedApproveRoundId
+          round_id: selectedApproveRoundId,
+          reason: heldActionReason
         })
       });
       if (res.success) {
@@ -1598,7 +1623,9 @@ export const Gatekeeper = () => {
                 <thead>
                   <tr style={{ background: 'var(--color-bg)' }}>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 180, minWidth: 180, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Vòng phân bổ dự kiến')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      {activeTab === 'assigned' ? t('Vòng đã phân bổ') : t('Vòng phân bổ dự kiến')}
+                    </th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Lý do AI tạm giữ')}</th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
                   </tr>
@@ -1616,6 +1643,7 @@ export const Gatekeeper = () => {
                           source: l.source || '-',
                           status: l.status,
                           assigned_to_name: l.consultant_name || '-',
+                          assigned_to_avatar: l.consultant_avatar || undefined,
                           round_name: l.round_name || '-',
                           created_at: l.created_at,
                           type: l.type || '-',
@@ -1639,18 +1667,22 @@ export const Gatekeeper = () => {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1.25rem 1.5rem', width: 180, minWidth: 180 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                        {l.consultant_name ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar src={l.consultant_avatar} name={l.consultant_name} size={32} aiScreened={!!(l.ai_screener_status && l.ai_screener_status !== 'not_screened')} />
+                            <div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{l.consultant_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                {l.round_name || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
                           <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
                             <Zap size={12} /> {l.round_name || '-'}
                           </div>
-                          {l.consultant_name && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{t('Giao cho:')}</span>
-                              <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{l.consultant_name}</span>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1724,49 +1756,87 @@ export const Gatekeeper = () => {
                               </button>
                             </>
                           ) : activeTab === 'substandard' ? (
-                            l.status === 'blacklisted' ? (
-                              <span style={{ 
-                                padding: '4px 12px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.75rem', 
-                                fontWeight: 700, 
-                                background: 'rgba(239, 68, 68, 0.16)', 
-                                color: 'var(--color-danger)', 
-                                border: '1px solid rgba(239, 68, 68, 0.35)',
-                                display: 'inline-flex',
-                                alignItems: 'center'
-                              }}>
-                                {t('Blacklist')}
-                              </span>
-                            ) : (
-                              <span style={{ 
-                                padding: '4px 12px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.75rem', 
-                                fontWeight: 700, 
-                                background: 'var(--color-danger-light)', 
-                                color: 'var(--color-danger)',
-                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                display: 'inline-flex',
-                                alignItems: 'center'
-                              }}>
-                                {t('Đã hủy')}
-                              </span>
-                            )
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                              {l.status === 'blacklisted' ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: 'rgba(239, 68, 68, 0.16)',
+                                  color: 'var(--color-danger)',
+                                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
+                                  {t('Blacklist')}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: 'var(--color-danger-light)',
+                                  color: 'var(--color-danger)',
+                                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
+                                  {t('Đã hủy')}
+                                </span>
+                              )}
+                              {(() => {
+                                const resDetail = getResolutionDetail(l.note || '');
+                                if (!resDetail) return null;
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                      <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
+                                      <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
+                                    </div>
+                                    {resDetail.time && (
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
+                                        {resDetail.time}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           ) : (
-                            <span style={{ 
-                              padding: '4px 12px', 
-                              borderRadius: '12px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: 700, 
-                              background: 'var(--color-success-light)', 
-                              color: 'var(--color-success)',
-                              border: '1px solid rgba(16, 185, 129, 0.25)',
-                              display: 'inline-flex',
-                              alignItems: 'center'
-                            }}>
-                              {t('Đã duyệt')}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                              <span style={{
+                                padding: '4px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: 'var(--color-success-light)',
+                                color: 'var(--color-success)',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                display: 'inline-flex',
+                                alignItems: 'center'
+                              }}>
+                                {t('Đã duyệt')}
+                              </span>
+                              {(() => {
+                                const resDetail = getResolutionDetail(l.note || '');
+                                if (!resDetail) return null;
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                      <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
+                                      <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
+                                    </div>
+                                    {resDetail.time && (
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
+                                        {resDetail.time}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -1790,6 +1860,7 @@ export const Gatekeeper = () => {
                       source: l.source || '-',
                       status: l.status,
                       assigned_to_name: l.consultant_name || '-',
+                      assigned_to_avatar: l.consultant_avatar || undefined,
                       round_name: l.round_name || '-',
                       created_at: l.created_at,
                       type: l.type || '-',
@@ -1831,17 +1902,42 @@ export const Gatekeeper = () => {
                         {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
                         {new Date(l.created_at).toLocaleDateString('vi-VN')}
                       </div>
-                      {l.round_name && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                          <Zap size={10} /> {l.round_name}
+                    </div>
+                  </div>
+
+                  <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+                  {/* Allocation Info (Sale & Round like /data) */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.75rem',
+                    padding: '2px 0'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>{t('Giao cho')}:</span>
+                      {l.consultant_name ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Avatar src={l.consultant_avatar} name={l.consultant_name} size={20} aiScreened={!!(l.ai_screener_status && l.ai_screener_status !== 'not_screened')} />
+                          <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{l.consultant_name}</span>
                         </div>
-                      )}
-                      {l.consultant_name && (
-                        <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2, textAlign: 'right' }}>
-                          {t('Giao:')} {l.consultant_name}
-                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                       )}
                     </div>
+                    {l.round_name && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: '#e0e7ff',
+                        color: '#4338ca',
+                        fontSize: '0.65rem',
+                        fontWeight: 700
+                      }}>
+                        {l.round_name}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
@@ -1933,49 +2029,75 @@ export const Gatekeeper = () => {
                         </button>
                       </>
                     ) : activeTab === 'substandard' ? (
-                      l.status === 'blacklisted' ? (
-                        <span style={{ 
-                          padding: '4px 12px', 
-                          borderRadius: '12px', 
-                          fontSize: '0.75rem', 
-                          fontWeight: 700, 
-                          background: 'rgba(239, 68, 68, 0.16)', 
-                          color: 'var(--color-danger)', 
-                          border: '1px solid rgba(239, 68, 68, 0.35)',
-                          display: 'inline-flex',
-                          alignItems: 'center'
-                        }}>
-                          {t('Blacklist')}
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          padding: '4px 12px', 
-                          borderRadius: '12px', 
-                          fontSize: '0.75rem', 
-                          fontWeight: 700, 
-                          background: 'var(--color-danger-light)', 
-                          color: 'var(--color-danger)',
-                          border: '1px solid rgba(239, 68, 68, 0.25)',
-                          display: 'inline-flex',
-                          alignItems: 'center'
-                        }}>
-                          {t('Đã hủy')}
-                        </span>
-                      )
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        {l.status === 'blacklisted' ? (
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: 'rgba(239, 68, 68, 0.16)',
+                            color: 'var(--color-danger)',
+                            border: '1px solid rgba(239, 68, 68, 0.35)',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}>
+                            {t('Blacklist')}
+                          </span>
+                        ) : (
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: 'var(--color-danger-light)',
+                            color: 'var(--color-danger)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}>
+                            {t('Đã hủy')}
+                          </span>
+                        )}
+                        {(() => {
+                          const resDetail = getResolutionDetail(l.note || '');
+                          if (!resDetail) return null;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                              <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
+                              <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
+                              {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     ) : (
-                      <span style={{ 
-                        padding: '4px 12px', 
-                        borderRadius: '12px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        background: 'var(--color-success-light)', 
-                        color: 'var(--color-success)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}>
-                        {t('Đã duyệt')}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <span style={{
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: 'var(--color-success-light)',
+                          color: 'var(--color-success)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          display: 'inline-flex',
+                          alignItems: 'center'
+                        }}>
+                          {t('Đã duyệt')}
+                        </span>
+                        {(() => {
+                          const resDetail = getResolutionDetail(l.note || '');
+                          if (!resDetail) return null;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                              <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
+                              <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
+                              {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2444,7 +2566,7 @@ export const Gatekeeper = () => {
                                     <div style={{ width: 140 }}>
                                       <CustomSelect
                                         options={[
-                                          { value: 'hold', label: t('Tạm giữ') },
+                                          { value: 'hold', label: t('Tạm giữ (Hành động)') },
                                           { value: 'skip', label: t('Bỏ qua/Duyệt') }
                                         ]}
                                         value={config.manual_action}
@@ -3104,12 +3226,12 @@ export const Gatekeeper = () => {
                             let statusBadge = null;
                             if (l.status === 'pending_approval') {
                               statusBadge = (
-                                <span style={{ 
-                                  padding: '3px 10px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.7rem', 
-                                  fontWeight: 700, 
-                                  background: 'var(--color-warning-light)', 
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background: 'var(--color-warning-light)',
                                   color: 'var(--color-warning)',
                                   border: '1px solid rgba(245, 158, 11, 0.25)',
                                   display: 'inline-flex',
@@ -3120,12 +3242,12 @@ export const Gatekeeper = () => {
                               );
                             } else if (l.status === 'rejected') {
                               statusBadge = (
-                                <span style={{ 
-                                  padding: '3px 10px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.7rem', 
-                                  fontWeight: 700, 
-                                  background: 'var(--color-danger-light)', 
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background: 'var(--color-danger-light)',
                                   color: 'var(--color-danger)',
                                   border: '1px solid rgba(239, 68, 68, 0.25)',
                                   display: 'inline-flex',
@@ -3136,13 +3258,13 @@ export const Gatekeeper = () => {
                               );
                             } else if (l.status === 'blacklisted') {
                               statusBadge = (
-                                <span style={{ 
-                                  padding: '3px 10px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.7rem', 
-                                  fontWeight: 700, 
-                                  background: 'rgba(239, 68, 68, 0.16)', 
-                                  color: 'var(--color-danger)', 
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background: 'rgba(239, 68, 68, 0.16)',
+                                  color: 'var(--color-danger)',
                                   border: '1px solid rgba(239, 68, 68, 0.35)',
                                   display: 'inline-flex',
                                   alignItems: 'center'
@@ -3152,12 +3274,12 @@ export const Gatekeeper = () => {
                               );
                             } else if (l.status === 'active') {
                               statusBadge = (
-                                <span style={{ 
-                                  padding: '3px 10px', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.7rem', 
-                                  fontWeight: 700, 
-                                  background: 'var(--color-success-light)', 
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background: 'var(--color-success-light)',
                                   color: 'var(--color-success)',
                                   border: '1px solid rgba(16, 185, 129, 0.25)',
                                   display: 'inline-flex',
@@ -3347,6 +3469,20 @@ export const Gatekeeper = () => {
                 {t("Không tìm thấy Sale hợp lệ trong vòng để nhận lead này.")}
               </div>
             )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+              {t("Lý do phê duyệt (Tùy chọn)")}
+            </label>
+            <textarea
+              className="form-input"
+              rows={2}
+              value={heldActionReason}
+              onChange={e => setHeldActionReason(e.target.value)}
+              placeholder={t("Ví dụ: Khách hàng tiềm năng, đã liên hệ trực tiếp...")}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
@@ -3539,14 +3675,14 @@ export const Gatekeeper = () => {
 
                       {/* Clean Note Card */}
                       <div style={{
-                        background: 'var(--color-warning-light)',
-                        border: '1px solid var(--color-warning-light)',
+                        background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)',
+                        border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef3c7',
                         padding: '1.25rem',
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
-                        boxShadow: 'none'
+                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.03)'
                       }}
                         className="premium-alert-card"
                       >
@@ -3585,11 +3721,11 @@ export const Gatekeeper = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                           {aiDecisionNotes.map((note, index) => {
                             const parsed = parseAIDecisionNote(note);
-                            
+
                             const isApprove = parsed.type === 'ai_approve';
                             const isBlacklist = parsed.type === 'ai_blacklist';
                             const isFallback = parsed.type === 'ai_fallback';
-                            
+
                             let cardBg = 'rgba(239, 68, 68, 0.08)';
                             let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
                             let iconBg = 'rgba(239, 68, 68, 0.15)';
@@ -3597,7 +3733,7 @@ export const Gatekeeper = () => {
                             let titleColor = 'var(--color-danger)';
                             let titleText = t("Từ chối bởi AI");
                             let IconComponent = Sparkles;
-                            
+
                             if (isApprove) {
                               cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
                               cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
@@ -3648,12 +3784,12 @@ export const Gatekeeper = () => {
                                   <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
                                 </div>
 
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '12px', 
-                                  paddingTop: '0.5rem', 
-                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  paddingTop: '0.5rem',
+                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)',
                                   flexWrap: 'wrap'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
@@ -3735,7 +3871,7 @@ export const Gatekeeper = () => {
                           <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                           <div>
                             <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('AI Pre-screener Tạm Giữ')}
+                              {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('Tạm giữ')}
                             </div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Domation AI - Screener')}
@@ -3749,7 +3885,7 @@ export const Gatekeeper = () => {
                     )}
 
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1.25rem' }}>{t("Xử lý phê duyệt")}</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <button
                         onClick={() => {
                           setSelectedLead(null);
@@ -3762,33 +3898,35 @@ export const Gatekeeper = () => {
                         {t("Duyệt & Phân bổ Lead")}
                       </button>
 
-                      <button
-                        onClick={() => {
-                          setSelectedLead(null);
-                          setActioningHeldLead(selectedLead);
-                          setHeldActionReason('');
-                          setHeldActionModalOpen('reject');
-                        }}
-                        className="btn primary"
-                        style={{ width: '100%', height: 46, background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
-                      >
-                        <XCircle size={18} />
-                        {t("Xác nhận dưới chuẩn")}
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedLead(null);
+                            setActioningHeldLead(selectedLead);
+                            setHeldActionReason('');
+                            setHeldActionModalOpen('blacklist');
+                          }}
+                          className="btn outline"
+                          style={{ width: 46, height: 46, padding: 0, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          title={t("Chặn số & Blacklist")}
+                        >
+                          <ShieldAlert size={20} />
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          setSelectedLead(null);
-                          setActioningHeldLead(selectedLead);
-                          setHeldActionReason('');
-                          setHeldActionModalOpen('blacklist');
-                        }}
-                        className="btn outline"
-                        style={{ width: '100%', height: 46, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
-                      >
-                        <ShieldAlert size={18} />
-                        {t("Chặn số & Blacklist")}
-                      </button>
+                        <button
+                          onClick={() => {
+                            setSelectedLead(null);
+                            setActioningHeldLead(selectedLead);
+                            setHeldActionReason('');
+                            setHeldActionModalOpen('reject');
+                          }}
+                          className="btn primary"
+                          style={{ flex: 1, height: 46, background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700, padding: '0 8px', whiteSpace: 'nowrap' }}
+                        >
+                          <XCircle size={18} />
+                          {t("Xác nhận dưới chuẩn")}
+                        </button>
+                      </div>
 
                       <div style={{
                         marginTop: '1rem', padding: '1rem',
@@ -3876,7 +4014,7 @@ export const Gatekeeper = () => {
                     ) : selectedLead.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
                       <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                          <Avatar name={selectedLead.assigned_to_name} size={40} />
+                           <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                           <div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Người tiếp nhận')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>

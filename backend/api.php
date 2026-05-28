@@ -4702,10 +4702,21 @@ switch ($action) {
         }
         $stmtRecords->close();
 
+        $adminAvatars = [];
+        $avatarQuery = $conn->query("SELECT name, avatar FROM accounts WHERE role = 'admin' OR role = 'superadmin'");
+        if ($avatarQuery) {
+            while ($row = $avatarQuery->fetch_assoc()) {
+                if (!empty($row['avatar'])) {
+                    $adminAvatars[$row['name']] = $row['avatar'];
+                }
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'data' => $data,
             'total_count' => $totalCount,
+            'admin_avatars' => $adminAvatars,
             'counts' => [
                 'queue' => $queueCount,
                 'substandard' => $substandardCount,
@@ -5042,7 +5053,11 @@ switch ($action) {
             }
 
             // Append admin note
-            $adminNote = "\n[Duyệt AI]: Phê duyệt phân bổ lead | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
+            $approveReason = trim($input['reason'] ?? '');
+            if (empty($approveReason)) {
+                $approveReason = 'Phê duyệt phân bổ lead';
+            }
+            $adminNote = "\n[Duyệt AI]: " . $approveReason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
             $note = $lead['note'] . $adminNote;
 
             // 2. Update Lead Table
