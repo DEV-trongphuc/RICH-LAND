@@ -1665,11 +1665,6 @@ export const DataList = () => {
                               titleText = t("Duyệt bởi AI");
                               IconComponent = CheckCircle2;
                             } else if (isBlacklist) {
-                              cardBg = 'rgba(0, 0, 0, 0.2)';
-                              cardBorder = '1px solid rgba(255, 255, 255, 0.08)';
-                              iconBg = 'rgba(255, 255, 255, 0.1)';
-                              iconColor = '#94a3b8';
-                              titleColor = '#cbd5e1';
                               titleText = t("Tự động chặn bởi AI (Blacklist)");
                               IconComponent = ShieldAlert;
                             } else if (isFallback) {
