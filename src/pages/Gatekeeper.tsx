@@ -2219,7 +2219,7 @@ export const Gatekeeper = () => {
                                 display: 'inline-flex',
                                 alignItems: 'center'
                               }}>
-                                {t('Đã duyệt')}
+                                {t('Đã giao')}
                               </span>
                               {(() => {
                                 const resDetail = getResolutionDetail(l.note || '');
@@ -2546,7 +2546,7 @@ export const Gatekeeper = () => {
                           display: 'inline-flex',
                           alignItems: 'center'
                         }}>
-                          {t('Đã duyệt')}
+                          {t('Đã giao')}
                         </span>
                         {(() => {
                           const resDetail = getResolutionDetail(l.note || '');
