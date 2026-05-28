@@ -749,9 +749,17 @@ export const Dashboard = () => {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         {(() => {
-                          const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string) => {
+                          const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
                             if (status === 'error' && reportStatus === 'approved') {
                               return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Ticket' };
+                            }
+                            if (status === 'pending_approval' && aiScreenerStatus === 'pending') {
+                              const now = new Date();
+                              const created = createdAt ? new Date(createdAt.replace(/-/g, '/')) : now;
+                              const diffMins = (now.getTime() - created.getTime()) / 60000;
+                              if (diffMins < 5) {
+                                return { bg: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', text: t('Chờ AI đánh giá') };
+                              }
                             }
                             switch (status) {
                               case 'assigned':
@@ -782,7 +790,7 @@ export const Dashboard = () => {
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
                             }
                           };
-                          const badge = getBadgeConfig(log.status, log.round_name, log.report_status);
+                          const badge = getBadgeConfig(log.status, log.round_name, log.report_status, log.ai_screener_status, log.created_at);
                           return (
                             <span className="badge" style={{ background: badge.bg, color: badge.color, border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
                               {badge.text}

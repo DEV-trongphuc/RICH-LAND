@@ -517,7 +517,12 @@ export const DataList = () => {
                 lead.status === 'fallback' ? t('Fallback') :
                   lead.status === 'silent' ? t('Chỉ đồng bộ') :
                     lead.status === 'reminder' ? t('Nhắc lại') :
-                      lead.status === 'pending_approval' ? t('Tạm giữ') :
+                      lead.status === 'pending_approval' ? (
+                      lead.ai_screener_status === 'pending' && 
+                      (new Date().getTime() - new Date(lead.created_at.replace(/-/g, '/')).getTime()) / 60000 < 5 
+                        ? t('Chờ AI đánh giá') 
+                        : t('Tạm giữ')
+                    ) :
                         lead.status === 'rejected' ? t('Dưới chuẩn') : lead.status,
           lead.source || '',
           lead.note || '',
@@ -571,12 +576,20 @@ export const DataList = () => {
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const paginatedLeads = leads;
 
-  const getStatusBadge = (status: string, reportStatus?: string) => {
+  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
     if (status === 'assigned' && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
     }
     if (status === 'error' && reportStatus === 'approved') {
       return <span className="badge warning">{t('Ticket')}</span>;
+    }
+    if (status === 'pending_approval' && aiScreenerStatus === 'pending') {
+      const now = new Date();
+      const created = createdAt ? new Date(createdAt.replace(/-/g, '/')) : now;
+      const diffMins = (now.getTime() - created.getTime()) / 60000;
+      if (diffMins < 5) {
+        return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Chờ AI đánh giá')}</span>;
+      }
     }
     switch (status) {
       case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
@@ -1195,7 +1208,7 @@ export const DataList = () => {
 
                         {/* Status badge */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          {getStatusBadge(lead.status, lead.report_status)}
+                          {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
                           {lead.status !== 'assigned' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
@@ -1347,7 +1360,7 @@ export const DataList = () => {
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                          {getStatusBadge(lead.status, lead.report_status)}
+                          {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
                           {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                         </div>
                       </td>
@@ -1553,7 +1566,7 @@ export const DataList = () => {
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
-                      {getStatusBadge(selectedLead.status, selectedLead.report_status)}
+                      {getStatusBadge(selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at)}
                     </div>
                   </div>
                 </div>
@@ -2088,7 +2101,16 @@ export const DataList = () => {
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
-                          {selectedLead.ai_evaluation || t('Tạm giữ')}
+                          {selectedLead.ai_evaluation || (
+                            (selectedLead.ai_screener_status === 'pending' && (() => {
+                              const now = new Date();
+                              const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
+                              const diffMins = (now.getTime() - created.getTime()) / 60000;
+                              return diffMins < 5;
+                            })())
+                              ? t('Đang chờ AI đánh giá...')
+                              : t('Tạm giữ')
+                          )}
                         </div>
                       </div>
                       <div>

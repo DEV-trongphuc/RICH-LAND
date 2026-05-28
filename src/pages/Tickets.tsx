@@ -2105,7 +2105,16 @@ export const Tickets = () => {
                       <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                       <div>
                         <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('Tạm giữ')}
+                          {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : (
+                            (selectedLead.ai_screener_status === 'pending' && (() => {
+                              const now = new Date();
+                              const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
+                              const diffMins = (now.getTime() - created.getTime()) / 60000;
+                              return diffMins < 5;
+                            })())
+                              ? t('Chờ AI đánh giá')
+                              : t('Tạm giữ')
+                          )}
                         </div>
                         <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
                           {t('Domation AI - Screener')}
@@ -2113,7 +2122,22 @@ export const Tickets = () => {
                       </div>
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-                      <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                      <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {
+                        selectedLead.ai_evaluation || (
+                          selectedLead.ai_screener_status === 'error' 
+                            ? t('Mất kết nối với dịch vụ AI.') 
+                            : (
+                                (selectedLead.ai_screener_status === 'pending' && (() => {
+                                  const now = new Date();
+                                  const created = selectedLead.created_at ? new Date(selectedLead.created_at.replace(/-/g, '/')) : now;
+                                  const diffMins = (now.getTime() - created.getTime()) / 60000;
+                                  return diffMins < 5;
+                                })())
+                                  ? t('Đang chờ AI đánh giá...')
+                                  : t('Không đạt chuẩn phân chia.')
+                              )
+                        )
+                      }
                     </div>
                   </div>
                 )}
