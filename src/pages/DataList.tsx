@@ -2094,7 +2094,7 @@ export const DataList = () => {
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} strokeWidth={2} /> {t('Nội dung AI đánh giá')}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 600 }}>
                         {selectedLead.ai_evaluation}
                       </div>
                     </div>
