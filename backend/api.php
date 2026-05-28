@@ -145,7 +145,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -4818,6 +4818,86 @@ switch ($action) {
             'stats' => [
                 'pending' => $totalCount
             ]
+        ]);
+        break;
+
+    case 'check_lead_duplicate':
+        require_once __DIR__ . '/webhook_logic.php';
+        $input = trim($_GET['input'] ?? '');
+        if (empty($input)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập số điện thoại hoặc email.']);
+            break;
+        }
+
+        $phone = '';
+        $email = '';
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            $email = $input;
+        } else {
+            $phone = normalizePhone($input);
+        }
+
+        $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+        if ($dupCheckMonths <= 0) {
+            $dupCheckMonths = 6;
+        }
+
+        $crmCheck = checkCRMInteraction($conn, $phone, $email, true);
+
+        // Fetch matched lead history
+        $leads = [];
+        $p1 = $phone;
+        $p2 = '84' . ltrim($phone, '0');
+        
+        $sql = "
+            SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+            FROM leads l
+            LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+            LEFT JOIN consultants c ON l.assigned_to = c.id
+            WHERE 1=0
+        ";
+        if (!empty($phone)) {
+            $sql = "
+                SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                LEFT JOIN consultants c ON l.assigned_to = c.id
+                WHERE l.phone = ? OR l.phone = ? OR l.phone LIKE ?
+                ORDER BY l.last_interaction_date DESC, l.created_at DESC
+            ";
+        } else if (!empty($email)) {
+            $sql = "
+                SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                LEFT JOIN consultants c ON l.assigned_to = c.id
+                WHERE l.email = ?
+                ORDER BY l.last_interaction_date DESC, l.created_at DESC
+            ";
+        }
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            if (!empty($phone)) {
+                $likePhone = '%' . $phone . '%';
+                $stmt->bind_param("sss", $p1, $p2, $likePhone);
+            } else if (!empty($email)) {
+                $stmt->bind_param("s", $email);
+            }
+            
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $leads[] = $row;
+            }
+            $stmt->close();
+        }
+
+        echo json_encode([
+            'success' => true,
+            'duplicate_check_months' => $dupCheckMonths,
+            'crm_check' => $crmCheck,
+            'history' => $leads
         ]);
         break;
 

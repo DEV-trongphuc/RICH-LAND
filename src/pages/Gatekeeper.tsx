@@ -9,7 +9,7 @@ import {
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight,
   Phone, Mail, Clock, Tag, XCircle,
   ExternalLink, Check, Shield, Save, Sparkles, X, Settings,
-  BarChart2
+  BarChart2, Search, CheckCircle2
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -533,6 +533,12 @@ export const Gatekeeper = () => {
   const [heldLeads, setHeldLeads] = useState<any[]>([]);
   const [heldLeadsTotalCount, setHeldLeadsTotalCount] = useState<number>(0);
   const [heldLeadsLoading, setHeldLeadsLoading] = useState<boolean>(false);
+  
+  // Duplicate check states
+  const [showDupCheckModal, setShowDupCheckModal] = useState(false);
+  const [dupCheckInput, setDupCheckInput] = useState('');
+  const [dupCheckLoading, setDupCheckLoading] = useState(false);
+  const [dupCheckResult, setDupCheckResult] = useState<any>(null);
   const [heldLeadsSearch, setHeldLeadsSearch] = useState<string>('');
   const [rounds, setRounds] = useState<any[]>([]);
 
@@ -674,6 +680,40 @@ export const Gatekeeper = () => {
       fetchStats();
     }
   }, [isStatsModalOpen, dateFilter]);
+
+  const handleRunDupCheck = async (overrideInput?: string) => {
+    const inputVal = (overrideInput ?? dupCheckInput).trim();
+    if (!inputVal) {
+      toast.error(t('Vui lòng nhập số điện thoại hoặc email.'));
+      return;
+    }
+    setDupCheckLoading(true);
+    setDupCheckResult(null);
+    try {
+      const res = await fetchAPI(`check_lead_duplicate&input=${encodeURIComponent(inputVal)}`);
+      if (res.success) {
+        setDupCheckResult(res);
+      } else {
+        toast.error(res.message || t('Lỗi kiểm tra trùng lặp.'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    }
+    setDupCheckLoading(false);
+  };
+
+  const handleOpenDupCheckFromDetail = (phone: string, email: string) => {
+    const input = (phone && phone !== '-') ? phone : (email && email !== '-' ? email : '');
+    if (input) {
+      setDupCheckInput(input);
+      setShowDupCheckModal(true);
+      setTimeout(() => {
+        handleRunDupCheck(input);
+      }, 50);
+    } else {
+      toast.error(t('Không có số điện thoại hoặc email để kiểm tra trùng.'));
+    }
+  };
 
   const fetchHeldLeads = async () => {
     setHeldLeadsLoading(true);
@@ -3978,6 +4018,39 @@ export const Gatekeeper = () => {
                   </div>
                 </div>
 
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDupCheckFromDetail(selectedLead.phone, selectedLead.email)}
+                    className="btn outline"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      justifyContent: 'center',
+                      height: '38px',
+                      borderRadius: '10px',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-primary-light)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = 'var(--color-primary-light)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>{t("Kiểm tra trùng lặp hệ thống")}</span>
+                  </button>
+                </div>
+
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t("Nguồn Data")}</div>
@@ -4440,6 +4513,228 @@ export const Gatekeeper = () => {
             </div>
           </div>
         )}
+      </CustomModal>
+
+      {/* Check Lead Duplicate Modal */}
+      <CustomModal
+        isOpen={showDupCheckModal}
+        onClose={() => {
+          setShowDupCheckModal(false);
+          setDupCheckInput('');
+          setDupCheckResult(null);
+        }}
+        title={t("Kiểm tra trùng Lead")}
+        width="650px"
+      >
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                {t("Số điện thoại hoặc Email")}
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                value={dupCheckInput}
+                onChange={e => setDupCheckInput(e.target.value)}
+                placeholder={t("Ví dụ: 0945473306 hoặc test@gmail.com...")}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    handleRunDupCheck();
+                  }
+                }}
+                style={{ width: '100%', height: '40px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <button
+              onClick={() => handleRunDupCheck()}
+              disabled={dupCheckLoading}
+              className="btn primary"
+              style={{ height: '40px', padding: '0 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {dupCheckLoading ? (
+                <RefreshCw size={14} className="spin" />
+              ) : (
+                <Search size={14} />
+              )}
+              <span>{t("Kiểm tra")}</span>
+            </button>
+          </div>
+
+          {dupCheckResult && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Conclusion Banner */}
+              {(() => {
+                const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
+                const history = dupCheckResult.history || [];
+
+                if (history.length === 0) {
+                  return (
+                    <div style={{
+                      padding: '1rem 1.25rem',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1.5px solid var(--color-success)',
+                      borderRadius: '12px',
+                      color: 'var(--color-success)',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5
+                    }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <CheckCircle2 size={16} />
+                        {t("Không tìm thấy dữ liệu trùng")}
+                      </div>
+                      <div>
+                        {t("Số điện thoại/Email này hoàn toàn mới trong hệ thống. Có thể tiếp nhận phân bổ bình thường.")}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Calculate age of the latest matched lead
+                const latest = history[0];
+                const lastDateStr = latest.last_interaction_date || latest.created_at;
+                const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                const now = new Date();
+                const diffMs = now.getTime() - lastInt.getTime();
+                const diffMins = diffMs / 60000;
+                const diffHours = diffMins / 60;
+                const diffDays = diffHours / 24;
+                const diffMonths = diffDays / 30;
+
+                const isDupUnderN = diffMonths < dupCheckMonths;
+
+                if (isDupUnderN) {
+                  return (
+                    <div style={{
+                      padding: '1rem 1.25rem',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1.5px dashed var(--color-danger)',
+                      borderRadius: '12px',
+                      color: 'var(--color-danger)',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5
+                    }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <AlertTriangle size={16} />
+                        {t("Trùng lặp dưới")} {dupCheckMonths} {t("tháng")}
+                      </div>
+                      <div>
+                        {t("Lần tương tác gần nhất cách đây")}{' '}
+                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                        {t("lúc")}{' '}
+                        <code>{lastDateStr}</code>.<br />
+                        {t("Lead mới sẽ được phân phối dạng")} <strong>duplicate/reminder</strong> {t("về cho")} <strong>{latest.consultant_name || t("Sale cũ")}</strong>.
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div style={{
+                      padding: '1rem 1.25rem',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1.5px solid var(--color-success)',
+                      borderRadius: '12px',
+                      color: 'var(--color-success)',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5
+                    }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <CheckCircle2 size={16} />
+                        {t("Đủ điều kiện phân bổ mới")} ({t("Trùng")} &gt; {dupCheckMonths} {t("tháng")})
+                      </div>
+                      <div>
+                        {t("Lần tương tác gần nhất cách đây")}{' '}
+                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                        {t("lúc")}{' '}
+                        <code>{lastDateStr}</code>.<br />
+                        {t("Khoảng cách vượt quá hạn quy định")}{' '}
+                        <strong>{dupCheckMonths} {t("tháng")}</strong>. {t("Hệ thống sẽ phân bổ mới bình thường.")}
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
+
+              {/* History list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {t("Lịch sử lưu vết")} ({dupCheckResult.history?.length || 0})
+                </h4>
+                <div style={{
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '10px'
+                }} className="custom-scrollbar">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("ID / Họ tên")}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Nguồn / Vòng")}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Trạng thái")}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Sale")}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Thời gian")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dupCheckResult.history && dupCheckResult.history.length > 0 ? (
+                        dupCheckResult.history.map((h: any) => {
+                          const lastDateStr = h.last_interaction_date || h.created_at;
+                          const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                          const now = new Date();
+                          const diffMs = now.getTime() - lastInt.getTime();
+                          const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+
+                          let statusClass = 'muted';
+                          let statusText = h.status;
+                          if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
+                          else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
+                          else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
+                          else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
+
+                          return (
+                            <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                                #{h.id}
+                                <div style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{h.name}</div>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                {h.source}
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{h.round_name || '-'}</div>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                                {h.consultant_name || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                <div>{h.created_at}</div>
+                                <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
+                                  {diffMonths} {t("tháng trước")}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                            {t("Không có dữ liệu lịch sử.")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </CustomModal>
 
       <style>{`

@@ -125,6 +125,37 @@ export const processMockRequest = async (action: string, payload?: any): Promise
     case 'approve_report':
       return { success: true, message: 'Đã duyệt (Demo)' };
 
+    case 'check_lead_duplicate':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const input = params.get('input') || '';
+        const isDup = input.includes('0945473306') || input.toLowerCase().includes('test');
+        return {
+          success: true,
+          duplicate_check_months: 6,
+          crm_check: {
+            isDuplicate: isDup,
+            monthsSinceLastInteraction: isDup ? 3 : 0,
+            assignedName: isDup ? 'Hải Đăng' : 'Không rõ',
+            lastInteractionDate: isDup ? '2026-05-10 10:00:00' : null
+          },
+          history: isDup ? [
+            {
+              id: 1042,
+              name: 'Nguyễn Văn Trùng',
+              phone: input,
+              email: input.includes('@') ? input : 'trung@gmail.com',
+              source: 'Facebook Ads',
+              round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads',
+              status: 'active',
+              consultant_name: 'Hải Đăng',
+              created_at: '2026-05-10 10:00:00',
+              last_interaction_date: '2026-05-10 10:00:00'
+            }
+          ] : []
+        };
+      }
+
     case 'reject_report':
       return { success: true, message: 'Đã từ chối (Demo)' };
 
