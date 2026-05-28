@@ -1784,7 +1784,7 @@ switch ($action) {
                     while ($rowF = $resF->fetch_assoc()) {
                         $rId = $rowF['round_id'];
                         $rName = $rowF['round_name'];
-                        
+
                         $stmtOther = $conn->prepare("
                             SELECT COUNT(*) as cnt 
                             FROM round_consultants rc 
@@ -1793,9 +1793,9 @@ switch ($action) {
                         ");
                         $stmtOther->bind_param("ii", $rId, $id);
                         $stmtOther->execute();
-                        $otherActiveCount = (int)($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
+                        $otherActiveCount = (int) ($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
                         $stmtOther->close();
-                        
+
                         if ($otherActiveCount === 0) {
                             throw new Exception("Không thể ngưng hoạt động hoặc cho tạm nghỉ TVV này vì họ là người hoạt động duy nhất trong vòng dự phòng (fallback): $rName.");
                         }
@@ -1925,7 +1925,7 @@ switch ($action) {
                 while ($rowF = $resF->fetch_assoc()) {
                     $rId = $rowF['round_id'];
                     $rName = $rowF['round_name'];
-                    
+
                     $stmtOther = $conn->prepare("
                         SELECT COUNT(*) as cnt 
                         FROM round_consultants rc 
@@ -1934,9 +1934,9 @@ switch ($action) {
                     ");
                     $stmtOther->bind_param("ii", $rId, $id);
                     $stmtOther->execute();
-                    $otherActiveCount = (int)($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $otherActiveCount = (int) ($stmtOther->get_result()->fetch_assoc()['cnt'] ?? 0);
                     $stmtOther->close();
-                    
+
                     if ($otherActiveCount === 0) {
                         throw new Exception("Không thể xóa TVV này vì họ là người hoạt động duy nhất trong vòng dự phòng (fallback): $rName.");
                     }
@@ -2488,14 +2488,14 @@ switch ($action) {
 
             $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
             if ($is_fallback) {
-                if ((int)$status !== 1) {
+                if ((int) $status !== 1) {
                     throw new Exception("Không thể tắt hoạt động của vòng dự phòng (fallback).");
                 }
                 $hasActiveConsultant = false;
                 if (!empty($consultants)) {
                     $inClause = implode(',', array_map('intval', $consultants));
                     $chkActive = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE id IN ($inClause) AND status = 'active'");
-                    if ($chkActive && (int)$chkActive->fetch_assoc()['cnt'] > 0) {
+                    if ($chkActive && (int) $chkActive->fetch_assoc()['cnt'] > 0) {
                         $hasActiveConsultant = true;
                     }
                 }
@@ -2575,14 +2575,14 @@ switch ($action) {
             $is_fallback = filter_var($input['is_fallback'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $isFallbackRound = $is_fallback || in_array($id, getSystemFallbackRoundIds($conn));
             if ($isFallbackRound) {
-                if ((int)$status !== 1) {
+                if ((int) $status !== 1) {
                     throw new Exception("Không thể tắt hoạt động của vòng dự phòng (fallback).");
                 }
                 $hasActiveConsultant = false;
                 if (!empty($consultants)) {
                     $inClause = implode(',', array_map('intval', $consultants));
                     $chkActive = $conn->query("SELECT COUNT(*) as cnt FROM consultants WHERE id IN ($inClause) AND status = 'active'");
-                    if ($chkActive && (int)$chkActive->fetch_assoc()['cnt'] > 0) {
+                    if ($chkActive && (int) $chkActive->fetch_assoc()['cnt'] > 0) {
                         $hasActiveConsultant = true;
                     }
                 }
@@ -3674,7 +3674,7 @@ switch ($action) {
                 // Send Email to Sale
                 if (!empty($consultant['email'])) {
                     require_once __DIR__ . '/mailer.php';
-                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Tự Động Duyệt - $lName";
+                    $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Tự Động Duyệt - $lName";
                     $emailBody = "<h3>Báo cáo lỗi Data được tự động phê duyệt</h3>
                                   <p>Chào $cName,</p>
                                   <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được hệ thống tự động phê duyệt.</p>
@@ -4266,7 +4266,7 @@ switch ($action) {
                     $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
                     $ccString = implode(',', $ccEmailsArr);
 
-                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                    $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Duyệt - $lName";
                     $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
                                   <p>Chào $cName,</p>
                                   <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
@@ -4536,7 +4536,7 @@ switch ($action) {
                     $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
                     $ccString = implode(',', $ccEmailsArr);
 
-                    $emailSubj = "[Domation DATA] Ticket Lỗi Data Bị Từ Chối - $lName";
+                    $emailSubj = "[BOT] Ticket Lỗi Data Bị Từ Chối - $lName";
                     $emailBody = "<h3>Báo cáo lỗi Data bị từ chối</h3>
                                   <p>Chào $cName,</p>
                                   <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã bị Quản trị viên <strong>$adminName</strong> từ chối.</p>
@@ -4573,8 +4573,14 @@ switch ($action) {
         $params = [];
         $types = "";
 
-        // Status is always pending_approval for this gatekeeper queue
-        $conds[] = "l.status = 'pending_approval'";
+        // Filter by queue status, rejected substandard, or approved substandard leads
+        if ($status === 'rejected') {
+            $conds[] = "l.status IN ('rejected', 'blacklisted')";
+        } else if ($status === 'approved') {
+            $conds[] = "(l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))";
+        } else {
+            $conds[] = "l.status = 'pending_approval'";
+        }
 
         // Search text filter
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -4622,21 +4628,56 @@ switch ($action) {
 
         $where = count($conds) > 0 ? "WHERE " . implode(" AND ", $conds) : "";
 
-        // Query 1: Get stats of pending_approval leads
-        $statsSql = "SELECT COUNT(*) as cnt FROM leads l $where";
-        $stmtStats = $conn->prepare($statsSql);
-        if (count($params) > 0) {
-            $stmtStats->bind_param($types, ...$params);
+        // Query 1: Get counts for all tabs under current search and date filters
+        $commonConds = [];
+        $commonParams = [];
+        $commonTypes = "";
+        if ($search !== '') {
+            $commonConds[] = "(l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)";
+            $commonParams[] = $searchVal;
+            $commonParams[] = $searchVal;
+            $commonParams[] = $searchVal;
+            $commonTypes .= "sss";
         }
-        $stmtStats->execute();
-        $totalCount = (int) ($stmtStats->get_result()->fetch_assoc()['cnt'] ?? 0);
-        $stmtStats->close();
+        if ($dateCondition !== "1=1") {
+            $commonConds[] = $dateCondition;
+        }
+        $whereCommon = count($commonConds) > 0 ? "WHERE " . implode(" AND ", $commonConds) : "";
+
+        $countsSql = "
+            SELECT 
+                SUM(CASE WHEN l.status = 'pending_approval' THEN 1 ELSE 0 END) as queue_cnt,
+                SUM(CASE WHEN l.status IN ('rejected', 'blacklisted') THEN 1 ELSE 0 END) as substandard_cnt,
+                SUM(CASE WHEN l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %') THEN 1 ELSE 0 END) as assigned_cnt
+            FROM leads l
+            $whereCommon
+        ";
+        $stmtCounts = $conn->prepare($countsSql);
+        if (count($commonParams) > 0) {
+            $stmtCounts->bind_param($commonTypes, ...$commonParams);
+        }
+        $stmtCounts->execute();
+        $countsRes = $stmtCounts->get_result()->fetch_assoc();
+        $stmtCounts->close();
+
+        $queueCount = (int) ($countsRes['queue_cnt'] ?? 0);
+        $substandardCount = (int) ($countsRes['substandard_cnt'] ?? 0);
+        $assignedCount = (int) ($countsRes['assigned_cnt'] ?? 0);
+
+        if ($status === 'rejected') {
+            $totalCount = $substandardCount;
+        } else if ($status === 'approved') {
+            $totalCount = $assignedCount;
+        } else {
+            $totalCount = $queueCount;
+        }
 
         // Query 2: Get paginated records
         $recordsSql = "
-            SELECT l.*, dr.round_name
+            SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
             FROM leads l
             LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+            LEFT JOIN consultants c ON l.assigned_to = c.id
             $where
             ORDER BY l.created_at DESC
             LIMIT ? OFFSET ?
@@ -4665,6 +4706,11 @@ switch ($action) {
             'success' => true,
             'data' => $data,
             'total_count' => $totalCount,
+            'counts' => [
+                'queue' => $queueCount,
+                'substandard' => $substandardCount,
+                'assigned' => $assignedCount
+            ],
             'stats' => [
                 'pending' => $totalCount
             ]
@@ -4717,8 +4763,8 @@ switch ($action) {
             $totalLeadsSql = "SELECT COUNT(*) as cnt FROM leads l WHERE $dateCondition";
             $totalLeads = (int) ($safeQuery($totalLeadsSql)->fetch_assoc()['cnt'] ?? 0);
 
-            // Total under-standard leads (giam & huy)
-            $totalBelowStandardSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition";
+            // Total under-standard leads (giam & huy & approved)
+            $totalBelowStandardSql = "SELECT COUNT(*) as cnt FROM leads l WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition";
             $totalBelowStandard = (int) ($safeQuery($totalBelowStandardSql)->fetch_assoc()['cnt'] ?? 0);
 
             // Total held (giam)
@@ -4739,7 +4785,7 @@ switch ($action) {
                     COUNT(*) as cnt
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
-                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
                 GROUP BY l.target_round_id, dr.round_name
                 ORDER BY cnt DESC
             ";
@@ -4763,7 +4809,7 @@ switch ($action) {
                     COUNT(*) as cnt
                 FROM leads l
                 LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
                 GROUP BY l.connection_id, sc.sheet_name, l.source
                 ORDER BY cnt DESC
             ";
@@ -4785,7 +4831,7 @@ switch ($action) {
                     COALESCE(NULLIF(TRIM(l.ai_evaluation), ''), NULLIF(TRIM(l.note), ''), 'Chưa rõ lý do') as reason_name,
                     COUNT(*) as cnt
                 FROM leads l
-                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
                 GROUP BY reason_name
                 ORDER BY cnt DESC
                 LIMIT 5
@@ -4810,7 +4856,7 @@ switch ($action) {
                 SELECT l.id, l.name, l.phone, l.email, l.source, l.note, l.ai_evaluation, l.status, l.created_at, dr.round_name
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
-                WHERE l.status IN ('pending_approval', 'rejected', 'blacklisted') AND $dateCondition
+                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
                 ORDER BY l.created_at DESC
             ";
             $recentRes = $safeQuery($recentSql);
@@ -5000,7 +5046,7 @@ switch ($action) {
             $note = $lead['note'] . $adminNote;
 
             // 2. Update Lead Table
-            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'passed', target_round_id = ? WHERE id = ?");
+            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), target_round_id = ? WHERE id = ?");
             $updLead->bind_param("isii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
             $updLead->execute();
             $updLead->close();
@@ -5587,7 +5633,7 @@ switch ($action) {
                 }
             }
             if ($k === 'fallback_round_id') {
-                $val = (int)$v;
+                $val = (int) $v;
                 if ($val > 0) {
                     $chk = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
                     $chk->bind_param("i", $val);
@@ -5598,7 +5644,7 @@ switch ($action) {
                         echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ dự phòng (ID: $val)."]);
                         break 2;
                     }
-                    if ((int)$r['is_active'] !== 1) {
+                    if ((int) $r['is_active'] !== 1) {
                         echo json_encode(['success' => false, 'message' => "Vòng phân bổ dự phòng '{$r['round_name']}' đang ngưng hoạt động, không thể chọn làm fallback."]);
                         break 2;
                     }
@@ -5610,7 +5656,7 @@ switch ($action) {
                     ");
                     $chkActive->bind_param("i", $val);
                     $chkActive->execute();
-                    $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $activeCount = (int) ($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
                     $chkActive->close();
                     if ($activeCount === 0) {
                         echo json_encode(['success' => false, 'message' => "Vòng phân bổ dự phòng '{$r['round_name']}' phải có ít nhất một TVV đang hoạt động."]);
@@ -5619,7 +5665,7 @@ switch ($action) {
                 }
             }
             if ($k === 'ai_screener_below_standard_fallback_round_id') {
-                $val = (int)$v;
+                $val = (int) $v;
                 if ($val > 0) {
                     $chk = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
                     $chk->bind_param("i", $val);
@@ -5630,7 +5676,7 @@ switch ($action) {
                         echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ dưới chuẩn (ID: $val)."]);
                         break 2;
                     }
-                    if ((int)$r['is_active'] !== 1) {
+                    if ((int) $r['is_active'] !== 1) {
                         echo json_encode(['success' => false, 'message' => "Vòng phân bổ dưới chuẩn '{$r['round_name']}' đang ngưng hoạt động, không thể chọn làm fallback."]);
                         break 2;
                     }
@@ -5642,7 +5688,7 @@ switch ($action) {
                     ");
                     $chkActive->bind_param("i", $val);
                     $chkActive->execute();
-                    $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $activeCount = (int) ($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
                     $chkActive->close();
                     if ($activeCount === 0) {
                         echo json_encode(['success' => false, 'message' => "Vòng phân bổ dưới chuẩn '{$r['round_name']}' phải có ít nhất một TVV đang hoạt động."]);
@@ -5702,7 +5748,7 @@ switch ($action) {
                             echo json_encode(['success' => false, 'message' => "Không tìm thấy vòng phân bổ fallback (ID: $fb_round) cho nhóm '$cfgName'."]);
                             break 3;
                         }
-                        if ((int)$r['is_active'] !== 1) {
+                        if ((int) $r['is_active'] !== 1) {
                             echo json_encode(['success' => false, 'message' => "Vòng phân bổ fallback '{$r['round_name']}' của nhóm '$cfgName' đang ngưng hoạt động, không thể chọn làm fallback."]);
                             break 3;
                         }
@@ -5714,7 +5760,7 @@ switch ($action) {
                         ");
                         $chkActive->bind_param("i", $fb_round);
                         $chkActive->execute();
-                        $activeCount = (int)($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
+                        $activeCount = (int) ($chkActive->get_result()->fetch_assoc()['cnt'] ?? 0);
                         $chkActive->close();
                         if ($activeCount === 0) {
                             echo json_encode(['success' => false, 'message' => "Vòng phân bổ fallback '{$r['round_name']}' của nhóm '$cfgName' phải có ít nhất một TVV đang hoạt động."]);
@@ -7627,7 +7673,7 @@ switch ($action) {
         $aiEnabled = 0;
         $aiEnabledRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'ai_screener_enabled'");
         if ($aiEnabledRes && $row = $aiEnabledRes->fetch_assoc()) {
-            $aiEnabled = (int)$row['setting_value'];
+            $aiEnabled = (int) $row['setting_value'];
         }
 
         echo json_encode([
@@ -9748,7 +9794,8 @@ switch ($action) {
 
         while (($row = fgetcsv($stream)) !== FALSE) {
             $row = array_map(function ($val) {
-                return trim($val ?? '', "\" "); }, $row);
+                return trim($val ?? '', "\" ");
+            }, $row);
             if ($rowCount === 0) {
                 $headers = $row;
                 $rowCount++;
@@ -9887,7 +9934,7 @@ switch ($action) {
                     $chkRound->execute();
                     $chkRes = $chkRound->get_result()->fetch_assoc();
                     $chkRound->close();
-                    if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+                    if (!$chkRes || (int) $chkRes['is_active'] !== 1) {
                         $assignedRoundId = null;
                     }
                 }
@@ -9929,7 +9976,7 @@ switch ($action) {
                         $chkFb->execute();
                         $chkFbRes = $chkFb->get_result()->fetch_assoc();
                         $chkFb->close();
-                        if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                        if ($chkFbRes && (int) $chkFbRes['is_active'] === 1) {
                             $assignedRoundId = $fbRoundId;
                             $isFallback = true;
                         }
