@@ -9,14 +9,14 @@ const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
-  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
-  { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
+  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
-  { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
+  { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
+  { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }: { isCollapsed: boolean; onToggleCollapse: () => void; isMobileOpen?: boolean; onMobileClose?: () => void }) => {
@@ -36,18 +36,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           fetchAPI('get_reports&status=pending'),
           fetchAPI('get_held_leads&pageSize=1&date=all')
         ]);
-        
+
         let countReports = 0;
         let countHeld = 0;
-        
+
         if (resReports.success) {
           countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
         }
-        
+
         if (resHeld.success) {
           countHeld = resHeld.total_count ?? 0;
         }
-        
+
         setPendingTickets(countReports);
         setHeldLeadsCount(countHeld);
       } catch { /* silent */ }
