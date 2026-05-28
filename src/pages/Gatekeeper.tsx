@@ -1637,7 +1637,7 @@ export const Gatekeeper = () => {
                           phone: l.phone,
                           email: l.email || '-',
                           source: l.source || '-',
-                          status: l.status,
+                          status: l.log_status || l.status,
                           assigned_to_name: l.consultant_name || '-',
                           assigned_to_avatar: l.consultant_avatar || undefined,
                           round_name: l.round_name || '-',
@@ -1682,18 +1682,16 @@ export const Gatekeeper = () => {
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {activeTab === 'assigned' ? (
-                            <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <CheckCircle size={12} /> {l.status === 'assigned' ? t('Đã chia') : t('Đã duyệt')}
-                            </span>
-                          ) : l.ai_screener_status === 'error' ? (
-                            <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
-                            </span>
-                          ) : (
-                            <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <ShieldAlert size={12} /> {t('Dưới chuẩn')}
-                            </span>
+                          {activeTab !== 'assigned' && (
+                            l.ai_screener_status === 'error' ? (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
+                              </span>
+                            ) : (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <ShieldAlert size={12} /> {t('Dưới chuẩn')}
+                              </span>
+                            )
                           )}
                           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
                             <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
@@ -1858,7 +1856,7 @@ export const Gatekeeper = () => {
                       phone: l.phone,
                       email: l.email || '-',
                       source: l.source || '-',
-                      status: l.status,
+                      status: l.log_status || l.status,
                       assigned_to_name: l.consultant_name || '-',
                       assigned_to_avatar: l.consultant_avatar || undefined,
                       round_name: l.round_name || '-',
@@ -1945,7 +1943,7 @@ export const Gatekeeper = () => {
                   {/* AI Evaluation details callout */}
                   <div style={{
                     background: activeTab === 'assigned'
-                      ? 'rgba(16, 185, 129, 0.04)'
+                      ? 'var(--color-bg-alt)'
                       : l.ai_screener_status === 'error'
                         ? 'rgba(245, 158, 11, 0.04)'
                         : 'rgba(239, 68, 68, 0.04)',
@@ -1955,30 +1953,25 @@ export const Gatekeeper = () => {
                     flexDirection: 'column',
                     gap: '6px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {activeTab === 'assigned' ? (
-                        <>
-                          <CheckCircle size={12} color="var(--color-success)" />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-success)' }}>
-                            {l.status === 'assigned' ? t('Đã chia') : t('Đã duyệt')}
-                          </span>
-                        </>
-                      ) : l.ai_screener_status === 'error' ? (
-                        <>
-                          <AlertTriangle size={12} color="#d97706" />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
-                            {t('Lỗi kết nối AI (AI Error)')}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert size={12} color="var(--color-danger)" />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
-                            {t('Dưới chuẩn')}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    {activeTab !== 'assigned' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {l.ai_screener_status === 'error' ? (
+                          <>
+                            <AlertTriangle size={12} color="#d97706" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
+                              {t('Lỗi kết nối AI (AI Error)')}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldAlert size={12} color="var(--color-danger)" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
+                              {t('Dưới chuẩn')}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
                       <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
@@ -3644,8 +3637,12 @@ export const Gatekeeper = () => {
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)' }}>{t("Blacklist")}</span>
                       ) : selectedLead.status === 'rejected' ? (
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>{t("Đã hủy (Dưới chuẩn)")}</span>
-                      ) : selectedLead.status === 'approved' || selectedLead.status === 'assigned' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>{t("Đã duyệt")}</span>
+                      ) : selectedLead.status === 'approved' || selectedLead.status === 'assigned' || selectedLead.status === 'active' ? (
+                        selectedLead.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
+                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t("Đã chia")}</span>
+                        ) : (
+                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>{t("Đã duyệt")}</span>
+                        )
                       ) : (
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>{t("AI Pre-screener")}</span>
                       )}

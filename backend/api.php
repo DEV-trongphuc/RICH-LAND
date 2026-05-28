@@ -4674,7 +4674,8 @@ switch ($action) {
 
         // Query 2: Get paginated records
         $recordsSql = "
-            SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+            SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar,
+                   (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1) as log_status
             FROM leads l
             LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
             LEFT JOIN consultants c ON l.assigned_to = c.id
