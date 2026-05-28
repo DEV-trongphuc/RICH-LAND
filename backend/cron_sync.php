@@ -1238,6 +1238,40 @@ foreach ($connections as $connItem) {
                     }
                 }
 
+                if ($aiScreenerResult && $aiScreenerResult['status'] === 'pending') {
+                    $conn->begin_transaction();
+                    try {
+                        if ($crmCheckResult['leadExists']) {
+                            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connItem['id'], null, $name);
+                        } else {
+                            $leadId = insertLead($conn, $rowData, null, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                        }
+                        
+                        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = 'pending', ai_evaluation = 'Chờ AI đánh giá', assigned_to = NULL WHERE id = ?");
+                        $updHeld->bind_param("ii", $targetRoundId, $leadId);
+                        $updHeld->execute();
+                        $updHeld->close();
+                        
+                        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Đang chờ AI đánh giá (Chạy ngầm - đồng bộ hệ thống)', false);
+                        
+                        // Record hash so we don't process this row again on next cron run
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                        
+                        // Post-commit: trigger live write-back
+                        triggerTwoWaySync($conn, $leadId);
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                        logSync("Transaction failed for queued AI row: " . $txE->getMessage());
+                        continue;
+                    }
+                    
+                    continue;
+                }
+
                 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
                     $conn->begin_transaction();
                     try {

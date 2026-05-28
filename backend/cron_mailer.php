@@ -192,9 +192,65 @@ function runMailerCron($conn) {
     echo "[" . date('Y-m-d H:i:s') . "] Processed $successCount sent, $failCount failed.\n";
 }
 
+function runZaloMailerCron($conn) {
+    require_once __DIR__ . '/zalo_bot.php';
+
+    // 1. Kéo tối đa 50 tin nhắn Zalo đang chờ gửi hoặc bị lỗi dưới 3 lần
+    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts FROM zalo_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
+    if (!$res || $res->num_rows === 0) {
+        echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable Zalo messages to send.\n";
+        return;
+    }
+
+    echo "[" . date('Y-m-d H:i:s') . "] Found " . $res->num_rows . " Zalo messages to process. Processing...\n";
+
+    $successCount = 0;
+    $failCount = 0;
+
+    $updSuccessStmt = $conn->prepare("UPDATE zalo_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
+    $updFailStmt = $conn->prepare("UPDATE zalo_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
+
+    while ($row = $res->fetch_assoc()) {
+        $msgId = $row['id'];
+        $botToken = $row['bot_token'];
+        $chatId = $row['chat_id'];
+        $text = $row['body_text'];
+
+        // Gọi trực tiếp cURL bằng cách truyền $sync = true
+        $isSent = sendZaloMessage($botToken, $chatId, $text, true);
+
+        if ($isSent) {
+            $updSuccessStmt->bind_param("i", $msgId);
+            $updSuccessStmt->execute();
+            $successCount++;
+        } else {
+            $err = "Zalo API Send Failed (see zalo_send_log.txt for details)";
+            $updFailStmt->bind_param("si", $err, $msgId);
+            $updFailStmt->execute();
+            $failCount++;
+        }
+
+        // Nghỉ 100ms giữa các tin nhắn để tránh bị rate limit từ Zalo Bot API
+        usleep(100000);
+    }
+
+    $updSuccessStmt->close();
+    $updFailStmt->close();
+
+    // 2. Dọn dẹp tin nhắn cũ đã gửi thành công sau 30 ngày tránh đầy bảng
+    try {
+        $conn->query("DELETE FROM zalo_queue WHERE status = 'sent' AND sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    } catch (Exception $e) {
+        error_log("Failed to prune Zalo queue: " . $e->getMessage());
+    }
+
+    echo "[" . date('Y-m-d H:i:s') . "] Zalo: Processed $successCount sent, $failCount failed.\n";
+}
+
 // Nếu gọi trực tiếp từ CLI hoặc Cron
 if (php_sapi_name() === 'cli' || isset($_GET['run'])) {
     runMailerCron($conn);
+    runZaloMailerCron($conn);
     $conn->close();
 }
 ?>

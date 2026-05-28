@@ -1792,7 +1792,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
         . "Nếu dữ liệu nghi ngờ spam, rác, phá hoặc không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích lý do tại sao cho passed/failed (nhận định chuyên nghiệp như một trợ lý kiểm duyệt không lập quy tắc một cách máy móc).";
+        . "- reason: giải thích lý do (nhận định chuyên nghiệp như một trợ lý kiểm duyệt không lập lại quy tắc một cách máy móc).";
 
     $payload = [
         'contents' => [
@@ -2113,12 +2113,12 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
                         // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                         $result = $manualResult;
                     } else {
-                        // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
-                        $result = runAIScreener($conn, $leadData, $aiRules);
+                        // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Đưa vào hàng đợi để gọi AI bất đồng bộ
+                        $result = ['status' => 'pending', 'reason' => 'Queued for AI screening'];
                     }
                 } else if ($mode === 'ai') {
-                    // Chế độ: Chỉ lọc AI (AI Only)
-                    $result = runAIScreener($conn, $leadData, $aiRules);
+                    // Chế độ: Chỉ lọc AI (AI Only) -> Đưa vào hàng đợi để gọi AI bất đồng bộ
+                    $result = ['status' => 'pending', 'reason' => 'Queued for AI screening'];
                 }
 
                 if ($result) {
@@ -2161,12 +2161,12 @@ function evaluateScreener($conn, $targetRoundId, $leadData)
                     // Khớp điều kiện bộ lọc thủ công -> Sử dụng luôn kết quả thủ công và BỎ QUA gọi AI
                     $result = $manualResult;
                 } else {
-                    // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Chạy bộ lọc AI
-                    $result = runAIScreener($conn, $leadData);
+                    // ƯU TIÊN 2: Không khớp bộ lọc thủ công -> Đưa vào hàng đợi để gọi AI bất đồng bộ
+                    $result = ['status' => 'pending', 'reason' => 'Queued for AI screening'];
                 }
             } else if ($mode === 'ai') {
-                // Chế độ: Chỉ lọc AI (AI Only)
-                $result = runAIScreener($conn, $leadData);
+                // Chế độ: Chỉ lọc AI (AI Only) -> Đưa vào hàng đợi để gọi AI bất đồng bộ
+                $result = ['status' => 'pending', 'reason' => 'Queued for AI screening'];
             }
 
             if ($result) {
@@ -2305,7 +2305,7 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
                 . "  " . $aiReason . "\n";
             try {
                 require_once __DIR__ . '/zalo_bot.php';
-                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
             } catch (Exception $e) {
                 error_log("Error sending Zalo alert to admin " . $admin['name'] . ": " . $e->getMessage());
             }

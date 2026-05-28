@@ -508,6 +508,38 @@ if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
     }
 }
 
+if ($aiScreenerResult && $aiScreenerResult['status'] === 'pending') {
+    $conn->begin_transaction();
+    try {
+        if ($crmCheckResult['leadExists']) {
+            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
+        } else {
+            $leadId = insertLead($conn, $data, null, $phone, $email, $name, $source, $type, $note, $connectionId);
+        }
+        
+        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = 'pending', ai_evaluation = 'Chờ AI đánh giá', assigned_to = NULL WHERE id = ?");
+        $updHeld->bind_param("ii", $targetRoundId, $leadId);
+        $updHeld->execute();
+        $updHeld->close();
+        
+        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Đang chờ AI đánh giá (Chạy ngầm)', false);
+        $conn->commit();
+        
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+        exit();
+    }
+    
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Lead đã được lưu và đưa vào hàng chờ duyệt AI."]);
+    exit();
+}
+
 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
     $conn->begin_transaction();
     try {

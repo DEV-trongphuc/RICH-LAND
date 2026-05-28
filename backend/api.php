@@ -859,6 +859,11 @@ switch ($action) {
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason,
                    IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes
             FROM distribution_logs dl
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
@@ -1210,6 +1215,11 @@ switch ($action) {
         $countRes = $conn->query("
             SELECT COUNT(*) as cnt 
             FROM distribution_logs dl 
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
             $joinLeads 
             $joinConsultants
             $joinRounds
@@ -1259,6 +1269,11 @@ switch ($action) {
                 r.resolved_at,
                 (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
             FROM distribution_logs dl
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
@@ -4645,8 +4660,10 @@ switch ($action) {
             $conds[] = "l.status IN ('rejected', 'blacklisted')";
         } else if ($status === 'approved') {
             $conds[] = "(l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))";
+        } else if ($status === 'ai_pending') {
+            $conds[] = "l.status = 'pending_approval' AND (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
         } else {
-            $conds[] = "l.status = 'pending_approval'";
+            $conds[] = "l.status = 'pending_approval' AND NOT ( (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) )";
         }
 
         // Search text filter
@@ -4713,7 +4730,8 @@ switch ($action) {
 
         $countsSql = "
             SELECT 
-                SUM(CASE WHEN l.status = 'pending_approval' THEN 1 ELSE 0 END) as queue_cnt,
+                SUM(CASE WHEN l.status = 'pending_approval' AND NOT ( (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) ) THEN 1 ELSE 0 END) as queue_cnt,
+                SUM(CASE WHEN l.status = 'pending_approval' AND ( (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) ) THEN 1 ELSE 0 END) as ai_pending_cnt,
                 SUM(CASE WHEN l.status IN ('rejected', 'blacklisted') THEN 1 ELSE 0 END) as substandard_cnt,
                 SUM(CASE WHEN l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %') THEN 1 ELSE 0 END) as assigned_cnt
             FROM leads l
@@ -4728,6 +4746,7 @@ switch ($action) {
         $stmtCounts->close();
 
         $queueCount = (int) ($countsRes['queue_cnt'] ?? 0);
+        $aiPendingCount = (int) ($countsRes['ai_pending_cnt'] ?? 0);
         $substandardCount = (int) ($countsRes['substandard_cnt'] ?? 0);
         $assignedCount = (int) ($countsRes['assigned_cnt'] ?? 0);
 
@@ -4735,6 +4754,8 @@ switch ($action) {
             $totalCount = $substandardCount;
         } else if ($status === 'approved') {
             $totalCount = $assignedCount;
+        } else if ($status === 'ai_pending') {
+            $totalCount = $aiPendingCount;
         } else {
             $totalCount = $queueCount;
         }
@@ -4787,6 +4808,7 @@ switch ($action) {
             'admin_avatars' => $adminAvatars,
             'counts' => [
                 'queue' => $queueCount,
+                'ai_pending' => $aiPendingCount,
                 'substandard' => $substandardCount,
                 'assigned' => $assignedCount
             ],
@@ -7486,6 +7508,13 @@ switch ($action) {
             }
         }
 
+        // Query accepted leads count
+        $acceptedCount = 0;
+        $acceptedRes = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE $dateConditionCreated AND is_accepted = 1");
+        if ($acceptedRes && $row = $acceptedRes->fetch_assoc()) {
+            $acceptedCount = (int) $row['cnt'];
+        }
+
         // ticket_count counts ALL tickets created in the date range (for Chatbot card)
         $todayTickets = 0;
         $ticketRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE $dateConditionCreated");
@@ -7776,6 +7805,7 @@ switch ($action) {
                 'ai_passed_count' => $aiPassedCount,
                 'ai_failed_count' => $aiFailedCount,
                 'ai_screener_enabled' => $aiEnabled,
+                'accepted_today' => $acceptedCount,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
                 'duplicates_change' => $calcChange($statsRes['duplicates'], $prevStatsRes['duplicates']),

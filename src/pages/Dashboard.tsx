@@ -521,6 +521,20 @@ export const Dashboard = () => {
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)' }}>{card.value}</div>
+                {card.id === 'total' && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block', flexShrink: 0 }} />
+                      <span>
+                        {t('Tỷ lệ chia')}: {(() => {
+                          const total = stats?.total_today || 0;
+                          const distributed = stats?.distributed_today || 0;
+                          return total > 0 ? Math.round((distributed / total) * 100) : 0;
+                        })()}%
+                      </span>
+                    </span>
+                  </div>
+                )}
                 {card.id === 'distributed' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>

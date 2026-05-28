@@ -563,9 +563,9 @@ export const Gatekeeper = () => {
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
   const [statsPage, setStatsPage] = useState<number>(1);
   const STATS_ITEMS_PER_PAGE = 50;
-  // Active tab state: queue (Hàng chờ duyệt), substandard (Dưới chuẩn), assigned (Giao lead)
-  const [activeTab, setActiveTab] = useState<'queue' | 'substandard' | 'assigned'>('queue');
-  const [tabCounts, setTabCounts] = useState<{ queue: number; substandard: number; assigned: number }>({ queue: 0, substandard: 0, assigned: 0 });
+  // Active tab state: queue (Hàng chờ duyệt), substandard (Dưới chuẩn), assigned (Giao lead), ai_pending (Chờ AI đánh giá)
+  const [activeTab, setActiveTab] = useState<'queue' | 'substandard' | 'assigned' | 'ai_pending'>('queue');
+  const [tabCounts, setTabCounts] = useState<{ queue: number; substandard: number; assigned: number; ai_pending: number }>({ queue: 0, substandard: 0, assigned: 0, ai_pending: 0 });
   const [adminAvatars, setAdminAvatars] = useState<Record<string, string>>({});
 
   // Dashboard stats state for AI evaluation strip
@@ -681,6 +681,7 @@ export const Gatekeeper = () => {
       let apiStatus = 'pending_approval';
       if (activeTab === 'substandard') apiStatus = 'rejected';
       else if (activeTab === 'assigned') apiStatus = 'approved';
+      else if (activeTab === 'ai_pending') apiStatus = 'ai_pending';
       queryParams.set('status', apiStatus);
 
       const res = await fetchAPI(`get_held_leads&${queryParams.toString()}`);
@@ -1692,6 +1693,7 @@ export const Gatekeeper = () => {
         }}>
           {[
             { id: 'queue', label: t('Hàng chờ duyệt'), count: tabCounts.queue, color: 'var(--color-warning)' },
+            { id: 'ai_pending', label: t('Chờ AI đánh giá'), count: tabCounts.ai_pending || 0, color: 'var(--color-primary)' },
             { id: 'substandard', label: t('Dưới chuẩn'), count: tabCounts.substandard, color: 'var(--color-danger)' },
             { id: 'assigned', label: t('Giao lead'), count: tabCounts.assigned, color: 'var(--color-success)' }
           ].map(tab => {
@@ -1975,9 +1977,17 @@ export const Gatekeeper = () => {
                       <td style={{ padding: '1.25rem 1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {activeTab !== 'assigned' && (
-                            l.ai_screener_status === 'error' ? (
+                            activeTab === 'ai_pending' ? (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <RefreshCw size={12} className="spin" /> {t('Chờ AI đánh giá')}
+                              </span>
+                            ) : l.ai_screener_status === 'error' ? (
                               <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
+                              </span>
+                            ) : l.ai_screener_status === 'pending' ? (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <AlertTriangle size={12} /> {t('Lỗi Timeout AI Pre-screener')}
                               </span>
                             ) : (
                               <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1997,7 +2007,7 @@ export const Gatekeeper = () => {
                               }
                               return (
                                 <>
-                                  <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                                  <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                                 </>
                               );
                             })()}
@@ -2006,7 +2016,12 @@ export const Gatekeeper = () => {
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {activeTab === 'queue' ? (
+                          {activeTab === 'ai_pending' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.825rem', fontWeight: 600 }}>
+                              <RefreshCw size={14} className="spin" />
+                              <span>{t('Đang chờ AI đánh giá...')}</span>
+                            </div>
+                          ) : activeTab === 'queue' ? (
                             <>
                               <button
                                 onClick={() => {
@@ -2250,9 +2265,11 @@ export const Gatekeeper = () => {
                   <div style={{
                     background: activeTab === 'assigned'
                       ? 'var(--color-bg-alt)'
-                      : l.ai_screener_status === 'error'
-                        ? 'rgba(245, 158, 11, 0.04)'
-                        : 'rgba(239, 68, 68, 0.04)',
+                      : activeTab === 'ai_pending'
+                        ? 'rgba(124, 58, 237, 0.04)'
+                        : (l.ai_screener_status === 'error' || l.ai_screener_status === 'pending')
+                          ? 'rgba(245, 158, 11, 0.04)'
+                          : 'rgba(239, 68, 68, 0.04)',
                     padding: '10px 12px',
                     borderRadius: '8px',
                     display: 'flex',
@@ -2261,11 +2278,25 @@ export const Gatekeeper = () => {
                   }}>
                     {activeTab !== 'assigned' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {l.ai_screener_status === 'error' ? (
+                        {activeTab === 'ai_pending' ? (
+                          <>
+                            <RefreshCw size={12} className="spin" color="var(--color-primary)" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                              {t('Chờ AI đánh giá')}
+                            </span>
+                          </>
+                        ) : l.ai_screener_status === 'error' ? (
                           <>
                             <AlertTriangle size={12} color="#d97706" />
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
                               {t('Lỗi kết nối AI (AI Error)')}
+                            </span>
+                          </>
+                        ) : l.ai_screener_status === 'pending' ? (
+                          <>
+                            <AlertTriangle size={12} color="#d97706" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
+                              {t('Lỗi Timeout AI Pre-screener')}
                             </span>
                           </>
                         ) : (
@@ -2291,8 +2322,8 @@ export const Gatekeeper = () => {
                         }
                         return (
                           <>
-                            <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
-                            {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                            <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
+                            {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                           </>
                         );
                       })()}
@@ -2301,7 +2332,12 @@ export const Gatekeeper = () => {
 
                   {/* Actions footer */}
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
-                    {activeTab === 'queue' ? (
+                    {activeTab === 'ai_pending' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600 }}>
+                        <RefreshCw size={12} className="spin" />
+                        <span>{t('Đang chờ AI đánh giá...')}</span>
+                      </div>
+                    ) : activeTab === 'queue' ? (
                       <>
                         <button
                           onClick={() => {
@@ -3981,17 +4017,31 @@ export const Gatekeeper = () => {
 
               {/* Cột Phải: Thao tác Duyệt nhanh hoặc Thông tin Phân bổ */}
               <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2rem' }}>
-                {activeTab === 'queue' ? (
+                {activeTab === 'ai_pending' ? (
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px dashed var(--color-primary)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
+                    <RefreshCw className="spin" size={32} style={{ color: 'var(--color-primary)' }} />
+                    <div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>{t('Đang chờ AI đánh giá')}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                        {t('Hệ thống đang gọi API AI Pre-screener để phân tích thông tin của khách hàng.')}
+                      </div>
+                    </div>
+                    <div style={{ width: '100%', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'left' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{t('Thời gian chờ tối đa:')} 5 {t('phút')}</div>
+                      <div>{t('Nếu quá 5 phút AI chưa có kết quả, lead này sẽ tự động chuyển sang Hàng chờ duyệt và hiển thị thông báo lỗi.')}</div>
+                    </div>
+                  </div>
+                ) : activeTab === 'queue' ? (
                   <>
                     {/* AI Screener Evaluation Details */}
                     {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && (
                       <div style={{
                         marginBottom: '1.25rem',
                         padding: '1.25rem',
-                        background: selectedLead.ai_screener_status === 'error'
+                        background: (selectedLead.ai_screener_status === 'error' || selectedLead.ai_screener_status === 'pending')
                           ? 'linear-gradient(to bottom right, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))'
                           : 'linear-gradient(to bottom right, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02))',
-                        border: selectedLead.ai_screener_status === 'error'
+                        border: (selectedLead.ai_screener_status === 'error' || selectedLead.ai_screener_status === 'pending')
                           ? '1px solid rgba(245, 158, 11, 0.15)'
                           : '1px solid rgba(239, 68, 68, 0.15)',
                         borderRadius: '12px',
@@ -4002,8 +4052,8 @@ export const Gatekeeper = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
                           <div>
-                            <div style={{ fontSize: '0.72rem', color: selectedLead.ai_screener_status === 'error' ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {selectedLead.ai_screener_status === 'error' ? t('Lỗi AI Pre-screener') : t('Tạm giữ')}
+                            <div style={{ fontSize: '0.72rem', color: (selectedLead.ai_screener_status === 'error' || selectedLead.ai_screener_status === 'pending') ? '#d97706' : 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              {(selectedLead.ai_screener_status === 'error' || selectedLead.ai_screener_status === 'pending') ? t('Lỗi AI Pre-screener') : t('Tạm giữ')}
                             </div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Domation AI - Screener')}
@@ -4011,7 +4061,7 @@ export const Gatekeeper = () => {
                           </div>
                         </div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-                          <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                          <strong>{selectedLead.ai_screener_status === 'pending' ? t('Lỗi Timeout:') : selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_screener_status === 'pending' ? t('Quá thời gian 5 phút AI chưa có kết quả đánh giá. Vui lòng duyệt thủ công.') : selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
                         </div>
                       </div>
                     )}

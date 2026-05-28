@@ -324,6 +324,8 @@ export const en: Record<string, string> = {
   "so với tháng trước nữa": "compared to two months ago",
   "so với kỳ trước": "compared to previous period",
   "TỔNG DATA TIẾP NHẬN": "TOTAL RECEIVED DATA",
+  "Tỷ lệ tiếp nhận": "Acceptance Rate",
+  "Tỷ lệ chia": "Distribution Rate",
   "ĐÃ CHIA VÒNG THÀNH CÔNG": "DISTRIBUTED SUCCESSFULLY",
   "BỊ TRÙNG LẶP (< 6 THÁNG)": "DUPLICATES (< 6 MONTHS)",
   "DATA LỖI / KHÔNG XÁC ĐỊNH": "INVALID / UNKNOWN DATA",

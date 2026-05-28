@@ -123,7 +123,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 127) {
+        if ($dbVer >= 128) {
             $runMigration = false;
         }
     }
@@ -144,7 +144,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 127) {
+                    if ($dbVer >= 128) {
                         $runMigration = false;
                     }
                 }
@@ -577,6 +577,26 @@ if ($runMigration) {
         $conn->query("ALTER TABLE leads ADD COLUMN accepted_at DATETIME NULL COMMENT 'Thời gian Sale bấm tiếp nhận'");
     }
 
+    // Auto-migrate: ensure Zalo Queue table exists
+    $conn->query("CREATE TABLE IF NOT EXISTS zalo_queue (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        bot_token VARCHAR(255) NOT NULL,
+        chat_id VARCHAR(255) NOT NULL,
+        body_text TEXT NOT NULL,
+        status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        sent_at DATETIME NULL,
+        attempts INT DEFAULT 0,
+        last_error TEXT NULL,
+        INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Auto-migrate: ensure ai_attempts in leads
+    $chkColAiAtt = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_attempts'");
+    if ($chkColAiAtt && $chkColAiAtt->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_attempts INT DEFAULT 0 COMMENT 'Số lần thử gọi AI'");
+    }
+
     // Save migration version to skip next time
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value MEDIUMTEXT NULL)");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('master_two_way_sync', '0')");
@@ -656,7 +676,7 @@ if ($runMigration) {
         $conn->query("ALTER TABLE sync_queue ADD INDEX `idx_status_retry` (`status`, `next_retry_at`)");
     }
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '127') ON DUPLICATE KEY UPDATE setting_value = '127'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '128') ON DUPLICATE KEY UPDATE setting_value = '128'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

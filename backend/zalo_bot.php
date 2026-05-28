@@ -11,9 +11,21 @@ require_once __DIR__ . '/db_connect.php';
  * @param string $text
  * @return bool
  */
-function sendZaloMessage($botToken, $chatId, $text)
+function sendZaloMessage($botToken, $chatId, $text, $sync = true)
 {
     if (empty($botToken) || empty($chatId) || empty($text)) {
+        return false;
+    }
+
+    if (!$sync) {
+        global $conn;
+        $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status) VALUES (?, ?, ?, 'pending')");
+        if ($stmt) {
+            $stmt->bind_param("sss", $botToken, $chatId, $text);
+            $result = $stmt->execute();
+            $stmt->close();
+            return $result;
+        }
         return false;
     }
 
@@ -122,7 +134,7 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text)
 /**
  * Gửi thông báo chia Lead mới cho Sale qua Zalo
  */
-function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0, $leadEmail = '', $leadType = '')
+function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -239,13 +251,13 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . "👉 Link: $reportUrl\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $chatId, $text);
+    return sendZaloMessage($botToken, $chatId, $text, $sync);
 }
 
 /**
  * Gửi thông báo nhắc nhở Khách hàng cũ đăng ký lại cho Sale qua Zalo
  */
-function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '')
+function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -376,13 +388,13 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     }
     $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $chatId, $text);
+    return sendZaloMessage($botToken, $chatId, $text, $sync);
 }
 
 /**
  * Gửi thông báo chia Lead fallback trực tiếp cho Admin qua Zalo
  */
-function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '')
+function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -433,10 +445,10 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
         . "💡 Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $adminChatId, $text);
+    return sendZaloMessage($botToken, $adminChatId, $text, $sync);
 }
 
-function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '') {
+function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '', $sync = false) {
     global $conn;
     if (empty($time)) $time = date('H:i:s d/m/Y');
 
@@ -467,10 +479,10 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
         . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $chatId, $msg);
+    return sendZaloMessage($botToken, $chatId, $msg, $sync);
 }
 
-function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '') {
+function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '', $sync = false) {
     global $conn;
     if (empty($time)) $time = date('H:i:s d/m/Y');
 
@@ -491,7 +503,7 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
         . $reasonStr
         . "\n━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $adminChatId, $msg);
+    return sendZaloMessage($botToken, $adminChatId, $msg, $sync);
 }
 
 /**
@@ -721,7 +733,7 @@ function parseSingleDate($str) {
 /**
  * Gửi tin nhắn chào buổi sáng gom nhóm data cho Sale qua Zalo
  */
-function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count)
+function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count, $sync = false)
 {
     global $conn;
 
@@ -762,7 +774,7 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
         . "Tối qua từ $minTimeStr đến $maxTimeStr bạn có $count data chờ xử lý.\n"
         . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
 
-    return sendZaloMessage($botToken, $chatId, $text);
+    return sendZaloMessage($botToken, $chatId, $text, $sync);
 }
 
 /**
