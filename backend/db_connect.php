@@ -123,7 +123,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 126) {
+        if ($dbVer >= 127) {
             $runMigration = false;
         }
     }
@@ -144,7 +144,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 126) {
+                    if ($dbVer >= 127) {
                         $runMigration = false;
                     }
                 }
@@ -645,7 +645,13 @@ if ($runMigration) {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_manual_rules', '[]')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_manual_action', 'hold')");
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '126') ON DUPLICATE KEY UPDATE setting_value = '126'");
+    // Auto-migrate: Version 127 - Optimize sync_queue polling with composite index
+    $chkIdxSyncQueue = $conn->query("SHOW INDEX FROM sync_queue WHERE Key_name='idx_status_retry'");
+    if ($chkIdxSyncQueue && $chkIdxSyncQueue->num_rows === 0) {
+        $conn->query("ALTER TABLE sync_queue ADD INDEX `idx_status_retry` (`status`, `next_retry_at`)");
+    }
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '127') ON DUPLICATE KEY UPDATE setting_value = '127'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

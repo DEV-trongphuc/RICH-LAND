@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 20, 2026 lúc 07:11 PM
+-- Thời gian đã tạo: Th5 28, 2026 lúc 08:31 AM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -45,6 +45,22 @@ CREATE TABLE `accounts` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `active_compensation_logs`
+--
+
+CREATE TABLE `active_compensation_logs` (
+  `id` int(11) NOT NULL,
+  `round_id` int(11) NOT NULL,
+  `consultant_id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `amount` int(11) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `admin_logs`
 --
 
@@ -71,7 +87,12 @@ CREATE TABLE `consultants` (
   `leave_start` date DEFAULT NULL,
   `leave_end` date DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
-  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID'
+  `zalo_chat_id` varchar(255) DEFAULT NULL COMMENT 'Zalo Bot Chat ID',
+  `work_start_time` varchar(5) DEFAULT '00:00' COMMENT 'Giờ làm việc bắt đầu (HH:MM)',
+  `work_end_time` varchar(5) DEFAULT '23:59' COMMENT 'Giờ làm việc kết thúc (HH:MM)',
+  `work_schedule` longtext DEFAULT NULL COMMENT 'Cấu hình lịch làm việc chi tiết dạng JSON',
+  `avatar` varchar(255) DEFAULT NULL COMMENT 'Đường dẫn ảnh đại diện của Sale',
+  `vacation_mode` tinyint(1) DEFAULT 0 COMMENT 'Chế độ nghỉ phép nhanh'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -89,6 +110,7 @@ CREATE TABLE `data_reports` (
   `status` varchar(20) DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
   `resolved_at` datetime DEFAULT NULL,
+  `resolved_by` varchar(100) DEFAULT NULL COMMENT 'Tên admin duyệt ticket',
   `reject_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do từ chối ticket',
   `approval_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do duyệt ticket'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -156,7 +178,13 @@ CREATE TABLE `leads` (
   `last_interaction_date` datetime DEFAULT NULL,
   `assigned_to` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
-  `connection_id` int(11) DEFAULT NULL
+  `connection_id` int(11) DEFAULT NULL,
+  `is_accepted` tinyint(1) DEFAULT 0 COMMENT 'Sale đã bấm tiếp nhận',
+  `accepted_at` datetime DEFAULT NULL COMMENT 'Thời gian Sale bấm tiếp nhận',
+  `status` varchar(50) DEFAULT 'active' COMMENT 'Trạng thái lead (active, pending_approval, rejected, blacklisted)',
+  `target_round_id` int(11) DEFAULT NULL COMMENT 'Vòng xoay phân bổ dự kiến',
+  `ai_screener_status` varchar(50) DEFAULT 'not_screened' COMMENT 'Đánh giá AI (passed, failed, skipped, error)',
+  `ai_evaluation` text DEFAULT NULL COMMENT 'Chi tiết đánh giá của AI'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -192,7 +220,8 @@ CREATE TABLE `round_consultants` (
   `skip_count` int(11) DEFAULT 0,
   `compensation_count` int(11) DEFAULT 0 COMMENT 'Số data cần đền bù',
   `data_per_turn` int(11) DEFAULT 1 COMMENT 'Số Data nhận mỗi lần đến lượt',
-  `current_turn_remaining` int(11) DEFAULT 0 COMMENT 'Data còn lại trong lượt hiện tại'
+  `current_turn_remaining` int(11) DEFAULT 0 COMMENT 'Data còn lại trong lượt hiện tại',
+  `skipped_credit` int(11) DEFAULT 0 COMMENT 'Lượt bù tích lũy do ngoài giờ/nghỉ phép'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -234,7 +263,12 @@ CREATE TABLE `sheet_connections` (
   `require_both_contact` tinyint(1) DEFAULT 0 COMMENT 'Yêu cầu có cả SĐT và Email',
   `sync_mode` enum('all','new_only') DEFAULT 'all',
   `is_initialized` tinyint(1) DEFAULT 0,
-  `is_silent` tinyint(1) DEFAULT 0 COMMENT 'Không chia số, chỉ đồng bộ check trùng'
+  `is_silent` tinyint(1) DEFAULT 0 COMMENT 'Không chia số, chỉ đồng bộ check trùng',
+  `sync_saleperson` tinyint(1) DEFAULT 0 COMMENT 'Đồng bộ salesperson bằng email',
+  `last_error` varchar(255) DEFAULT NULL COMMENT 'Chi tiết lỗi đồng bộ gần nhất',
+  `two_way_sync` tinyint(1) DEFAULT 0 COMMENT 'Đồng bộ 2 chiều ngược về Sheet',
+  `google_script_url` varchar(512) DEFAULT NULL COMMENT 'URL Web App Google Apps Script',
+  `lead_recall_minutes` int(11) DEFAULT 0 COMMENT 'Thời gian tự động thu hồi lead không tiếp nhận (phút, 0=tắt)'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -247,6 +281,24 @@ CREATE TABLE `sheet_sync_records` (
   `connection_id` int(11) NOT NULL,
   `row_hash` varchar(64) NOT NULL,
   `synced_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `sync_queue`
+--
+
+CREATE TABLE `sync_queue` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `connection_id` int(11) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `attempts` int(11) DEFAULT 0,
+  `next_retry_at` datetime DEFAULT NULL,
+  `last_error` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -284,11 +336,22 @@ ALTER TABLE `accounts`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Chỉ mục cho bảng `active_compensation_logs`
+--
+ALTER TABLE `active_compensation_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `round_id` (`round_id`),
+  ADD KEY `consultant_id` (`consultant_id`),
+  ADD KEY `admin_id` (`admin_id`);
+
+--
 -- Chỉ mục cho bảng `admin_logs`
 --
 ALTER TABLE `admin_logs`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `account_id` (`account_id`);
+  ADD KEY `account_id` (`account_id`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_action_created` (`action`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `consultants`
@@ -304,7 +367,9 @@ ALTER TABLE `data_reports`
   ADD PRIMARY KEY (`id`),
   ADD KEY `consultant_id` (`consultant_id`),
   ADD KEY `idx_round_id` (`round_id`),
-  ADD KEY `idx_report_lookup` (`lead_id`,`consultant_id`,`round_id`);
+  ADD KEY `idx_report_lookup` (`lead_id`,`consultant_id`,`round_id`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_status` (`status`);
 
 --
 -- Chỉ mục cho bảng `distribution_logs`
@@ -317,7 +382,9 @@ ALTER TABLE `distribution_logs`
   ADD KEY `idx_assigned_to` (`assigned_to`),
   ADD KEY `idx_lead_id` (`lead_id`),
   ADD KEY `idx_duplicate_check` (`lead_id`,`assigned_to`,`round_id`),
-  ADD KEY `idx_stats_group` (`received_at`,`status`);
+  ADD KEY `idx_stats_group` (`received_at`,`status`),
+  ADD KEY `idx_dashboard_opt` (`received_at`,`status`,`assigned_to`,`round_id`),
+  ADD KEY `idx_assigned_date_status` (`assigned_to`,`received_at`,`status`);
 
 --
 -- Chỉ mục cho bảng `distribution_rounds`
@@ -343,7 +410,9 @@ ALTER TABLE `leads`
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_created_at` (`created_at`),
   ADD KEY `idx_connection_id` (`connection_id`),
-  ADD KEY `idx_last_interaction_date` (`last_interaction_date`);
+  ADD KEY `idx_last_interaction_date` (`last_interaction_date`),
+  ADD KEY `idx_name` (`name`),
+  ADD KEY `idx_target_round_id` (`target_round_id`);
 
 --
 -- Chỉ mục cho bảng `mail_queue`
@@ -382,6 +451,15 @@ ALTER TABLE `sheet_sync_records`
   ADD PRIMARY KEY (`connection_id`,`row_hash`);
 
 --
+-- Chỉ mục cho bảng `sync_queue`
+--
+ALTER TABLE `sync_queue`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `lead_id` (`lead_id`),
+  ADD KEY `connection_id` (`connection_id`),
+  ADD KEY `idx_status_retry` (`status`,`next_retry_at`);
+
+--
 -- Chỉ mục cho bảng `system_settings`
 --
 ALTER TABLE `system_settings`
@@ -402,6 +480,12 @@ ALTER TABLE `ticket_notify_settings`
 -- AUTO_INCREMENT cho bảng `accounts`
 --
 ALTER TABLE `accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `active_compensation_logs`
+--
+ALTER TABLE `active_compensation_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -465,6 +549,12 @@ ALTER TABLE `sheet_connections`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT cho bảng `sync_queue`
+--
+ALTER TABLE `sync_queue`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `ticket_notify_settings`
 --
 ALTER TABLE `ticket_notify_settings`
@@ -473,6 +563,14 @@ ALTER TABLE `ticket_notify_settings`
 --
 -- Ràng buộc đối với các bảng kết xuất
 --
+
+--
+-- Ràng buộc cho bảng `active_compensation_logs`
+--
+ALTER TABLE `active_compensation_logs`
+  ADD CONSTRAINT `active_compensation_logs_ibfk_1` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `active_compensation_logs_ibfk_2` FOREIGN KEY (`consultant_id`) REFERENCES `consultants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `active_compensation_logs_ibfk_3` FOREIGN KEY (`admin_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `admin_logs`
@@ -532,6 +630,13 @@ ALTER TABLE `routing_rules`
 --
 ALTER TABLE `sheet_sync_records`
   ADD CONSTRAINT `sheet_sync_records_ibfk_1` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `sync_queue`
+--
+ALTER TABLE `sync_queue`
+  ADD CONSTRAINT `sync_queue_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `sync_queue_ibfk_2` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE SET NULL;
 
 --
 -- Ràng buộc cho bảng `ticket_notify_settings`

@@ -181,6 +181,14 @@ function runMailerCron($conn) {
 
     $updSuccessStmt->close();
     $updFailStmt->close();
+
+    // 3. Prune sent mail queue items older than 30 days to prevent table bloat
+    try {
+        $conn->query("DELETE FROM mail_queue WHERE status = 'sent' AND sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    } catch (Exception $e) {
+        error_log("Failed to prune mail queue: " . $e->getMessage());
+    }
+
     echo "[" . date('Y-m-d H:i:s') . "] Processed $successCount sent, $failCount failed.\n";
 }
 
