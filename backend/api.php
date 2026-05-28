@@ -347,14 +347,7 @@ switch ($action) {
             exit();
         }
 
-        // Count total import history records from leads table directly
-        $countRes = $conn->query("
-            SELECT COUNT(*) as cnt
-            FROM leads l
-            WHERE l.source = 'Excel Import' 
-               OR l.note LIKE '%Nhap du lieu cu%'
-        ");
-        $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
         // Check for pagination
         $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -371,47 +364,105 @@ switch ($action) {
             $limitStr = "LIMIT $pageSize OFFSET $offset";
         }
 
-        $res = $conn->query("
-            SELECT 
-                COALESCE(dl.id, -l.id) as log_id,
-                l.id as lead_id,
-                l.name,
-                l.phone,
-                l.email,
-                dl.status as distribution_status,
-                dl.message as distribution_message,
-                c.name as consultant_name,
-                c.status as consultant_status,
-                l.last_interaction_date
-            FROM leads l
-            LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
-            LEFT JOIN consultants c ON l.assigned_to = c.id
-            WHERE l.source = 'Excel Import' 
-               OR l.note LIKE '%Nhap du lieu cu%'
-            ORDER BY l.id DESC
-            $limitStr
-        ");
+        if (!empty($search)) {
+            $searchParam = '%' . $search . '%';
+            
+            // Prepared count
+            $countSql = "
+                SELECT COUNT(*) as cnt
+                FROM leads l
+                WHERE (l.source = 'Excel Import' OR l.note LIKE '%Nhap du lieu cu%')
+                  AND (l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)
+            ";
+            $stmtCount = $conn->prepare($countSql);
+            $stmtCount->bind_param("sss", $searchParam, $searchParam, $searchParam);
+            $stmtCount->execute();
+            $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtCount->close();
+
+            // Prepared data query
+            $sql = "
+                SELECT 
+                    COALESCE(dl.id, -l.id) as log_id,
+                    l.id as lead_id,
+                    l.name,
+                    l.phone,
+                    l.email,
+                    dl.status as distribution_status,
+                    dl.message as distribution_message,
+                    c.name as consultant_name,
+                    c.status as consultant_status,
+                    l.last_interaction_date
+                FROM leads l
+                LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+                LEFT JOIN consultants c ON l.assigned_to = c.id
+                WHERE (l.source = 'Excel Import' OR l.note LIKE '%Nhap du lieu cu%')
+                  AND (l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)
+                ORDER BY l.id DESC
+                $limitStr
+            ";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sss", $searchParam, $searchParam, $searchParam);
+            $stmt->execute();
+            $res = $stmt->get_result();
+        } else {
+            // Count total import history records from leads table directly
+            $countRes = $conn->query("
+                SELECT COUNT(*) as cnt
+                FROM leads l
+                WHERE l.source = 'Excel Import' 
+                   OR l.note LIKE '%Nhap du lieu cu%'
+            ");
+            $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
+
+            $res = $conn->query("
+                SELECT 
+                    COALESCE(dl.id, -l.id) as log_id,
+                    l.id as lead_id,
+                    l.name,
+                    l.phone,
+                    l.email,
+                    dl.status as distribution_status,
+                    dl.message as distribution_message,
+                    c.name as consultant_name,
+                    c.status as consultant_status,
+                    l.last_interaction_date
+                FROM leads l
+                LEFT JOIN distribution_logs dl ON l.id = dl.lead_id
+                LEFT JOIN consultants c ON l.assigned_to = c.id
+                WHERE l.source = 'Excel Import' 
+                   OR l.note LIKE '%Nhap du lieu cu%'
+                ORDER BY l.id DESC
+                $limitStr
+            ");
+        }
+
         $data = [];
-        while ($row = $res->fetch_assoc()) {
-            $distMsg = $row['distribution_message'] ?? '';
-            $distStatus = $row['distribution_status'] ?? '';
-            $isDuplicate = (
-                strpos($distMsg, 'Trung') !== false ||
-                strpos($distMsg, 'trung') !== false ||
-                $distStatus === 'duplicate' ||
-                $distStatus === 'reminder'
-            );
-            $data[] = [
-                'log_id' => (int) $row['log_id'],
-                'lead_id' => (int) $row['lead_id'],
-                'name' => $row['name'],
-                'phone' => $row['phone'],
-                'email' => $row['email'],
-                'has_record' => $isDuplicate ? true : false,
-                'consultant_name' => $row['consultant_name'],
-                'consultant_status' => $row['consultant_status'],
-                'last_interaction_date' => $row['last_interaction_date']
-            ];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $distMsg = $row['distribution_message'] ?? '';
+                $distStatus = $row['distribution_status'] ?? '';
+                $isDuplicate = (
+                    strpos($distMsg, 'Trung') !== false ||
+                    strpos($distMsg, 'trung') !== false ||
+                    $distStatus === 'duplicate' ||
+                    $distStatus === 'reminder'
+                );
+                $data[] = [
+                    'log_id' => (int) $row['log_id'],
+                    'lead_id' => (int) $row['lead_id'],
+                    'name' => $row['name'],
+                    'phone' => $row['phone'],
+                    'email' => $row['email'],
+                    'has_record' => $isDuplicate ? true : false,
+                    'consultant_name' => $row['consultant_name'],
+                    'consultant_status' => $row['consultant_status'],
+                    'last_interaction_date' => $row['last_interaction_date']
+                ];
+            }
+            if (!empty($search)) {
+                $stmt->close();
+            }
         }
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount]);
         break;
@@ -4850,7 +4901,10 @@ switch ($action) {
         $p2 = '84' . ltrim($phone, '0');
         
         $sql = "
-            SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+            SELECT l.*, 
+                   COALESCE(dr.round_name, (SELECT r.round_name FROM distribution_logs dl JOIN distribution_rounds r ON dl.round_id = r.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as round_name,
+                   COALESCE(c.name, (SELECT c2.name FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_name,
+                   COALESCE(c.avatar, (SELECT c2.avatar FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_avatar
             FROM leads l
             LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
             LEFT JOIN consultants c ON l.assigned_to = c.id
@@ -4858,7 +4912,10 @@ switch ($action) {
         ";
         if (!empty($phone)) {
             $sql = "
-                SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+                SELECT l.*, 
+                       COALESCE(dr.round_name, (SELECT r.round_name FROM distribution_logs dl JOIN distribution_rounds r ON dl.round_id = r.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as round_name,
+                       COALESCE(c.name, (SELECT c2.name FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_name,
+                       COALESCE(c.avatar, (SELECT c2.avatar FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_avatar
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
                 LEFT JOIN consultants c ON l.assigned_to = c.id
@@ -4867,7 +4924,10 @@ switch ($action) {
             ";
         } else if (!empty($email)) {
             $sql = "
-                SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar
+                SELECT l.*, 
+                       COALESCE(dr.round_name, (SELECT r.round_name FROM distribution_logs dl JOIN distribution_rounds r ON dl.round_id = r.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as round_name,
+                       COALESCE(c.name, (SELECT c2.name FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_name,
+                       COALESCE(c.avatar, (SELECT c2.avatar FROM distribution_logs dl JOIN consultants c2 ON dl.assigned_to = c2.id WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1)) as consultant_avatar
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
                 LEFT JOIN consultants c ON l.assigned_to = c.id

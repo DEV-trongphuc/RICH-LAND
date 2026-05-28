@@ -897,7 +897,7 @@ export const DataList = () => {
               }}
               className="btn-export-csv-compact"
             >
-              <Sparkles size={13} /> <span>{t('Check trùng')}</span>
+              <Search size={13} /> <span>{t('Check trùng')}</span>
             </button>
 
             {/* Separator line */}
@@ -2914,7 +2914,7 @@ export const DataList = () => {
           setDupCheckResult(null);
         }}
         title={t("Kiểm tra trùng Lead")}
-        width="650px"
+        width="950px"
       >
         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
@@ -2960,7 +2960,7 @@ export const DataList = () => {
               {/* Conclusion Banner */}
               {(() => {
                 const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
-                const history = dupCheckResult.history || [];
+                const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
 
                 if (history.length === 0) {
                   return (
@@ -3016,8 +3016,7 @@ export const DataList = () => {
                         {t("Lần tương tác gần nhất cách đây")}{' '}
                         <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
                         {t("lúc")}{' '}
-                        <code>{lastDateStr}</code>.<br />
-                        {t("Lead mới sẽ được phân phối dạng")} <strong>duplicate/reminder</strong> {t("về cho")} <strong>{latest.consultant_name || t("Sale cũ")}</strong>.
+                        <code>{lastDateStr}</code>.
                       </div>
                     </div>
                   );
@@ -3052,7 +3051,10 @@ export const DataList = () => {
               {/* History list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                  {t("Lịch sử lưu vết")} ({dupCheckResult.history?.length || 0})
+                  {t("Lịch sử lưu vết")} ({(() => {
+                    const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                    return history.length;
+                  })()})
                 </h4>
                 <div style={{
                   maxHeight: '260px',
@@ -3071,8 +3073,10 @@ export const DataList = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {dupCheckResult.history && dupCheckResult.history.length > 0 ? (
-                        dupCheckResult.history.map((h: any) => {
+                      {(() => {
+                        const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                        return history && history.length > 0 ? (
+                          history.map((h: any) => {
                           const lastDateStr = h.last_interaction_date || h.created_at;
                           const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
                           const now = new Date();
@@ -3088,19 +3092,31 @@ export const DataList = () => {
 
                           return (
                             <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                              <td style={{ padding: '10px 12px', fontWeight: 600 }}>
-                                #{h.id}
-                                <div style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{h.name}</div>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <Avatar name={h.name} size={32} />
+                                  <div>
+                                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                                  </div>
+                                </div>
                               </td>
                               <td style={{ padding: '10px 12px' }}>
-                                {h.source}
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{h.round_name || '-'}</div>
+                                <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
                               </td>
                               <td style={{ padding: '10px 12px' }}>
                                 <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
                               </td>
-                              <td style={{ padding: '10px 12px', fontWeight: 500 }}>
-                                {h.consultant_name || '-'}
+                              <td style={{ padding: '10px 12px' }}>
+                                {h.consultant_name ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
+                                    <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                )}
                               </td>
                               <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                                 <div>{h.created_at}</div>
@@ -3117,7 +3133,8 @@ export const DataList = () => {
                             {t("Không có dữ liệu lịch sử.")}
                           </td>
                         </tr>
-                      )}
+                      );
+                    })()}
                     </tbody>
                   </table>
                 </div>

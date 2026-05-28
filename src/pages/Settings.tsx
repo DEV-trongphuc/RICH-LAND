@@ -199,15 +199,18 @@ export const Settings = () => {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState<number>(0);
+  const [historySearchInput, setHistorySearchInput] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
   const [confirmDeleteLogsOpen, setConfirmDeleteLogsOpen] = useState(false);
   const [logsToDelete, setLogsToDelete] = useState<{ log_id: number; lead_id: number }[]>([]);
   const [confirmImportOpen, setConfirmImportOpen] = useState(false);
 
-  const fetchImportHistory = async (page: number = 1) => {
+  const fetchImportHistory = async (page: number = 1, searchVal: string = '') => {
     setLoadingHistory(true);
     try {
-      const json = await fetchAPI(`get_import_history&page=${page}&pageSize=50`);
+      const query = `get_import_history&page=${page}&pageSize=50&search=${encodeURIComponent(searchVal)}`;
+      const json = await fetchAPI(query);
       if (json.success) {
         setImportHistory(json.data || []);
         setTotalHistoryCount(json.total_count ?? (json.data || []).length);
@@ -238,7 +241,7 @@ export const Settings = () => {
       if (res.success) {
         toast.success(res.message || t("Đã xóa thành công!"));
         setSelectedLogs([]);
-        fetchImportHistory(historyPage);
+        fetchImportHistory(historyPage, historySearch);
       } else {
         toast.error(res.message || t("Lỗi khi xóa dữ liệu"));
       }
@@ -395,9 +398,9 @@ export const Settings = () => {
 
   useEffect(() => {
     if (activeTab === 'duplicate_check') {
-      fetchImportHistory(historyPage);
+      fetchImportHistory(historyPage, historySearch);
     }
-  }, [activeTab, historyPage]);
+  }, [activeTab, historyPage, historySearch]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -769,8 +772,10 @@ export const Settings = () => {
       setDateCol('');
       setSalepersonCol('');
       setImportSubTab('list');
+      setHistorySearchInput('');
+      setHistorySearch('');
       setHistoryPage(1);
-      await fetchImportHistory(1);
+      await fetchImportHistory(1, '');
     } catch (err: any) {
       toast.error(t("Lỗi nhập dữ liệu: ") + err.message);
     }
@@ -1498,6 +1503,53 @@ export const Settings = () => {
                               + Thêm mới
                             </button>
                           </div>
+                        </div>
+
+                        {/* Search filter bar */}
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                              <Search size={14} />
+                            </span>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder={t("Tìm kiếm theo Họ tên, Số điện thoại, Email...")}
+                              value={historySearchInput}
+                              onChange={e => setHistorySearchInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  setHistorySearch(historySearchInput);
+                                  setHistoryPage(1);
+                                }
+                              }}
+                              style={{ paddingLeft: '32px', height: '36px', fontSize: '0.825rem', width: '100%', boxSizing: 'border-box' }}
+                            />
+                            {historySearchInput && (
+                              <button
+                                onClick={() => {
+                                  setHistorySearchInput('');
+                                  setHistorySearch('');
+                                  setHistoryPage(1);
+                                }}
+                                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 0 }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="btn primary"
+                            onClick={() => {
+                              setHistorySearch(historySearchInput);
+                              setHistoryPage(1);
+                            }}
+                            style={{ height: '36px', padding: '0 16px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <Search size={13} />
+                            <span>{t('Tìm kiếm')}</span>
+                          </button>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

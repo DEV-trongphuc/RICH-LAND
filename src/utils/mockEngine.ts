@@ -149,6 +149,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
               round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads',
               status: 'active',
               consultant_name: 'Hải Đăng',
+              consultant_avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150',
               created_at: '2026-05-10 10:00:00',
               last_interaction_date: '2026-05-10 10:00:00'
             }
