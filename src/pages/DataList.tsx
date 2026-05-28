@@ -10,6 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 type Lead = {
   id: number;
+  lead_id?: number;
   name: string;
   phone: string;
   email: string;
@@ -269,6 +270,7 @@ export const DataList = () => {
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
           id: item.id,
+          lead_id: item.lead_id,
           name: item.lead_name || t('Khách hàng ẩn danh'),
           phone: item.phone || '-',
           email: item.email || '-',
@@ -334,7 +336,7 @@ export const DataList = () => {
     if (selectedLead) {
       setNotificationStatus(null);
       setNotifLoading(true);
-      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.id}`)
+      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.lead_id || selectedLead.id}`)
         .then(json => {
           if (json.success) {
             setNotificationStatus(json.data);

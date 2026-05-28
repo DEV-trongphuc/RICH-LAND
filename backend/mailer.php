@@ -47,7 +47,7 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
     ';
 }
 
-function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = false)
+function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = false, $leadId = 0)
 {
     global $conn;
 
@@ -56,11 +56,22 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     if (!$sync) {
         // Xóa tính năng gửi đồng bộ để chống kẹt tiến trình (Bottleneck)
         // Thay vào đó, lưu vào bảng mail_queue để tiến trình ngầm (cron_mailer.php) xử lý
-        $stmt = $conn->prepare("INSERT INTO mail_queue (to_email, cc_email, subject, body_html, status) VALUES (?, ?, ?, ?, 'pending')");
+        $stmt = $conn->prepare("INSERT INTO mail_queue (to_email, cc_email, subject, body_html, status, lead_id) VALUES (?, ?, ?, ?, 'pending', ?)");
         if ($stmt) {
-            $stmt->bind_param("ssss", $to, $ccEmailString, $subject, $htmlBody);
+            $lId = ($leadId > 0) ? $leadId : null;
+            $stmt->bind_param("ssssi", $to, $ccEmailString, $subject, $htmlBody, $lId);
             $result = $stmt->execute();
             $stmt->close();
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = 'pending' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
+
             return $result;
         }
         return false;
@@ -70,29 +81,29 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     // Fetch settings globally using cached function to prevent N+1 queries
     $settings = get_system_setting($conn);
     $provider = $settings['email_provider'] ?? 'appscript';
+    $sentResult = false;
 
     if ($provider === 'appscript') {
         $url = $settings['appscript_webhook_url'] ?? '';
-        if (empty($url))
-            return false;
+        if (!empty($url)) {
+            $payload = json_encode([
+                "type" => "custom",
+                "email" => $to,
+                "cc" => $ccEmailString,
+                "subject" => $subject,
+                "htmlBody" => $htmlBody
+            ]);
 
-        $payload = json_encode([
-            "type" => "custom",
-            "email" => $to,
-            "cc" => $ccEmailString,
-            "subject" => $subject,
-            "htmlBody" => $htmlBody
-        ]);
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        $result = curl_exec($ch);
-        curl_close($ch);
-        return true;
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $result = curl_exec($ch);
+            curl_close($ch);
+            $sentResult = ($result !== false);
+        }
     } else if ($provider === 'ses') {
         $mail = new PHPMailer(true);
         try {
@@ -127,13 +138,24 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->Body = $htmlBody;
 
             $mail->send();
-            return true;
+            $sentResult = true;
         } catch (Exception $e) {
             error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
-            return false;
+            $sentResult = false;
         }
     }
-    return false;
+
+    if ($leadId > 0) {
+        $newStatus = $sentResult ? 'sent' : 'failed';
+        $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = ? WHERE id = ?");
+        if ($stmtLead) {
+            $stmtLead->bind_param("si", $newStatus, $leadId);
+            $stmtLead->execute();
+            $stmtLead->close();
+        }
+    }
+
+    return $sentResult;
 }
 
 function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $ccEmailString = '', $roundName = '', $timeline = [], $leadId = 0)
@@ -299,7 +321,7 @@ function sendLeadReminderEmailToSale($consultantEmail, $consultantName, $leadNam
         </div>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, '', $content, $ccEmailString);
+    sendEmailNotification($consultantEmail, $subject, '', $content, $ccEmailString, false, $leadId);
 }
 
 
@@ -681,7 +703,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
         </div>
     ';
 
-    sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString);
+    sendEmailNotification($consultantEmail, $subject, "Có Data Mới Về!", $content, $ccEmailString, false, $leadId);
 }
 
 

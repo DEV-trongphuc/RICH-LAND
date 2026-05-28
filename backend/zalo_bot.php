@@ -11,19 +11,31 @@ require_once __DIR__ . '/db_connect.php';
  * @param string $text
  * @return bool
  */
-function sendZaloMessage($botToken, $chatId, $text, $sync = true)
+function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
 {
     if (empty($botToken) || empty($chatId) || empty($text)) {
         return false;
     }
 
+    global $conn;
+
     if (!$sync) {
-        global $conn;
-        $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status) VALUES (?, ?, ?, 'pending')");
+        $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
         if ($stmt) {
-            $stmt->bind_param("sss", $botToken, $chatId, $text);
+            $lId = ($leadId > 0) ? $leadId : null;
+            $stmt->bind_param("sssi", $botToken, $chatId, $text, $lId);
             $result = $stmt->execute();
             $stmt->close();
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'pending' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
+
             return $result;
         }
         return false;
@@ -59,10 +71,11 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true)
     }
     @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
 
+    $isSent = false;
     if ($httpCode >= 200 && $httpCode < 300 && $result) {
         $resObj = json_decode($result, true);
         if (isset($resObj['ok']) && $resObj['ok'] === true) {
-            return true;
+            $isSent = true;
         } else {
             error_log("Zalo Bot Error: " . $result);
         }
@@ -70,7 +83,17 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true)
         error_log("Zalo Bot HTTP Error: $httpCode - " . $result);
     }
 
-    return false;
+    if ($leadId > 0) {
+        $newStatus = $isSent ? 'sent' : 'failed';
+        $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = ? WHERE id = ?");
+        if ($stmtLead) {
+            $stmtLead->bind_param("si", $newStatus, $leadId);
+            $stmtLead->execute();
+            $stmtLead->close();
+        }
+    }
+
+    return $isSent;
 }
 
 /**
@@ -251,7 +274,7 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . "👉 Link: $reportUrl\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $chatId, $text, $sync);
+    return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
 /**
@@ -388,7 +411,7 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     }
     $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendZaloMessage($botToken, $chatId, $text, $sync);
+    return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
 /**

@@ -19,6 +19,7 @@ import { TableSkeleton } from '../components/ui/Skeleton';
 
 type Lead = {
   id: number;
+  lead_id?: number;
   name: string;
   phone: string;
   email: string;
@@ -557,7 +558,7 @@ export const Gatekeeper = () => {
     if (selectedLead) {
       setNotificationStatus(null);
       setNotifLoading(true);
-      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.id}`)
+      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.lead_id || selectedLead.id}`)
         .then(json => {
           if (json.success) {
             setNotificationStatus(json.data);

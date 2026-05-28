@@ -1399,6 +1399,7 @@ switch ($action) {
         $res = $conn->query("
             SELECT 
                 dl.id, 
+                dl.lead_id,
                 l.name as lead_name, 
                 l.phone, 
                 l.email, 
@@ -1450,8 +1451,8 @@ switch ($action) {
             break;
         }
 
-        // Fetch lead details
-        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at FROM leads l WHERE l.id = ? LIMIT 1");
+        // Fetch lead details including direct notify status columns
+        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at, l.zalo_notify_status, l.email_notify_status FROM leads l WHERE l.id = ? LIMIT 1");
         $leadStmt->bind_param("i", $leadId);
         $leadStmt->execute();
         $lead = $leadStmt->get_result()->fetch_assoc();
@@ -1477,95 +1478,39 @@ switch ($action) {
             }
         }
 
-        $leadName = $lead['name'];
-        $leadPhone = $lead['phone'];
-        $leadEmail = $lead['email'];
         $assignedTo = $lead['assigned_to'];
-        $createdDate = date('Y-m-d', strtotime($lead['created_at']));
-
-        $mailStatus = 'N/A';
-        $mailQueued = false;
-        $mailId = null;
-
-        $zaloStatus = 'N/A';
-        $zaloQueued = false;
-        $zaloId = null;
         $saleZaloId = '';
         $saleEmail = '';
 
         if ($assignedTo) {
-            $saleStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $saleStmt = $conn->prepare("SELECT email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
             $saleStmt->bind_param("i", $assignedTo);
             $saleStmt->execute();
             $sRow = $saleStmt->get_result()->fetch_assoc();
             if ($sRow) {
-                $saleEmail = $sRow['email'];
-                $saleZaloId = $sRow['zalo_chat_id'];
+                $saleEmail = $sRow['email'] ?? '';
+                $saleZaloId = $sRow['zalo_chat_id'] ?? '';
             }
             $saleStmt->close();
         }
 
-        // Check Mail Queue
-        if (!empty($saleEmail)) {
-            $mailLikeName = '%' . $leadName . '%';
-            $mailLikePhone = '%' . $leadPhone . '%';
-            $mStmt = $conn->prepare("SELECT id, status FROM mail_queue WHERE to_email = ? AND (subject LIKE ? OR body_html LIKE ? OR body_html LIKE ?) ORDER BY id DESC LIMIT 1");
-            $mStmt->bind_param("ssss", $saleEmail, $mailLikeName, $mailLikeName, $mailLikePhone);
-            $mStmt->execute();
-            $mRes = $mStmt->get_result();
-            if ($mRes && $mRes->num_rows > 0) {
-                $mRow = $mRes->fetch_assoc();
-                $mailQueued = true;
-                $mailStatus = $mRow['status'];
-                $mailId = $mRow['id'];
-            }
-            $mStmt->close();
-        }
+        // Extract statuses from lead
+        $zaloNotifyStatus = $lead['zalo_notify_status'] ?? 'none';
+        $emailNotifyStatus = $lead['email_notify_status'] ?? 'none';
 
-        // Check Zalo Queue
-        $zaloLikeName = '%' . $leadName . '%';
-        $zaloLikePhone = '%' . $leadPhone . '%';
+        // Map Email
+        $mailQueued = ($emailNotifyStatus !== 'none');
+        $mailFinalStatus = $mailQueued ? $emailNotifyStatus : 'missed';
 
-        if (!empty($saleZaloId)) {
-            $zStmt = $conn->prepare("SELECT id, status FROM zalo_queue WHERE chat_id = ? AND (body_text LIKE ? OR body_text LIKE ?) ORDER BY id DESC LIMIT 1");
-            $zStmt->bind_param("sss", $saleZaloId, $zaloLikeName, $zaloLikePhone);
-        } else {
-            $zStmt = $conn->prepare("SELECT id, status FROM zalo_queue WHERE (body_text LIKE ? OR body_text LIKE ?) ORDER BY id DESC LIMIT 1");
-            $zStmt->bind_param("ss", $zaloLikeName, $zaloLikePhone);
-        }
-        $zStmt->execute();
-        $zRes = $zStmt->get_result();
-        if ($zRes && $zRes->num_rows > 0) {
-            $zRow = $zRes->fetch_assoc();
-            $zaloQueued = true;
-            $zaloStatus = $zRow['status'];
-            $zaloId = $zRow['id'];
-        }
-        $zStmt->close();
-
-        // Check Zalo direct logs (zalo_send_log.txt) if not in queue
-        if (!$zaloQueued) {
-            $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
-            if (file_exists($zaloLogFile)) {
-                $directStatus = check_zalo_direct_log_for_lead($zaloLogFile, $createdDate, $leadPhone, $leadName);
-                if ($directStatus !== 'N/A') {
-                    $zaloQueued = true;
-                    $zaloStatus = $directStatus;
-                    $zaloId = 'Log';
-                }
-            }
-        }
-
-        // Final statuses
+        // Map Zalo
+        $zaloQueued = ($zaloNotifyStatus !== 'none');
         if (!$zaloQueued && empty($saleZaloId)) {
             $zaloFinalStatus = 'no_zalo_config';
         } else if ($zaloQueued) {
-            $zaloFinalStatus = $zaloStatus;
+            $zaloFinalStatus = $zaloNotifyStatus;
         } else {
             $zaloFinalStatus = 'missed';
         }
-
-        $mailFinalStatus = $mailQueued ? $mailStatus : 'missed';
 
         echo json_encode([
             'success' => true,
@@ -1574,13 +1519,13 @@ switch ($action) {
                 'email' => [
                     'queued' => $mailQueued,
                     'status' => $mailFinalStatus,
-                    'id' => $mailId,
+                    'id' => null, // no longer query database queue primary keys
                     'target' => $saleEmail
                 ],
                 'zalo' => [
                     'queued' => $zaloQueued,
                     'status' => $zaloFinalStatus,
-                    'id' => $zaloId,
+                    'id' => null,
                     'target' => $saleZaloId
                 ]
             ]

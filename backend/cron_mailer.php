@@ -35,7 +35,7 @@ function runMailerCron($conn) {
     $provider = $settings['email_provider'] ?? 'appscript';
 
     // 2. Kéo tối đa 50 email đang chờ gửi hoặc bị lỗi dưới 3 lần
-    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html, attempts FROM mail_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
+    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html, attempts, lead_id FROM mail_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
     if (!$res || $res->num_rows === 0) {
         echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable emails to send.\n";
         return;
@@ -155,15 +155,35 @@ function runMailerCron($conn) {
             $lastErrorMsg = "Invalid email provider configuration: " . $provider;
         }
 
+        $leadId = isset($row['lead_id']) ? (int)$row['lead_id'] : 0;
+
         // Cập nhật kết quả vào DB
         if ($isSent) {
             $updSuccessStmt->bind_param("i", $mailId);
             $updSuccessStmt->execute();
             $successCount++;
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = 'sent' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
         } else {
             $updFailStmt->bind_param("si", $lastErrorMsg, $mailId);
             $updFailStmt->execute();
             $failCount++;
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = 'failed' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
         }
         
         // Nghỉ 100ms giữa các email để tránh bị rate limit (spam block) từ Amazon SES hoặc Google
@@ -196,7 +216,7 @@ function runZaloMailerCron($conn) {
     require_once __DIR__ . '/zalo_bot.php';
 
     // 1. Kéo tối đa 50 tin nhắn Zalo đang chờ gửi hoặc bị lỗi dưới 3 lần
-    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts FROM zalo_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
+    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts, lead_id FROM zalo_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
     if (!$res || $res->num_rows === 0) {
         echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable Zalo messages to send.\n";
         return;
@@ -215,19 +235,38 @@ function runZaloMailerCron($conn) {
         $botToken = $row['bot_token'];
         $chatId = $row['chat_id'];
         $text = $row['body_text'];
+        $leadId = isset($row['lead_id']) ? (int)$row['lead_id'] : 0;
 
-        // Gọi trực tiếp cURL bằng cách truyền $sync = true
-        $isSent = sendZaloMessage($botToken, $chatId, $text, true);
+        // Gửi trực tiếp cURL bằng cách truyền $sync = true
+        $isSent = sendZaloMessage($botToken, $chatId, $text, true, $leadId);
 
         if ($isSent) {
             $updSuccessStmt->bind_param("i", $msgId);
             $updSuccessStmt->execute();
             $successCount++;
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'sent' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
         } else {
             $err = "Zalo API Send Failed (see zalo_send_log.txt for details)";
             $updFailStmt->bind_param("si", $err, $msgId);
             $updFailStmt->execute();
             $failCount++;
+
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'failed' WHERE id = ?");
+                if ($stmtLead) {
+                    $stmtLead->bind_param("i", $leadId);
+                    $stmtLead->execute();
+                    $stmtLead->close();
+                }
+            }
         }
 
         // Nghỉ 100ms giữa các tin nhắn để tránh bị rate limit từ Zalo Bot API

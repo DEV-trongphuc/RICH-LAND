@@ -12,6 +12,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 type Lead = {
   id: number;
+  lead_id?: number;
   name: string;
   phone: string;
   email: string;
@@ -270,7 +271,7 @@ export const Tickets = () => {
     if (selectedLead) {
       setNotificationStatus(null);
       setNotifLoading(true);
-      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.id}`)
+      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.lead_id || selectedLead.id}`)
         .then(json => {
           if (json.success) {
             setNotificationStatus(json.data);
@@ -989,6 +990,7 @@ export const Tickets = () => {
                       onClick={() => {
                         setSelectedLead({
                           id: r.log_id || 0,
+                          lead_id: r.lead_id || 0,
                           name: r.lead_name,
                           phone: r.lead_phone,
                           email: r.lead_email || '-',
@@ -1113,6 +1115,7 @@ export const Tickets = () => {
                   onClick={() => {
                     setSelectedLead({
                       id: r.log_id || 0,
+                      lead_id: r.lead_id || 0,
                       name: r.lead_name,
                       phone: r.lead_phone,
                       email: r.lead_email || '-',

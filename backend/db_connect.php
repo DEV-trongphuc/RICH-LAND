@@ -145,7 +145,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 129) {
+        if ($dbVer >= 131) {
             $runMigration = false;
         }
     }
@@ -166,7 +166,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 129) {
+                    if ($dbVer >= 131) {
                         $runMigration = false;
                     }
                 }
@@ -708,7 +708,30 @@ if ($runMigration) {
         $conn->query("ALTER TABLE leads ADD COLUMN email_notify_status VARCHAR(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Email'");
     }
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '129') ON DUPLICATE KEY UPDATE setting_value = '129'");
+    // Auto-migrate: Version 130 - lead_id columns in mail_queue and zalo_queue
+    $chkColMQ = $conn->query("SHOW COLUMNS FROM mail_queue LIKE 'lead_id'");
+    if ($chkColMQ && $chkColMQ->num_rows === 0) {
+        $conn->query("ALTER TABLE mail_queue ADD COLUMN lead_id INT NULL COMMENT 'ID của Lead liên kết'");
+        $chkIdxMQ = $conn->query("SHOW INDEX FROM mail_queue WHERE Key_name='idx_lead_id'");
+        if ($chkIdxMQ && $chkIdxMQ->num_rows === 0) {
+            $conn->query("ALTER TABLE mail_queue ADD INDEX idx_lead_id (lead_id)");
+        }
+    }
+    $chkColZQ = $conn->query("SHOW COLUMNS FROM zalo_queue LIKE 'lead_id'");
+    if ($chkColZQ && $chkColZQ->num_rows === 0) {
+        $conn->query("ALTER TABLE zalo_queue ADD COLUMN lead_id INT NULL COMMENT 'ID của Lead liên kết'");
+        $chkIdxZQ = $conn->query("SHOW INDEX FROM zalo_queue WHERE Key_name='idx_lead_id'");
+        if ($chkIdxZQ && $chkIdxZQ->num_rows === 0) {
+            $conn->query("ALTER TABLE zalo_queue ADD INDEX idx_lead_id (lead_id)");
+        }
+    }
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '130') ON DUPLICATE KEY UPDATE setting_value = '130'");
+
+    // Auto-migrate: Version 131 - Backfill historic leads assigned to consultants to 'sent' for both notify columns
+    $conn->query("UPDATE leads SET zalo_notify_status = 'sent' WHERE assigned_to IS NOT NULL AND assigned_to > 0 AND zalo_notify_status = 'none'");
+    $conn->query("UPDATE leads SET email_notify_status = 'sent' WHERE assigned_to IS NOT NULL AND assigned_to > 0 AND email_notify_status = 'none'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '131') ON DUPLICATE KEY UPDATE setting_value = '131'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");
