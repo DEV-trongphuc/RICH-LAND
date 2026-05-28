@@ -275,7 +275,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                             <span style={{
                               position: 'absolute', top: 4, right: 4,
                               width: 8, height: 8, borderRadius: '50%',
-                              background: '#ef4444',
+                              background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
                               boxShadow: '0 0 0 2px var(--sidebar-bg)'
                             }} />
                           )}
@@ -287,12 +287,19 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                             {t(name)}
                             {badgeCount > 0 && (
                               <span style={{
-                                background: '#ef4444', color: 'white',
-                                fontSize: '0.65rem', fontWeight: 800,
-                                padding: '2px 7px', borderRadius: 20,
-                                minWidth: 20, textAlign: 'center',
-                                lineHeight: '1.4',
-                                boxShadow: '0 2px 4px rgba(239,68,68,0.4)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
+                                color: 'white',
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                height: 20,
+                                minWidth: 20,
+                                padding: '0 6px',
+                                borderRadius: '9999px',
+                                textAlign: 'center',
+                                boxShadow: badgeKey === 'gatekeeper' ? '0 2px 4px rgba(245,158,11,0.4)' : '0 2px 4px rgba(239,68,68,0.4)',
                                 animation: 'pulse 2s infinite'
                               }}>
                                 {badgeCount}
