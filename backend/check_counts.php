@@ -6,6 +6,15 @@ if (php_sapi_name() !== 'cli') {
 
 require_once __DIR__ . '/db_connect.php';
 
+// Tự động dọn dẹp các log 'pending_approval' bị thừa của các lead đã được duyệt hoặc từ chối trước đó
+$conn->query("
+    DELETE dl FROM distribution_logs dl
+    INNER JOIN leads l ON dl.lead_id = l.id
+    WHERE dl.status = 'pending_approval' AND l.status IN ('active', 'rejected', 'blacklisted')
+");
+$cleanedRows = $conn->affected_rows;
+echo "--- CLEANUP: Da don dep $cleanedRows dong log 'pending_approval' thua ---\n\n";
+
 $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
 $dateConditionLeads = "created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
 

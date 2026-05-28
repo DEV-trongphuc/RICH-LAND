@@ -128,7 +128,21 @@ function runAIScreenerWorker($conn) {
                     $updHeld->execute();
                     $updHeld->close();
 
-                    logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Tạm giữ bởi AI (Chạy ngầm): ' . $aiResult['reason'], false);
+                    $logMsg = 'Tạm giữ bởi AI (Chạy ngầm): ' . $aiResult['reason'];
+                    $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                    $chkLog->bind_param("i", $leadId);
+                    $chkLog->execute();
+                    $logRow = $chkLog->get_result()->fetch_assoc();
+                    $chkLog->close();
+
+                    if ($logRow) {
+                        $updLog = $conn->prepare("UPDATE distribution_logs SET message = ?, received_at = NOW() WHERE id = ?");
+                        $updLog->bind_param("si", $logMsg, $logRow['id']);
+                        $updLog->execute();
+                        $updLog->close();
+                    } else {
+                        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', $logMsg, false);
+                    }
                     $conn->commit();
 
                     // Đồng bộ live Sheet ngược về
@@ -177,7 +191,21 @@ function runAIScreenerWorker($conn) {
 
                 if ($attempts >= 3) {
                     // Nếu đã thử 3 lần lỗi, ghi log phân bổ lỗi hệ thống để admin can thiệp
-                    logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Lỗi kết nối AI (Đã thử 3 lần thất bại): ' . $aiResult['reason'], false);
+                    $logMsg = 'Lỗi kết nối AI (Đã thử 3 lần thất bại): ' . $aiResult['reason'];
+                    $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                    $chkLog->bind_param("i", $leadId);
+                    $chkLog->execute();
+                    $logRow = $chkLog->get_result()->fetch_assoc();
+                    $chkLog->close();
+
+                    if ($logRow) {
+                        $updLog = $conn->prepare("UPDATE distribution_logs SET message = ?, received_at = NOW() WHERE id = ?");
+                        $updLog->bind_param("si", $logMsg, $logRow['id']);
+                        $updLog->execute();
+                        $updLog->close();
+                    } else {
+                        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', $logMsg, false);
+                    }
                 }
                 $conn->commit();
 
@@ -243,7 +271,21 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
         $updLead->execute();
         $updLead->close();
 
-        logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
+        $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+        $chkLog->bind_param("i", $leadId);
+        $chkLog->execute();
+        $logRow = $chkLog->get_result()->fetch_assoc();
+        $chkLog->close();
+
+        if ($logRow) {
+            $updLog = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ?, message = ?, received_at = NOW() WHERE id = ?");
+            $targetRoundVal = $targetRoundId > 0 ? $targetRoundId : null;
+            $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundVal, $status, $message, $logRow['id']);
+            $updLog->execute();
+            $updLog->close();
+        } else {
+            logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
+        }
         $conn->commit();
 
         // Đồng bộ live Sheet ngược về

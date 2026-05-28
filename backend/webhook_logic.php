@@ -1792,7 +1792,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
         . "Nếu dữ liệu nghi ngờ spam, rác, phá hoặc không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích lý do (nhận định chuyên nghiệp như một trợ lý kiểm duyệt không lập lại quy tắc một cách máy móc).";
+        . "- reason: giải thích lý do (nhận định chuyên nghiệp như một người kiểm duyệt không lập lại quy tắc một cách máy móc).";
 
     $payload = [
         'contents' => [

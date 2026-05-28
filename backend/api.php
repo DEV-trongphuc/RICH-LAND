@@ -5159,23 +5159,14 @@ switch ($action) {
             $updLead->execute();
             $updLead->close();
 
-            // 3. Log Distribution (Update existing pending_approval log if found, otherwise insert)
+            // 3. Log Distribution (Clean up pending logs and insert approved log)
             $logMsg = $message . " (Admin phê duyệt)";
-            $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
-            $chkLog->bind_param("i", $lead_id);
-            $chkLog->execute();
-            $logRow = $chkLog->get_result()->fetch_assoc();
-            $chkLog->close();
+            $delStmt = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval'");
+            $delStmt->bind_param("i", $lead_id);
+            $delStmt->execute();
+            $delStmt->close();
 
-            if ($logRow) {
-                $updLog = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ?, message = ?, received_at = NOW() WHERE id = ?");
-                $targetRoundVal = $targetRoundId > 0 ? $targetRoundId : null;
-                $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundVal, $status, $logMsg, $logRow['id']);
-                $updLog->execute();
-                $updLog->close();
-            } else {
-                logDistribution($conn, $lead_id, $assignedConsultantId, $targetRoundId ? $targetRoundId : null, $status, $logMsg, false);
-            }
+            logDistribution($conn, $lead_id, $assignedConsultantId, $targetRoundId > 0 ? $targetRoundId : null, $status, $logMsg, false);
 
             logAdminAction($conn, $decodedUser['id'], 'APPROVE_HELD_LEAD', [
                 'lead_id' => $lead_id,
@@ -5365,20 +5356,12 @@ switch ($action) {
                 $upd->close();
 
                 $logMsg = $message . " (Admin xác nhận dưới chuẩn & Fallback)";
-                $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
-                $chkLog->bind_param("i", $lead_id);
-                $chkLog->execute();
-                $logRow = $chkLog->get_result()->fetch_assoc();
-                $chkLog->close();
+                $delStmt = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval'");
+                $delStmt->bind_param("i", $lead_id);
+                $delStmt->execute();
+                $delStmt->close();
 
-                if ($logRow) {
-                    $updLog = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ?, message = ?, received_at = NOW() WHERE id = ?");
-                    $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundId, $status, $logMsg, $logRow['id']);
-                    $updLog->execute();
-                    $updLog->close();
-                } else {
-                    logDistribution($conn, $lead_id, $assignedConsultantId, $targetRoundId, $status, $logMsg, false);
-                }
+                logDistribution($conn, $lead_id, $assignedConsultantId, $targetRoundId, $status, $logMsg, false);
 
                 logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
                     'lead_id' => $lead_id,
@@ -5440,20 +5423,12 @@ switch ($action) {
                 $upd->close();
 
                 $logMsg = "Từ chối bởi Admin: " . $reason;
-                $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
-                $chkLog->bind_param("i", $lead_id);
-                $chkLog->execute();
-                $logRow = $chkLog->get_result()->fetch_assoc();
-                $chkLog->close();
+                $delStmt = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval'");
+                $delStmt->bind_param("i", $lead_id);
+                $delStmt->execute();
+                $delStmt->close();
 
-                if ($logRow) {
-                    $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'rejected', message = ?, received_at = NOW() WHERE id = ?");
-                    $updLog->bind_param("si", $logMsg, $logRow['id']);
-                    $updLog->execute();
-                    $updLog->close();
-                } else {
-                    logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
-                }
+                logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
 
                 logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
                     'lead_id' => $lead_id,
