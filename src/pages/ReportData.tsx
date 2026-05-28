@@ -14,7 +14,7 @@ const DEFAULT_REPORT_REASONS: ReportReason[] = [
   { reason: 'Trùng của tôi (Trùng Saleperson)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
   { reason: 'Trùng của người khác (Saleperson khác đã chăm)', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
   { reason: 'Spam ảo / Junk lead', note: 'Data mà vừa giao gọi cuộc 1 đã báo hết nhu cầu rồi, không có đăng kí, cháu chắt phá, hoặc đăng kí cho vui.' },
-  { reason: 'Khác (Vui lòng ghi rõ ở phần ghi chú)', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
+  { reason: 'Khác', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
 ];
 
 const TEST_MOCK_CONTEXT = {
@@ -125,8 +125,8 @@ export const ReportData = () => {
     if (params.isTest) { setSubmitError(t('Đây là link thử nghiệm — không thể gửi báo cáo thật.')); setSubmitStatus('error'); return; }
     if (submitting || submitStatus === 'success') return;
     setSubmitting(true); setSubmitError('');
-    const finalReason = isOtherReason 
-      ? `${reason}: ${customReason}` 
+    const finalReason = isOtherReason
+      ? `${reason}: ${customReason}`
       : (customReason.trim() ? `${reason} (Ghi chú: ${customReason.trim()})` : reason);
     try {
       const res = await fetchPublicAPI('submit_report', {
@@ -207,7 +207,7 @@ export const ReportData = () => {
                   <>
                     {/* Customer avatar block */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #e0e7ff' }}>
-                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
                         {initials(context.lead_name)}
                       </div>
                       <div>
@@ -231,9 +231,9 @@ export const ReportData = () => {
                     {/* Details */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <InfoItem label={t("Nguồn Data")} value={context.lead_source || t('Không rõ')} />
-                      
-                      <button 
-                        type="button" 
+
+                      <button
+                        type="button"
                         className="mobile-toggle-btn"
                         onClick={() => setExpandedMobile(!expandedMobile)}
                       >
@@ -262,13 +262,13 @@ export const ReportData = () => {
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <div>
                               <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t("Ghi chú / Thông tin")}</div>
-                              <div style={{ 
-                                fontSize: '0.8rem', 
-                                fontWeight: 500, 
-                                color: 'var(--color-text-light)', 
-                                background: 'var(--color-bg)', 
-                                padding: '8px 12px', 
-                                borderRadius: 8, 
+                              <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                color: 'var(--color-text-light)',
+                                background: 'var(--color-bg)',
+                                padding: '8px 12px',
+                                borderRadius: 8,
                                 border: '1px solid var(--color-border)',
                                 whiteSpace: 'pre-wrap',
                                 maxHeight: '120px',
@@ -369,9 +369,9 @@ export const ReportData = () => {
                     </div>
 
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>{t("Ghi chú thêm")}</div>
-                    <textarea 
-                      required={isOtherReason} 
-                      value={customReason} 
+                    <textarea
+                      required={isOtherReason}
+                      value={customReason}
                       onChange={e => setCustomReason(e.target.value)}
                       placeholder={isOtherReason ? t('Nhập chi tiết lý do lỗi (bắt buộc)...') : t('Nhập ghi chú thêm nếu có (tùy chọn)...')}
                       style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: '0.85rem', minHeight: 70, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', flexShrink: 0, background: 'var(--color-surface)', color: 'var(--color-text)' }} />
