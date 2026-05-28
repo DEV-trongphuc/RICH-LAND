@@ -60,13 +60,14 @@ const maskEmail = (email: string) => {
 };
 
 const parseNote = (noteText: string) => {
-  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [], warningNotes: [] };
+  if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [], warningNotes: [], aiDecisionNotes: [] };
   const normalized = noteText.replace(/\\n/g, '\n');
   const lines = normalized.split('\n');
   const cleanLines: string[] = [];
   const errorNotes: string[] = [];
   const blacklistNotes: string[] = [];
   const warningNotes: string[] = [];
+  const aiDecisionNotes: string[] = [];
 
   lines.forEach(line => {
     const trimmed = line.trim();
@@ -95,6 +96,13 @@ const parseNote = (noteText: string) => {
         cleanWarn = cleanWarn.substring(1, cleanWarn.length - 1).trim();
       }
       warningNotes.push(cleanWarn);
+    } else if (
+      trimmed.startsWith('[Từ chối AI]:') ||
+      trimmed.startsWith('[Duyệt AI]:') ||
+      trimmed.startsWith('[Blacklist AI]:') ||
+      trimmed.startsWith('[Xác nhận dưới chuẩn - Fallback]:')
+    ) {
+      aiDecisionNotes.push(trimmed);
     } else {
       cleanLines.push(line);
     }
@@ -104,8 +112,52 @@ const parseNote = (noteText: string) => {
     cleanNote: cleanLines.join('\n').trim(),
     errorNotes,
     blacklistNotes,
-    warningNotes
+    warningNotes,
+    aiDecisionNotes
   };
+};
+
+const parseAIDecisionNote = (note: string) => {
+  let type = 'ai_reject';
+  let prefix = '[Từ chối AI]';
+  let reason = '';
+  let admin = 'Hệ thống';
+  let time = 'Hệ thống';
+
+  let remaining = note;
+  if (note.startsWith('[Từ chối AI]:')) {
+    type = 'ai_reject';
+    prefix = '[Từ chối AI]';
+    remaining = note.substring('[Từ chối AI]:'.length).trim();
+  } else if (note.startsWith('[Duyệt AI]:')) {
+    type = 'ai_approve';
+    prefix = '[Duyệt AI]';
+    remaining = note.substring('[Duyệt AI]:'.length).trim();
+  } else if (note.startsWith('[Blacklist AI]:')) {
+    type = 'ai_blacklist';
+    prefix = '[Blacklist AI]';
+    remaining = note.substring('[Blacklist AI]:'.length).trim();
+  } else if (note.startsWith('[Xác nhận dưới chuẩn - Fallback]:')) {
+    type = 'ai_fallback';
+    prefix = '[Xác nhận dưới chuẩn - Fallback]';
+    remaining = note.substring('[Xác nhận dưới chuẩn - Fallback]:'.length).trim();
+  }
+
+  const parts = remaining.split('|');
+  if (parts.length > 0) {
+    reason = parts[0].trim();
+  }
+
+  parts.forEach(part => {
+    const trimmed = part.trim();
+    if (trimmed.startsWith('Admin:')) {
+      admin = trimmed.substring('Admin:'.length).trim();
+    } else if (trimmed.startsWith('Lúc:')) {
+      time = trimmed.substring('Lúc:'.length).trim();
+    }
+  });
+
+  return { type, prefix, reason, admin, time };
 };
 
 const parseBlacklistNote = (note: string) => {
@@ -129,6 +181,10 @@ const parseBlacklistNote = (note: string) => {
   }
 
   return { admin, time, reason };
+};
+
+const getUserAvatarByName = (_name: string) => {
+  return undefined;
 };
 
 interface AIScreenerConfig {
@@ -3207,7 +3263,7 @@ export const Gatekeeper = () => {
                 </div>
 
                 {(() => {
-                  const { cleanNote, blacklistNotes, warningNotes } = parseNote(selectedLead.note || '');
+                  const { cleanNote, blacklistNotes, warningNotes, aiDecisionNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
 
@@ -3287,6 +3343,98 @@ export const Gatekeeper = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* AI Decision Notes */}
+                      {aiDecisionNotes && aiDecisionNotes.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          {aiDecisionNotes.map((note, index) => {
+                            const parsed = parseAIDecisionNote(note);
+                            
+                            const isApprove = parsed.type === 'ai_approve';
+                            const isBlacklist = parsed.type === 'ai_blacklist';
+                            const isFallback = parsed.type === 'ai_fallback';
+                            
+                            let cardBg = 'rgba(239, 68, 68, 0.08)';
+                            let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
+                            let iconBg = 'rgba(239, 68, 68, 0.15)';
+                            let iconColor = 'var(--color-danger)';
+                            let titleColor = 'var(--color-danger)';
+                            let titleText = t("Từ chối bởi AI");
+                            let IconComponent = Sparkles;
+                            
+                            if (isApprove) {
+                              cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
+                              cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
+                              iconBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#d1fae5';
+                              iconColor = 'var(--color-success)';
+                              titleColor = 'var(--color-success)';
+                              titleText = t("Duyệt bởi AI");
+                              IconComponent = CheckCircle;
+                            } else if (isBlacklist) {
+                              cardBg = 'rgba(0, 0, 0, 0.2)';
+                              cardBorder = '1px solid rgba(255, 255, 255, 0.08)';
+                              iconBg = 'rgba(255, 255, 255, 0.1)';
+                              iconColor = '#94a3b8';
+                              titleColor = '#cbd5e1';
+                              titleText = t("Tự động chặn bởi AI (Blacklist)");
+                              IconComponent = ShieldAlert;
+                            } else if (isFallback) {
+                              cardBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb';
+                              cardBorder = theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fca5a5';
+                              iconBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#ffe4e6';
+                              iconColor = 'var(--color-warning)';
+                              titleColor = 'var(--color-warning)';
+                              titleText = t("Xác nhận dưới chuẩn (Fallback)");
+                              IconComponent = AlertTriangle;
+                            }
+
+                            return (
+                              <div key={index} style={{
+                                background: cardBg,
+                                border: cardBorder,
+                                padding: '0.875rem 1rem',
+                                borderRadius: '14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem',
+                                boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.02)'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ background: iconBg, padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
+                                      <IconComponent size={15} />
+                                    </div>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: titleColor }}>{titleText}</span>
+                                  </div>
+                                </div>
+
+                                <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? 'var(--color-text-light)' : '#334155' }}>
+                                  <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
+                                </div>
+
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '12px', 
+                                  paddingTop: '0.5rem', 
+                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)', 
+                                  flexWrap: 'wrap'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
+                                    <span>{t("Admin phụ trách: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
+                                  </div>
+                                  <span style={{ color: theme === 'dark' ? '#374151' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                    <Clock size={13} style={{ opacity: 0.7 }} />
+                                    <span>{t("Thời gian: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                       {/* Blacklist Notes */}
                       {blacklistNotes && blacklistNotes.length > 0 && (

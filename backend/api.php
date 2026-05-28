@@ -3807,11 +3807,7 @@ switch ($action) {
                         . "  • Loại Data: $leadType\n"
                         . "  • Ghi chú: $leadNote\n\n"
                         . "❖ LÝ DO LỖI:\n"
-                        . "  $reason\n\n"
-                        . "👉 Để DUYỆT nhanh, soạn:\n"
-                        . "   /accept $ticketId [lý do duyệt]\n"
-                        . "👉 Để TỪ CHỐI nhanh, soạn:\n"
-                        . "   /reject $ticketId <lý do từ chối>";
+                        . "  $reason";
 
                     $adminChatIds = [];
                     foreach ($allAdmins as $adm) {

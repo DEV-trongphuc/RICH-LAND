@@ -162,6 +162,11 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 exit;
             }
 
+            if (strpos($textLower, '/accept') === 0 || strpos($textLower, '/reject') === 0 || strpos($textLower, '/duyet') === 0 || strpos($textLower, '/tuchoi') === 0) {
+                sendZaloMessage($botToken, $chatId, "⚠️ Chức năng duyệt/từ chối nhanh qua câu lệnh Zalo đã bị gỡ bỏ để đảm bảo bảo mật và chính xác. Vui lòng truy cập trang Quản trị (CRM) để xử lý.");
+                exit;
+            }
+
             if (strpos($textLower, '/tools') === 0) {
                 $reportTime = get_system_setting($conn, 'zalo_daily_report_time') ?: '17:00';
                 $reportTimeDisplay = date('H:i', strtotime($reportTime));
@@ -178,9 +183,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                           . "  • [/check <sdt_hoặc_email>]: Kiểm tra thông tin Lead (vòng, sale, ghi chú...).\n\n"
                           . "🎫 2. QUẢN LÝ TICKET (BÁO LỖI):\n"
                           . "  • [/ticket pending]: Xem danh sách ticket đang chờ duyệt.\n"
-                          . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n"
-                          . "  • [/accept <mã_ticket> <lý_do>]: Duyệt nhanh ticket lỗi kèm lý do (Ví dụ: [/accept 12 Duyệt trùng]).\n"
-                          . "  • [/reject <mã_ticket> <lý_do>]: Từ chối nhanh ticket kèm lý do (Ví dụ: [/reject 12 Khách vẫn nghe máy]).\n\n"
+                          . "  • [/ticket homnay]: Thống kê ticket phát sinh trong ngày.\n\n"
                           . "👥 3. QUẢN LÝ NHÂN SỰ & HỆ THỐNG:\n"
                           . "  • [/sales]: Xem trạng thái hoạt động của các tư vấn viên.\n"
                           . "  • [/round]: Xem các vòng phân bổ đang hoạt động và Sale tiếp theo nhận số.\n"
@@ -349,11 +352,9 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                      . "   👤 Sale: " . $rowTick['sale_name'] . "\n"
                                      . "   👤 KH: " . $rowTick['lead_name'] . "\n"
                                      . "   📝 Lý do: " . $rowTick['reason'] . "\n"
-                                     . "   🕒 Thời gian: " . date('d/m H:i', strtotime($rowTick['created_at'])) . "\n"
-                                     . "   👉 Duyệt: Gõ `/accept " . $rowTick['id'] . "`\n\n";
+                                     . "   🕒 Thời gian: " . date('d/m H:i', strtotime($rowTick['created_at'])) . "\n\n";
                             $count++;
                         }
-                        $tickMsg .= "💡 Duyệt nhanh bằng cách gõ `/accept [mã_ticket]` (Ví dụ: `/accept 12`).";
                     } else {
                         $tickMsg .= "✅ Hiện không có ticket nào đang chờ duyệt.";
                     }

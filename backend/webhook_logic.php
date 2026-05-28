@@ -2302,10 +2302,7 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
                 . "  • Ghi chú: " . (!empty($note) ? $note : "Không có") . "\n\n"
                 . "━━━━━━━━\n"
                 . "🤖 ĐÁNH GIÁ AI:\n"
-                . "  " . $aiReason . "\n\n"
-                . "⚡ LỆNH DUYỆT NHANH (ZALO):\n"
-                . "  👉 Duyệt lead: Soạn `/duyet " . $leadId . "`\n"
-                . "  👉 Từ chối lead: Soạn `/tuchoi " . $leadId . " [lý do]`\n";
+                . "  " . $aiReason . "\n";
             try {
                 require_once __DIR__ . '/zalo_bot.php';
                 sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);

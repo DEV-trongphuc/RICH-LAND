@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale, Activity,
+  ArrowUpRight, ArrowDownRight, GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
   FileSpreadsheet, MessageCircle, Database, Server
 } from 'lucide-react';
 import {
@@ -31,7 +31,6 @@ export const Dashboard = () => {
   const [dateFilter, setDateFilter] = useState('Tháng này');
   const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
-  const [rounds, setRounds] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [connections, setConnections] = useState<any[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
@@ -110,15 +109,6 @@ export const Dashboard = () => {
     return t(filter);
   };
 
-  const fetchRounds = async () => {
-    try {
-      const json = await fetchAPI('get_rounds');
-      if (json.success) setRounds(json.data || []);
-    } catch (e) {
-      console.error('Lỗi tải vòng xoay:', e);
-    }
-  };
-
   const fetchDashboard = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
@@ -159,7 +149,6 @@ export const Dashboard = () => {
       // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
       const abortController = new AbortController();
       fetchDashboard(abortController.signal);
-      fetchRounds();
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
   }, [dateFilter, chartMode, isActive]);
