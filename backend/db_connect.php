@@ -635,6 +635,11 @@ if ($runMigration) {
         $conn->query("ALTER TABLE leads ADD INDEX `idx_target_round_id` (`target_round_id`)");
     }
 
+    $chkFkStatus = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_leads_status'");
+    if ($chkFkStatus && $chkFkStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD INDEX `idx_leads_status` (`status`)");
+    }
+
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_enabled', '0')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_rules', 'Tiếng Anh: Đạt chuẩn (đã học tiếng Anh, có nền tảng tốt, có thể giao tiếp cơ bản, có chứng chỉ tiếng Anh như IELTS, TOEIC, v.v.).\\nKhông đạt chuẩn (không có tiếng Anh, mất gốc hoàn toàn, không muốn học tiếng Anh, v.v.). Nếu ghi chú thể hiện rõ ràng là không học tiếng Anh hoặc mất gốc hoàn toàn thì đánh giá là Không đạt chuẩn.')");
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('ai_screener_model', 'gemini-2.5-flash-lite') ON DUPLICATE KEY UPDATE setting_value = IF(setting_value = 'gemini-2.5-flash', 'gemini-2.5-flash-lite', setting_value)");

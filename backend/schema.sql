@@ -412,7 +412,8 @@ ALTER TABLE `leads`
   ADD KEY `idx_connection_id` (`connection_id`),
   ADD KEY `idx_last_interaction_date` (`last_interaction_date`),
   ADD KEY `idx_name` (`name`),
-  ADD KEY `idx_target_round_id` (`target_round_id`);
+  ADD KEY `idx_target_round_id` (`target_round_id`),
+  ADD KEY `idx_leads_status` (`status`);
 
 --
 -- Chỉ mục cho bảng `mail_queue`

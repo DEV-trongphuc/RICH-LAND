@@ -1203,7 +1203,7 @@ export const Gatekeeper = () => {
                     background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
                     transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
                   }}
-                  title={`${t('Tạm giữ')}: ${aiFailedPercent}%`}
+                  title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
                 />
               </div>
 
@@ -1218,7 +1218,7 @@ export const Gatekeeper = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
                   <span>
-                    {t('Tạm giữ (Held):')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                    {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
                   </span>
                 </div>
               </div>
@@ -2919,19 +2919,49 @@ export const Gatekeeper = () => {
                             let statusBadge = null;
                             if (l.status === 'pending_approval') {
                               statusBadge = (
-                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
+                                <span style={{ 
+                                  padding: '3px 10px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 700, 
+                                  background: 'var(--color-warning-light)', 
+                                  color: 'var(--color-warning)',
+                                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
                                   {t('Tạm giữ')}
                                 </span>
                               );
                             } else if (l.status === 'rejected') {
                               statusBadge = (
-                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.12)', color: 'var(--color-danger)' }}>
+                                <span style={{ 
+                                  padding: '3px 10px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 700, 
+                                  background: 'var(--color-danger-light)', 
+                                  color: 'var(--color-danger)',
+                                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
                                   {t('Đã hủy')}
                                 </span>
                               );
                             } else if (l.status === 'blacklisted') {
                               statusBadge = (
-                                <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(0, 0, 0, 0.3)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <span style={{ 
+                                  padding: '3px 10px', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 700, 
+                                  background: 'rgba(239, 68, 68, 0.16)', 
+                                  color: 'var(--color-danger)', 
+                                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
                                   {t('Blacklist')}
                                 </span>
                               );
@@ -2943,9 +2973,14 @@ export const Gatekeeper = () => {
                                   {new Date(l.created_at).toLocaleString('vi-VN')}
                                 </td>
                                 <td style={{ padding: '10px 14px' }}>
-                                  <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
-                                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
-                                    {maskPhone(l.phone)}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Avatar name={l.name} size="sm" />
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
+                                      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
+                                        {maskPhone(l.phone)}
+                                      </div>
+                                    </div>
                                   </div>
                                 </td>
                                 <td style={{ padding: '10px 14px' }}>

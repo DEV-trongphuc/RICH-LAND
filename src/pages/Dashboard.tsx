@@ -470,7 +470,7 @@ export const Dashboard = () => {
                     background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)', 
                     transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)' 
                   }} 
-                  title={`${t('Tạm giữ')}: ${aiFailedPercent}%`}
+                  title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
                 />
               </div>
 
@@ -485,7 +485,7 @@ export const Dashboard = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
                   <span>
-                    {t('Tạm giữ (Held):')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                    {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
                   </span>
                 </div>
               </div>
