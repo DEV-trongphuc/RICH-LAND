@@ -147,7 +147,8 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
 
     if ($leadId > 0) {
         $newStatus = $sentResult ? 'sent' : 'failed';
-        $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = ? WHERE id = ?");
+        $sentAtExpr = $sentResult ? ", email_notify_sent_at = NOW()" : "";
+        $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = ? $sentAtExpr WHERE id = ?");
         if ($stmtLead) {
             $stmtLead->bind_param("si", $newStatus, $leadId);
             $stmtLead->execute();

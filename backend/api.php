@@ -1452,7 +1452,7 @@ switch ($action) {
         }
 
         // Fetch lead details including direct notify status columns
-        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at, l.zalo_notify_status, l.email_notify_status FROM leads l WHERE l.id = ? LIMIT 1");
+        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at, l.zalo_notify_status, l.email_notify_status, l.zalo_notify_sent_at, l.email_notify_sent_at FROM leads l WHERE l.id = ? LIMIT 1");
         $leadStmt->bind_param("i", $leadId);
         $leadStmt->execute();
         $lead = $leadStmt->get_result()->fetch_assoc();
@@ -1520,13 +1520,15 @@ switch ($action) {
                     'queued' => $mailQueued,
                     'status' => $mailFinalStatus,
                     'id' => null, // no longer query database queue primary keys
-                    'target' => $saleEmail
+                    'target' => $saleEmail,
+                    'sent_at' => $lead['email_notify_sent_at'] ? date('Y-m-d H:i:s', strtotime($lead['email_notify_sent_at'])) : null
                 ],
                 'zalo' => [
                     'queued' => $zaloQueued,
                     'status' => $zaloFinalStatus,
                     'id' => null,
-                    'target' => $saleZaloId
+                    'target' => $saleZaloId,
+                    'sent_at' => $lead['zalo_notify_sent_at'] ? date('Y-m-d H:i:s', strtotime($lead['zalo_notify_sent_at'])) : null
                 ]
             ]
         ]);
@@ -7141,11 +7143,28 @@ switch ($action) {
 
         $channel = $_GET['channel'] ?? 'all'; // all, email, zalo
         $type = $_GET['type'] ?? 'all';       // all, sale, admin
+        $saleId = isset($_GET['sale']) && $_GET['sale'] !== 'all' ? (int)$_GET['sale'] : 0;
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 10;
         if ($page < 1) $page = 1;
         if ($pageSize < 1) $pageSize = 10;
+
+        $saleEmail = '';
+        $saleZaloChatId = '';
+        if ($saleId > 0) {
+            $stmtC = $conn->prepare("SELECT email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            if ($stmtC) {
+                $stmtC->bind_param("i", $saleId);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                if ($cRow) {
+                    $saleEmail = trim($cRow['email'] ?? '');
+                    $saleZaloChatId = trim($cRow['zalo_chat_id'] ?? '');
+                }
+                $stmtC->close();
+            }
+        }
 
         $mailLogs = [];
         $resMail = $conn->query("
@@ -7192,6 +7211,30 @@ switch ($action) {
         $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
         $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile);
 
+        // Lọc bỏ các bản ghi trùng lặp trong file log zalo_send_log.txt (Direct cURL)
+        // nếu tin nhắn đó đã được ghi nhận trong cơ sở dữ liệu zalo_queue (Tránh hiển thị nhân đôi logs)
+        $dedupedDirectLogs = [];
+        foreach ($zaloDirectLogs as $dirLog) {
+            $isDup = false;
+            $dirTime = strtotime($dirLog['created_at']);
+            $dirBodyTrim = trim($dirLog['body']);
+            
+            foreach ($zaloQueueLogs as $qLog) {
+                if ($qLog['target'] === $dirLog['target'] && trim($qLog['body']) === $dirBodyTrim) {
+                    $qTime = strtotime($qLog['created_at']);
+                    // Nếu thời gian chênh lệch không quá 3 phút (180 giây), coi như trùng lặp
+                    if (abs($dirTime - $qTime) <= 180) {
+                        $isDup = true;
+                        break;
+                    }
+                }
+            }
+            if (!$isDup) {
+                $dedupedDirectLogs[] = $dirLog;
+            }
+        }
+        $zaloDirectLogs = $dedupedDirectLogs;
+
         $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs);
 
         $filteredLogs = [];
@@ -7225,6 +7268,19 @@ switch ($action) {
             }
             if ($type !== 'all' && $item['type'] !== $type) {
                 continue;
+            }
+            if ($saleId > 0) {
+                $isMatchSale = false;
+                $cleanTarget = strtolower(trim($item['target']));
+                if (!empty($saleEmail) && strtolower($saleEmail) === $cleanTarget) {
+                    $isMatchSale = true;
+                }
+                if (!empty($saleZaloChatId) && strtolower($saleZaloChatId) === $cleanTarget) {
+                    $isMatchSale = true;
+                }
+                if (!$isMatchSale) {
+                    continue;
+                }
             }
             if (!empty($search)) {
                 $lowerSearch = mb_strtolower($search, 'UTF-8');

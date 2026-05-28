@@ -85,7 +85,8 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
 
     if ($leadId > 0) {
         $newStatus = $isSent ? 'sent' : 'failed';
-        $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = ? WHERE id = ?");
+        $sentAtExpr = $isSent ? ", zalo_notify_sent_at = NOW()" : "";
+        $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = ? $sentAtExpr WHERE id = ?");
         if ($stmtLead) {
             $stmtLead->bind_param("si", $newStatus, $leadId);
             $stmtLead->execute();
@@ -174,8 +175,9 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         $chatId = $chatIdCache[$consultantId];
     } else {
         $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-        if (!$stmtConsultant) return false;
-        
+        if (!$stmtConsultant)
+            return false;
+
         $stmtConsultant->bind_param("i", $consultantId);
         $stmtConsultant->execute();
         $res = $stmtConsultant->get_result();
@@ -205,8 +207,10 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
             $res = $stmt->get_result();
             if ($res && $res->num_rows > 0) {
                 $row = $res->fetch_assoc();
-                if (empty($email)) $email = $row['email'] ?? '';
-                if (empty($type)) $type = $row['type'] ?? '';
+                if (empty($email))
+                    $email = $row['email'] ?? '';
+                if (empty($type))
+                    $type = $row['type'] ?? '';
                 $aiScreenerStatus = $row['ai_screener_status'] ?? '';
                 $aiEvaluation = $row['ai_evaluation'] ?? '';
             }
@@ -220,8 +224,10 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
             $res = $stmt->get_result();
             if ($res && $res->num_rows > 0) {
                 $row = $res->fetch_assoc();
-                if (empty($email)) $email = $row['email'] ?? '';
-                if (empty($type)) $type = $row['type'] ?? '';
+                if (empty($email))
+                    $email = $row['email'] ?? '';
+                if (empty($type))
+                    $type = $row['type'] ?? '';
                 $aiScreenerStatus = $row['ai_screener_status'] ?? '';
                 $aiEvaluation = $row['ai_evaluation'] ?? '';
             }
@@ -267,10 +273,10 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . $typeLine
         . "  • Nguồn: $fSource\n"
         . $roundLine
-        . $aiSection
         . "\n📝 GHI CHÚ:\n"
-        . "  $fNote\n\n"
-        . "⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
+        . "  $fNote\n"
+        . $aiSection
+        . "\n⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
         . "👉 Link: $reportUrl\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
@@ -295,8 +301,9 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $chatId = $chatIdCache[$consultantId];
     } else {
         $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-        if (!$stmtConsultant) return false;
-        
+        if (!$stmtConsultant)
+            return false;
+
         $stmtConsultant->bind_param("i", $consultantId);
         $stmtConsultant->execute();
         $res = $stmtConsultant->get_result();
@@ -308,7 +315,8 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $chatIdCache[$consultantId] = $chatId;
     }
 
-    if (empty($chatId)) return false;
+    if (empty($chatId))
+        return false;
 
     // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
     $email = $leadEmail;
@@ -322,8 +330,10 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
                 $res = $stmt->get_result();
                 if ($res && $res->num_rows > 0) {
                     $row = $res->fetch_assoc();
-                    if (empty($email)) $email = $row['email'] ?? '';
-                    if (empty($type)) $type = $row['type'] ?? '';
+                    if (empty($email))
+                        $email = $row['email'] ?? '';
+                    if (empty($type))
+                        $type = $row['type'] ?? '';
                 }
                 $stmt->close();
             }
@@ -335,8 +345,10 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
                 $res = $stmt->get_result();
                 if ($res && $res->num_rows > 0) {
                     $row = $res->fetch_assoc();
-                    if (empty($email)) $email = $row['email'] ?? '';
-                    if (empty($type)) $type = $row['type'] ?? '';
+                    if (empty($email))
+                        $email = $row['email'] ?? '';
+                    if (empty($type))
+                        $type = $row['type'] ?? '';
                 }
                 $stmt->close();
             }
@@ -353,8 +365,10 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $lines = [];
         foreach ($timeline as $t) {
             $parts = [];
-            if (!empty($t['round_name'])) $parts[] = "Vòng: " . $t['round_name'];
-            if (!empty($t['consultant_name'])) $parts[] = "Sale: " . $t['consultant_name'];
+            if (!empty($t['round_name']))
+                $parts[] = "Vòng: " . $t['round_name'];
+            if (!empty($t['consultant_name']))
+                $parts[] = "Sale: " . $t['consultant_name'];
             $extra = !empty($parts) ? " (" . implode(" | ", $parts) . ")" : "";
             $line = "  • " . $t['received_at'] . " - " . $t['status'] . $extra;
             if (!empty($t['message'])) {
@@ -378,7 +392,7 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         . $emailLine
         . $typeLine
         . "  • Nguồn: $fSource\n";
-    
+
     if (!empty($roundName)) {
         $text .= "  • Vòng: $roundName\n";
     }
@@ -438,8 +452,10 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
                 $res = $stmt->get_result();
                 if ($res && $res->num_rows > 0) {
                     $row = $res->fetch_assoc();
-                    if (empty($email)) $email = $row['email'] ?? '';
-                    if (empty($type)) $type = $row['type'] ?? '';
+                    if (empty($email))
+                        $email = $row['email'] ?? '';
+                    if (empty($type))
+                        $type = $row['type'] ?? '';
                 }
                 $stmt->close();
             }
@@ -471,13 +487,16 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
     return sendZaloMessage($botToken, $adminChatId, $text, $sync);
 }
 
-function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '', $sync = false) {
+function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '', $sync = false)
+{
     global $conn;
-    if (empty($time)) $time = date('H:i:s d/m/Y');
+    if (empty($time))
+        $time = date('H:i:s d/m/Y');
 
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-    if (!$botToken) return false;
+    if (!$botToken)
+        return false;
 
     $stmtC = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ?");
     $stmtC->bind_param('i', $consultantId);
@@ -488,7 +507,8 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
         $chatId = $resC->fetch_assoc()['zalo_chat_id'];
     }
     $stmtC->close();
-    if (!$chatId) return false;
+    if (!$chatId)
+        return false;
 
     $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
 
@@ -505,13 +525,16 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     return sendZaloMessage($botToken, $chatId, $msg, $sync);
 }
 
-function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '', $sync = false) {
+function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '', $sync = false)
+{
     global $conn;
-    if (empty($time)) $time = date('H:i:s d/m/Y');
+    if (empty($time))
+        $time = date('H:i:s d/m/Y');
 
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-    if (!$botToken || empty($adminChatId)) return false;
+    if (!$botToken || empty($adminChatId))
+        return false;
 
     $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
 
@@ -532,7 +555,8 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
 /**
  * Tạo báo cáo phân bổ và ticket trong khoảng thời gian xác định
  */
-function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel = '') {
+function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLabel = '')
+{
     $stmtData = $conn->prepare("
         SELECT c.id, c.name, dl.status, COUNT(*) as cnt
             FROM distribution_logs dl 
@@ -545,15 +569,15 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     if (!$stmtData) {
         return "⚠️ Lỗi hệ thống: Không thể chuẩn bị câu lệnh truy vấn dữ liệu.";
     }
-    
+
     $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
     $stmtData->execute();
     $resData = $stmtData->get_result();
-    
+
     $saleData = [];
     if ($resData) {
         while ($row = $resData->fetch_assoc()) {
-            $cId = (int)$row['id'];
+            $cId = (int) $row['id'];
             if (!isset($saleData[$cId])) {
                 $saleData[$cId] = [
                     'name' => $row['name'],
@@ -566,7 +590,7 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
                 ];
             }
             $status = $row['status'];
-            $saleData[$cId][$status] = (int)$row['cnt'];
+            $saleData[$cId][$status] = (int) $row['cnt'];
         }
     }
     $stmtData->close();
@@ -583,20 +607,20 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     }
 
     // Sort descending by normal_total, then reminder_total
-    usort($saleList, function($a, $b) {
+    usort($saleList, function ($a, $b) {
         if ($b['normal_total'] !== $a['normal_total']) {
             return $b['normal_total'] <=> $a['normal_total'];
         }
         return $b['reminder_total'] <=> $a['reminder_total'];
     });
-    
+
     $saleStats = "";
     $totalData = 0;
     $totalReminder = 0;
     foreach ($saleList as $saleItem) {
         $normalTotal = $saleItem['normal_total'];
         $reminderTotal = $saleItem['reminder_total'];
-        
+
         if ($reminderTotal > 0) {
             $total = $normalTotal + $reminderTotal;
             $saleStats .= "  👤 " . $saleItem['name'] . ": " . $total . " data (Chia số: " . $normalTotal . " | Nhắc lại: " . $reminderTotal . ")\n";
@@ -606,11 +630,11 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $totalData += $normalTotal;
         $totalReminder += $reminderTotal;
     }
-    
+
     if (empty($saleStats)) {
         $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
     }
-    
+
     $stmtTicket = $conn->prepare("
         SELECT COUNT(*) as total,
                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
@@ -629,10 +653,10 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $stmtTicket->execute();
         $resTicket = $stmtTicket->get_result();
         if ($resTicket && $row = $resTicket->fetch_assoc()) {
-            $totalTicket = (int)$row['total'];
-            $approvedTicket = (int)($row['approved_count'] ?? 0);
-            $rejectedTicket = (int)($row['rejected_count'] ?? 0);
-            $pendingTicket = (int)($row['pending_count'] ?? 0);
+            $totalTicket = (int) $row['total'];
+            $approvedTicket = (int) ($row['approved_count'] ?? 0);
+            $rejectedTicket = (int) ($row['rejected_count'] ?? 0);
+            $pendingTicket = (int) ($row['pending_count'] ?? 0);
         }
         $stmtTicket->close();
     }
@@ -651,11 +675,11 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $stmtBlocked->execute();
         $resBlocked = $stmtBlocked->get_result();
         if ($resBlocked && $row = $resBlocked->fetch_assoc()) {
-            $totalBlocked = (int)$row['total'];
+            $totalBlocked = (int) $row['total'];
         }
         $stmtBlocked->close();
     }
-    
+
     $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ] 📊\n";
     $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
@@ -682,28 +706,30 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     $msg .= "━━━━━━━━━━━━━━━━━━━━━\n";
     $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
     $msg .= "💡 Gõ /tools để xem các câu lệnh nhanh.";
-    
+
     return $msg;
 }
 
 /**
  * Phân tích khoảng ngày báo cáo từ text
  */
-function parseReportDateRange($text) {
+function parseReportDateRange($text)
+{
     // Chuẩn hóa khoảng trắng
     $text = preg_replace('/\s+/', ' ', trim($text));
     preg_match_all('/\b\d{1,2}[\/\-\.\s]\d{1,2}([\/\-\.\s]\d{4})?\b/', $text, $matches);
-    
+
     if (empty($matches[0])) {
         return null;
     }
-    
+
     $date1Str = $matches[0][0];
     $date2Str = isset($matches[0][1]) ? $matches[0][1] : '';
-    
+
     $d1 = parseSingleDate($date1Str);
-    if (!$d1) return null;
-    
+    if (!$d1)
+        return null;
+
     if (empty($date2Str)) {
         return [
             'start' => $d1 . ' 00:00:00',
@@ -711,16 +737,17 @@ function parseReportDateRange($text) {
             'label' => date('d/m/Y', strtotime($d1))
         ];
     }
-    
+
     $d2 = parseSingleDate($date2Str);
-    if (!$d2) return null;
-    
+    if (!$d2)
+        return null;
+
     if (strtotime($d1) > strtotime($d2)) {
         $temp = $d1;
         $d1 = $d2;
         $d2 = $temp;
     }
-    
+
     return [
         'start' => $d1 . ' 00:00:00',
         'end' => $d2 . ' 23:59:59',
@@ -731,14 +758,15 @@ function parseReportDateRange($text) {
 /**
  * Phân tích ngày đơn lẻ
  */
-function parseSingleDate($str) {
+function parseSingleDate($str)
+{
     $str = preg_replace('/[\/\-\.\s]+/', '/', trim($str));
-    
+
     if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $str, $m)) {
         $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
         $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
         $year = $m[3];
-        if (checkdate((int)$month, (int)$day, (int)$year)) {
+        if (checkdate((int) $month, (int) $day, (int) $year)) {
             return "$year-$month-$day";
         }
     }
@@ -746,7 +774,7 @@ function parseSingleDate($str) {
         $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
         $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
         $year = date('Y');
-        if (checkdate((int)$month, (int)$day, (int)$year)) {
+        if (checkdate((int) $month, (int) $day, (int) $year)) {
             return "$year-$month-$day";
         }
     }
@@ -773,8 +801,9 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
         $chatId = $chatIdCache[$consultantId];
     } else {
         $stmtConsultant = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-        if (!$stmtConsultant) return false;
-        
+        if (!$stmtConsultant)
+            return false;
+
         $stmtConsultant->bind_param("i", $consultantId);
         $stmtConsultant->execute();
         $res = $stmtConsultant->get_result();
@@ -792,7 +821,7 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
     }
 
     // Build nội dung tin nhắn
-    $text = "[ THÔNG BÁO NHẬN DATA GOM NHÓM ]\n\n"
+    $text = "[ THÔNG BÁO NHẬN DATA SAU GIỜ LÀM ]\n\n"
         . "Chào $consultantName, chúc bạn một ngày mới đầy năng lượng!\n\n"
         . "Tối qua từ $minTimeStr đến $maxTimeStr bạn có $count data chờ xử lý.\n"
         . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
@@ -803,7 +832,8 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
 /**
  * Tạo nội dung báo cáo tuần cho một Consultant/Sale cụ thể
  */
-function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestamp) {
+function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestamp)
+{
     $saleId = $sale['id'];
     $saleName = $sale['name'];
     $saleEmail = $sale['email'];
@@ -831,16 +861,16 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     $totalCompReceived = 0;
     $roundDetails = [];
     $roundDetailsHtml = '';
-    
+
     while ($row = $resData->fetch_assoc()) {
         $roundDetails[] = [
             'name' => $row['round_name'],
-            'total' => (int)$row['total'],
-            'comp_received' => (int)$row['comp_received']
+            'total' => (int) $row['total'],
+            'comp_received' => (int) $row['comp_received']
         ];
-        $roundDetailsHtml .= '<li>Vòng <strong>' . htmlspecialchars($row['round_name']) . '</strong>: ' . (int)$row['total'] . ' data (trong đó đã đền bù: ' . (int)$row['comp_received'] . ')</li>';
-        $totalData += (int)$row['total'];
-        $totalCompReceived += (int)$row['comp_received'];
+        $roundDetailsHtml .= '<li>Vòng <strong>' . htmlspecialchars($row['round_name']) . '</strong>: ' . (int) $row['total'] . ' data (trong đó đã đền bù: ' . (int) $row['comp_received'] . ')</li>';
+        $totalData += (int) $row['total'];
+        $totalCompReceived += (int) $row['comp_received'];
     }
     $stmtData->close();
 
@@ -864,9 +894,9 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     $resTicket = $stmtTicket->get_result()->fetch_assoc();
     $stmtTicket->close();
 
-    $approvedTickets = (int)($resTicket['approved_tickets'] ?? 0);
-    $rejectedTickets = (int)($resTicket['rejected_tickets'] ?? 0);
-    $pendingTickets = (int)($resTicket['pending_tickets'] ?? 0);
+    $approvedTickets = (int) ($resTicket['approved_tickets'] ?? 0);
+    $rejectedTickets = (int) ($resTicket['rejected_tickets'] ?? 0);
+    $pendingTickets = (int) ($resTicket['pending_tickets'] ?? 0);
     $totalTickets = $approvedTickets + $rejectedTickets + $pendingTickets;
 
     // Query current compensation settings (tổng bù còn lại) in all rounds for this consultant
@@ -880,7 +910,7 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     $resCompOwed = $stmtCompOwed->get_result()->fetch_assoc();
     $stmtCompOwed->close();
 
-    $totalCompOwed = (int)($resCompOwed['total_owed'] ?? 0);
+    $totalCompOwed = (int) ($resCompOwed['total_owed'] ?? 0);
 
     // Fetch frontend URL for portal link
     $frontendUrl = '';
@@ -898,7 +928,7 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     $msg .= "👤 Sale: $saleName\n";
     $msg .= "📅 Kỳ: $windowStart → $windowEnd\n";
     $msg .= "____\n\n";
-    
+
     $msg .= "📥 DATA NHẬN: $totalData data\n";
     if ($totalData > 0) {
         foreach ($roundDetails as $rd) {
@@ -907,16 +937,16 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     } else {
         $msg .= "  • Không nhận data nào trong tuần này.\n";
     }
-    
+
     $msg .= "\n🎫 VÉ LỖI (TICKETS): $totalTickets\n";
     $msg .= "  • ✅ Thành công: $approvedTickets\n";
     $msg .= "  • ❌ Thất bại: $rejectedTickets\n";
     $msg .= "  • ⏳ Chờ duyệt: $pendingTickets\n";
-    
+
     $msg .= "\n🎁 ĐỀN BÙ:\n";
     $msg .= "  • 🔄 Đã bù tuần này: $totalCompReceived lượt\n";
     $msg .= "  • ⏳ Chờ bù tiếp theo: $totalCompOwed lượt\n";
-    
+
     $msg .= "\n🔗 Link Portal: $portalUrl\n";
     $msg .= "____\n";
     $msg .= "✨ Chúc bạn một tuần mới tràn đầy năng lượng và bùng nổ doanh số! 🚀";

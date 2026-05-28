@@ -15,9 +15,9 @@ set_time_limit(0);
 
 // --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
 $lockFile = __DIR__ . '/cron_mailer.lock';
-$lockFp = fopen($lockFile, 'w');
-if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
-    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_mailer.php is already running. Exiting.\n";
+$lockFp = @fopen($lockFile, 'w');
+if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
+    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_mailer.php is already running or lock file is not writable. Exiting.\n";
     exit(0);
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
@@ -49,6 +49,10 @@ function runMailerCron($conn) {
     // Chuẩn bị các statement cập nhật trạng thái
     $updSuccessStmt = $conn->prepare("UPDATE mail_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
     $updFailStmt = $conn->prepare("UPDATE mail_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
+    
+    // Tối ưu hóa: chuẩn bị statement cập nhật leads ở ngoài vòng lặp
+    $updLeadSuccessStmt = $conn->prepare("UPDATE leads SET email_notify_status = 'sent', email_notify_sent_at = NOW() WHERE id = ?");
+    $updLeadFailStmt = $conn->prepare("UPDATE leads SET email_notify_status = 'failed' WHERE id = ?");
 
     // Khởi tạo PHPMailer một lần duy nhất bên ngoài vòng lặp nếu sử dụng SES
     $mail = null;
@@ -157,33 +161,33 @@ function runMailerCron($conn) {
 
         $leadId = isset($row['lead_id']) ? (int)$row['lead_id'] : 0;
 
-        // Cập nhật kết quả vào DB
-        if ($isSent) {
-            $updSuccessStmt->bind_param("i", $mailId);
-            $updSuccessStmt->execute();
-            $successCount++;
+        try {
+            // Cập nhật kết quả vào DB
+            if ($isSent) {
+                if ($updSuccessStmt) {
+                    $updSuccessStmt->bind_param("i", $mailId);
+                    $updSuccessStmt->execute();
+                }
+                $successCount++;
 
-            if ($leadId > 0) {
-                $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = 'sent' WHERE id = ?");
-                if ($stmtLead) {
-                    $stmtLead->bind_param("i", $leadId);
-                    $stmtLead->execute();
-                    $stmtLead->close();
+                if ($leadId > 0 && $updLeadSuccessStmt) {
+                    $updLeadSuccessStmt->bind_param("i", $leadId);
+                    $updLeadSuccessStmt->execute();
+                }
+            } else {
+                if ($updFailStmt) {
+                    $updFailStmt->bind_param("si", $lastErrorMsg, $mailId);
+                    $updFailStmt->execute();
+                }
+                $failCount++;
+
+                if ($leadId > 0 && $updLeadFailStmt) {
+                    $updLeadFailStmt->bind_param("i", $leadId);
+                    $updLeadFailStmt->execute();
                 }
             }
-        } else {
-            $updFailStmt->bind_param("si", $lastErrorMsg, $mailId);
-            $updFailStmt->execute();
-            $failCount++;
-
-            if ($leadId > 0) {
-                $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = 'failed' WHERE id = ?");
-                if ($stmtLead) {
-                    $stmtLead->bind_param("i", $leadId);
-                    $stmtLead->execute();
-                    $stmtLead->close();
-                }
-            }
+        } catch (Throwable $dbEx) {
+            error_log("Database write failed for mail item $mailId: " . $dbEx->getMessage());
         }
         
         // Nghỉ 100ms giữa các email để tránh bị rate limit (spam block) từ Amazon SES hoặc Google
@@ -199,12 +203,14 @@ function runMailerCron($conn) {
         }
     }
 
-    $updSuccessStmt->close();
-    $updFailStmt->close();
+    if ($updSuccessStmt) $updSuccessStmt->close();
+    if ($updFailStmt) $updFailStmt->close();
+    if ($updLeadSuccessStmt) $updLeadSuccessStmt->close();
+    if ($updLeadFailStmt) $updLeadFailStmt->close();
 
-    // 3. Prune sent mail queue items older than 30 days to prevent table bloat
+    // 3. Dọn dẹp cả bản ghi đã gửi và lỗi cũ sau 30 ngày tránh đầy bảng
     try {
-        $conn->query("DELETE FROM mail_queue WHERE status = 'sent' AND sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+        $conn->query("DELETE FROM mail_queue WHERE (status = 'sent' OR status = 'failed') AND (sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY) OR (sent_at IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)))");
     } catch (Exception $e) {
         error_log("Failed to prune mail queue: " . $e->getMessage());
     }
@@ -238,47 +244,38 @@ function runZaloMailerCron($conn) {
         $leadId = isset($row['lead_id']) ? (int)$row['lead_id'] : 0;
 
         // Gửi trực tiếp cURL bằng cách truyền $sync = true
+        // Hàm sendZaloMessage() đã tự động cập nhật trạng thái của lead nên ta không cần chạy thêm SQL UPDATE ở đây.
         $isSent = sendZaloMessage($botToken, $chatId, $text, true, $leadId);
 
-        if ($isSent) {
-            $updSuccessStmt->bind_param("i", $msgId);
-            $updSuccessStmt->execute();
-            $successCount++;
-
-            if ($leadId > 0) {
-                $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'sent' WHERE id = ?");
-                if ($stmtLead) {
-                    $stmtLead->bind_param("i", $leadId);
-                    $stmtLead->execute();
-                    $stmtLead->close();
+        try {
+            if ($isSent) {
+                if ($updSuccessStmt) {
+                    $updSuccessStmt->bind_param("i", $msgId);
+                    $updSuccessStmt->execute();
                 }
-            }
-        } else {
-            $err = "Zalo API Send Failed (see zalo_send_log.txt for details)";
-            $updFailStmt->bind_param("si", $err, $msgId);
-            $updFailStmt->execute();
-            $failCount++;
-
-            if ($leadId > 0) {
-                $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'failed' WHERE id = ?");
-                if ($stmtLead) {
-                    $stmtLead->bind_param("i", $leadId);
-                    $stmtLead->execute();
-                    $stmtLead->close();
+                $successCount++;
+            } else {
+                $err = "Zalo API Send Failed (see zalo_send_log.txt for details)";
+                if ($updFailStmt) {
+                    $updFailStmt->bind_param("si", $err, $msgId);
+                    $updFailStmt->execute();
                 }
+                $failCount++;
             }
+        } catch (Throwable $dbEx) {
+            error_log("Database write failed for Zalo item $msgId: " . $dbEx->getMessage());
         }
 
         // Nghỉ 100ms giữa các tin nhắn để tránh bị rate limit từ Zalo Bot API
         usleep(100000);
     }
 
-    $updSuccessStmt->close();
-    $updFailStmt->close();
+    if ($updSuccessStmt) $updSuccessStmt->close();
+    if ($updFailStmt) $updFailStmt->close();
 
-    // 2. Dọn dẹp tin nhắn cũ đã gửi thành công sau 30 ngày tránh đầy bảng
+    // 2. Dọn dẹp cả bản ghi đã gửi và lỗi cũ sau 30 ngày tránh đầy bảng
     try {
-        $conn->query("DELETE FROM zalo_queue WHERE status = 'sent' AND sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+        $conn->query("DELETE FROM zalo_queue WHERE (status = 'sent' OR status = 'failed') AND (sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY) OR (sent_at IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)))");
     } catch (Exception $e) {
         error_log("Failed to prune Zalo queue: " . $e->getMessage());
     }

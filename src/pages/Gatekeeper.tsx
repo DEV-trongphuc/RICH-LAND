@@ -4401,10 +4401,16 @@ export const Gatekeeper = () => {
                               {/* Email Status */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                                  <Mail size={13} style={{ flexShrink: 0 }} />
+                                  <img 
+                                    src="/imgs/gmail-icon-free-png.webp" 
+                                    alt="Gmail" 
+                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                                  />
                                   <span style={{ flexShrink: 0 }}>Email:</span>
-                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.target}>
-                                    {notificationStatus.email.target || '-'}
+                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
+                                    {notificationStatus.email.status === 'sent' 
+                                      ? (notificationStatus.email.sent_at || '-') 
+                                      : (notificationStatus.email.status === 'pending' ? t('Đang chờ gửi...') : '-')}
                                   </span>
                                 </div>
                                 <div style={{ flexShrink: 0 }}>
@@ -4434,10 +4440,16 @@ export const Gatekeeper = () => {
                               {/* Zalo Status */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                                  <ExternalLink size={13} style={{ flexShrink: 0 }} />
+                                  <img 
+                                    src="https://stc-zpl.zdn.vn/favicon.ico" 
+                                    alt="Zalo" 
+                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                                  />
                                   <span style={{ flexShrink: 0 }}>Zalo:</span>
-                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.target}>
-                                    {notificationStatus.zalo.target || t('Chưa cấu hình')}
+                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
+                                    {notificationStatus.zalo.status === 'sent' 
+                                      ? (notificationStatus.zalo.sent_at || '-') 
+                                      : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : (notificationStatus.zalo.status === 'pending' ? t('Đang chờ gửi...') : '-'))}
                                   </span>
                                 </div>
                                 <div style={{ flexShrink: 0 }}>

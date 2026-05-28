@@ -6,6 +6,7 @@ import { Header } from './Header';
 import { QuickAddLeadModal } from '../QuickAddLeadModal';
 import { ProfileModal } from '../ProfileModal';
 import { CustomModal } from '../ui/CustomModal';
+import { CustomSelect } from '../ui/CustomSelect';
 import { Avatar } from '../ui/Avatar';
 import { AIChatbot } from '../ui/AIChatbot';
 import { useAuth } from '../../contexts/AuthContext';
@@ -77,7 +78,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   // Activity Feed states
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const [feedItems, setFeedItems] = useState<any[]>([]);
-  const [isFeedLoading, setIsFeedLoading] = useState(false);
+
   const [expandedFeedItem, setExpandedFeedItem] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -93,14 +94,49 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [notifFilterChannel, setNotifFilterChannel] = useState<string>('all');
   const [notifSearchInput, setNotifSearchInput] = useState<string>('');
   const [notifSearch, setNotifSearch] = useState<string>('');
+  const [notifFilterSale, setNotifFilterSale] = useState<string>('all');
   const [isNotifLogsLoading, setIsNotifLogsLoading] = useState<boolean>(false);
   const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [consultants, setConsultants] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [hasFetchedUsers, setHasFetchedUsers] = useState<boolean>(false);
+
+  const fetchUsersForLogs = async () => {
+    if (hasFetchedUsers) return;
+    try {
+      const [consRes, accRes] = await Promise.all([
+        fetchAPI('get_consultants'),
+        fetchAPI('get_accounts')
+      ]);
+      if (consRes.success) setConsultants(consRes.data || []);
+      if (accRes.success) setAccounts(accRes.data || []);
+      setHasFetchedUsers(true);
+    } catch (err) {
+      console.error("Error fetching users for logs mapping:", err);
+    }
+  };
+
+  const getAvatarAndNameByTarget = (target: string) => {
+    if (!target || target === '-') return { avatar: undefined, name: t('Hệ thống') };
+    const cleanTarget = target.trim().toLowerCase();
+    const cons = consultants.find(c => 
+      (c.email && c.email.trim().toLowerCase() === cleanTarget) || 
+      (c.zalo_chat_id && c.zalo_chat_id.trim().toLowerCase() === cleanTarget)
+    );
+    if (cons) return { avatar: cons.avatar, name: cons.name };
+    const acc = accounts.find(a => 
+      (a.email && a.email.trim().toLowerCase() === cleanTarget) ||
+      (a.zalo_chat_id && a.zalo_chat_id.trim().toLowerCase() === cleanTarget)
+    );
+    if (acc) return { avatar: acc.avatar, name: acc.name || acc.username };
+    return { avatar: undefined, name: target };
+  };
 
   const fetchNotifLogs = async () => {
     setIsNotifLogsLoading(true);
     try {
-      const res = await fetchAPI(`get_notification_logs&channel=${notifFilterChannel}&type=${notifFilterType}&search=${encodeURIComponent(notifSearch)}&page=${notifPage}&pageSize=10`);
+      const res = await fetchAPI(`get_notification_logs&channel=${notifFilterChannel}&type=${notifFilterType}&sale=${notifFilterSale}&search=${encodeURIComponent(notifSearch)}&page=${notifPage}&pageSize=10`);
       if (res.success && Array.isArray(res.data)) {
         setNotifLogs(res.data);
         setNotifTotalCount(res.total_count ?? 0);
@@ -121,6 +157,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       setNotifPage(1);
       setNotifFilterChannel('all');
       setNotifFilterType('all');
+      setNotifFilterSale('all');
       setExpandedLogId(null);
     }
   }, [isActivityFeedOpen]);
@@ -141,17 +178,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     if (activeTab === 'logs') {
       setNotifPage(1);
     }
-  }, [notifFilterChannel, notifFilterType]);
+  }, [notifFilterChannel, notifFilterType, notifFilterSale]);
 
   // Fetch notification logs
   useEffect(() => {
     if (isActivityFeedOpen && activeTab === 'logs') {
+      fetchUsersForLogs();
       fetchNotifLogs();
     }
-  }, [isActivityFeedOpen, activeTab, notifFilterChannel, notifFilterType, notifSearch, notifPage]);
+  }, [isActivityFeedOpen, activeTab, notifFilterChannel, notifFilterType, notifFilterSale, notifSearch, notifPage]);
 
   const fetchFeed = async () => {
-    setIsFeedLoading(true);
     try {
       const res = await fetchAPI('get_system_activity_feed');
       if (res.success && Array.isArray(res.data)) {
@@ -160,8 +197,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (err) {
       console.error('Error loading activity feed:', err);
-    } finally {
-      setIsFeedLoading(false);
     }
   };
 
@@ -453,7 +488,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         title={t("Bản tin hoạt động hệ thống")}
         width={850}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', height: '70vh' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '60vh' }}>
           {/* Tab Selector */}
           <div style={{ 
             display: 'flex', 
@@ -513,25 +548,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', display: 'inline-block' }} />
                   {t("Danh sách hoạt động và phân bổ gần đây nhất")}
                 </span>
-                <button
-                  onClick={fetchFeed}
-                  disabled={isFeedLoading}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-primary)',
-                    fontSize: '0.8125rem',
-                    fontWeight: 700,
-                    cursor: isFeedLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    outline: 'none'
-                  }}
-                >
-                  <RefreshCw size={14} className={isFeedLoading ? 'spin' : ''} />
-                  {t("Làm mới")}
-                </button>
               </div>
 
               {/* List content */}
@@ -798,70 +814,61 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 </div>
 
                 {/* Filter Kênh */}
-                <div style={{ minWidth: '120px' }}>
-                  <select
+                <div style={{ minWidth: '130px' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'all', label: t('Tất cả kênh') },
+                      { 
+                        value: 'zalo', 
+                        label: 'Zalo', 
+                        icon: (
+                          <img 
+                            src="https://stc-zpl.zdn.vn/favicon.ico" 
+                            alt="Zalo" 
+                            style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%' }} 
+                          />
+                        ) 
+                      },
+                      { value: 'email', label: 'Email', icon: <Mail size={12} style={{ color: 'var(--color-info)' }} /> }
+                    ]}
                     value={notifFilterChannel}
-                    onChange={(e) => setNotifFilterChannel(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text)',
-                      padding: '0 8px',
-                      fontSize: '0.85rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    <option value="all">{t("Tất cả kênh")}</option>
-                    <option value="zalo">Zalo</option>
-                    <option value="email">Email</option>
-                  </select>
+                    onChange={(val) => setNotifFilterChannel(val)}
+                  />
                 </div>
 
                 {/* Filter Loại tin */}
-                <div style={{ minWidth: '140px' }}>
-                  <select
+                <div style={{ minWidth: '150px' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'all', label: t('Tất cả loại tin') },
+                      { value: 'sale', label: t('Tin gửi Sale'), icon: <UserCheck size={12} style={{ color: 'var(--color-primary)' }} /> },
+                      { value: 'admin', label: t('Tin Admin check'), icon: <ShieldAlert size={12} style={{ color: 'var(--color-danger)' }} /> }
+                    ]}
                     value={notifFilterType}
-                    onChange={(e) => setNotifFilterType(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text)',
-                      padding: '0 8px',
-                      fontSize: '0.85rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    <option value="all">{t("Tất cả loại tin")}</option>
-                    <option value="sale">{t("Tin gửi Sale")}</option>
-                    <option value="admin">{t("Tin Admin check log")}</option>
-                  </select>
+                    onChange={(val) => setNotifFilterType(val)}
+                  />
                 </div>
 
-                {/* Refresh button */}
-                <button
-                  onClick={fetchNotifLogs}
-                  disabled={isNotifLogsLoading}
-                  className="btn outline"
-                  style={{
-                    height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '0 12px',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    fontSize: '0.8125rem'
-                  }}
-                >
-                  <RefreshCw size={14} className={isNotifLogsLoading ? 'spin' : ''} />
-                  {t("Làm mới")}
-                </button>
+                {/* Filter Sale */}
+                <div style={{ minWidth: '180px' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'all', label: t('Tất cả Sale') },
+                      ...consultants.map(c => ({
+                        value: String(c.id),
+                        label: c.name,
+                        avatar: c.avatar,
+                        sublabel: c.email || c.zalo_chat_id ? (c.email || c.zalo_chat_id).substring(0, 15) : undefined
+                      }))
+                    ]}
+                    value={notifFilterSale}
+                    onChange={(val) => setNotifFilterSale(val)}
+                    showAvatars={true}
+                    searchable={true}
+                    placeholder={t("Chọn Sale...")}
+                    align="right"
+                  />
+                </div>
               </div>
 
               {/* Logs Content list */}
@@ -877,7 +884,27 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                       const isExpanded = expandedLogId === log.id;
                       const hasDetails = log.body && log.body.length > 0;
                       const isEmail = log.channel === 'email';
+                      const userMeta = getAvatarAndNameByTarget(log.target);
+                      const formattedTime = new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + new Date(log.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
                       
+                      const getChannelText = (item: any) => {
+                        const channel = item.channel === 'email' ? 'Email' : 'Zalo';
+                        const type = item.type === 'admin' ? t('Admin') : t('Sale');
+                        const direct = item.is_direct ? ' (direct)' : '';
+                        return `${channel}${direct} • ${type}`;
+                      };
+
+                      const getStatusIndicator = (status: string) => {
+                        switch (status) {
+                          case 'sent':
+                            return <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><CheckCircle2 size={12} /> {t('Đã gửi')}</span>;
+                          case 'pending':
+                            return <span style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Clock size={12} /> {t('Đang chờ')}</span>;
+                          default:
+                            return <span style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><XCircle size={12} /> {t('Thất bại')}</span>;
+                        }
+                      };
+
                       return (
                         <div
                           key={log.id}
@@ -893,95 +920,63 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {/* Icon Channel */}
-                            <div style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: '50%',
-                              background: isEmail ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                              color: isEmail ? 'var(--color-info)' : 'var(--color-success)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
-                              {isEmail ? <Mail size={16} /> : <MessageSquare size={16} />}
+                            {/* Avatar with Channel Icon in corner */}
+                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                              <Avatar 
+                                src={userMeta.avatar} 
+                                name={userMeta.name} 
+                                size={36} 
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                background: 'var(--color-surface)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                padding: '1px'
+                              }}>
+                                {isEmail ? (
+                                  <img 
+                                    src="/imgs/gmail-icon-free-png.webp" 
+                                    alt="Gmail" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} 
+                                  />
+                                ) : (
+                                  <img 
+                                    src="https://stc-zpl.zdn.vn/favicon.ico" 
+                                    alt="Zalo" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} 
+                                  />
+                                )}
+                              </div>
                             </div>
 
                             {/* Main row Info */}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.target}>
-                                  {log.target}
+                                  {userMeta.name}
                                 </span>
                                 <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                                  {new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {new Date(log.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                  {formattedTime}
                                 </span>
                               </div>
 
-                              {/* Preview text */}
-                              <div
-                                onClick={() => hasDetails && setExpandedLogId(isExpanded ? null : log.id)}
-                                style={{
-                                  fontSize: '0.78125rem',
-                                  color: 'var(--color-text-light)',
-                                  marginTop: '2px',
-                                  cursor: hasDetails ? 'pointer' : 'default',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: '90%'
-                                }}
-                              >
-                                {isEmail && <strong>{log.subject}: </strong>}
-                                {log.body ? log.body.substring(0, 100) + (log.body.length > 100 ? '...' : '') : ''}
-                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', flexWrap: 'wrap', gap: 6 }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                  {getChannelText(log)}
+                                </span>
 
-                              {/* Badges, Copy button & Accordion Toggle */}
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', flexWrap: 'wrap', gap: 6 }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                  {/* Channel badge */}
-                                  <span style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    background: isEmail ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                    color: isEmail ? 'var(--color-info)' : 'var(--color-success)'
-                                  }}>
-                                    {log.channel} {log.is_direct ? '(direct)' : ''}
-                                  </span>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                  {getStatusIndicator(log.status)}
 
-                                  {/* Type badge */}
-                                  <span style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    background: log.type === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
-                                    color: log.type === 'admin' ? 'var(--color-danger)' : 'var(--color-primary)'
-                                  }}>
-                                    {log.type === 'admin' ? t('Admin') : t('Sale')}
-                                  </span>
-
-                                  {/* Status badge */}
-                                  <span style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    background: log.status === 'sent' ? 'var(--color-success-light)' : log.status === 'pending' ? 'var(--color-info-light)' : 'var(--color-danger-light)',
-                                    color: log.status === 'sent' ? 'var(--color-success)' : log.status === 'pending' ? 'var(--color-info)' : 'var(--color-danger)'
-                                  }}>
-                                    {log.status === 'sent' ? t('Đã gửi') : log.status === 'pending' ? t('Đang chờ') : t('Thất bại')}
-                                  </span>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                  {/* Copy Button */}
                                   {log.body && (
                                     <button
                                       onClick={(e) => {
@@ -1013,7 +1008,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                                     </button>
                                   )}
 
-                                  {/* Expand trigger */}
                                   {hasDetails && (
                                     <button
                                       onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
@@ -1042,6 +1036,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                               </div>
                             </div>
                           </div>
+
 
                           {/* Expanded Content */}
                           {isExpanded && log.body && (

@@ -28,6 +28,7 @@ interface CustomSelectProps {
   width?: string | number;
   direction?: 'up' | 'down';
   multiple?: boolean;
+  align?: 'left' | 'right';
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -40,7 +41,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   showAvatars = false,
   width,
   direction = 'down',
-  multiple = false
+  multiple = false,
+  align = 'left'
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -165,6 +167,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             style={{ 
               top: direction === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
               bottom: direction === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
+              left: align === 'right' ? 'auto' : 0,
+              right: align === 'right' ? 0 : 'auto',
               transformOrigin: direction === 'down' ? 'top' : 'bottom'
             }}
           >

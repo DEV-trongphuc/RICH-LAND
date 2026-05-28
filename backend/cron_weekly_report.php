@@ -6,7 +6,7 @@ require_once 'mailer.php';
 function runWeeklyReportCron($conn) {
     // --- PREVENT CONCURRENT EXECUTION ---
     $lockFile = __DIR__ . '/cron_weekly_report.lock';
-    $lockFp = fopen($lockFile, 'w');
+    $lockFp = @fopen($lockFile, 'w');
     if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
         if ($lockFp) fclose($lockFp);
         return; // Already running or locked

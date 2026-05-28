@@ -145,7 +145,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 131) {
+        if ($dbVer >= 132) {
             $runMigration = false;
         }
     }
@@ -166,7 +166,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 131) {
+                    if ($dbVer >= 132) {
                         $runMigration = false;
                     }
                 }
@@ -732,6 +732,27 @@ if ($runMigration) {
     $conn->query("UPDATE leads SET zalo_notify_status = 'sent' WHERE assigned_to IS NOT NULL AND assigned_to > 0 AND zalo_notify_status = 'none'");
     $conn->query("UPDATE leads SET email_notify_status = 'sent' WHERE assigned_to IS NOT NULL AND assigned_to > 0 AND email_notify_status = 'none'");
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '131') ON DUPLICATE KEY UPDATE setting_value = '131'");
+
+    // Auto-migrate: Version 132 - zalo_notify_sent_at and email_notify_sent_at columns in leads table
+    $chkColZNST = $conn->query("SHOW COLUMNS FROM leads LIKE 'zalo_notify_sent_at'");
+    if ($chkColZNST && $chkColZNST->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN zalo_notify_sent_at DATETIME NULL COMMENT 'Thời gian gửi thông báo Zalo thành công'");
+        
+        // Backfill zalo_notify_sent_at
+        $conn->query("UPDATE leads l JOIN zalo_queue z ON l.id = z.lead_id SET l.zalo_notify_sent_at = z.sent_at WHERE z.status = 'sent' AND l.zalo_notify_sent_at IS NULL");
+        $conn->query("UPDATE leads SET zalo_notify_sent_at = created_at WHERE zalo_notify_status = 'sent' AND zalo_notify_sent_at IS NULL");
+    }
+    
+    $chkColENST = $conn->query("SHOW COLUMNS FROM leads LIKE 'email_notify_sent_at'");
+    if ($chkColENST && $chkColENST->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN email_notify_sent_at DATETIME NULL COMMENT 'Thời gian gửi thông báo Email thành công'");
+        
+        // Backfill email_notify_sent_at
+        $conn->query("UPDATE leads l JOIN mail_queue m ON l.id = m.lead_id SET l.email_notify_sent_at = m.sent_at WHERE m.status = 'sent' AND l.email_notify_sent_at IS NULL");
+        $conn->query("UPDATE leads SET email_notify_sent_at = created_at WHERE email_notify_status = 'sent' AND email_notify_sent_at IS NULL");
+    }
+    
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '132') ON DUPLICATE KEY UPDATE setting_value = '132'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

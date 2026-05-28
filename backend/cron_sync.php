@@ -9,14 +9,14 @@ set_time_limit(0);
 
 // --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
 $lockFile = __DIR__ . '/cron_sync.lock';
-$lockFp = fopen($lockFile, 'w');
-if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
-    $lockMsg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running. Exiting.\n";
+$lockFp = @fopen($lockFile, 'w');
+if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
+    $lockMsg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running or lock file is not writable. Exiting.\n";
     if (php_sapi_name() === 'cli') {
         echo $lockMsg;
         exit(0);
     } else {
-        throw new Exception("Hệ thống đồng bộ đang bận (hoặc đang chạy ngầm). Vui lòng thử lại sau.");
+        throw new Exception("Hệ thống đồng bộ đang bận (hoặc đang chạy ngầm hoặc file khóa không ghi được). Vui lòng thử lại sau.");
     }
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
