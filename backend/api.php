@@ -5076,7 +5076,8 @@ switch ($action) {
 
             if ($logRow) {
                 $updLog = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ?, message = ?, received_at = NOW() WHERE id = ?");
-                $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundId, $status, $logMsg, $logRow['id']);
+                $targetRoundVal = $targetRoundId > 0 ? $targetRoundId : null;
+                $updLog->bind_param("iissi", $assignedConsultantId, $targetRoundVal, $status, $logMsg, $logRow['id']);
                 $updLog->execute();
                 $updLog->close();
             } else {

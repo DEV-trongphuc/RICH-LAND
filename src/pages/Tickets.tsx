@@ -1861,14 +1861,14 @@ export const Tickets = () => {
 
                       {/* Clean Note Card */}
                       <div style={{
-                        background: 'var(--color-warning-light)',
-                        border: '1px solid var(--color-warning-light)',
+                        background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)',
+                        border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef3c7',
                         padding: '1.25rem',
                         borderRadius: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
-                        boxShadow: 'none'
+                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.03)'
                       }}
                         className="premium-alert-card"
                       >

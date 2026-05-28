@@ -3904,20 +3904,6 @@ export const Gatekeeper = () => {
                             setSelectedLead(null);
                             setActioningHeldLead(selectedLead);
                             setHeldActionReason('');
-                            setHeldActionModalOpen('blacklist');
-                          }}
-                          className="btn outline"
-                          style={{ width: 46, height: 46, padding: 0, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                          title={t("Chặn số & Blacklist")}
-                        >
-                          <ShieldAlert size={20} />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedLead(null);
-                            setActioningHeldLead(selectedLead);
-                            setHeldActionReason('');
                             setHeldActionModalOpen('reject');
                           }}
                           className="btn primary"
@@ -3925,6 +3911,20 @@ export const Gatekeeper = () => {
                         >
                           <XCircle size={18} />
                           {t("Xác nhận dưới chuẩn")}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedLead(null);
+                            setActioningHeldLead(selectedLead);
+                            setHeldActionReason('');
+                            setHeldActionModalOpen('blacklist');
+                          }}
+                          className="btn outline"
+                          style={{ width: 46, height: 46, padding: 0, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          title={t("Chặn số & Blacklist")}
+                        >
+                          <ShieldAlert size={20} />
                         </button>
                       </div>
 
