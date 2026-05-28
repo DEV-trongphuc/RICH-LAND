@@ -1400,7 +1400,7 @@ export const DataList = () => {
                             <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
                             <div>
                               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('(Lọc khớp dưới chuẩn)')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
                             </div>
                           </div>
                         ) : lead.status === 'blacklisted' ? (
@@ -2094,7 +2094,7 @@ export const DataList = () => {
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} strokeWidth={2} /> {t('Nội dung AI đánh giá')}</div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                         {selectedLead.ai_evaluation}
                       </div>
                     </div>
@@ -2119,7 +2119,7 @@ export const DataList = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                           {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || t('Tạm giữ')}
                         </div>
                       </div>
@@ -2136,11 +2136,11 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.status === 'rejected' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                       </div>
                     </div>
@@ -2148,13 +2148,13 @@ export const DataList = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                          {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || t('(Lọc khớp dưới chuẩn)')}
+                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                          {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || t('Failed')}
                         </div>
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('(Lọc khớp dưới chuẩn)')}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Failed - Đã hủy')}</div>
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
@@ -2165,11 +2165,11 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.status === 'blacklisted' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={36} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</div>
                       </div>
                     </div>
@@ -2177,7 +2177,7 @@ export const DataList = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                           {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || t('Blacklist')}
                         </div>
                       </div>
@@ -2194,7 +2194,7 @@ export const DataList = () => {
                     </div>
                   </div>
                 ) : selectedLead.assigned_to_name !== '-' ? (
-                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                       <div>

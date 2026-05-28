@@ -217,6 +217,269 @@ interface AIScreenerConfig {
 
 export const Gatekeeper = () => {
   const { t } = useLanguage();
+  const getStatusBadge = (status: string, reportStatus?: string) => {
+    if (status === 'assigned' && reportStatus === 'pending') {
+      return (
+        <span style={{
+          padding: '4px 10px',
+          borderRadius: '20px',
+          fontSize: '0.72rem',
+          fontWeight: 600,
+          background: 'rgba(99, 102, 241, 0.12)',
+          color: '#4f46e5',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
+          display: 'inline-flex',
+          alignItems: 'center'
+        }}>
+          {t('Ticket Review')}
+        </span>
+      );
+    }
+    if (status === 'error' && reportStatus === 'approved') {
+      return (
+        <span style={{
+          padding: '4px 10px',
+          borderRadius: '20px',
+          fontSize: '0.72rem',
+          fontWeight: 600,
+          background: 'var(--color-warning-light)',
+          color: 'var(--color-warning)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          display: 'inline-flex',
+          alignItems: 'center'
+        }}>
+          {t('Ticket')}
+        </span>
+      );
+    }
+    switch (status) {
+      case 'assigned':
+      case 'active':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-success-light)',
+            color: 'var(--color-success)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Đã chia')}
+          </span>
+        );
+      case 'compensation':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#f3e8ff',
+            color: '#7e22ce',
+            border: '1px solid #e9d5ff',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Data Bù')}
+          </span>
+        );
+      case 'pending_work_hours':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#fffbeb',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Chờ giờ làm')}
+          </span>
+        );
+      case 'error':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#fef2f2',
+            color: '#b91c1c',
+            border: '1px solid #fecaca',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Ticket')}
+          </span>
+        );
+      case 'pending':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#fffbeb',
+            color: '#d97706',
+            border: '1px solid #fcd34d',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Chờ chia')}
+          </span>
+        );
+      case 'reminder':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'rgba(236, 72, 153, 0.12)',
+            color: '#ec4899',
+            border: '1px solid rgba(236, 72, 153, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Nhắc lại')}
+          </span>
+        );
+      case 'duplicate':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#fef2f2',
+            color: '#b91c1c',
+            border: '1px solid #fecaca',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Trùng lặp')}
+          </span>
+        );
+      case 'rule_6_month':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#f0f9ff',
+            color: '#0369a1',
+            border: '1px solid #bae6fd',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Quy định 6 tháng')}
+          </span>
+        );
+      case 'silent':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: '#f0f9ff',
+            color: '#0369a1',
+            border: '1px solid #bae6fd',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Chỉ đồng bộ')}
+          </span>
+        );
+      case 'blacklisted':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'rgba(239, 68, 68, 0.16)',
+            color: 'var(--color-danger)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Blacklist')}
+          </span>
+        );
+      case 'pending_approval':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-warning-light)',
+            color: 'var(--color-warning)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Tạm giữ')}
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-danger-light)',
+            color: 'var(--color-danger)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Dưới chuẩn')}
+          </span>
+        );
+      case 'fallback':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'rgba(245, 158, 11, 0.15)',
+            color: '#d97706',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Fallback')}
+          </span>
+        );
+      default:
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-warning-light)',
+            color: 'var(--color-warning)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {status}
+          </span>
+        );
+    }
+  };
   const { user } = useAuth();
   const location = useLocation();
   const isActive = location.pathname === '/gatekeeper';
@@ -3227,72 +3490,7 @@ export const Gatekeeper = () => {
                           </tr>
                         ) : (
                           paginatedRecentLeads.map((l: any, idx: number) => {
-                            let statusBadge = null;
-                            if (l.status === 'pending_approval') {
-                              statusBadge = (
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  background: 'var(--color-warning-light)',
-                                  color: 'var(--color-warning)',
-                                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Tạm giữ')}
-                                </span>
-                              );
-                            } else if (l.status === 'rejected') {
-                              statusBadge = (
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  background: 'var(--color-danger-light)',
-                                  color: 'var(--color-danger)',
-                                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Đã hủy')}
-                                </span>
-                              );
-                            } else if (l.status === 'blacklisted') {
-                              statusBadge = (
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  background: 'rgba(239, 68, 68, 0.16)',
-                                  color: 'var(--color-danger)',
-                                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Blacklist')}
-                                </span>
-                              );
-                            } else if (l.status === 'active') {
-                              statusBadge = (
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  background: 'var(--color-success-light)',
-                                  color: 'var(--color-success)',
-                                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Đã duyệt')}
-                                </span>
-                              );
-                            }
+                            const statusBadge = getStatusBadge(l.status);
 
                             return (
                               <tr key={idx} style={{ borderBottom: idx < paginatedRecentLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
@@ -3633,19 +3831,7 @@ export const Gatekeeper = () => {
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
                     <div>
-                      {selectedLead.status === 'blacklisted' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)' }}>{t("Blacklist")}</span>
-                      ) : selectedLead.status === 'rejected' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>{t("Đã hủy (Dưới chuẩn)")}</span>
-                      ) : selectedLead.status === 'approved' || selectedLead.status === 'assigned' || selectedLead.status === 'active' ? (
-                        selectedLead.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
-                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t("Đã chia")}</span>
-                        ) : (
-                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>{t("Đã duyệt")}</span>
-                        )
-                      ) : (
-                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>{t("AI Pre-screener")}</span>
-                      )}
+                      {getStatusBadge(selectedLead.status, selectedLead.report_status)}
                     </div>
                   </div>
                 </div>

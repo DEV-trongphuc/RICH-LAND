@@ -203,6 +203,61 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
+    // Prevent viewer role from accessing write/modifying actions (read-only constraint)
+    $writeActions = [
+        'upload_avatar',
+        'add_consultant',
+        'edit_consultant',
+        'toggle_consultant_vacation',
+        'accept_lead',
+        'delete_consultant',
+        'unlink_zalo',
+        'add_round',
+        'edit_round',
+        'update_round_ratios',
+        'update_compensations',
+        'delete_round',
+        'add_connection',
+        'edit_connection',
+        'delete_connection',
+        'toggle_connection',
+        'toggle_require_both',
+        'add_rule',
+        'edit_rule',
+        'delete_rule',
+        'reorder_rules',
+        'approve_report',
+        'reject_report',
+        'approve_held_lead',
+        'reject_held_lead',
+        'blacklist_held_lead',
+        'add_mapping',
+        'edit_mapping',
+        'delete_mapping',
+        'save_settings',
+        'alter_schema',
+        'add_account',
+        'edit_account',
+        'update_profile',
+        'change_password',
+        'delete_account',
+        'resend_confirm_email',
+        'resend_zalo_verify_account',
+        'resend_zalo_verify_consultant',
+        'save_ticket_settings',
+        'force_sync',
+        'reassign_lead',
+        'block_lead',
+        'send_quick_zalo_message',
+        'manual_insert_lead',
+        'delete_import_history'
+    ];
+    if (in_array($action, $writeActions) && $decodedUser['role'] === 'viewer') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Forbidden: Viewer role is read-only']);
+        exit();
+    }
+
     // Ghi nhận thời gian hoạt động cuối cùng (last active time)
     if ($decodedUser && isset($decodedUser['id'])) {
         $conn->query("UPDATE accounts SET last_login = NOW() WHERE id = " . (int) $decodedUser['id']);
@@ -1612,8 +1667,32 @@ switch ($action) {
 
             // Validate file type
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            if (!in_array($file['type'], $allowedTypes)) {
-                echo json_encode(['success' => false, 'message' => 'Định dạng file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.']);
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+            // 1. Validate file extension strictly
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (empty($extension)) {
+                // Fallback extension based on mime type
+                $mimeToExt = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp'
+                ];
+                $extension = $mimeToExt[$file['type']] ?? 'jpg';
+            }
+            if (!in_array($extension, $allowedExtensions)) {
+                echo json_encode(['success' => false, 'message' => 'Định dạng đuôi file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.']);
+                break;
+            }
+
+            // 2. Validate real MIME type (prevent Content-Type spoofing)
+            $realMime = $file['type'];
+            if (function_exists('mime_content_type')) {
+                $realMime = mime_content_type($file['tmp_name']);
+            }
+            if (!in_array($realMime, $allowedTypes)) {
+                echo json_encode(['success' => false, 'message' => 'Nội dung định dạng file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.']);
                 break;
             }
 
@@ -1627,18 +1706,6 @@ switch ($action) {
             $uploadDir = __DIR__ . '/uploads/avatars/';
             if (!file_exists($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
-            }
-
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            if (empty($extension)) {
-                // Fallback extension based on mime type
-                $mimeToExt = [
-                    'image/jpeg' => 'jpg',
-                    'image/png' => 'png',
-                    'image/gif' => 'gif',
-                    'image/webp' => 'webp'
-                ];
-                $extension = $mimeToExt[$file['type']] ?? 'jpg';
             }
             $newFilename = 'avatar_' . uniqid() . '.' . $extension;
             $destination = $uploadDir . $newFilename;
@@ -3870,7 +3937,7 @@ switch ($action) {
         } else if ($date === 'Tuần này') {
             $dateCondition = "r.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND r.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === 'Tuần trước') {
-            $dateCondition = "r.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND r.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            $dateCondition = "r.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND r.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
         } else if ($date === 'Tuần trước nữa') {
             $dateCondition = "r.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND r.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === '7 ngày qua') {
@@ -4605,7 +4672,7 @@ switch ($action) {
         } else if ($date === 'Tuần này') {
             $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND l.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === 'Tuần trước') {
-            $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND l.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
         } else if ($date === 'Tuần trước nữa') {
             $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } else if ($date === '7 ngày qua') {
