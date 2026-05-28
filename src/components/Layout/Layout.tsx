@@ -286,6 +286,68 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'var(--color-bg)', overflow: 'hidden' }}>
+      <style>{`
+        @media (max-width: 600px) {
+          .logs-tab-container {
+            gap: 0.75rem !important;
+          }
+          .logs-tab-btn {
+            font-size: 0.75rem !important;
+            padding: 4px 2px !important;
+          }
+          .logs-toolbar {
+            padding: 0.4rem !important;
+            gap: 0.4rem !important;
+            margin-bottom: 0.75rem !important;
+          }
+          .logs-toolbar-item {
+            flex: 1 1 calc(33.33% - 0.27rem) !important;
+            min-width: 85px !important;
+          }
+          .logs-search-wrapper {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+          }
+          .logs-search-wrapper input {
+            height: 32px !important;
+            padding-left: 26px !important;
+            padding-right: 8px !important;
+            font-size: 0.78rem !important;
+            border-radius: 6px !important;
+          }
+          .logs-search-wrapper svg {
+            left: 8px !important;
+            top: 9px !important;
+          }
+          .logs-sale-wrapper {
+            flex: 1.2 1 calc(33.33% - 0.27rem) !important;
+            min-width: 105px !important;
+          }
+          .logs-toolbar [class*="trigger"] {
+            min-height: 32px !important;
+            height: 32px !important;
+            padding: 0 0.4rem !important;
+            border-radius: 6px !important;
+            font-size: 0.75rem !important;
+          }
+          .logs-toolbar [class*="triggerContent"] {
+            gap: 0.35rem !important;
+          }
+          .logs-toolbar [class*="option"] {
+            padding: 0.4rem 0.5rem !important;
+            font-size: 0.78rem !important;
+          }
+          .pagination-container {
+            flex-direction: column !important;
+            gap: 8px !important;
+            align-items: center !important;
+          }
+          .pagination-text {
+            text-align: center !important;
+            white-space: nowrap !important;
+          }
+        }
+      `}</style>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
@@ -490,14 +552,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '60vh' }}>
           {/* Tab Selector */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '1.5rem', 
-            borderBottom: '1px solid var(--color-border-light)', 
-            marginBottom: '0.75rem',
-            paddingBottom: '0.25rem' 
-          }}>
+          <div 
+            className="logs-tab-container"
+            style={{ 
+              display: 'flex', 
+              gap: '1.5rem', 
+              borderBottom: '1px solid var(--color-border-light)', 
+              marginBottom: '0.75rem',
+              paddingBottom: '0.25rem' 
+            }}
+          >
             <button
+              className="logs-tab-btn"
               onClick={() => setActiveTab('activity')}
               style={{
                 background: 'none',
@@ -515,6 +581,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               {t("Hoạt động hệ thống")}
             </button>
             <button
+              className="logs-tab-btn"
               onClick={() => setActiveTab('logs')}
               style={{
                 background: 'none',
@@ -698,15 +765,21 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
               {/* Pagination Controls */}
               {feedItems.length > pageSize && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '12px',
-                  paddingTop: '8px',
-                  borderTop: '1px solid var(--color-border-light)'
-                }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                <div 
+                  className="pagination-container"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '12px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid var(--color-border-light)'
+                  }}
+                >
+                  <span 
+                    className="pagination-text"
+                    style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
+                  >
                     {t('Hiển thị')} {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, feedItems.length)} {t('của')} {feedItems.length} {t('hoạt động')}
                   </span>
                   
@@ -780,19 +853,25 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <>
               {/* Check Log subtab content */}
               {/* Tool bar: Search & Filters */}
-              <div style={{
-                display: 'flex',
-                gap: '0.75rem',
-                alignItems: 'center',
-                marginBottom: '1rem',
-                flexWrap: 'wrap',
-                background: 'rgba(255, 255, 255, 0.01)',
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border-light)'
-              }}>
+              <div 
+                className="logs-toolbar"
+                style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  alignItems: 'center',
+                  marginBottom: '1rem',
+                  flexWrap: 'wrap',
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border-light)'
+                }}
+              >
                 {/* Search */}
-                <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+                <div 
+                  className="logs-search-wrapper"
+                  style={{ flex: 1, minWidth: '200px', position: 'relative' }}
+                >
                   <input
                     type="text"
                     placeholder={t("Tìm kiếm Sale, Chat ID, nội dung...")}
@@ -814,7 +893,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 </div>
 
                 {/* Filter Kênh */}
-                <div style={{ minWidth: '130px' }}>
+                <div 
+                  className="logs-toolbar-item"
+                  style={{ minWidth: '130px' }}
+                >
                   <CustomSelect
                     options={[
                       { value: 'all', label: t('Tất cả kênh') },
@@ -837,7 +919,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 </div>
 
                 {/* Filter Loại tin */}
-                <div style={{ minWidth: '150px' }}>
+                <div 
+                  className="logs-toolbar-item"
+                  style={{ minWidth: '150px' }}
+                >
                   <CustomSelect
                     options={[
                       { value: 'all', label: t('Tất cả loại tin') },
@@ -850,7 +935,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 </div>
 
                 {/* Filter Sale */}
-                <div style={{ minWidth: '180px' }}>
+                <div 
+                  className="logs-sale-wrapper"
+                  style={{ minWidth: '180px' }}
+                >
                   <CustomSelect
                     options={[
                       { value: 'all', label: t('Tất cả Sale') },
@@ -1073,15 +1161,21 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
               {/* Logs Pagination */}
               {!isNotifLogsLoading && notifTotalCount > 10 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '12px',
-                  paddingTop: '8px',
-                  borderTop: '1px solid var(--color-border-light)'
-                }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                <div 
+                  className="pagination-container"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '12px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid var(--color-border-light)'
+                  }}
+                >
+                  <span 
+                    className="pagination-text"
+                    style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
+                  >
                     {t('Hiển thị')} {((notifPage - 1) * 10) + 1} - {Math.min(notifPage * 10, notifTotalCount)} {t('của')} {notifTotalCount} {t('log')}
                   </span>
                   
