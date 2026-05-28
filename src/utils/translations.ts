@@ -1770,7 +1770,7 @@ export const en: Record<string, string> = {
   "Không có liên hệ nào đang tạm giữ": "No contacts currently held",
   "Thử đổi từ khóa tìm kiếm.": "Try changing search keywords.",
   "Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.": "The AI system has not held any below-standard contacts.",
-  "Vòng phân bổ dự kiến": "Expected Allocation Round",
+  "Vòng phân bổ dự kiến": "Target Round",
   "Lý do AI tạm giữ": "Reason for AI hold",
   "Lỗi kết nối AI (AI Error)": "AI Connection Error (AI Error)",
   "AI Đánh giá:": "AI Evaluation:",
@@ -1966,7 +1966,14 @@ export const en: Record<string, string> = {
   "(Lọc khớp dưới chuẩn)": "(Matched below-standard filter)",
   "Thời gian: ": "Time: ",
   "Chặn bởi: ": "Blocked by: ",
-  "Trạng thái phân bổ": "Distribution Status"
+  "Trạng thái phân bổ": "Distribution Status",
+  "Hàng chờ duyệt": "Awaiting Approval",
+  "Chờ AI đánh giá": "Awaiting AI Evaluation",
+  "Giao lead": "Assigned Leads",
+  "Vòng đã phân bổ": "Assigned Round",
+  "Đã giao": "Assigned",
+  "Đã giao và phân bổ": "Assigned & Distributed",
+  "Bởi:": "By:"
 };
 
 export const ja: Record<string, string> = {
@@ -2109,7 +2116,7 @@ export const ja: Record<string, string> = {
   "Lý do báo lỗi": "エラーの理由",
   "Trạng thái Ticket": "チケットステータス",
   "Người duyệt": "査読者",
-  "Thao tác": "手術",
+  "Thao tác": "操作",
   "Chờ duyệt": "承認待ち",
   "Đã duyệt đền bù": "補償が承認されました",
   "Đã từ chối": "拒否した",
@@ -2236,7 +2243,7 @@ export const ja: Record<string, string> = {
   "Bạn có chắc chắn muốn chặn khách hàng": "顧客をブロックしてもよろしいですか",
   "Thông báo Ticket mới": "新規チケットのお知らせ",
   "Yêu cầu cần xử lý!": "リクエストを処理する必要があります。",
-  "Hệ thống ghi nhận đang có": "録音システムが整っている",
+  "Hệ thống ghi nhận đang có": "システムは現在、",
   "ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.": "補償の承認を待っているコンサルタントからのデータ エラーを報告するチケット。",
   "Để sau": "後で",
   "Xem ngay": "今すぐ見る",
@@ -3689,7 +3696,7 @@ export const ja: Record<string, string> = {
   "Không có liên hệ nào đang tạm giữ": "現在保留中の連絡先はありません",
   "Thử đổi từ khóa tìm kiếm.": "検索キーワードを変更してみてください。",
   "Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.": "AIシステムは基準未満 of 連絡先を保留していません。",
-  "Vòng phân bổ dự kiến": "予定分配ラウンド",
+  "Vòng phân bổ dự kiến": "配分予定ラウンド",
   "Lý do AI tạm giữ": "AI保留理由",
   "Lỗi kết nối AI (AI Error)": "AI接続エラー (AI Error)",
   "AI Đánh giá:": "AI評価:",
@@ -3888,7 +3895,14 @@ export const ja: Record<string, string> = {
   "(Lọc khớp dưới chuẩn)": "(基準未満フィルター一致)",
   "Thời gian: ": "時間: ",
   "Chặn bởi: ": "ブロック者: ",
-  "Trạng thái phân bổ": "割り当てステータス"
+  "Trạng thái phân bổ": "割り当てステータス",
+  "Hàng chờ duyệt": "承認待ち",
+  "Chờ AI đánh giá": "AI評価待ち",
+  "Giao lead": "配信済みリード",
+  "Vòng đã phân bổ": "割り当て済みラウンド",
+  "Đã giao": "配信済み",
+  "Đã giao và phân bổ": "配信・割り当て済み",
+  "Bởi:": "処理者:"
 };
 
 export const zh: Record<string, string> = {
@@ -4031,7 +4045,7 @@ export const zh: Record<string, string> = {
   "Lý do báo lỗi": "错误原因",
   "Trạng thái Ticket": "票证状态",
   "Người duyệt": "审稿人",
-  "Thao tác": "手术",
+  "Thao tác": "操作",
   "Chờ duyệt": "等待批准",
   "Đã duyệt đền bù": "补偿已获批准",
   "Đã từ chối": "拒绝",
@@ -4158,7 +4172,7 @@ export const zh: Record<string, string> = {
   "Bạn có chắc chắn muốn chặn khách hàng": "您确定要阻止该客户吗",
   "Thông báo Ticket mới": "新票通知",
   "Yêu cầu cần xử lý!": "请求需要处理！",
-  "Hệ thống ghi nhận đang có": "录音系统已到位",
+  "Hệ thống ghi nhận đang có": "系统检测到有",
   "ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.": "等待您的赔偿批准的顾问报告数据错误。",
   "Để sau": "后来",
   "Xem ngay": "立即查看",
@@ -5811,5 +5825,12 @@ export const zh: Record<string, string> = {
   "(Lọc khớp dưới chuẩn)": "(匹配低于标准过滤器)",
   "Thời gian: ": "时间: ",
   "Chặn bởi: ": "拦截者: ",
-  "Trạng thái phân bổ": "分配状态"
+  "Trạng thái phân bổ": "分配状态",
+  "Hàng chờ duyệt": "等待审核",
+  "Chờ AI đánh giá": "等待AI评估",
+  "Giao lead": "已分配线索",
+  "Vòng đã phân bổ": "已分配轮次",
+  "Đã giao": "已分配",
+  "Đã giao và phân bổ": "已分配和派发",
+  "Bởi:": "处理人:"
 };

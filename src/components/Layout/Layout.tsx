@@ -58,7 +58,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         },
         ja: {
           "Thông báo Data tạm giữ": "一時保留データのお知らせ",
-          "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.": "件 củaデータがAI Pre-screenerによって一時保留され、承認待ちです。"
+          "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.": "件のデータがAI Pre-screenerによって一時保留され、承認待ちです。"
         },
         zh: {
           "Thông báo Data tạm giữ": "暂存数据通知",
