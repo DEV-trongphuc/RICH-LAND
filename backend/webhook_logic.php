@@ -396,31 +396,84 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         ];
     }
 
-    foreach ($phones as $p) {
-        $where[] = "l.phone = ?";
-        $params[] = $p;
-        $types .= 's';
-    }
-    foreach ($emails as $e) {
-        $where[] = "l.email = ?";
-        $params[] = $e;
-        $types .= 's';
+    static $lastConn = null;
+    static $stmtPhone = null;
+    static $stmtEmail = null;
+    static $stmtBoth = null;
+    if ($lastConn !== $conn) {
+        $stmtPhone = null;
+        $stmtEmail = null;
+        $stmtBoth = null;
+        $lastConn = $conn;
     }
 
-    $whereClause = implode(" OR ", $where);
-    $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
-                            FROM leads l 
-                            LEFT JOIN consultants c ON l.assigned_to = c.id 
-                            WHERE $whereClause 
-                            ORDER BY l.last_interaction_date DESC LIMIT 1");
+    $isDynamic = true;
+    if (count($phones) === 1 && count($emails) === 0) {
+        if ($stmtPhone === null) {
+            $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+                                         FROM leads l 
+                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                         WHERE l.phone = ? 
+                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        }
+        $stmt = $stmtPhone;
+        $types = 's';
+        $params = [$phones[0]];
+        $isDynamic = false;
+    } else if (count($phones) === 0 && count($emails) === 1) {
+        if ($stmtEmail === null) {
+            $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+                                         FROM leads l 
+                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                         WHERE l.email = ? 
+                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        }
+        $stmt = $stmtEmail;
+        $types = 's';
+        $params = [$emails[0]];
+        $isDynamic = false;
+    } else if (count($phones) === 1 && count($emails) === 1) {
+        if ($stmtBoth === null) {
+            $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+                                         FROM leads l 
+                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                         WHERE l.phone = ? OR l.email = ? 
+                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        }
+        $stmt = $stmtBoth;
+        $types = 'ss';
+        $params = [$phones[0], $emails[0]];
+        $isDynamic = false;
+    } else {
+        foreach ($phones as $p) {
+            $where[] = "l.phone = ?";
+            $params[] = $p;
+            $types .= 's';
+        }
+        foreach ($emails as $e) {
+            $where[] = "l.email = ?";
+            $params[] = $e;
+            $types .= 's';
+        }
+        $whereClause = implode(" OR ", $where);
+        $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+                                FROM leads l 
+                                LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                WHERE $whereClause 
+                                ORDER BY l.last_interaction_date DESC LIMIT 1");
+        $isDynamic = true;
+    }
 
-    if (!empty($params)) {
+    if ($stmt) {
         $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($isDynamic) {
+            $stmt->close();
+        }
+    } else {
+        $res = false;
     }
-
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $stmt->close();
 
     if ($res->num_rows > 0) {
         $row = $res->fetch_assoc();
@@ -748,6 +801,36 @@ function getNextConsultantInRound($conn, $roundId)
     }
 
     $consultants = [];
+    while ($row = $cRes->fetch_assoc()) {
+        $consultants[] = $row;
+    }
+
+    $starvationCounts = [];
+    if ($starvationEnabled === 1 && !empty($consultants)) {
+        $consultantIds = array_map(function($c) { return (int)$c['id']; }, $consultants);
+        $placeholders = implode(',', array_fill(0, count($consultantIds), '?'));
+        
+        $logStmt = $conn->prepare("
+            SELECT assigned_to, COUNT(*) as cnt 
+            FROM distribution_logs 
+            WHERE assigned_to IN ($placeholders)
+              AND status = 'compensation' 
+              AND message LIKE '%(Starvation Prevention)%' 
+              AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            GROUP BY assigned_to
+        ");
+        if ($logStmt) {
+            $types = str_repeat('i', count($consultantIds));
+            $logStmt->bind_param($types, ...$consultantIds);
+            $logStmt->execute();
+            $logRes = $logStmt->get_result();
+            while ($logRow = $logRes->fetch_assoc()) {
+                $starvationCounts[(int)$logRow['assigned_to']] = (int)$logRow['cnt'];
+            }
+            $logStmt->close();
+        }
+    }
+
     $compensatedConsultant = null;
     $starvationConsultant = null;
     $midTurnConsultant = null;  // Consultant who is mid-turn (current_turn_remaining > 0)
@@ -755,9 +838,7 @@ function getNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
-    while ($row = $cRes->fetch_assoc()) {
-        $consultants[] = $row;
-
+    foreach ($consultants as $row) {
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
@@ -772,24 +853,9 @@ function getNextConsultantInRound($conn, $roundId)
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
         if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
-                // Count starvation leads received in last hour
-                $logStmt = $conn->prepare("
-                    SELECT COUNT(*) as cnt 
-                    FROM distribution_logs 
-                    WHERE assigned_to = ? 
-                      AND status = 'compensation' 
-                      AND message LIKE '%(Starvation Prevention)%' 
-                      AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-                ");
-                if ($logStmt) {
-                    $logStmt->bind_param("i", $row['id']);
-                    $logStmt->execute();
-                    $logRes = $logStmt->get_result()->fetch_assoc();
-                    $logStmt->close();
-                    $hourlyCount = (int) ($logRes['cnt'] ?? 0);
-                    if ($hourlyCount < $starvationMaxPerHour) {
-                        $starvationConsultant = $row;
-                    }
+                $hourlyCount = $starvationCounts[(int)$row['id']] ?? 0;
+                if ($hourlyCount < $starvationMaxPerHour) {
+                    $starvationConsultant = $row;
                 }
             }
         }
@@ -1141,6 +1207,36 @@ function simulateNextConsultantInRound($conn, $roundId)
     }
 
     $consultants = [];
+    while ($row = $cRes->fetch_assoc()) {
+        $consultants[] = $row;
+    }
+
+    $starvationCounts = [];
+    if ($starvationEnabled === 1 && !empty($consultants)) {
+        $consultantIds = array_map(function($c) { return (int)$c['id']; }, $consultants);
+        $placeholders = implode(',', array_fill(0, count($consultantIds), '?'));
+        
+        $logStmt = $conn->prepare("
+            SELECT assigned_to, COUNT(*) as cnt 
+            FROM distribution_logs 
+            WHERE assigned_to IN ($placeholders)
+              AND status = 'compensation' 
+              AND message LIKE '%(Starvation Prevention)%' 
+              AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            GROUP BY assigned_to
+        ");
+        if ($logStmt) {
+            $types = str_repeat('i', count($consultantIds));
+            $logStmt->bind_param($types, ...$consultantIds);
+            $logStmt->execute();
+            $logRes = $logStmt->get_result();
+            while ($logRow = $logRes->fetch_assoc()) {
+                $starvationCounts[(int)$logRow['assigned_to']] = (int)$logRow['cnt'];
+            }
+            $logStmt->close();
+        }
+    }
+
     $compensatedConsultant = null;
     $starvationConsultant = null;
     $midTurnConsultant = null;
@@ -1148,9 +1244,7 @@ function simulateNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
-    while ($row = $cRes->fetch_assoc()) {
-        $consultants[] = $row;
-
+    foreach ($consultants as $row) {
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
@@ -1164,24 +1258,9 @@ function simulateNextConsultantInRound($conn, $roundId)
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
         if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
-                // Count starvation leads in last hour
-                $logStmt = $conn->prepare("
-                    SELECT COUNT(*) as cnt 
-                    FROM distribution_logs 
-                    WHERE assigned_to = ? 
-                      AND status = 'compensation' 
-                      AND message LIKE '%(Starvation Prevention)%' 
-                      AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-                ");
-                if ($logStmt) {
-                    $logStmt->bind_param("i", $row['id']);
-                    $logStmt->execute();
-                    $logRes = $logStmt->get_result()->fetch_assoc();
-                    $logStmt->close();
-                    $hourlyCount = (int) ($logRes['cnt'] ?? 0);
-                    if ($hourlyCount < $starvationMaxPerHour) {
-                        $starvationConsultant = $row;
-                    }
+                $hourlyCount = $starvationCounts[(int)$row['id']] ?? 0;
+                if ($hourlyCount < $starvationMaxPerHour) {
+                    $starvationConsultant = $row;
                 }
             }
         }

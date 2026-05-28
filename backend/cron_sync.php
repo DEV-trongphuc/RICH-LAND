@@ -869,8 +869,23 @@ foreach ($connections as $connItem) {
         // Check if this connection requires Silent Sync (First run of 'new_only' mode)
         $isSilentSync = (!empty($connItem['sync_mode']) && $connItem['sync_mode'] === 'new_only' && empty($connItem['is_initialized']));
 
-        // Prepare record statement once
+        // Preload all rounds for this connection sync to avoid N+1 queries in the loop
+        $roundsCache = [];
+        $roundsRes = $conn->query("SELECT id, is_active, round_name, cc_emails FROM distribution_rounds");
+        if ($roundsRes) {
+            while ($rRow = $roundsRes->fetch_assoc()) {
+                $roundsCache[(int)$rRow['id']] = $rRow;
+            }
+        }
+
+        // Prepare statements outside the CSV row parsing loop to optimize performance
         $recordStmt = $conn->prepare("INSERT IGNORE INTO sheet_sync_records (connection_id, row_hash) VALUES (?, ?)");
+        $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
+        $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+        $updHeldPending = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = 'pending', ai_evaluation = 'Chờ AI đánh giá', assigned_to = NULL WHERE id = ?");
+        $updHeldFailed = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
+        $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
 
         while (($row = fgetcsv($stream)) !== FALSE) {
             $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
@@ -944,12 +959,13 @@ foreach ($connections as $connItem) {
                 $lockKey = 'webhook_lead_empty_' . md5(json_encode($rowData));
             }
 
-            $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 10) as get_lock");
-            $lockStmt->bind_param("s", $lockKey);
-            $lockStmt->execute();
-            $lockRes = $lockStmt->get_result()->fetch_assoc();
-            $lockStmt->close();
-            if ($lockRes['get_lock'] != 1) {
+            $lockRes = null;
+            if ($lockStmt) {
+                $lockStmt->bind_param("s", $lockKey);
+                $lockStmt->execute();
+                $lockRes = $lockStmt->get_result()->fetch_assoc();
+            }
+            if (!$lockRes || $lockRes['get_lock'] != 1) {
                 logSync("Skip row $rowCount: Lock busy for $phone / $email.");
                 continue;
             }
@@ -998,16 +1014,10 @@ foreach ($connections as $connItem) {
 
                 $inactiveRoundName = '';
                 if ($targetRoundId) {
-                    $chkRound = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
-                    if ($chkRound) {
-                        $chkRound->bind_param("i", $targetRoundId);
-                        $chkRound->execute();
-                        $chkRes = $chkRound->get_result()->fetch_assoc();
-                        $chkRound->close();
-                        if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
-                            $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
-                            $targetRoundId = null;
-                        }
+                    $chkRes = $roundsCache[(int)$targetRoundId] ?? null;
+                    if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+                        $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
+                        $targetRoundId = null;
                     }
                 }
 
@@ -1043,21 +1053,15 @@ foreach ($connections as $connItem) {
                     } else {
                         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
                         if ($fbRoundId > 0) {
-                            $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
-                            if ($chkFb) {
-                                $chkFb->bind_param("i", $fbRoundId);
-                                $chkFb->execute();
-                                $chkFbRes = $chkFb->get_result()->fetch_assoc();
-                                $chkFb->close();
-                                if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
-                                    $targetRoundId = $fbRoundId;
-                                    $isFallbackRound = true;
-                                    $cronMessage = !empty($inactiveRoundName)
-                                        ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang vòng dự phòng."
-                                        : 'No matching rule found. Routed to fallback round.';
-                                } else {
-                                    $targetRoundId = null;
-                                }
+                            $chkFbRes = $roundsCache[$fbRoundId] ?? null;
+                            if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                                $targetRoundId = $fbRoundId;
+                                $isFallbackRound = true;
+                                $cronMessage = !empty($inactiveRoundName)
+                                    ? "Vòng matched ($inactiveRoundName) tạm dừng. Chuyển hướng sang vòng dự phòng."
+                                    : 'No matching rule found. Routed to fallback round.';
+                            } else {
+                                $targetRoundId = null;
                             }
                         }
                     }
@@ -1067,18 +1071,10 @@ foreach ($connections as $connItem) {
                 $ccEmails = '';
                 $roundName = '';
                 if ($targetRoundId) {
-                    static $roundCache = [];
-                    if (!isset($roundCache[$targetRoundId])) {
-                        $rStmt = $conn->prepare("SELECT cc_emails, round_name FROM distribution_rounds WHERE id = ?");
-                        $rStmt->bind_param("i", $targetRoundId);
-                        $rStmt->execute();
-                        $rRes = $rStmt->get_result();
-                        $roundCache[$targetRoundId] = ($rRes->num_rows > 0) ? $rRes->fetch_assoc() : null;
-                        $rStmt->close();
-                    }
-                    if ($roundCache[$targetRoundId]) {
-                        $ccEmails = $roundCache[$targetRoundId]['cc_emails'] ?? '';
-                        $roundName = $roundCache[$targetRoundId]['round_name'] ?? '';
+                    $rRes = $roundsCache[(int)$targetRoundId] ?? null;
+                    if ($rRes) {
+                        $ccEmails = $rRes['cc_emails'] ?? '';
+                        $roundName = $rRes['round_name'] ?? '';
                     }
                 } else if ($isFallbackAdmin && !empty($fallbackCcEmails)) {
                     $ccEmails = $fallbackCcEmails;
@@ -1247,10 +1243,10 @@ foreach ($connections as $connItem) {
                             $leadId = insertLead($conn, $rowData, null, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                         }
                         
-                        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = 'pending', ai_evaluation = 'Chờ AI đánh giá', assigned_to = NULL WHERE id = ?");
-                        $updHeld->bind_param("ii", $targetRoundId, $leadId);
-                        $updHeld->execute();
-                        $updHeld->close();
+                        if ($updHeldPending) {
+                            $updHeldPending->bind_param("ii", $targetRoundId, $leadId);
+                            $updHeldPending->execute();
+                        }
                         
                         logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Đang chờ AI đánh giá (Chạy ngầm - đồng bộ hệ thống)', false);
                         
@@ -1281,10 +1277,10 @@ foreach ($connections as $connItem) {
                             $leadId = insertLead($conn, $rowData, null, $phone, $email, $name, $source, $type, $note, $connItem['id']);
                         }
                         
-                        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
-                        $updHeld->bind_param("issi", $targetRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                        $updHeld->execute();
-                        $updHeld->close();
+                        if ($updHeldFailed) {
+                            $updHeldFailed->bind_param("issi", $targetRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                            $updHeldFailed->execute();
+                        }
                         
                         $logMsg = $aiScreenerResult['status'] === 'error' ? "Lỗi kết nối AI (đồng bộ hệ thống): " . $aiScreenerResult['reason'] : "Tạm giữ bởi AI (đồng bộ hệ thống): " . $aiScreenerResult['reason'];
                         logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', $logMsg, false);
@@ -1327,21 +1323,21 @@ foreach ($connections as $connItem) {
                                 : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
 
                             // Check working hours
-                            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
-                            $whStmt->bind_param("i", $assignedConsultantId);
-                            $whStmt->execute();
-                            $whRes = $whStmt->get_result();
-                            if ($whRes && $whRow = $whRes->fetch_assoc()) {
-                                $whStart = $whRow['work_start_time'] ?? '00:00';
-                                $whEnd = $whRow['work_end_time'] ?? '23:59';
-                                $workSchedule = $whRow['work_schedule'] ?? null;
-                                $currentTime = date('H:i');
-                                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
-                                    $cronStatus = 'pending_work_hours';
-                                    $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                            if ($whStmt) {
+                                $whStmt->bind_param("i", $assignedConsultantId);
+                                $whStmt->execute();
+                                $whRes = $whStmt->get_result();
+                                if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                                    $whStart = $whRow['work_start_time'] ?? '00:00';
+                                    $whEnd = $whRow['work_end_time'] ?? '23:59';
+                                    $workSchedule = $whRow['work_schedule'] ?? null;
+                                    $currentTime = date('H:i');
+                                    if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                                        $cronStatus = 'pending_work_hours';
+                                        $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                                    }
                                 }
                             }
-                            $whStmt->close();
                         } else {
                             $assignedConsultantId = null;
                             $cronStatus = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
@@ -1364,10 +1360,10 @@ foreach ($connections as $connItem) {
                     
                     // Save AI screening result if evaluated
                     if ($aiScreenerResult) {
-                        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
-                        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                        $updAi->execute();
-                        $updAi->close();
+                        if ($updAi) {
+                            $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                            $updAi->execute();
+                        }
                     }
 
                     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage, false);
@@ -1455,18 +1451,20 @@ foreach ($connections as $connItem) {
                     $syncedCount++;
                 }
             } finally {
-                $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
                 if ($relStmt) {
                     $relStmt->bind_param("s", $lockKey);
                     $relStmt->execute();
-                    $relStmt->close();
                 }
             }
         }
         fclose($stream);
-        if (isset($recordStmt)) {
-            $recordStmt->close();
-        }
+        if (isset($recordStmt)) $recordStmt->close();
+        if (isset($lockStmt)) $lockStmt->close();
+        if (isset($relStmt)) $relStmt->close();
+        if (isset($updHeldPending)) $updHeldPending->close();
+        if (isset($updHeldFailed)) $updHeldFailed->close();
+        if (isset($whStmt)) $whStmt->close();
+        if (isset($updAi)) $updAi->close();
 
         if ($isSilentSync || !empty($connItem['is_silent'])) {
             $conn->query("UPDATE sheet_connections SET is_initialized = 1 WHERE id = " . $connItem['id']);

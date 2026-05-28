@@ -4345,7 +4345,7 @@ export const Gatekeeper = () => {
                           </div>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái phân bổ')}</div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-success)' }}>{t('Đã duyệt và phân bổ')}</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-success)' }}>{t('Đã giao và phân bổ')}</div>
                           </div>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
