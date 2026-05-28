@@ -1783,16 +1783,16 @@ function runAIScreener($conn, $leadData, $customRules = null)
     $aiRules = $customRules !== null ? $customRules : get_system_setting($conn, 'ai_screener_rules');
 
     // 2. Format details and prompt
-    $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên quy tắc.\n\n"
+    $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên các thông tin quy tắc.\n\n"
         . "THÔNG TIN KHÁCH HÀNG:\n"
         . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
         . "Loại data: " . ($leadData['type'] ?? '') . "\n"
         . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
         . "QUY TẮC ĐÁNH GIÁ DUY NHẤT PASSED HOẶC FAILED BÁM SÁT THEO:\n" . $aiRules . "\n\n"
-        . "Nếu dữ liệu không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
+        . "Nếu dữ liệu nghi ngờ spam, rác, phá hoặc không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
         . "- status: \"passed\" nếu đạt tiêu chuẩn, hoặc \"failed\" nếu không đạt tiêu chuẩn.\n"
-        . "- reason: giải thích ngắn gọn chuyên nghiệp lý do tại sao cho passed/failed (không lập lại thô cứng quy tắc).";
+        . "- reason: giải thích chuyên nghiệp lý do tại sao cho passed/failed (không lập lại thô quy tắc).";
 
     $payload = [
         'contents' => [

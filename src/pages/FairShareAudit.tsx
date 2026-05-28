@@ -88,6 +88,9 @@ export const FairShareAudit = () => {
         total_ticket_count: c.total_ticket_count,
         duplicate_count: c.duplicate_count,
         compensation_count: c.compensation_count,
+        pending_compensation: c.pending_compensation,
+        skip_count: c.skip_count,
+        current_turn_remaining: c.current_turn_remaining,
         round_id: c.round_id,
         round_name: c.round_name,
         // Simulation settings
@@ -122,6 +125,9 @@ export const FairShareAudit = () => {
       total_ticket_count: c.total_ticket_count,
       duplicate_count: c.duplicate_count,
       compensation_count: c.compensation_count,
+      pending_compensation: c.pending_compensation,
+      skip_count: c.skip_count,
+      current_turn_remaining: c.current_turn_remaining,
       round_id: c.round_id,
       round_name: c.round_name,
       simulatedRatio: c.receive_ratio,
@@ -358,7 +364,7 @@ export const FairShareAudit = () => {
   };
 
   const getFairnessLevel = (index: number) => {
-    if (index >= 90) return { label: t('Rất công bằng'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', desc: t('Thuật toán đang phân phối data cực kỳ đồng đều.') };
+    if (index >= 90) return { label: t('Rất công bằng'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', desc: '' };
     if (index >= 75) return { label: t('Bình thường'), color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', desc: t('Có sự chênh lệch nhẹ (thường do tỷ lệ thiết lập hoặc Sale tạm vắng).') };
     return { label: t('Cần điều chỉnh'), color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', desc: t('Độ lệch phân phối cao. Vui lòng rà soát lại cấu hình lượt và ca làm việc.') };
   };
@@ -400,6 +406,148 @@ export const FairShareAudit = () => {
     const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
     return { weights, totalWeight };
   }, [activeData, isSimulating, simConsultants]);
+
+  const predictiveTurns = useMemo(() => {
+    const targetData = isSimulating ? simulatedData : data;
+    if (!targetData || !targetData.consultants) return 50;
+    const activeCount = targetData.consultants.filter((c: any) => {
+      const conRatio = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedRatio ?? c.receive_ratio)
+        : c.receive_ratio;
+      const conOnShift = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedOnShift ?? (c.receive_ratio > 0))
+        : (c.receive_ratio > 0);
+      return conOnShift && conRatio > 0;
+    }).length;
+    return Math.max(30, activeCount * 10);
+  }, [data, simulatedData, isSimulating, simConsultants]);
+
+  const predictiveFairness = useMemo(() => {
+    const targetData = isSimulating ? simulatedData : data;
+    if (!targetData || !targetData.consultants || targetData.consultants.length === 0) return null;
+
+    const cons = targetData.consultants.map((c: any) => {
+      const conRatio = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedRatio ?? c.receive_ratio)
+        : c.receive_ratio;
+      const conOnShift = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.simulatedOnShift ?? (c.receive_ratio > 0))
+        : (c.receive_ratio > 0);
+      const conSkip = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.skip_count ?? c.skip_count)
+        : c.skip_count;
+      const conTurnRemaining = isSimulating
+        ? (simConsultants.find(sc => sc.id === c.id)?.current_turn_remaining ?? c.current_turn_remaining)
+        : c.current_turn_remaining;
+
+      return {
+        id: c.id,
+        receive_ratio: conRatio,
+        on_shift: conOnShift,
+        assigned_count: c.assigned_count || 0,
+        compensation_count: c.compensation_count || 0,
+        pending_compensation: c.pending_compensation || 0,
+        current_turn_remaining: conTurnRemaining || 0,
+        skip_count: conSkip || 0,
+        simulated_assigned: c.assigned_count || 0,
+        simulated_compensation: c.pending_compensation || 0
+      };
+    });
+
+    // Sort by id ASC to match the database round-robin order
+    const activeList = cons
+      .filter((c: any) => c.on_shift && c.receive_ratio > 0)
+      .sort((a: any, b: any) => a.id - b.id);
+
+    if (activeList.length === 0) return null;
+    
+    let maxFairness = -Infinity;
+    let turnsNeeded = 1;
+    const N = activeList.length;
+
+    // Track simulated state values
+    let currentLastAssignedId = targetData.lastAssignedId || 0;
+    
+    // Simulate turn-by-turn
+    for (let turn = 0; turn < predictiveTurns; turn++) {
+      // 1. Compensation
+      let chosen = activeList.find((c: any) => c.simulated_compensation > 0);
+      if (chosen) {
+        chosen.simulated_compensation--;
+        chosen.simulated_assigned++;
+      } else {
+        // 2. Mid-turn (Priority 3 in webhook_logic: current_turn_remaining > 0)
+        chosen = activeList.find((c: any) => c.current_turn_remaining > 0);
+        if (chosen) {
+          chosen.current_turn_remaining--;
+          chosen.simulated_assigned++;
+        } else {
+          // 3. Round robin sequence (Priority 4 in webhook_logic)
+          let nextIdx = 0;
+          if (currentLastAssignedId) {
+            const lastIdx = activeList.findIndex((c: any) => c.id === currentLastAssignedId);
+            if (lastIdx !== -1) {
+              nextIdx = (lastIdx + 1) % activeList.length;
+            }
+          }
+
+          const startIdx = nextIdx;
+          let chosenCandidate = null;
+
+          do {
+            const candidate = activeList[nextIdx];
+            const ratio = Math.max(1, candidate.receive_ratio);
+            const skipCount = candidate.skip_count;
+
+            if (ratio === 1 || skipCount >= ratio - 1) {
+              chosenCandidate = candidate;
+              candidate.skip_count = 0;
+              break;
+            } else {
+              candidate.skip_count++;
+              nextIdx = (nextIdx + 1) % activeList.length;
+            }
+          } while (nextIdx !== startIdx);
+
+          if (!chosenCandidate) {
+            chosenCandidate = activeList[startIdx];
+            chosenCandidate.skip_count = 0;
+          }
+
+          chosenCandidate.simulated_assigned++;
+          currentLastAssignedId = chosenCandidate.id;
+        }
+      }
+
+      // Calculate fairness index at this turn
+      const normalizedCounts = activeList.map((c: any) => {
+        const ratio = Math.max(1, c.receive_ratio);
+        return c.simulated_assigned * ratio;
+      });
+
+      const sumNorm = normalizedCounts.reduce((a: number, b: number) => a + b, 0);
+      if (sumNorm > 0 && N > 0) {
+        let doubleSumDiffNorm = 0;
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < N; j++) {
+            doubleSumDiffNorm += Math.abs(normalizedCounts[i] - normalizedCounts[j]);
+          }
+        }
+        const giniNormalized = doubleSumDiffNorm / (2 * N * sumNorm);
+        const fairnessIndex = (1 - giniNormalized) * 100;
+        const currentFairness = Math.round(fairnessIndex * 10) / 10;
+
+        if (currentFairness > maxFairness) {
+          maxFairness = currentFairness;
+          turnsNeeded = turn + 1;
+        }
+      }
+    }
+
+    if (maxFairness === -Infinity) return null;
+
+    return { maxFairness, turnsNeeded };
+  }, [data, simulatedData, isSimulating, simConsultants, predictiveTurns]);
 
   const handleCopyReport = () => {
     const targetData = isSimulating ? simulatedData : data;
@@ -999,9 +1147,35 @@ export const FairShareAudit = () => {
                         {level.label}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
-                      {level.desc}
-                    </div>
+                    {predictiveFairness !== null && activeData && activeData.fairnessIndex < predictiveFairness.maxFairness && (
+                      <div style={{ 
+                        fontSize: '0.73rem', 
+                        color: 'var(--color-primary)', 
+                        marginTop: '14px', 
+                        marginBottom: '6px',
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        background: 'var(--color-primary-light)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        border: '1px solid rgba(124, 58, 237, 0.15)',
+                        width: 'fit-content'
+                      }}>
+                        <Sparkles size={12} className="spin" style={{ animationDuration: '3s' }} />
+                        <span>
+                          {t("Dự báo đạt công bằng cao nhất {fairness}% sau {turns} lượt tới")
+                            .replace('{fairness}', String(predictiveFairness.maxFairness))
+                            .replace('{turns}', String(predictiveFairness.turnsNeeded))}
+                        </span>
+                      </div>
+                    )}
+                    {level.desc && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 'auto', lineHeight: 1.4 }}>
+                        {level.desc}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

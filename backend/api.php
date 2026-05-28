@@ -7698,14 +7698,20 @@ switch ($action) {
         // Fetch consultants matching the round or all active
         $consultants = [];
         if ($roundId > 0) {
-            $sql = "SELECT c.id, c.name, c.avatar, COALESCE(rc.receive_ratio, 1) as receive_ratio, rc.round_id, r.round_name
+            $sql = "SELECT c.id, c.name, c.avatar, COALESCE(rc.receive_ratio, 1) as receive_ratio, rc.round_id, r.round_name,
+                           COALESCE(rc.compensation_count, 0) as pending_compensation,
+                           COALESCE(rc.skip_count, 0) as skip_count,
+                           COALESCE(rc.current_turn_remaining, 0) as current_turn_remaining
                     FROM consultants c
                     JOIN round_consultants rc ON c.id = rc.consultant_id
                     JOIN distribution_rounds r ON rc.round_id = r.id
                     WHERE rc.round_id = $roundId AND c.status = 'active'
                     ORDER BY c.name ASC";
         } else {
-            $sql = "SELECT c.id, c.name, c.avatar, 1 as receive_ratio, 0 as round_id, 'Tất cả các Vòng' as round_name
+            $sql = "SELECT c.id, c.name, c.avatar, 1 as receive_ratio, 0 as round_id, 'Tất cả các Vòng' as round_name,
+                           (SELECT COALESCE(SUM(rc2.compensation_count), 0) FROM round_consultants rc2 WHERE rc2.consultant_id = c.id) as pending_compensation,
+                           0 as skip_count,
+                           0 as current_turn_remaining
                     FROM consultants c
                     WHERE c.status = 'active'
                     ORDER BY c.name ASC";
@@ -7725,6 +7731,9 @@ switch ($action) {
                     'total_ticket_count' => 0,
                     'duplicate_count' => 0,
                     'compensation_count' => 0,
+                    'pending_compensation' => (int) ($row['pending_compensation'] ?? 0),
+                    'skip_count' => (int) ($row['skip_count'] ?? 0),
+                    'current_turn_remaining' => (int) ($row['current_turn_remaining'] ?? 0),
                     'sources' => []
                 ];
             }
@@ -7973,6 +7982,14 @@ switch ($action) {
         }
         $sources = array_keys($activeSources);
 
+        $lastAssignedId = 0;
+        if ($roundId > 0) {
+            $rRes = $conn->query("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = $roundId");
+            if ($rRes && $rRow = $rRes->fetch_assoc()) {
+                $lastAssignedId = (int) $rRow['last_assigned_consultant_id'];
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -7984,6 +8001,7 @@ switch ($action) {
                 'giniNormalized' => round($giniNormalized, 4),
                 'fairnessIndex' => round($fairnessIndex, 1),
                 'sources' => $sources,
+                'lastAssignedId' => $lastAssignedId,
                 'consultants' => array_values($consultants)
             ]
         ]);
