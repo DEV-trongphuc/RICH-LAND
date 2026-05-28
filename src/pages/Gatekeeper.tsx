@@ -202,10 +202,6 @@ const getResolutionDetail = (noteText: string) => {
   return null;
 };
 
-const getUserAvatarByName = (_name: string) => {
-  return undefined;
-};
-
 interface AIScreenerConfig {
   id: string;
   name: string;
@@ -1686,7 +1682,11 @@ export const Gatekeeper = () => {
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {l.ai_screener_status === 'error' ? (
+                          {activeTab === 'assigned' ? (
+                            <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircle size={12} /> {l.status === 'assigned' ? t('Đã chia') : t('Đã duyệt')}
+                            </span>
+                          ) : l.ai_screener_status === 'error' ? (
                             <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
                             </span>
@@ -1944,7 +1944,11 @@ export const Gatekeeper = () => {
 
                   {/* AI Evaluation details callout */}
                   <div style={{
-                    background: l.ai_screener_status === 'error' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(239, 68, 68, 0.04)',
+                    background: activeTab === 'assigned'
+                      ? 'rgba(16, 185, 129, 0.04)'
+                      : l.ai_screener_status === 'error'
+                        ? 'rgba(245, 158, 11, 0.04)'
+                        : 'rgba(239, 68, 68, 0.04)',
                     padding: '10px 12px',
                     borderRadius: '8px',
                     display: 'flex',
@@ -1952,7 +1956,14 @@ export const Gatekeeper = () => {
                     gap: '6px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {l.ai_screener_status === 'error' ? (
+                      {activeTab === 'assigned' ? (
+                        <>
+                          <CheckCircle size={12} color="var(--color-success)" />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-success)' }}>
+                            {l.status === 'assigned' ? t('Đã chia') : t('Đã duyệt')}
+                          </span>
+                        </>
+                      ) : l.ai_screener_status === 'error' ? (
                         <>
                           <AlertTriangle size={12} color="#d97706" />
                           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
@@ -3629,13 +3640,21 @@ export const Gatekeeper = () => {
                   <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
                     <div>
-                      <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>{t("AI Pre-screener")}</span>
+                      {selectedLead.status === 'blacklisted' ? (
+                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)' }}>{t("Blacklist")}</span>
+                      ) : selectedLead.status === 'rejected' ? (
+                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>{t("Đã hủy (Dưới chuẩn)")}</span>
+                      ) : selectedLead.status === 'approved' || selectedLead.status === 'assigned' ? (
+                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>{t("Đã duyệt")}</span>
+                      ) : (
+                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>{t("AI Pre-screener")}</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {(() => {
-                  const { cleanNote, blacklistNotes, warningNotes, aiDecisionNotes } = parseNote(selectedLead.note || '');
+                  const { cleanNote, warningNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
 
@@ -3715,133 +3734,6 @@ export const Gatekeeper = () => {
                           </div>
                         </div>
                       </div>
-
-                      {/* AI Decision Notes */}
-                      {aiDecisionNotes && aiDecisionNotes.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                          {aiDecisionNotes.map((note, index) => {
-                            const parsed = parseAIDecisionNote(note);
-
-                            const isApprove = parsed.type === 'ai_approve';
-                            const isBlacklist = parsed.type === 'ai_blacklist';
-                            const isFallback = parsed.type === 'ai_fallback';
-
-                            let cardBg = 'rgba(239, 68, 68, 0.08)';
-                            let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
-                            let iconBg = 'rgba(239, 68, 68, 0.15)';
-                            let iconColor = 'var(--color-danger)';
-                            let titleColor = 'var(--color-danger)';
-                            let titleText = t("Từ chối bởi AI");
-                            let IconComponent = Sparkles;
-
-                            if (isApprove) {
-                              cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
-                              cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
-                              iconBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#d1fae5';
-                              iconColor = 'var(--color-success)';
-                              titleColor = 'var(--color-success)';
-                              titleText = t("Duyệt bởi AI");
-                              IconComponent = CheckCircle;
-                            } else if (isBlacklist) {
-                              cardBg = 'rgba(0, 0, 0, 0.2)';
-                              cardBorder = '1px solid rgba(255, 255, 255, 0.08)';
-                              iconBg = 'rgba(255, 255, 255, 0.1)';
-                              iconColor = '#94a3b8';
-                              titleColor = '#cbd5e1';
-                              titleText = t("Tự động chặn bởi AI (Blacklist)");
-                              IconComponent = ShieldAlert;
-                            } else if (isFallback) {
-                              cardBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb';
-                              cardBorder = theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fca5a5';
-                              iconBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#ffe4e6';
-                              iconColor = 'var(--color-warning)';
-                              titleColor = 'var(--color-warning)';
-                              titleText = t("Xác nhận dưới chuẩn (Fallback)");
-                              IconComponent = AlertTriangle;
-                            }
-
-                            return (
-                              <div key={index} style={{
-                                background: cardBg,
-                                border: cardBorder,
-                                padding: '0.875rem 1rem',
-                                borderRadius: '14px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.5rem',
-                                boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.02)'
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{ background: iconBg, padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
-                                      <IconComponent size={15} />
-                                    </div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: titleColor }}>{titleText}</span>
-                                  </div>
-                                </div>
-
-                                <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? 'var(--color-text-light)' : '#334155' }}>
-                                  <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
-                                </div>
-
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '12px',
-                                  paddingTop: '0.5rem',
-                                  borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)',
-                                  flexWrap: 'wrap'
-                                }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Avatar src={getUserAvatarByName(parsed.admin)} name={parsed.admin} size={16} />
-                                    <span>{t("Admin phụ trách: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
-                                  </div>
-                                  <span style={{ color: theme === 'dark' ? '#374151' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
-                                    <Clock size={13} style={{ opacity: 0.7 }} />
-                                    <span>{t("Thời gian: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Blacklist Notes */}
-                      {blacklistNotes && blacklistNotes.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                          {blacklistNotes.map((note, index) => {
-                            const parsed = parseBlacklistNote(note);
-                            return (
-                              <div key={index} style={{
-                                background: 'rgba(239, 68, 68, 0.08)',
-                                border: '1px solid rgba(239, 68, 68, 0.15)',
-                                padding: '1.25rem',
-                                borderRadius: '16px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.75rem'
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                  <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '8px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-danger)' }}>
-                                    <ShieldAlert size={18} />
-                                  </div>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-danger)' }}>{t("Lịch sử chặn Blacklist")}</span>
-                                </div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                                  <strong>{t("Lý do chặn:")}</strong> {parsed.reason || t("Không rõ")}
-                                </div>
-                                <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 4 }}>
-                                  <span>{t("Thực hiện bởi:")} <strong>{parsed.admin}</strong></span>
-                                  <span>•</span>
-                                  <span>{t("Thời gian:")} <strong>{parsed.time}</strong></span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </>
                   );
                 })()}
@@ -4047,6 +3939,155 @@ export const Gatekeeper = () => {
                     )}
                   </>
                 )}
+
+                {/* AI Decision Notes */}
+                {(() => {
+                  const { aiDecisionNotes } = parseNote(selectedLead.note || '');
+                  if (!aiDecisionNotes || aiDecisionNotes.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                      {aiDecisionNotes.map((note, index) => {
+                        const parsed = parseAIDecisionNote(note);
+
+                        const isApprove = parsed.type === 'ai_approve';
+                        const isBlacklist = parsed.type === 'ai_blacklist';
+                        const isFallback = parsed.type === 'ai_fallback';
+
+                        let cardBg = 'rgba(239, 68, 68, 0.08)';
+                        let cardBorder = '1px solid rgba(239, 68, 68, 0.15)';
+                        let iconBg = 'rgba(239, 68, 68, 0.15)';
+                        let iconColor = 'var(--color-danger)';
+                        let titleColor = 'var(--color-danger)';
+                        let titleText = t("Từ chối bởi AI");
+                        let IconComponent = Sparkles;
+
+                        if (isApprove) {
+                          cardBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)';
+                          cardBorder = theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0';
+                          iconBg = theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#d1fae5';
+                          iconColor = 'var(--color-success)';
+                          titleColor = 'var(--color-success)';
+                          titleText = t("Duyệt bởi AI");
+                          IconComponent = CheckCircle;
+                        } else if (isBlacklist) {
+                          cardBg = 'rgba(0, 0, 0, 0.2)';
+                          cardBorder = '1px solid rgba(255, 255, 255, 0.08)';
+                          iconBg = 'rgba(255, 255, 255, 0.1)';
+                          iconColor = '#94a3b8';
+                          titleColor = '#cbd5e1';
+                          titleText = t("Tự động chặn bởi AI (Blacklist)");
+                          IconComponent = ShieldAlert;
+                        } else if (isFallback) {
+                          cardBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb';
+                          cardBorder = theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fca5a5';
+                          iconBg = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#ffe4e6';
+                          iconColor = 'var(--color-warning)';
+                          titleColor = 'var(--color-warning)';
+                          titleText = t("Xác nhận dưới chuẩn (Fallback)");
+                          IconComponent = AlertTriangle;
+                        }
+
+                        return (
+                          <div key={index} style={{
+                            background: cardBg,
+                            border: cardBorder,
+                            padding: '0.875rem 1rem',
+                            borderRadius: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                            boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.02)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ background: iconBg, padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
+                                  <IconComponent size={15} />
+                                </div>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: titleColor }}>{titleText}</span>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? 'var(--color-text-light)' : '#334155' }}>
+                              <strong>{t("Lý do:")}</strong> <span style={{ fontWeight: 600 }}>{parsed.reason || t("Không rõ")}</span>
+                            </div>
+
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              paddingTop: '0.5rem',
+                              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.04)',
+                              flexWrap: 'wrap'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                <Avatar src={adminAvatars[parsed.admin]} name={parsed.admin} size={16} />
+                                <span>{t("Admin phụ trách: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
+                              </div>
+                              <span style={{ color: theme === 'dark' ? '#374151' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                <Clock size={13} style={{ opacity: 0.7 }} />
+                                <span>{t("Thời gian: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Blacklist Notes */}
+                {(() => {
+                  const { blacklistNotes } = parseNote(selectedLead.note || '');
+                  if (!blacklistNotes || blacklistNotes.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                      {blacklistNotes.map((note, index) => {
+                        const parsed = parseBlacklistNote(note);
+                        return (
+                          <div key={index} style={{
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            border: '1px solid rgba(239, 68, 68, 0.15)',
+                            padding: '1.25rem',
+                            borderRadius: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '8px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-danger)' }}>
+                                <ShieldAlert size={18} />
+                              </div>
+                              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-danger)' }}>{t("Lịch sử chặn Blacklist")}</span>
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                              <strong>{t("Lý do chặn:")}</strong> {parsed.reason || t("Không rõ")}
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              paddingTop: '0.75rem',
+                              marginTop: '0.25rem',
+                              borderTop: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid rgba(0, 0, 0, 0.04)',
+                              flexWrap: 'wrap'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                <Avatar src={adminAvatars[parsed.admin]} name={parsed.admin} size={16} />
+                                <span>{t("Thực hiện bởi: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.admin}</strong></span>
+                              </div>
+                              <span style={{ color: theme === 'dark' ? 'var(--color-border)' : '#cbd5e1', fontSize: '0.75rem' }}>•</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b' }}>
+                                <Clock size={13} style={{ opacity: 0.7 }} />
+                                <span>{t("Thời gian: ")}<strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#334155' }}>{parsed.time}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
