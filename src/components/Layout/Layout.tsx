@@ -219,7 +219,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (user?.role === 'admin') {
-      fetchAPI('get_reports')
+      fetchAPI('get_reports&status=pending')
         .then(res => {
           if (res.success && Array.isArray(res.data)) {
             const pending = res.data.filter((r: any) => r.status === 'pending');
