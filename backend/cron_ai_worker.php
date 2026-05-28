@@ -312,22 +312,16 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
 
                     $ccEmails = '';
                     $roundName = '';
-                    $connId = $leadData['connection_id'] ?? null;
-                    if ($connId) {
-                        $cStmt = $conn->prepare("SELECT cc_emails FROM sheet_connections WHERE id = ?");
-                        if ($cStmt) {
-                            $cStmt->bind_param("i", $connId);
-                            $cStmt->execute();
-                            $ccEmails = $cStmt->get_result()->fetch_assoc()['cc_emails'] ?? '';
-                            $cStmt->close();
-                        }
-                    }
                     if ($targetRoundId) {
-                        $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                        $rStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
                         if ($rStmt) {
                             $rStmt->bind_param("i", $targetRoundId);
                             $rStmt->execute();
-                            $roundName = $rStmt->get_result()->fetch_assoc()['round_name'] ?? '';
+                            $rData = $rStmt->get_result()->fetch_assoc();
+                            if ($rData) {
+                                $roundName = $rData['round_name'] ?? '';
+                                $ccEmails = $rData['cc_emails'] ?? '';
+                            }
                             $rStmt->close();
                         }
                     }

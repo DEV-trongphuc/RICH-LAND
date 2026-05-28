@@ -2410,23 +2410,4 @@ function getScreenerConfigForRound($conn, $roundId)
     return null;
 }
 
-function getAllFallbackRoundIds($conn)
-{
-    $configsJson = get_system_setting($conn, 'ai_screener_configs');
-    $configs = json_decode($configsJson, true);
-    $roundIds = [];
-    if (is_array($configs)) {
-        foreach ($configs as $config) {
-            if (!empty($config['below_standard_fallback_enabled']) && !empty($config['below_standard_fallback_round_id'])) {
-                $roundIds[] = (int) $config['below_standard_fallback_round_id'];
-            }
-        }
-    }
-    // Legacy global setting compatibility
-    $globalFallbackEnabled = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
-    $globalFallbackRoundId = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
-    if ($globalFallbackEnabled === 1 && $globalFallbackRoundId > 0) {
-        $roundIds[] = $globalFallbackRoundId;
-    }
-    return array_unique($roundIds);
-}
+

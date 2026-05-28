@@ -550,6 +550,29 @@ export const Gatekeeper = () => {
 
   // Modals & Action States
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<any>(null);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedLead) {
+      setNotificationStatus(null);
+      setNotifLoading(true);
+      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.id}`)
+        .then(json => {
+          if (json.success) {
+            setNotificationStatus(json.data);
+          }
+        })
+        .catch(err => {
+          console.error("Lỗi lấy trạng thái thông báo:", err);
+        })
+        .finally(() => {
+          setNotifLoading(false);
+        });
+    } else {
+      setNotificationStatus(null);
+    }
+  }, [selectedLead]);
   const [heldActionModalOpen, setHeldActionModalOpen] = useState<'approve' | 'reject' | 'blacklist' | null>(null);
   const [actioningHeldLead, setActioningHeldLead] = useState<any | null>(null);
   const [selectedApproveRoundId, setSelectedApproveRoundId] = useState<number | null>(null);
@@ -4355,6 +4378,106 @@ export const Gatekeeper = () => {
                               {new Date(selectedLead.created_at).toLocaleString('vi-VN')}
                             </div>
                           </div>
+                        </div>
+
+                        {/* Tình trạng thông báo Zalo & Email */}
+                        <div style={{ 
+                          marginTop: '1rem', 
+                          paddingTop: '1rem', 
+                          borderTop: '1px dashed var(--color-border-light)' 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                            <RefreshCw size={12} className={notifLoading ? "spin" : ""} style={{ color: 'var(--color-primary)' }} />
+                            <span>{t('Tình trạng gửi thông báo')}</span>
+                          </div>
+                          {notifLoading ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: '4px 0' }}>
+                              <RefreshCw size={12} className="spin" />
+                              <span>{t('Đang tải trạng thái thực tế...')}</span>
+                            </div>
+                          ) : notificationStatus ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                              {/* Email Status */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
+                                  <Mail size={13} style={{ flexShrink: 0 }} />
+                                  <span style={{ flexShrink: 0 }}>Email:</span>
+                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.target}>
+                                    {notificationStatus.email.target || '-'}
+                                  </span>
+                                </div>
+                                <div style={{ flexShrink: 0 }}>
+                                  {notificationStatus.email.status === 'sent' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
+                                      {t('Đã gửi')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.email.status === 'pending' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
+                                      {t('Đang chờ')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.email.status === 'failed' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>
+                                      {t('Thất bại')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.email.status === 'missed' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
+                                      {t('SÓT ❌')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Zalo Status */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
+                                  <ExternalLink size={13} style={{ flexShrink: 0 }} />
+                                  <span style={{ flexShrink: 0 }}>Zalo:</span>
+                                  <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.target}>
+                                    {notificationStatus.zalo.target || t('Chưa cấu hình')}
+                                  </span>
+                                </div>
+                                <div style={{ flexShrink: 0 }}>
+                                  {notificationStatus.zalo.status === 'no_zalo_config' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                                      {t('Chưa cấu hình ID')}
+                                    </span>
+                                  )}
+                                  {notificationStatus.zalo.status === 'sent (Direct cURL)' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
+                                      {t('Đã gửi (cURL)')}
+                                    </span>
+                                  )}
+                                  {notificationStatus.zalo.status === 'sent' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
+                                      {t('Đã gửi')} {notificationStatus.zalo.id && notificationStatus.zalo.id !== 'Log' ? `#${notificationStatus.zalo.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.zalo.status === 'pending' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
+                                      {t('Đang chờ')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.zalo.status === 'failed' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>
+                                      {t('Thất bại')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
+                                    </span>
+                                  )}
+                                  {notificationStatus.zalo.status === 'missed' && (
+                                    <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
+                                      {t('SÓT ❌')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                              {t('Không lấy được trạng thái gửi thông báo')}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (

@@ -1975,7 +1975,13 @@ export const en: Record<string, string> = {
   "Vòng đã phân bổ": "Assigned Round",
   "Đã giao": "Assigned",
   "Đã giao và phân bổ": "Assigned & Distributed",
-  "Bởi:": "By:"
+  "Bởi:": "By:",
+  "Xóa đã chọn": "Delete Selected",
+  "Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)": "Legacy Data Mapping (Bulk Duplicate Checker)",
+  "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "Display the history of comparisons and imports of legacy data into the CRM system.",
+  "Các bản ghi dữ liệu đã được nhập gần đây:": "Recently imported data records:",
+  "Tổng cộng: {count} bản ghi": "Total: {count} records",
+  "Dành riêng cho {name}": "Exclusively for {name}"
 };
 
 export const ja: Record<string, string> = {
@@ -3906,7 +3912,13 @@ export const ja: Record<string, string> = {
   "Vòng đã phân bổ": "割り当て済みラウンド",
   "Đã giao": "配信済み",
   "Đã giao và phân bổ": "配信・割り当て済み",
-  "Bởi:": "処理者:"
+  "Bởi:": "処理者:",
+  "Xóa đã chọn": "選択したものを削除",
+  "Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)": "過去データマッピング (一括重複チェッカー)",
+  "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "過去のデータの照合およびCRMシステムへのインポート履歴を表示します。",
+  "Các bản ghi dữ liệu đã được nhập gần đây:": "最近インポートされたデータレコード:",
+  "Tổng cộng: {count} bản ghi": "合計: {count} 件のレコード",
+  "Dành riêng cho {name}": "{name} 専用"
 };
 
 export const zh: Record<string, string> = {
@@ -5838,5 +5850,11 @@ export const zh: Record<string, string> = {
   "Vòng đã phân bổ": "已分配轮次",
   "Đã giao": "已分配",
   "Đã giao và phân bổ": "已分配和派发",
-  "Bởi:": "处理人:"
+  "Bởi:": "处理人:",
+  "Xóa đã chọn": "删除选中",
+  "Ánh xạ dữ liệu cũ (Bulk Duplicate Checker)": "历史数据映射 (批量重复检查器)",
+  "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "显示历史数据比对以及导入CRM系统的历史记录。",
+  "Các bản ghi dữ liệu đã được nhập gần đây:": "最近导入的数据记录:",
+  "Tổng cộng: {count} bản ghi": "总计: {count} 条记录",
+  "Dành riêng cho {name}": "{name} 专属"
 };

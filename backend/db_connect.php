@@ -94,6 +94,28 @@ if (!function_exists('get_normalized_report_error_reasons')) {
     }
 }
 
+if (!function_exists('getAllFallbackRoundIds')) {
+    function getAllFallbackRoundIds($conn) {
+        $configsJson = get_system_setting($conn, 'ai_screener_configs');
+        $configs = json_decode($configsJson, true);
+        $roundIds = [];
+        if (is_array($configs)) {
+            foreach ($configs as $config) {
+                if (!empty($config['below_standard_fallback_enabled']) && !empty($config['below_standard_fallback_round_id'])) {
+                    $roundIds[] = (int) $config['below_standard_fallback_round_id'];
+                }
+            }
+        }
+        // Legacy global setting compatibility
+        $globalFallbackEnabled = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
+        $globalFallbackRoundId = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
+        if ($globalFallbackEnabled === 1 && $globalFallbackRoundId > 0) {
+            $roundIds[] = $globalFallbackRoundId;
+        }
+        return array_unique($roundIds);
+    }
+}
+
 if (!function_exists('pruneAdminLogs')) {
     function pruneAdminLogs($conn) {
         // [TỐI ƯU PRODUCTION] Đã tắt dọn dẹp admin_logs tự động để tránh nghẽn khi scale lớn
@@ -123,7 +145,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 128) {
+        if ($dbVer >= 129) {
             $runMigration = false;
         }
     }
@@ -144,7 +166,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 128) {
+                    if ($dbVer >= 129) {
                         $runMigration = false;
                     }
                 }
@@ -676,7 +698,17 @@ if ($runMigration) {
         $conn->query("ALTER TABLE sync_queue ADD INDEX `idx_status_retry` (`status`, `next_retry_at`)");
     }
 
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '128') ON DUPLICATE KEY UPDATE setting_value = '128'");
+    // Auto-migrate: Version 129 - zalo_notify_status and email_notify_status columns in leads table
+    $chkColZNS = $conn->query("SHOW COLUMNS FROM leads LIKE 'zalo_notify_status'");
+    if ($chkColZNS && $chkColZNS->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN zalo_notify_status VARCHAR(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Zalo'");
+    }
+    $chkColENS = $conn->query("SHOW COLUMNS FROM leads LIKE 'email_notify_status'");
+    if ($chkColENS && $chkColENS->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN email_notify_status VARCHAR(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Email'");
+    }
+
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '129') ON DUPLICATE KEY UPDATE setting_value = '129'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

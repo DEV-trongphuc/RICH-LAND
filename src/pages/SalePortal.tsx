@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   LogOut, Search, Filter, AlertCircle, CheckCircle2,
   XCircle, Clock, FileText,
-  Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send
+  Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
+  Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -18,12 +19,58 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import vnFlag from '../assets/vn.svg';
+import usFlag from '../assets/us.svg';
+import jpFlag from '../assets/jp.svg';
+import cnFlag from '../assets/cn.svg';
+
+const languagesList = [
+  { code: 'vi', name: 'Tiếng Việt', flag: vnFlag },
+  { code: 'en', name: 'English', flag: usFlag },
+  { code: 'ja', name: '日本語', flag: jpFlag },
+  { code: 'zh', name: '简体中文', flag: cnFlag }
+] as const;
+
 
 export const SalePortal = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, token, login, logout } = useAuth();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
+
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLangOpen) return;
+    const handleClose = () => setIsLangOpen(false);
+    document.addEventListener('click', handleClose);
+    return () => document.removeEventListener('click', handleClose);
+  }, [isLangOpen]);
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
+    if (localTheme) {
+      setTheme(localTheme);
+      document.documentElement.setAttribute('data-theme', localTheme);
+    } else {
+      setTheme('light');
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('domation_theme', nextTheme);
+    window.dispatchEvent(new Event('theme-change'));
+  };
+
 
   // Parse initial search query from email link
   const getInitialSearch = () => {
@@ -69,12 +116,15 @@ export const SalePortal = () => {
 
   // Filters
   const [search, setSearch] = useState(getInitialSearch());
+  const [searchInput, setSearchInput] = useState(getInitialSearch());
   const [roundId, setRoundId] = useState('');
   const [saleIdFilter, setSaleIdFilter] = useState('');
   const [dateMode, setDateMode] = useState('this_month'); // all, today, yesterday, custom
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomDate, setShowCustomDate] = useState(false);
+  const [flowViewMode, setFlowViewMode] = useState<'day' | 'hour'>('day');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Authentication states
   const [googleError, setGoogleError] = useState('');
@@ -224,7 +274,14 @@ export const SalePortal = () => {
 
   useEffect(() => {
     loadPortalData();
-  }, [token, user, roundId, dateMode, saleIdFilter]);
+  }, [token, user, roundId, dateMode, saleIdFilter, search]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchInput]);
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -233,6 +290,10 @@ export const SalePortal = () => {
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [token, user, roundId, dateMode, saleIdFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.leads]);
 
   // Load timeline for selected lead in modal
   useEffect(() => {
@@ -261,12 +322,12 @@ export const SalePortal = () => {
 
   // Handle manual apply for Custom date and search button
   const handleApplyFilters = () => {
-    loadPortalData();
+    setSearch(searchInput);
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      loadPortalData();
+      setSearch(searchInput);
     }
   };
 
@@ -349,6 +410,35 @@ export const SalePortal = () => {
     time: `${String(hr).padStart(2, '0')}:00`,
     volume: count
   }));
+
+  const getDailyChartData = () => {
+    const dailyMap: { [key: string]: number } = {};
+    if (data.leads && Array.isArray(data.leads)) {
+      data.leads.forEach((lead: any) => {
+        if (lead.received_at) {
+          const dateStr = lead.received_at.split(' ')[0]; // "YYYY-MM-DD"
+          dailyMap[dateStr] = (dailyMap[dateStr] || 0) + 1;
+        }
+      });
+    }
+
+    const sortedDates = Object.keys(dailyMap).sort();
+    return sortedDates.map(dateStr => {
+      const parts = dateStr.split('-'); // ["2026", "05", "28"]
+      const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateStr;
+      return {
+        date: label,
+        volume: dailyMap[dateStr]
+      };
+    });
+  };
+
+  const activeChartData = flowViewMode === 'day' ? getDailyChartData() : hourlyChartData;
+
+  const ITEMS_PER_PAGE = 10;
+  const totalCount = data.leads.length;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const paginatedLeads = data.leads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Render Login Layout if not authorized
   if (!token || !['sale', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) {
@@ -498,10 +588,18 @@ export const SalePortal = () => {
     <div style={{ height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top Header Navigation */}
       <header className="portal-header" style={{
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
-        color: 'white', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 50,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', flexWrap: 'wrap', gap: '1rem'
+        height: 66,
+        background: 'var(--color-surface)',
+        borderBottom: '1px solid var(--color-border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 2rem',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+        flexShrink: 0
       }}>
         <div className="portal-header-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
@@ -519,16 +617,25 @@ export const SalePortal = () => {
             />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, letterSpacing: '0.5px' }}>DOMATION PORTAL</h1>
-            <span style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
-              {t('Dành riêng cho TVV')}
+            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, letterSpacing: '0.5px', color: 'var(--color-text)' }}>DOMATION PORTAL</h1>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+              {t('Dành riêng cho {name}').replace('{name}', user?.name || '')}
             </span>
           </div>
         </div>
 
-        <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user?.role === 'sale' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '6px 12px', marginRight: '0.5rem' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '6px 12px',
+              marginRight: '0.5rem'
+            }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: !portalVacationMode ? '#10b981' : '#f59e0b' }}>
                 {!portalVacationMode ? t('Nhận data') : t('Tạm ngưng')}
               </span>
@@ -538,25 +645,263 @@ export const SalePortal = () => {
               />
             </div>
           )}
-          <Avatar src={user?.avatar} name={user?.name} size={36} />
-          <div className="portal-header-user-info" style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>{user?.name}</div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{user?.email}</div>
-          </div>
+
+          {/* Theme Toggle Button */}
           <button
-            onClick={handleLogout}
-            className="portal-header-logout"
+            onClick={toggleTheme}
             style={{
-              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '10px', color: 'white', padding: '8px 14px', fontSize: '0.85rem',
-              fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
-              transition: 'all 0.2s'
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-light)',
+              borderRadius: 8,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              outline: 'none'
             }}
-            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.2)')}
-            onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            title={theme === 'light' ? t("Chuyển sang giao diện tối") : t("Chuyển sang giao diện sáng")}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'var(--color-bg)';
+              e.currentTarget.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = 'var(--color-text-light)';
+            }}
           >
-            <LogOut size={16} /> {t('Đăng xuất')}
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
           </button>
+
+          {/* Language Selector Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLangOpen(!isLangOpen);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'var(--color-bg)',
+                border: `1px solid ${isLangOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                borderRadius: '6px',
+                padding: '3px 6px',
+                cursor: 'pointer',
+                color: 'var(--color-text)',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                transition: 'all 0.2s',
+                height: 30,
+                outline: 'none',
+                boxShadow: 'none',
+              }}
+              title={t('Chọn ngôn ngữ')}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = isLangOpen ? 'var(--color-primary)' : 'var(--color-border)';
+              }}
+            >
+              <img 
+                src={languagesList.find(l => l.code === language)?.flag || vnFlag} 
+                style={{ 
+                  width: 24, 
+                  height: 16, 
+                  borderRadius: '1.5px', 
+                  objectFit: 'cover',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  display: 'block' 
+                }} 
+                alt={t(languagesList.find(l => l.code === language)?.name || 'Tiếng Việt')} 
+              />
+              <ChevronDown 
+                size={12} 
+                style={{ 
+                  color: 'var(--color-text-muted)',
+                  transform: isLangOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s'
+                }} 
+              />
+            </button>
+
+            {isLangOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 6px)',
+                right: 0,
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '4px',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                minWidth: '135px',
+                zIndex: 50
+              }}>
+                {languagesList.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setIsLangOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 10px',
+                      border: 'none',
+                      background: language === lang.code ? 'var(--color-bg)' : 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      color: 'var(--color-text)',
+                      fontSize: '0.8125rem',
+                      fontWeight: language === lang.code ? 600 : 400,
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                      if (language !== lang.code) e.currentTarget.style.background = 'var(--color-bg)';
+                    }}
+                    onMouseLeave={e => {
+                      if (language !== lang.code) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <img 
+                      src={lang.flag} 
+                      style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
+                      alt={lang.name} 
+                    />
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Hoverable Profile Dropdown */}
+          <div
+            onMouseEnter={() => setIsProfileMenuOpen(true)}
+            onMouseLeave={() => setIsProfileMenuOpen(false)}
+            style={{ position: 'relative' }}
+          >
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.625rem',
+                paddingLeft: '0.875rem',
+                borderLeft: '1px solid var(--color-border)',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                transition: 'background 0.2s',
+                background: isProfileMenuOpen ? 'var(--color-bg)' : 'transparent'
+              }}
+            >
+              <Avatar src={user?.avatar} name={user?.name} size={32} />
+              <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{user?.email}</span>
+              </div>
+            </div>
+
+            {isProfileMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '4px',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                minWidth: '160px',
+                zIndex: 50
+              }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '8px 10px',
+                    color: 'var(--color-text)',
+                    fontSize: '0.75rem',
+                    borderBottom: '1px solid var(--color-border)',
+                    background: 'var(--color-bg)',
+                    borderRadius: '6px 6px 0 0'
+                  }}
+                >
+                  <span style={{ fontWeight: 700 }}>{user?.name}</span>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.65rem' }}>{user?.email}</span>
+                </div>
+
+                <a
+                  href="https://zalo.me/0378859736"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
+                  {t('Báo lỗi')}
+                </a>
+
+                <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-danger)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <LogOut size={14} />
+                  {t('Đăng xuất')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -773,17 +1118,55 @@ export const SalePortal = () => {
         }}>
           {/* Chart Left: Hourly Flow */}
           <div className="card" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
-              <Clock3 size={18} color="#7c3aed" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                {t('LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ')}
-              </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock3 size={18} color="#7c3aed" />
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                  {flowViewMode === 'day' ? t('LƯU LƯỢNG NHẬN DATA THEO NGÀY') : t('LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ')}
+                </h3>
+              </div>
+              <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
+                <button
+                  onClick={() => setFlowViewMode('day')}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: isMobile ? '0.65rem' : '0.75rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    background: flowViewMode === 'day' ? 'var(--color-surface)' : 'transparent',
+                    color: flowViewMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: flowViewMode === 'day' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  {t('Theo ngày')}
+                </button>
+                <button
+                  onClick={() => setFlowViewMode('hour')}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: isMobile ? '0.65rem' : '0.75rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    background: flowViewMode === 'hour' ? 'var(--color-surface)' : 'transparent',
+                    color: flowViewMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: flowViewMode === 'hour' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  {t('Theo giờ')}
+                </button>
+              </div>
             </div>
             <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={hourlyChartData} margin={{ left: -20, right: 5, top: 10 }}>
+                <ComposedChart data={activeChartData} margin={{ left: -20, right: 5, top: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey={flowViewMode === 'day' ? 'date' : 'time'} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={35} />
                   <Tooltip content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
@@ -858,11 +1241,11 @@ export const SalePortal = () => {
             <input
               type="text"
               placeholder={t("Tìm kiếm bằng SĐT hoặc Email khách hàng (Nhập từ khóa và bấm Tìm kiếm hoặc nhấn Enter)...")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyPress}
               style={{
-                width: '100%', padding: '8px 12px 8px 40px', borderRadius: '10px',
+                width: '100%', padding: '8px 36px 8px 40px', borderRadius: '10px',
                 border: '1px solid var(--color-border)', fontSize: '0.875rem', outline: 'none',
                 background: 'var(--color-bg)', transition: 'all 0.2s', color: 'var(--color-text)'
               }}
@@ -875,6 +1258,20 @@ export const SalePortal = () => {
                 e.currentTarget.style.background = 'var(--color-bg)';
               }}
             />
+            {searchInput && (
+              <button
+                onClick={() => {
+                  setSearchInput('');
+                  setSearch('');
+                }}
+                style={{
+                  position: 'absolute', right: 12, top: 10, background: 'none', border: 'none',
+                  color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                }}
+              >
+                <XCircle size={16} />
+              </button>
+            )}
           </div>
 
           <button
@@ -900,17 +1297,21 @@ export const SalePortal = () => {
               {t('DANH SÁCH DỮ LIỆU ĐƯỢC PHÂN BỔ')}
             </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'var(--color-border-light)', padding: '4px 10px', borderRadius: '20px', fontWeight: 600 }}>
-              {t('Đang hiển thị')} {data.leads.length} {t('dòng')}
+              {t('Đang hiển thị')} {paginatedLeads.length} / {totalCount} {t('dòng')}
             </span>
           </div>
 
-          <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ overflowX: isMobile ? 'visible' : 'auto' }}>
+          <div className="table-wrap responsive-table-wrap mobile-card-table" style={{
+            overflowX: isMobile ? 'visible' : 'auto',
+            maxHeight: isMobile ? 'none' : '520px',
+            overflowY: isMobile ? 'visible' : 'auto'
+          }}>
             {loading ? (
               <TableSkeleton cols={5} rows={6} />
             ) : data.leads.length > 0 ? (
               isMobile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0 5rem 0' }}>
-                  {data.leads.map((lead: any, index: number) => (
+                  {paginatedLeads.map((lead: any, index: number) => (
                     <div
                       key={lead.log_id}
                       onClick={() => {
@@ -1174,20 +1575,20 @@ export const SalePortal = () => {
                 <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
+                      <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
+                      <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
                       {user?.role === 'sale' ? (
-                        <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('VÒNG')}</th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('VÒNG')}</th>
                       ) : (
-                        <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
                       )}
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
+                      <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
+                      <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
+                      <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.leads.map((lead: any, index: number) => (
+                    {paginatedLeads.map((lead: any, index: number) => (
                       <tr
                         key={lead.log_id}
                         onClick={() => {
@@ -1287,7 +1688,7 @@ export const SalePortal = () => {
                         {/* LIÊN HỆ */}
                         <td data-label={t('LIÊN HỆ')} style={{ padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ color: '#d97706', fontWeight: 700 }}>{lead.phone}</span>
+                            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{lead.phone}</span>
                             <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{lead.lead_email || '—'}</span>
                           </div>
                         </td>
@@ -1425,6 +1826,60 @@ export const SalePortal = () => {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0, flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalCount}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let startPage = 1;
+                    if (totalPages > 5) {
+                      if (currentPage > 3) {
+                        startPage = currentPage - 2;
+                        if (startPage + 4 > totalPages) {
+                          startPage = totalPages - 4;
+                        }
+                      }
+                    }
+                    const pageNum = startPage + i;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        style={{
+                          width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                          border: currentPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                          background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                          color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </main>
 
@@ -1616,15 +2071,6 @@ export const SalePortal = () => {
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Tiếp nhận:')}</span>
-                <span style={{ fontWeight: 700, color: Number(activeDetailLead.is_accepted) ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                  {Number(activeDetailLead.is_accepted)
-                    ? `${t('Đã tiếp nhận lúc')} ${activeDetailLead.accepted_at ? new Date(activeDetailLead.accepted_at).toLocaleString('vi-VN') : ''}`
-                    : t('Chưa tiếp nhận')}
-                </span>
-              </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--color-bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border)', marginTop: '4px' }}>
                 <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>{t('Ghi chú đính kèm:')}</span>
                 <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
@@ -1659,8 +2105,55 @@ export const SalePortal = () => {
               )}
             </div>
 
-            {/* Cột phải: Lịch sử bàn giao & Nhắc lại */}
+            {/* Cột phải: Đánh giá AI & Lịch sử bàn giao & Nhắc lại */}
             <div className="portal-detail-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '1px solid var(--color-border)', paddingLeft: '1.5rem' }}>
+              {/* Đánh giá AI */}
+              {activeDetailLead.ai_screener_status && activeDetailLead.ai_screener_status !== 'not_screened' && (
+                <div style={{
+                  background: activeDetailLead.ai_screener_status === 'passed' 
+                    ? 'var(--color-success-light)' 
+                    : (activeDetailLead.ai_screener_status === 'failed' ? 'var(--color-danger-light)' : 'var(--color-warning-light)'),
+                  border: '1px solid',
+                  borderColor: activeDetailLead.ai_screener_status === 'passed' 
+                    ? 'rgba(16, 185, 129, 0.2)' 
+                    : (activeDetailLead.ai_screener_status === 'failed' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
+                  padding: '12px',
+                  borderRadius: '12px',
+                  marginBottom: '8px',
+                  fontSize: '0.825rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontWeight: 800, fontSize: '0.65rem'
+                    }}>
+                      AI
+                    </div>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t('Đánh giá AI:')}</span>
+                    <span style={{
+                      marginLeft: 'auto',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      background: activeDetailLead.ai_screener_status === 'passed'
+                        ? 'var(--color-success)'
+                        : (activeDetailLead.ai_screener_status === 'failed' ? 'var(--color-danger)' : 'var(--color-warning)'),
+                      color: 'white'
+                    }}>
+                      {activeDetailLead.ai_screener_status === 'passed'
+                        ? t('ĐẠT CHUẨN')
+                        : (activeDetailLead.ai_screener_status === 'failed' ? t('KHÔNG ĐẠT') : t('ĐANG XỬ LÝ'))}
+                    </span>
+                  </div>
+                  <div style={{ color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                    {activeDetailLead.ai_evaluation || t('Không có đánh giá chi tiết.')}
+                  </div>
+                </div>
+              )}
+
               <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>{t('Lịch sử bàn giao & Nhắc lại:')}</span>
               
               {loadingTimeline ? (

@@ -122,6 +122,101 @@ function getBearerToken()
     return null;
 }
 
+function check_zalo_direct_log_for_lead($logFile, $createdDate, $phone, $name) {
+    if (!file_exists($logFile)) return 'N/A';
+    
+    $handle = fopen($logFile, 'r');
+    if (!$handle) return 'N/A';
+    
+    $fsize = filesize($logFile);
+    $readSize = min($fsize, 150000); // Read last 150KB
+    if ($fsize > $readSize) {
+        fseek($handle, $fsize - $readSize);
+    }
+    
+    $content = fread($handle, $readSize);
+    fclose($handle);
+    
+    if (empty($content)) return 'N/A';
+    
+    $lines = explode("\n", $content);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = $lines[$i];
+        if (empty(trim($line))) continue;
+        
+        // Match by phone or name
+        if (strpos($line, $phone) !== false || (!empty($name) && strpos($line, $name) !== false)) {
+            if (strpos($line, 'HTTP: 200') !== false || strpos($line, '"ok":true') !== false) {
+                return 'sent (Direct cURL)';
+            }
+        }
+    }
+    return 'N/A';
+}
+
+function parse_zalo_direct_logs($logFile) {
+    $logs = [];
+    if (!file_exists($logFile)) return $logs;
+    
+    $handle = fopen($logFile, 'r');
+    if (!$handle) return $logs;
+    
+    $fsize = filesize($logFile);
+    $readSize = min($fsize, 250000); // Read last 250KB for log feed
+    if ($fsize > $readSize) {
+        fseek($handle, $fsize - $readSize);
+    }
+    
+    $content = fread($handle, $readSize);
+    fclose($handle);
+    
+    if (empty($content)) return $logs;
+    
+    $lines = explode("\n", $content);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = $lines[$i];
+        if (empty(trim($line))) continue;
+        
+        // Format: [Y-m-d H:i:s] Target ChatId: X, HTTP: Y, Request: Z, Response: W
+        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+Target\s+ChatId:\s*([^,]+),\s*HTTP:\s*(\d+)/i', $line, $matches)) {
+            $time = $matches[1];
+            $chatId = trim($matches[2]);
+            $httpCode = $matches[3];
+            
+            $body = '';
+            $reqStart = strpos($line, 'Request: ');
+            if ($reqStart !== false) {
+                $reqEnd = strpos($line, ', Response:', $reqStart);
+                $reqJsonStr = ($reqEnd !== false) 
+                    ? substr($line, $reqStart + 9, $reqEnd - ($reqStart + 9))
+                    : substr($line, $reqStart + 9);
+                
+                $reqData = json_decode($reqJsonStr, true);
+                if (isset($reqData['text'])) {
+                    $body = $reqData['text'];
+                } else if (isset($reqData['body_text'])) {
+                    $body = $reqData['body_text'];
+                } else {
+                    $body = $reqJsonStr;
+                }
+            }
+            
+            $logs[] = [
+                'id' => 'direct_' . md5($line),
+                'channel' => 'zalo',
+                'target' => $chatId,
+                'subject' => 'Zalo Direct cURL',
+                'body' => $body,
+                'status' => ($httpCode == 200) ? 'sent' : 'failed',
+                'created_at' => $time,
+                'sent_at' => $time,
+                'is_direct' => true
+            ];
+        }
+    }
+    return $logs;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
@@ -145,7 +240,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -1340,6 +1435,156 @@ switch ($action) {
         while ($row = $res->fetch_assoc())
             $data[] = $row;
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
+        break;
+
+    case 'get_lead_notification_status':
+        if (!isset($decodedUser) || !$decodedUser) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+
+        $leadId = isset($_GET['lead_id']) ? (int) $_GET['lead_id'] : 0;
+        if ($leadId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Lead ID không hợp lệ']);
+            break;
+        }
+
+        // Fetch lead details
+        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at FROM leads l WHERE l.id = ? LIMIT 1");
+        $leadStmt->bind_param("i", $leadId);
+        $leadStmt->execute();
+        $lead = $leadStmt->get_result()->fetch_assoc();
+        $leadStmt->close();
+
+        if (!$lead) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy khách hàng']);
+            break;
+        }
+
+        // If user is a sale, check if they own the lead
+        if ($decodedUser['role'] === 'sale') {
+            $saleStmt = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+            $saleStmt->bind_param("s", $decodedUser['email']);
+            $saleStmt->execute();
+            $sRow = $saleStmt->get_result()->fetch_assoc();
+            $saleStmt->close();
+
+            if (!$sRow || (int)$lead['assigned_to'] !== (int)$sRow['id']) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem thông tin khách hàng này']);
+                break;
+            }
+        }
+
+        $leadName = $lead['name'];
+        $leadPhone = $lead['phone'];
+        $leadEmail = $lead['email'];
+        $assignedTo = $lead['assigned_to'];
+        $createdDate = date('Y-m-d', strtotime($lead['created_at']));
+
+        $mailStatus = 'N/A';
+        $mailQueued = false;
+        $mailId = null;
+
+        $zaloStatus = 'N/A';
+        $zaloQueued = false;
+        $zaloId = null;
+        $saleZaloId = '';
+        $saleEmail = '';
+
+        if ($assignedTo) {
+            $saleStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $saleStmt->bind_param("i", $assignedTo);
+            $saleStmt->execute();
+            $sRow = $saleStmt->get_result()->fetch_assoc();
+            if ($sRow) {
+                $saleEmail = $sRow['email'];
+                $saleZaloId = $sRow['zalo_chat_id'];
+            }
+            $saleStmt->close();
+        }
+
+        // Check Mail Queue
+        if (!empty($saleEmail)) {
+            $mailLikeName = '%' . $leadName . '%';
+            $mailLikePhone = '%' . $leadPhone . '%';
+            $mStmt = $conn->prepare("SELECT id, status FROM mail_queue WHERE to_email = ? AND (subject LIKE ? OR body_html LIKE ? OR body_html LIKE ?) ORDER BY id DESC LIMIT 1");
+            $mStmt->bind_param("ssss", $saleEmail, $mailLikeName, $mailLikeName, $mailLikePhone);
+            $mStmt->execute();
+            $mRes = $mStmt->get_result();
+            if ($mRes && $mRes->num_rows > 0) {
+                $mRow = $mRes->fetch_assoc();
+                $mailQueued = true;
+                $mailStatus = $mRow['status'];
+                $mailId = $mRow['id'];
+            }
+            $mStmt->close();
+        }
+
+        // Check Zalo Queue
+        $zaloLikeName = '%' . $leadName . '%';
+        $zaloLikePhone = '%' . $leadPhone . '%';
+
+        if (!empty($saleZaloId)) {
+            $zStmt = $conn->prepare("SELECT id, status FROM zalo_queue WHERE chat_id = ? AND (body_text LIKE ? OR body_text LIKE ?) ORDER BY id DESC LIMIT 1");
+            $zStmt->bind_param("sss", $saleZaloId, $zaloLikeName, $zaloLikePhone);
+        } else {
+            $zStmt = $conn->prepare("SELECT id, status FROM zalo_queue WHERE (body_text LIKE ? OR body_text LIKE ?) ORDER BY id DESC LIMIT 1");
+            $zStmt->bind_param("ss", $zaloLikeName, $zaloLikePhone);
+        }
+        $zStmt->execute();
+        $zRes = $zStmt->get_result();
+        if ($zRes && $zRes->num_rows > 0) {
+            $zRow = $zRes->fetch_assoc();
+            $zaloQueued = true;
+            $zaloStatus = $zRow['status'];
+            $zaloId = $zRow['id'];
+        }
+        $zStmt->close();
+
+        // Check Zalo direct logs (zalo_send_log.txt) if not in queue
+        if (!$zaloQueued) {
+            $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
+            if (file_exists($zaloLogFile)) {
+                $directStatus = check_zalo_direct_log_for_lead($zaloLogFile, $createdDate, $leadPhone, $leadName);
+                if ($directStatus !== 'N/A') {
+                    $zaloQueued = true;
+                    $zaloStatus = $directStatus;
+                    $zaloId = 'Log';
+                }
+            }
+        }
+
+        // Final statuses
+        if (!$zaloQueued && empty($saleZaloId)) {
+            $zaloFinalStatus = 'no_zalo_config';
+        } else if ($zaloQueued) {
+            $zaloFinalStatus = $zaloStatus;
+        } else {
+            $zaloFinalStatus = 'missed';
+        }
+
+        $mailFinalStatus = $mailQueued ? $mailStatus : 'missed';
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'lead_id' => $leadId,
+                'email' => [
+                    'queued' => $mailQueued,
+                    'status' => $mailFinalStatus,
+                    'id' => $mailId,
+                    'target' => $saleEmail
+                ],
+                'zalo' => [
+                    'queued' => $zaloQueued,
+                    'status' => $zaloFinalStatus,
+                    'id' => $zaloId,
+                    'target' => $saleZaloId
+                ]
+            ]
+        ]);
         break;
 
     case 'get_calendar_stats':
@@ -6940,6 +7185,132 @@ switch ($action) {
         $merged = array_slice($merged, 0, 50);
 
         echo json_encode(['success' => true, 'data' => $merged]);
+        break;
+
+    case 'get_notification_logs':
+        if (!isset($decodedUser) || !$decodedUser) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+
+        $channel = $_GET['channel'] ?? 'all'; // all, email, zalo
+        $type = $_GET['type'] ?? 'all';       // all, sale, admin
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 10;
+        if ($page < 1) $page = 1;
+        if ($pageSize < 1) $pageSize = 10;
+
+        $mailLogs = [];
+        $resMail = $conn->query("
+            SELECT id, to_email as target, subject, body_html as body, status, created_at, sent_at 
+            FROM mail_queue 
+            ORDER BY id DESC LIMIT 200
+        ");
+        if ($resMail) {
+            while ($row = $resMail->fetch_assoc()) {
+                $mailLogs[] = [
+                    'id' => 'mail_' . $row['id'],
+                    'channel' => 'email',
+                    'target' => $row['target'],
+                    'subject' => $row['subject'],
+                    'body' => strip_tags($row['body']),
+                    'status' => $row['status'],
+                    'created_at' => $row['created_at'],
+                    'sent_at' => $row['sent_at'] ?: $row['created_at']
+                ];
+            }
+        }
+
+        $zaloQueueLogs = [];
+        $resZalo = $conn->query("
+            SELECT id, chat_id as target, body_text as body, status, created_at, sent_at 
+            FROM zalo_queue 
+            ORDER BY id DESC LIMIT 200
+        ");
+        if ($resZalo) {
+            while ($row = $resZalo->fetch_assoc()) {
+                $zaloQueueLogs[] = [
+                    'id' => 'zalo_' . $row['id'],
+                    'channel' => 'zalo',
+                    'target' => $row['target'],
+                    'subject' => 'Zalo Message',
+                    'body' => $row['body'],
+                    'status' => $row['status'],
+                    'created_at' => $row['created_at'],
+                    'sent_at' => $row['sent_at'] ?: $row['created_at']
+                ];
+            }
+        }
+
+        $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
+        $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile);
+
+        $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs);
+
+        $filteredLogs = [];
+        foreach ($rawLogs as $item) {
+            $lowerBody = mb_strtolower($item['body'], 'UTF-8');
+            $lowerSubject = mb_strtolower($item['subject'], 'UTF-8');
+            
+            $isAdmin = false;
+            if (
+                strpos($lowerBody, 'duyệt') !== false && 
+                (strpos($lowerBody, '/duyet') !== false || strpos($lowerBody, '/tuchoi') !== false || strpos($lowerBody, 'lệnh duyệt nhanh') !== false)
+            ) {
+                $isAdmin = true;
+            } else if (
+                strpos($lowerBody, 'cảnh báo data dưới chuẩn') !== false || 
+                strpos($lowerBody, 'cảnh báo sót lead') !== false || 
+                strpos($lowerBody, 'dưới chuẩn') !== false
+            ) {
+                $isAdmin = true;
+            } else if (
+                strpos($lowerSubject, 'cảnh báo') !== false || 
+                strpos($lowerSubject, 'sót lead') !== false
+            ) {
+                $isAdmin = true;
+            }
+            
+            $item['type'] = $isAdmin ? 'admin' : 'sale';
+
+            if ($channel !== 'all' && $item['channel'] !== $channel) {
+                continue;
+            }
+            if ($type !== 'all' && $item['type'] !== $type) {
+                continue;
+            }
+            if (!empty($search)) {
+                $lowerSearch = mb_strtolower($search, 'UTF-8');
+                $matchSearch = (
+                    strpos(mb_strtolower($item['target'], 'UTF-8'), $lowerSearch) !== false ||
+                    strpos(mb_strtolower($item['subject'], 'UTF-8'), $lowerSearch) !== false ||
+                    strpos($lowerBody, $lowerSearch) !== false
+                );
+                if (!$matchSearch) {
+                    continue;
+                }
+            }
+
+            $filteredLogs[] = $item;
+        }
+
+        usort($filteredLogs, function ($a, $b) {
+            return strcmp($b['created_at'], $a['created_at']);
+        });
+
+        $totalCount = count($filteredLogs);
+        $offset = ($page - 1) * $pageSize;
+        $paginatedLogs = array_slice($filteredLogs, $offset, $pageSize);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $paginatedLogs,
+            'total_count' => $totalCount,
+            'page' => $page,
+            'pageSize' => $pageSize
+        ]);
         break;
 
     case 'add_account':

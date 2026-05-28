@@ -25,7 +25,11 @@ import {
   Copy, 
   HelpCircle, 
   CheckCircle2, 
-  XCircle 
+  XCircle,
+  Mail,
+  MessageSquare,
+  Search,
+  Check
 } from 'lucide-react';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -77,6 +81,74 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [expandedFeedItem, setExpandedFeedItem] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // New subtabs for Activity Modal
+  const [activeTab, setActiveTab] = useState<'activity' | 'logs'>('activity');
+
+  // Logs state
+  const [notifLogs, setNotifLogs] = useState<any[]>([]);
+  const [notifTotalCount, setNotifTotalCount] = useState<number>(0);
+  const [notifPage, setNotifPage] = useState<number>(1);
+  const [notifFilterType, setNotifFilterType] = useState<string>('all');
+  const [notifFilterChannel, setNotifFilterChannel] = useState<string>('all');
+  const [notifSearchInput, setNotifSearchInput] = useState<string>('');
+  const [notifSearch, setNotifSearch] = useState<string>('');
+  const [isNotifLogsLoading, setIsNotifLogsLoading] = useState<boolean>(false);
+  const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const fetchNotifLogs = async () => {
+    setIsNotifLogsLoading(true);
+    try {
+      const res = await fetchAPI(`get_notification_logs&channel=${notifFilterChannel}&type=${notifFilterType}&search=${encodeURIComponent(notifSearch)}&page=${notifPage}&pageSize=10`);
+      if (res.success && Array.isArray(res.data)) {
+        setNotifLogs(res.data);
+        setNotifTotalCount(res.total_count ?? 0);
+      }
+    } catch (err) {
+      console.error('Error fetching notification logs:', err);
+    } finally {
+      setIsNotifLogsLoading(false);
+    }
+  };
+
+  // Reset tab when modal closes
+  useEffect(() => {
+    if (!isActivityFeedOpen) {
+      setActiveTab('activity');
+      setNotifSearchInput('');
+      setNotifSearch('');
+      setNotifPage(1);
+      setNotifFilterChannel('all');
+      setNotifFilterType('all');
+      setExpandedLogId(null);
+    }
+  }, [isActivityFeedOpen]);
+
+  // Debounce search input
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      const timer = setTimeout(() => {
+        setNotifSearch(notifSearchInput);
+        setNotifPage(1);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [notifSearchInput, activeTab]);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      setNotifPage(1);
+    }
+  }, [notifFilterChannel, notifFilterType]);
+
+  // Fetch notification logs
+  useEffect(() => {
+    if (isActivityFeedOpen && activeTab === 'logs') {
+      fetchNotifLogs();
+    }
+  }, [isActivityFeedOpen, activeTab, notifFilterChannel, notifFilterType, notifSearch, notifPage]);
 
   const fetchFeed = async () => {
     setIsFeedLoading(true);
@@ -379,271 +451,714 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         isOpen={isActivityFeedOpen}
         onClose={() => setIsActivityFeedOpen(false)}
         title={t("Bản tin hoạt động hệ thống")}
-        width={720}
+        width={850}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
-          {/* Subheader with refresh info */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+        <div style={{ display: 'flex', flexDirection: 'column', height: '70vh' }}>
+          {/* Tab Selector */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '1.5rem', 
+            borderBottom: '1px solid var(--color-border-light)', 
             marginBottom: '0.75rem',
-            paddingBottom: '0.5rem',
-            borderBottom: '1px solid var(--color-border-light)'
+            paddingBottom: '0.25rem' 
           }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', display: 'inline-block' }} />
-              {t("Danh sách hoạt động và phân bổ gần đây nhất")}
-            </span>
             <button
-              onClick={fetchFeed}
-              disabled={isFeedLoading}
+              onClick={() => setActiveTab('activity')}
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--color-primary)',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                cursor: isFeedLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
+                borderBottom: activeTab === 'activity' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                color: activeTab === 'activity' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                fontWeight: activeTab === 'activity' ? 700 : 500,
+                fontSize: '0.875rem',
+                padding: '6px 4px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
                 outline: 'none'
               }}
             >
-              <RefreshCw size={14} className={isFeedLoading ? 'spin' : ''} />
-              {t("Làm mới")}
+              {t("Hoạt động hệ thống")}
+            </button>
+            <button
+              onClick={() => setActiveTab('logs')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'logs' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                color: activeTab === 'logs' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                fontWeight: activeTab === 'logs' ? 700 : 500,
+                fontSize: '0.875rem',
+                padding: '6px 4px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+            >
+              {t("Check Log Zalo & Email")}
             </button>
           </div>
 
-          {/* List content */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-            {feedItems.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {feedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item) => {
-                  const config = getActivityIcon(item);
-                  const isExpanded = expandedFeedItem === item.id;
-                  const entityName = item.type === 'distribution' 
-                    ? (item.consultant_name || t('Hệ thống'))
-                    : (item.type === 'ticket'
+          {activeTab === 'activity' ? (
+            <>
+              {/* Subheader with refresh info */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.75rem',
+                paddingBottom: '0.5rem',
+                borderBottom: '1px solid var(--color-border-light)'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', display: 'inline-block' }} />
+                  {t("Danh sách hoạt động và phân bổ gần đây nhất")}
+                </span>
+                <button
+                  onClick={fetchFeed}
+                  disabled={isFeedLoading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: isFeedLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    outline: 'none'
+                  }}
+                >
+                  <RefreshCw size={14} className={isFeedLoading ? 'spin' : ''} />
+                  {t("Làm mới")}
+                </button>
+              </div>
+
+              {/* List content */}
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+                {feedItems.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {feedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item) => {
+                      const config = getActivityIcon(item);
+                      const isExpanded = expandedFeedItem === item.id;
+                      const entityName = item.type === 'distribution' 
                         ? (item.consultant_name || t('Hệ thống'))
-                        : (item.admin_name || t('Hệ thống')));
+                        : (item.type === 'ticket'
+                            ? (item.consultant_name || t('Hệ thống'))
+                            : (item.admin_name || t('Hệ thống')));
+                      
+                      return (
+                        <div 
+                          key={item.id}
+                          style={{
+                            padding: '6px 10px',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border-light)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.01)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                            <div style={{ flexShrink: 0, position: 'relative' }}>
+                              <Avatar 
+                                src={item.consultant_avatar}
+                                name={entityName} 
+                                size={32} 
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                width: 14,
+                                height: 14,
+                                borderRadius: '50%',
+                                background: 'var(--color-surface)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: config.color,
+                                fontSize: '8px'
+                              }}>
+                                {React.cloneElement(config.icon, { size: 10 })}
+                              </div>
+                            </div>
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {item.title}
+                                </span>
+                                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                                  {new Date(item.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {new Date(item.timestamp).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                              </div>
+
+                              <div 
+                                style={{ fontSize: '0.78125rem', color: 'var(--color-text-light)', marginTop: '2px', lineHeight: '1.4' }}
+                                dangerouslySetInnerHTML={{ __html: item.description }}
+                              />
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                                <span style={{
+                                  fontSize: '0.625rem',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: config.bg,
+                                  color: config.color
+                                }}>
+                                  {item.tag}
+                                </span>
+
+                                {item.details && (
+                                  <button
+                                    onClick={() => setExpandedFeedItem(isExpanded ? null : item.id)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--color-text-light)',
+                                      fontSize: '0.71875rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 2,
+                                      outline: 'none',
+                                      padding: '2px'
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <>{t('Thu gọn')} <ChevronUp size={12} /></>
+                                    ) : (
+                                      <>{t('Chi tiết')} <ChevronDown size={12} /></>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {isExpanded && item.details && (
+                            <div style={{
+                              marginTop: '8px',
+                              padding: '8px 10px',
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              color: 'var(--color-text-light)',
+                              fontFamily: 'monospace',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxHeight: '120px',
+                              overflowY: 'auto'
+                            }}>
+                              {(() => {
+                                try {
+                                  const parsed = JSON.parse(item.details);
+                                  return JSON.stringify(parsed, null, 2);
+                                } catch (e) {
+                                  return item.details;
+                                }
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: 8 }}>
+                    <Activity size={32} style={{ opacity: 0.5 }} />
+                    <span style={{ fontSize: '0.875rem' }}>{t('Không có hoạt động nào được ghi nhận gần đây.')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination Controls */}
+              {feedItems.length > pageSize && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '12px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid var(--color-border-light)'
+                }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    {t('Hiển thị')} {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, feedItems.length)} {t('của')} {feedItems.length} {t('hoạt động')}
+                  </span>
                   
-                  return (
-                    <div 
-                      key={item.id}
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className="btn outline"
                       style={{
-                        padding: '6px 10px',
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.01)'
+                        padding: '3px 8px',
+                        height: '26px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === 1 ? 0.5 : 1
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        {/* Avatar overlayed with mini event icon */}
-                        <div style={{ flexShrink: 0, position: 'relative' }}>
-                          <Avatar 
-                            src={item.consultant_avatar}
-                            name={entityName} 
-                            size={32} 
-                          />
-                          <div style={{
-                            position: 'absolute',
-                            bottom: -2,
-                            right: -2,
-                            width: 14,
-                            height: 14,
-                            borderRadius: '50%',
+                      {t('Trước')}
+                    </button>
+                    
+                    {(() => {
+                      const totalPages = Math.ceil(feedItems.length / pageSize);
+                      return Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--color-border-light)',
+                              background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: currentPage === pageNum ? 'white' : 'var(--color-text)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      });
+                    })()}
+
+                    <button
+                      disabled={currentPage === Math.ceil(feedItems.length / pageSize)}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(feedItems.length / pageSize)))}
+                      className="btn outline"
+                      style={{
+                        padding: '3px 8px',
+                        height: '26px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: currentPage === Math.ceil(feedItems.length / pageSize) ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === Math.ceil(feedItems.length / pageSize) ? 0.5 : 1
+                      }}
+                    >
+                      {t('Sau')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Check Log subtab content */}
+              {/* Tool bar: Search & Filters */}
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'center',
+                marginBottom: '1rem',
+                flexWrap: 'wrap',
+                background: 'rgba(255, 255, 255, 0.01)',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border-light)'
+              }}>
+                {/* Search */}
+                <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder={t("Tìm kiếm Sale, Chat ID, nội dung...")}
+                    value={notifSearchInput}
+                    onChange={(e) => setNotifSearchInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '36px',
+                      paddingLeft: '32px',
+                      paddingRight: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                  <Search size={14} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
+                </div>
+
+                {/* Filter Kênh */}
+                <div style={{ minWidth: '120px' }}>
+                  <select
+                    value={notifFilterChannel}
+                    onChange={(e) => setNotifFilterChannel(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '36px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      padding: '0 8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <option value="all">{t("Tất cả kênh")}</option>
+                    <option value="zalo">Zalo</option>
+                    <option value="email">Email</option>
+                  </select>
+                </div>
+
+                {/* Filter Loại tin */}
+                <div style={{ minWidth: '140px' }}>
+                  <select
+                    value={notifFilterType}
+                    onChange={(e) => setNotifFilterType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '36px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      padding: '0 8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <option value="all">{t("Tất cả loại tin")}</option>
+                    <option value="sale">{t("Tin gửi Sale")}</option>
+                    <option value="admin">{t("Tin Admin check log")}</option>
+                  </select>
+                </div>
+
+                {/* Refresh button */}
+                <button
+                  onClick={fetchNotifLogs}
+                  disabled={isNotifLogsLoading}
+                  className="btn outline"
+                  style={{
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.8125rem'
+                  }}
+                >
+                  <RefreshCw size={14} className={isNotifLogsLoading ? 'spin' : ''} />
+                  {t("Làm mới")}
+                </button>
+              </div>
+
+              {/* Logs Content list */}
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+                {isNotifLogsLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                    <RefreshCw size={32} className="spin" style={{ color: 'var(--color-primary)' }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải log thông báo...')}</span>
+                  </div>
+                ) : notifLogs.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {notifLogs.map((log) => {
+                      const isExpanded = expandedLogId === log.id;
+                      const hasDetails = log.body && log.body.length > 0;
+                      const isEmail = log.channel === 'email';
+                      
+                      return (
+                        <div
+                          key={log.id}
+                          style={{
+                            padding: '10px 12px',
                             background: 'var(--color-surface)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                            border: '1px solid var(--color-border-light)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.01)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Icon Channel */}
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              background: isEmail ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                              color: isEmail ? 'var(--color-info)' : 'var(--color-success)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {isEmail ? <Mail size={16} /> : <MessageSquare size={16} />}
+                            </div>
+
+                            {/* Main row Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.target}>
+                                  {log.target}
+                                </span>
+                                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                                  {new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {new Date(log.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                              </div>
+
+                              {/* Preview text */}
+                              <div
+                                onClick={() => hasDetails && setExpandedLogId(isExpanded ? null : log.id)}
+                                style={{
+                                  fontSize: '0.78125rem',
+                                  color: 'var(--color-text-light)',
+                                  marginTop: '2px',
+                                  cursor: hasDetails ? 'pointer' : 'default',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: '90%'
+                                }}
+                              >
+                                {isEmail && <strong>{log.subject}: </strong>}
+                                {log.body ? log.body.substring(0, 100) + (log.body.length > 100 ? '...' : '') : ''}
+                              </div>
+
+                              {/* Badges, Copy button & Accordion Toggle */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  {/* Channel badge */}
+                                  <span style={{
+                                    fontSize: '0.6rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    background: isEmail ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                    color: isEmail ? 'var(--color-info)' : 'var(--color-success)'
+                                  }}>
+                                    {log.channel} {log.is_direct ? '(direct)' : ''}
+                                  </span>
+
+                                  {/* Type badge */}
+                                  <span style={{
+                                    fontSize: '0.6rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    background: log.type === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+                                    color: log.type === 'admin' ? 'var(--color-danger)' : 'var(--color-primary)'
+                                  }}>
+                                    {log.type === 'admin' ? t('Admin') : t('Sale')}
+                                  </span>
+
+                                  {/* Status badge */}
+                                  <span style={{
+                                    fontSize: '0.6rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    background: log.status === 'sent' ? 'var(--color-success-light)' : log.status === 'pending' ? 'var(--color-info-light)' : 'var(--color-danger-light)',
+                                    color: log.status === 'sent' ? 'var(--color-success)' : log.status === 'pending' ? 'var(--color-info)' : 'var(--color-danger)'
+                                  }}>
+                                    {log.status === 'sent' ? t('Đã gửi') : log.status === 'pending' ? t('Đang chờ') : t('Thất bại')}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  {/* Copy Button */}
+                                  {log.body && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(log.body);
+                                        setCopySuccessId(log.id);
+                                        setTimeout(() => setCopySuccessId(null), 1500);
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: copySuccessId === log.id ? 'var(--color-success)' : 'var(--color-text-muted)',
+                                        cursor: 'pointer',
+                                        padding: '2px',
+                                        outline: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600
+                                      }}
+                                      title={t("Copy nội dung tin nhắn")}
+                                    >
+                                      {copySuccessId === log.id ? (
+                                        <><Check size={12} /> {t("Đã copy")}</>
+                                      ) : (
+                                        <><Copy size={12} /> {t("Copy")}</>
+                                      )}
+                                    </button>
+                                  )}
+
+                                  {/* Expand trigger */}
+                                  {hasDetails && (
+                                    <button
+                                      onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--color-text-light)',
+                                        fontSize: '0.71875rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        outline: 'none',
+                                        padding: '2px'
+                                      }}
+                                    >
+                                      {isExpanded ? (
+                                        <>{t('Thu gọn')} <ChevronUp size={12} /></>
+                                      ) : (
+                                        <>{t('Chi tiết')} <ChevronDown size={12} /></>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded Content */}
+                          {isExpanded && log.body && (
+                            <div style={{
+                              marginTop: '8px',
+                              padding: '10px 12px',
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              color: 'var(--color-text)',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxHeight: '220px',
+                              overflowY: 'auto',
+                              lineHeight: '1.5',
+                              fontFamily: isEmail ? 'inherit' : 'monospace'
+                            }}>
+                              {isEmail && <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px', marginBottom: '8px', fontWeight: 700 }}>{t("Tiêu đề email:")} {log.subject}</div>}
+                              {log.body}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: 8 }}>
+                    <MessageSquare size={32} style={{ opacity: 0.5 }} />
+                    <span style={{ fontSize: '0.875rem' }}>{t('Không tìm thấy log thông báo nào.')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Logs Pagination */}
+              {!isNotifLogsLoading && notifTotalCount > 10 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '12px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid var(--color-border-light)'
+                }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    {t('Hiển thị')} {((notifPage - 1) * 10) + 1} - {Math.min(notifPage * 10, notifTotalCount)} {t('của')} {notifTotalCount} {t('log')}
+                  </span>
+                  
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <button
+                      disabled={notifPage === 1}
+                      onClick={() => setNotifPage(prev => Math.max(prev - 1, 1))}
+                      className="btn outline"
+                      style={{
+                        padding: '3px 8px',
+                        height: '26px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: notifPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: notifPage === 1 ? 0.5 : 1
+                      }}
+                    >
+                      {t('Trước')}
+                    </button>
+                    
+                    {(() => {
+                      const totalPages = Math.ceil(notifTotalCount / 10);
+                      const pages = [];
+                      const startPage = Math.max(1, notifPage - 2);
+                      const endPage = Math.min(totalPages, startPage + 4);
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+                      return pages.map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setNotifPage(pageNum)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--color-border-light)',
+                            background: notifPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: notifPage === pageNum ? 'white' : 'var(--color-text)',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: config.color,
-                            fontSize: '8px'
-                          }}>
-                            {React.cloneElement(config.icon, { size: 10 })}
-                          </div>
-                        </div>
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      ));
+                    })()}
 
-                        {/* Text Content */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {item.title}
-                            </span>
-                            <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                              {new Date(item.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {new Date(item.timestamp).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                            </span>
-                          </div>
-
-                          <div 
-                            style={{ fontSize: '0.78125rem', color: 'var(--color-text-light)', marginTop: '2px', lineHeight: '1.4' }}
-                            dangerouslySetInnerHTML={{ __html: item.description }}
-                          />
-                          
-                          {/* Metadata badge and expand trigger */}
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
-                            <span style={{
-                              fontSize: '0.625rem',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              background: config.bg,
-                              color: config.color
-                            }}>
-                              {item.tag}
-                            </span>
-
-                            {item.details && (
-                              <button
-                                onClick={() => setExpandedFeedItem(isExpanded ? null : item.id)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: 'var(--color-text-light)',
-                                  fontSize: '0.71875rem',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 2,
-                                  outline: 'none',
-                                  padding: '2px'
-                                }}
-                              >
-                                {isExpanded ? (
-                                  <>{t('Thu gọn')} <ChevronUp size={12} /></>
-                                ) : (
-                                  <>{t('Chi tiết')} <ChevronDown size={12} /></>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expandable details panel */}
-                      {isExpanded && item.details && (
-                        <div style={{
-                          marginTop: '8px',
-                          padding: '8px 10px',
-                          background: 'var(--color-bg)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          color: 'var(--color-text-light)',
-                          fontFamily: 'monospace',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-all',
-                          maxHeight: '120px',
-                          overflowY: 'auto'
-                        }}>
-                          {(() => {
-                            try {
-                              const parsed = JSON.parse(item.details);
-                              return JSON.stringify(parsed, null, 2);
-                            } catch (e) {
-                              return item.details;
-                            }
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: 8 }}>
-                <Activity size={32} style={{ opacity: 0.5 }} />
-                <span style={{ fontSize: '0.875rem' }}>{t('Không có hoạt động nào được ghi nhận gần đây.')}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Pagination Controls */}
-          {feedItems.length > pageSize && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              paddingTop: '8px',
-              borderTop: '1px solid var(--color-border-light)'
-            }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                {t('Hiển thị')} {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, feedItems.length)} {t('của')} {feedItems.length} {t('hoạt động')}
-              </span>
-              
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  className="btn outline"
-                  style={{
-                    padding: '3px 8px',
-                    height: '26px',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === 1 ? 0.5 : 1
-                  }}
-                >
-                  {t('Trước')}
-                </button>
-                
-                {(() => {
-                  const totalPages = Math.ceil(feedItems.length / pageSize);
-                  return Array.from({ length: totalPages }).map((_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '4px',
-                          border: '1px solid var(--color-border-light)',
-                          background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                          color: currentPage === pageNum ? 'white' : 'var(--color-text)',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  });
-                })()}
-
-                <button
-                  disabled={currentPage === Math.ceil(feedItems.length / pageSize)}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(feedItems.length / pageSize)))}
-                  className="btn outline"
-                  style={{
-                    padding: '3px 8px',
-                    height: '26px',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    cursor: currentPage === Math.ceil(feedItems.length / pageSize) ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === Math.ceil(feedItems.length / pageSize) ? 0.5 : 1
-                  }}
-                >
-                  {t('Sau')}
-                </button>
-              </div>
-            </div>
+                    <button
+                      disabled={notifPage === Math.ceil(notifTotalCount / 10)}
+                      onClick={() => setNotifPage(prev => Math.min(prev + 1, Math.ceil(notifTotalCount / 10)))}
+                      className="btn outline"
+                      style={{
+                        padding: '3px 8px',
+                        height: '26px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: notifPage === Math.ceil(notifTotalCount / 10) ? 'not-allowed' : 'pointer',
+                        opacity: notifPage === Math.ceil(notifTotalCount / 10) ? 0.5 : 1
+                      }}
+                    >
+                      {t('Sau')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </CustomModal>
