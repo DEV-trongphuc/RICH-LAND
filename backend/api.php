@@ -862,6 +862,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
+                WHERE status != 'silent'
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
@@ -1218,6 +1219,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
+                WHERE status != 'silent'
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             $joinLeads 
@@ -1272,6 +1274,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
+                WHERE status != 'silent'
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
@@ -7397,8 +7400,20 @@ switch ($action) {
             $prevDateCondition = "received_at >= DATE_SUB('$start', INTERVAL $diff DAY) AND received_at < '$start'";
         }
 
+        $dateConditionDl = str_replace('received_at', 'dl.received_at', $dateCondition);
+        $prevDateConditionDl = str_replace('received_at', 'dl.received_at', $prevDateCondition);
+
         // Query current period stats using GROUP BY for index optimization
-        $statsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY status";
+        $statsSql = "SELECT dl.status, COUNT(*) as cnt 
+                     FROM distribution_logs dl 
+                     INNER JOIN (
+                         SELECT lead_id, MAX(id) as max_id 
+                         FROM distribution_logs 
+                         WHERE status != 'silent'
+                         GROUP BY lead_id
+                     ) dl_max ON dl.id = dl_max.max_id
+                     WHERE $dateConditionDl 
+                     GROUP BY dl.status";
         $statsResRaw = $conn->query($statsSql);
         $statusCounts = [
             'assigned' => 0,
@@ -7438,7 +7453,16 @@ switch ($action) {
         $statsRes['distributed'] = $assigned_total + $compensation_total;
 
         // Query previous period stats for % change
-        $prevStatsSql = "SELECT status, COUNT(*) as cnt FROM distribution_logs WHERE $prevDateCondition AND status != 'silent' GROUP BY status";
+        $prevStatsSql = "SELECT dl.status, COUNT(*) as cnt 
+                         FROM distribution_logs dl 
+                         INNER JOIN (
+                             SELECT lead_id, MAX(id) as max_id 
+                             FROM distribution_logs 
+                             WHERE status != 'silent'
+                             GROUP BY lead_id
+                         ) dl_max ON dl.id = dl_max.max_id
+                         WHERE $prevDateConditionDl 
+                         GROUP BY dl.status";
         $prevStatsResRaw = $conn->query($prevStatsSql);
         $prevStatusCounts = [
             'assigned' => 0,
@@ -7561,7 +7585,17 @@ switch ($action) {
 
         $chartData = [];
         if ($useHourly) {
-            $hourlySql = "SELECT HOUR(received_at) as h, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY HOUR(received_at) ORDER BY h ASC";
+            $hourlySql = "SELECT HOUR(dl.received_at) as h, COUNT(*) as vol 
+                          FROM distribution_logs dl 
+                          INNER JOIN (
+                              SELECT lead_id, MAX(id) as max_id 
+                              FROM distribution_logs 
+                              WHERE status != 'silent'
+                              GROUP BY lead_id
+                          ) dl_max ON dl.id = dl_max.max_id
+                          WHERE $dateConditionDl 
+                          GROUP BY HOUR(dl.received_at) 
+                          ORDER BY h ASC";
             $res = $conn->query($hourlySql);
             $hourlyMap = [];
             if ($res) {
@@ -7575,7 +7609,17 @@ switch ($action) {
             }
         } else {
             // For daily
-            $dailySql = "SELECT DATE(received_at) as d, COUNT(*) as vol FROM distribution_logs WHERE $dateCondition AND status != 'silent' GROUP BY DATE(received_at) ORDER BY d ASC";
+            $dailySql = "SELECT DATE(dl.received_at) as d, COUNT(*) as vol 
+                         FROM distribution_logs dl 
+                         INNER JOIN (
+                             SELECT lead_id, MAX(id) as max_id 
+                             FROM distribution_logs 
+                             WHERE status != 'silent'
+                             GROUP BY lead_id
+                         ) dl_max ON dl.id = dl_max.max_id
+                         WHERE $dateConditionDl 
+                         GROUP BY DATE(dl.received_at) 
+                         ORDER BY d ASC";
             $res = $conn->query($dailySql);
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
@@ -7587,8 +7631,14 @@ switch ($action) {
         // Query Top Consultants
         $topConsultantsSql = "SELECT c.id, c.name, c.email, c.avatar, c.status as c_status, c.vacation_mode as c_vacation_mode, dl.status as dl_status, COUNT(dl.id) as cnt 
                               FROM distribution_logs dl 
+                              INNER JOIN (
+                                  SELECT lead_id, MAX(id) as max_id 
+                                  FROM distribution_logs 
+                                  WHERE status != 'silent'
+                                  GROUP BY lead_id
+                              ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
                               GROUP BY c.id, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
