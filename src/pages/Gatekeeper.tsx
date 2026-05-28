@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -598,11 +598,16 @@ export const Gatekeeper = () => {
   const ITEMS_PER_PAGE = 50;
 
   const updateParams = (key: string, value: string) => {
+    const currentValue = searchParams.get(key) || '';
+    if (currentValue === value || (value === '1' && key === 'page' && !searchParams.has('page'))) {
+      return;
+    }
     setSearchParams(prev => {
-      if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
-      else prev.set(key, value);
-      if (key !== 'page') prev.delete('page');
-      return prev;
+      const next = new URLSearchParams(prev);
+      if (value === '' || (key !== 'status' && value === 'all')) next.delete(key);
+      else next.set(key, value);
+      if (key !== 'page') next.delete('page');
+      return next;
     }, { replace: true });
   };
 
@@ -795,17 +800,24 @@ export const Gatekeeper = () => {
     fetchSettings();
   }, []);
 
+  const prevTabRef = useRef(activeTab);
+
   useEffect(() => {
-    if (isActive) {
-      updateParams('page', '1');
-      if (activeTab !== 'queue') {
-        setIsDynamicFlowExpanded(false);
-      }
+    if (isActive && activeTab !== 'queue') {
+      setIsDynamicFlowExpanded(false);
     }
-  }, [activeTab]);
+  }, [activeTab, isActive]);
 
   useEffect(() => {
     if (isActive) {
+      if (prevTabRef.current !== activeTab) {
+        prevTabRef.current = activeTab;
+        const pageInParams = Number(searchParams.get('page') || '1');
+        if (pageInParams !== 1) {
+          updateParams('page', '1');
+          return;
+        }
+      }
       fetchHeldLeads();
       fetchDashboardStats();
     }
@@ -1485,7 +1497,7 @@ export const Gatekeeper = () => {
       </div>
 
       {/* AI Pre-screener evaluation strip */}
-      {!dashboardStatsLoading && dashboardStats && (
+      {dashboardStats && (
         <div className="card" style={{
           padding: '1rem 1.5rem',
           marginBottom: '1.5rem',
@@ -1494,7 +1506,10 @@ export const Gatekeeper = () => {
           gap: '0.75rem',
           animation: 'fadeIn 0.3s ease-out',
           background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
-          border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)'
+          border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
+          opacity: dashboardStatsLoading ? 0.6 : 1,
+          transition: 'opacity 0.2s ease',
+          pointerEvents: dashboardStatsLoading ? 'none' : 'auto'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1679,7 +1694,20 @@ export const Gatekeeper = () => {
         </div>
       </div>
 
-      <div className="card mobile-flat-container" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)' }}>
+      <div className="card mobile-flat-container" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', position: 'relative' }}>
+        {heldLeadsLoading && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
+            background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 50%, var(--color-primary) 100%)',
+            backgroundSize: '200% 100%',
+            animation: 'loadingBar 1.5s infinite linear',
+            zIndex: 100
+          }} />
+        )}
 
         {/* Custom Tabs Bar */}
         <div style={{
@@ -1889,7 +1917,7 @@ export const Gatekeeper = () => {
         </div>
 
         {/* Held Leads Queue Table */}
-        {heldLeadsLoading ? (
+        {heldLeadsLoading && heldLeads.length === 0 ? (
           <div style={{ padding: '2rem' }}><TableSkeleton rows={8} cols={4} /></div>
         ) : heldLeads.length === 0 ? (
           <div style={{ padding: '8rem 2rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -1906,7 +1934,16 @@ export const Gatekeeper = () => {
         ) : (
           <>
             {/* Desktop View Table */}
-            <div className="table-wrap hide-on-mobile" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+            <div 
+              className="table-wrap hide-on-mobile" 
+              style={{ 
+                maxHeight: 'calc(100vh - 340px)', 
+                overflowY: 'auto',
+                opacity: heldLeadsLoading ? 0.6 : 1,
+                pointerEvents: heldLeadsLoading ? 'none' : 'auto',
+                transition: 'opacity 0.15s ease'
+              }}
+            >
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)' }}>
@@ -1988,6 +2025,10 @@ export const Gatekeeper = () => {
                             ) : l.ai_screener_status === 'pending' ? (
                               <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <AlertTriangle size={12} /> {t('Lỗi Timeout AI Pre-screener')}
+                              </span>
+                            ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
+                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <ShieldAlert size={12} /> {t('Blacklist')}
                               </span>
                             ) : (
                               <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -2166,7 +2207,18 @@ export const Gatekeeper = () => {
             </div>
 
             {/* Mobile Card List View */}
-            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0 5rem 0' }}>
+            <div 
+              className="mobile-only" 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '1rem', 
+                padding: '0.5rem 0 5rem 0',
+                opacity: heldLeadsLoading ? 0.6 : 1,
+                pointerEvents: heldLeadsLoading ? 'none' : 'auto',
+                transition: 'opacity 0.15s ease'
+              }}
+            >
               {heldLeads.map((l: any) => (
                 <div
                   key={l.id}
@@ -2297,6 +2349,13 @@ export const Gatekeeper = () => {
                             <AlertTriangle size={12} color="#d97706" />
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
                               {t('Lỗi Timeout AI Pre-screener')}
+                            </span>
+                          </>
+                        ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
+                          <>
+                            <ShieldAlert size={12} color="var(--color-danger)" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
+                              {t('Blacklist')}
                             </span>
                           </>
                         ) : (
@@ -4381,6 +4440,10 @@ export const Gatekeeper = () => {
       </CustomModal>
 
       <style>{`
+        @keyframes loadingBar {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
         .lead-row:hover {
           background-color: var(--color-bg-alt) !important;
         }
