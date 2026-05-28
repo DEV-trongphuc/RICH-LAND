@@ -5334,8 +5334,8 @@ switch ($action) {
                 $adminNote = "\n[Xác nhận dưới chuẩn - Fallback]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
                 $note = $lead['note'] . $adminNote;
 
-                $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
-                $upd->bind_param("iissi", $targetRoundId, $assignedConsultantId, $note, $reason, $lead_id);
+                $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed' WHERE id = ?");
+                $upd->bind_param("iiisi", $targetRoundId, $assignedConsultantId, $note, $lead_id);
                 $upd->execute();
                 $upd->close();
 
@@ -5409,8 +5409,8 @@ switch ($action) {
                 $adminNote = "\n[Từ chối AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
                 $note = $lead['note'] . $adminNote;
 
-                $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ?, ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
-                $upd->bind_param("ssi", $note, $reason, $lead_id);
+                $upd = $conn->prepare("UPDATE leads SET status = 'rejected', note = ?, ai_screener_status = 'failed' WHERE id = ?");
+                $upd->bind_param("si", $note, $lead_id);
                 $upd->execute();
                 $upd->close();
 
@@ -5490,8 +5490,8 @@ switch ($action) {
             $adminNote = "\n[Blacklist AI]: " . $reason . " | Admin: " . $adminName . " | Lúc: " . date('d/m/Y H:i:s');
             $note = $lead['note'] . $adminNote;
 
-            $upd = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ?, ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
-            $upd->bind_param("ssi", $note, $reason, $lead_id);
+            $upd = $conn->prepare("UPDATE leads SET status = 'blacklisted', note = ?, ai_screener_status = 'failed' WHERE id = ?");
+            $upd->bind_param("si", $note, $lead_id);
             $upd->execute();
             $upd->close();
 
@@ -8854,8 +8854,8 @@ switch ($action) {
                 $noteSuffix .= "\n[Hệ thống: Không cộng bù do Lead đã có trạng thái Ticket]";
             }
             $newNote = trim(($log_data['lead_note'] ?? '') . $noteSuffix);
-            $updLead = $conn->prepare("UPDATE leads SET note = ?, status = 'blacklisted', ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
-            $updLead->bind_param("ssi", $newNote, $reason, $lead_id);
+            $updLead = $conn->prepare("UPDATE leads SET note = ?, status = 'blacklisted', ai_screener_status = 'failed' WHERE id = ?");
+            $updLead->bind_param("si", $newNote, $lead_id);
             $updLead->execute();
             $updLead->close();
 

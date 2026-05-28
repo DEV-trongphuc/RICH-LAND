@@ -153,33 +153,6 @@ const parseAIDecisionNote = (note: string) => {
   return { type, prefix, reason, admin, time };
 };
 
-const extractManualReason = (note: string) => {
-  if (!note) return '';
-  const normalized = note.replace(/\\n/g, '\n');
-  const lines = normalized.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.includes('Bị chặn bởi Admin') || trimmed.includes('Chặn bởi Admin')) {
-      const match = trimmed.match(/Lý do:\s*([^\]]+)/i);
-      if (match) return match[1].trim();
-    }
-    if (trimmed.startsWith('[Từ chối AI]:')) {
-      const parts = trimmed.substring('[Từ chối AI]:'.length).split('|');
-      return parts[0].trim();
-    }
-    if (trimmed.startsWith('[Xác nhận dưới chuẩn - Fallback]:')) {
-      const parts = trimmed.substring('[Xác nhận dưới chuẩn - Fallback]:'.length).split('|');
-      return parts[0].trim();
-    }
-    if (trimmed.startsWith('[Blacklist AI]:')) {
-      const parts = trimmed.substring('[Blacklist AI]:'.length).split('|');
-      return parts[0].trim();
-    }
-  }
-  return '';
-};
-
 const parseErrorNote = (err: string) => {
   const parts = err.split(' | ');
   let admin = '';
@@ -2145,7 +2118,7 @@ export const Tickets = () => {
                       </div>
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-                      <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || extractManualReason(selectedLead.note || '') || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
+                      <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đạt chuẩn phân chia.'))}
                     </div>
                   </div>
                 )}

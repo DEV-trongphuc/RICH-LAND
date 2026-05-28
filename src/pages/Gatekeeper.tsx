@@ -183,6 +183,33 @@ const parseBlacklistNote = (note: string) => {
   return { admin, time, reason };
 };
 
+const extractManualReason = (note: string) => {
+  if (!note) return '';
+  const normalized = note.replace(/\\n/g, '\n');
+  const lines = normalized.split('\n');
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.includes('Bị chặn bởi Admin') || trimmed.includes('Chặn bởi Admin')) {
+      const match = trimmed.match(/Lý do:\s*([^\]]+)/i);
+      if (match) return match[1].trim();
+    }
+    if (trimmed.startsWith('[Từ chối AI]:')) {
+      const parts = trimmed.substring('[Từ chối AI]:'.length).split('|');
+      return parts[0].trim();
+    }
+    if (trimmed.startsWith('[Xác nhận dưới chuẩn - Fallback]:')) {
+      const parts = trimmed.substring('[Xác nhận dưới chuẩn - Fallback]:'.length).split('|');
+      return parts[0].trim();
+    }
+    if (trimmed.startsWith('[Blacklist AI]:')) {
+      const parts = trimmed.substring('[Blacklist AI]:'.length).split('|');
+      return parts[0].trim();
+    }
+  }
+  return '';
+};
+
 const getResolutionDetail = (noteText: string) => {
   if (!noteText) return null;
   const normalized = noteText.replace(/\\n/g, '\n');
@@ -1885,7 +1912,9 @@ export const Gatekeeper = () => {
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                       {activeTab === 'assigned' ? t('Vòng đã phân bổ') : t('Vòng phân bổ dự kiến')}
                     </th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Lý do AI tạm giữ')}</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      {activeTab === 'substandard' ? t('Lý do từ chối') : t('Lý do AI tạm giữ')}
+                    </th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
                   </tr>
                 </thead>
@@ -1957,7 +1986,21 @@ export const Gatekeeper = () => {
                             )
                           )}
                           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
-                            <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                            {(() => {
+                              const adminReason = extractManualReason(l.note || '');
+                              if (adminReason) {
+                                return (
+                                  <>
+                                    <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
+                                  <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>
@@ -2237,8 +2280,22 @@ export const Gatekeeper = () => {
                     )}
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                      <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
-                      {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                      {(() => {
+                        const adminReason = extractManualReason(l.note || '');
+                        if (adminReason) {
+                          return (
+                            <>
+                              <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <strong>{l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
+                            {l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -4025,11 +4082,11 @@ export const Gatekeeper = () => {
                     </h3>
 
                     {selectedLead.status === 'rejected' ? (
-                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                           <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                           <div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đánh giá')}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đánh giá')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                           </div>
                         </div>
@@ -4037,7 +4094,7 @@ export const Gatekeeper = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                               {selectedLead.ai_evaluation || t('Không đáp ứng yêu cầu bộ lọc.')}
                             </div>
                           </div>
@@ -4056,11 +4113,11 @@ export const Gatekeeper = () => {
                         </div>
                       </div>
                     ) : selectedLead.status === 'blacklisted' ? (
-                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                           <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={36} />
                           <div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--color-danger)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đánh giá')}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đánh giá')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</div>
                           </div>
                         </div>
@@ -4068,7 +4125,7 @@ export const Gatekeeper = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                               {selectedLead.ai_evaluation || t('Đã chặn số và đưa vào Blacklist.')}
                             </div>
                           </div>
