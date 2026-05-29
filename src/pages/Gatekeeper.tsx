@@ -920,6 +920,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     }
   }, [searchParams, heldLeadsSearch, isActive, activeTab]);
 
+  useEffect(() => {
+    if (isActive && searchParams.get('open_tokens') === 'true') {
+      setIsTokenStatsModalOpen(true);
+      updateParams('open_tokens', '');
+    }
+  }, [isActive, searchParams]);
+
   // ── Lead Action Handlers ──
   const handleOpenApproveHeldLead = async (lead: any) => {
     setActioningHeldLead(lead);

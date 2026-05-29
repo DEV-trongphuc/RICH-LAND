@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
   GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
-  FileSpreadsheet, MessageCircle, Database, Server
+  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -427,7 +427,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             }}
           >
             <Server size={15} />
-            <span>{t("Hệ thống")}</span>
+            <span>{t("Tài nguyên sử dụng")}</span>
           </button>
         </div>
       </div>
@@ -560,6 +560,20 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }} />
                       <span>{t('Bù')}: {stats?.distributed_compensation || 0}</span>
+                    </span>
+                  </div>
+                )}
+                {card.id === 'duplicates' && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+                      <span>
+                        {t('Tỷ lệ trùng')}: {(() => {
+                          const total = stats?.total_today || 0;
+                          const duplicates = stats?.duplicates || 0;
+                          return total > 0 ? Math.round((duplicates / total) * 100) : 0;
+                        })()}%
+                      </span>
                     </span>
                   </div>
                 )}
@@ -1629,6 +1643,39 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
                         })()}
                       </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      borderTop: '1px solid var(--color-border-light)',
+                      paddingTop: '8px',
+                      marginTop: '4px'
+                    }}>
+                      <button
+                        onClick={() => {
+                          setShowHealthModal(false);
+                          navigate(`/gatekeeper?open_tokens=true&date=${encodeURIComponent(dateFilter)}`);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <ExternalLink size={12} />
+                        {t("Xem chi tiết log sử dụng")}
+                      </button>
                     </div>
                   </div>
                 </div>
