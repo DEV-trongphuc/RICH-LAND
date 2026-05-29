@@ -82,6 +82,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
     $settings = get_system_setting($conn);
     $provider = $settings['email_provider'] ?? 'appscript';
     $sentResult = false;
+    $errorMessage = null;
 
     if ($provider === 'appscript') {
         $url = $settings['appscript_webhook_url'] ?? '';
@@ -101,8 +102,13 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             curl_setopt($ch, CURLOPT_TIMEOUT, 15);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             $result = curl_exec($ch);
+            if ($result === false) {
+                $errorMessage = "AppScript cURL Error: " . curl_error($ch);
+            }
             curl_close($ch);
             $sentResult = ($result !== false);
+        } else {
+            $errorMessage = "AppScript Webhook URL is empty.";
         }
     } else if ($provider === 'ses') {
         $mail = new PHPMailer(true);
@@ -140,13 +146,15 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->send();
             $sentResult = true;
         } catch (Exception $e) {
+            $errorMessage = "PHPMailer Error: " . $mail->ErrorInfo . " | " . $e->getMessage();
             error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
             $sentResult = false;
         }
     }
 
+    $newStatus = $sentResult ? 'sent' : 'failed';
+
     if ($leadId > 0) {
-        $newStatus = $sentResult ? 'sent' : 'failed';
         $sentAtExpr = $sentResult ? ", email_notify_sent_at = NOW()" : "";
         $stmtLead = $conn->prepare("UPDATE leads SET email_notify_status = ? $sentAtExpr WHERE id = ?");
         if ($stmtLead) {
@@ -155,6 +163,9 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $stmtLead->close();
         }
     }
+
+    // Ghi nhận nhật ký giao tiếp Email
+    log_communication($conn, $leadId, 'email', $to, $newStatus, $errorMessage);
 
     return $sentResult;
 }

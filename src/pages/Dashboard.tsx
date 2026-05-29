@@ -44,6 +44,7 @@ export const Dashboard = () => {
   const [settings, setSettings] = useState<any>(null);
   const [connections, setConnections] = useState<any[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
+  const [healthModalTab, setHealthModalTab] = useState<'stats' | 'connections'>('stats');
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
   const displayChartMode = isSingleDay ? 'hour' : chartMode;
@@ -405,37 +406,43 @@ export const Dashboard = () => {
               width="100%"
             />
           </div>
-          {/* Button to open Connection Health Modal */}
+          {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
           <button
-            className="btn outline"
+            className="btn primary"
             onClick={() => setShowHealthModal(true)}
             title={t("Kiểm tra kết nối hệ thống")}
-            style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            style={{
+              height: 38,
+              padding: '0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              flexShrink: 0
+            }}
           >
-            <Server size={16} />
-          </button>
-          <button
-            className="btn outline"
-            onClick={() => fetchDashboard()}
-            disabled={loading}
-            title={t("Làm mới dữ liệu")}
-            style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <RefreshCw size={16} className={loading ? 'spin' : ''} />
+            <Server size={15} />
+            <span>{t("Hệ thống")}</span>
           </button>
         </div>
       </div>
       {/* AI Pre-screener evaluation strip */}
       {!loading && stats && (stats.ai_screener_enabled === 1 || stats.ai_screener_enabled === '1' || stats.ai_screener_enabled === true) && (
-        <div 
-          className="card hover-lift" 
+        <div
+          className="card hover-lift"
           onClick={() => navigate('/gatekeeper')}
-          style={{ 
-            padding: '1rem 1.5rem', 
-            marginBottom: '1.25rem', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '0.75rem', 
+          style={{
+            padding: '1rem 1.5rem',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
             animation: 'fadeIn 0.3s ease-out',
             background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
             border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
@@ -444,10 +451,10 @@ export const Dashboard = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img 
-                src="https://crm-domation.vercel.app/LOGO.jpg" 
-                alt="DOMATION AI Logo" 
-                style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} 
+              <img
+                src="https://crm-domation.vercel.app/LOGO.jpg"
+                alt="DOMATION AI Logo"
+                style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
               />
               <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('Đánh giá chất lượng từ AI Pre-screener')}
@@ -464,22 +471,22 @@ export const Dashboard = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {/* Progress bar */}
               <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
-                <div 
-                  style={{ 
-                    width: `${aiPassedPercent}%`, 
-                    height: '100%', 
-                    background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)', 
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)' 
-                  }} 
+                <div
+                  style={{
+                    width: `${aiPassedPercent}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
+                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
                   title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
                 />
-                <div 
-                  style={{ 
-                    width: `${aiFailedPercent}%`, 
-                    height: '100%', 
-                    background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)', 
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)' 
-                  }} 
+                <div
+                  style={{
+                    width: `${aiFailedPercent}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
+                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
                   title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
                 />
               </div>
@@ -1439,91 +1446,304 @@ export const Dashboard = () => {
         <CustomModal
           isOpen={showHealthModal}
           onClose={() => setShowHealthModal(false)}
-          title={t("Trạng thái kết nối hệ thống")}
+          title={t("Thống kê & Kết nối hệ thống")}
           width="480px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-              {t("Kiểm tra trạng thái cấu hình và kết nối thời gian thực của các kênh tích hợp.")}
-            </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {/* 1. Google Sheets Connection */}
-              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
-                    <FileSpreadsheet size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Google Sheets Script</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Webhook nhận dữ liệu từ Sheets")}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                    {connections && connections.length > 0 ? `${connections.length} ${t('kết nối')}` : t('Chưa kết nối')}
-                  </span>
-                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: connections && connections.length > 0 ? 'var(--color-success)' : 'var(--color-warning)' }} />
-                </div>
-              </div>
-
-              {/* 2. Zalo Notification Bot */}
-              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: settings?.zalo_bot_token ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                    <MessageCircle size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Zalo Notification Bot</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gửi thông báo phân bổ Lead cho Sale")}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                    {settings?.zalo_bot_token ? t('Đang hoạt động') : t('Chưa cấu hình')}
-                  </span>
-                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }} />
-                </div>
-              </div>
-
-              {/* 3. AI Pre-screener Filter */}
-              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                    <Zap size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>AI Pre-screener (Gemini)</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lọc và kiểm tra chất lượng bằng AI")}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                    {(settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? t('Đang hoạt động') : t('Đang tắt')}
-                  </span>
-                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }} />
-                </div>
-              </div>
-
-              {/* 4. Core Distribution System */}
-              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
-                    <Database size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Distribution Engine</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lõi điều tuyến chia số tự động")}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                    {t('Đang hoạt động')}
-                  </span>
-                  <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }} />
-                </div>
-              </div>
+            {/* Custom Tab Headers */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', gap: '1.25rem', marginBottom: '0.25rem' }}>
+              <button
+                style={{
+                  padding: '0.5rem 0.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: healthModalTab === 'stats' ? 700 : 500,
+                  color: healthModalTab === 'stats' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  borderBottom: healthModalTab === 'stats' ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                onClick={() => setHealthModalTab('stats')}
+              >
+                {t("Thống kê hoạt động")}
+              </button>
+              <button
+                style={{
+                  padding: '0.5rem 0.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: healthModalTab === 'connections' ? 700 : 500,
+                  color: healthModalTab === 'connections' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  borderBottom: healthModalTab === 'connections' ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                onClick={() => setHealthModalTab('connections')}
+              >
+                {t("Trạng thái kết nối")}
+              </button>
             </div>
+
+            {healthModalTab === 'stats' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                    {t("Báo cáo sản lượng giao tiếp & AI tiêu thụ.")}
+                  </p>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: 'var(--color-primary)',
+                    background: 'rgba(124, 58, 237, 0.08)',
+                    padding: '3px 8px',
+                    borderRadius: 6
+                  }}>
+                    {getDisplayDateFilterText(dateFilter)}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Zalo Card */}
+                  <div style={{
+                    padding: '16px',
+                    background: 'var(--color-surface)',
+                    borderRadius: 14,
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Zalo Bot nhắn đi")}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)' }}>
+                      {(stats?.total_zalo_sent ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Email Card */}
+                  <div style={{
+                    padding: '16px',
+                    background: 'var(--color-surface)',
+                    borderRadius: 14,
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 22, height: 22 }} alt="Gmail" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Email gửi đi")}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Báo cáo & bàn giao Lead")}</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)' }}>
+                        {(stats?.total_emails_sent ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--color-text-muted)',
+                      borderTop: '1px dashed var(--color-border-light)',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontWeight: 500
+                    }}>
+                      <span>{t("Chi phí Amazon SES ước tính:")}</span>
+                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                        {(() => {
+                          const sentEmails = stats?.total_emails_sent ?? 0;
+                          const costUsd = (sentEmails * 0.10) / 1000;
+                          const costVnd = costUsd * 25400;
+                          return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tokens Card */}
+                  <div style={{
+                    padding: '16px',
+                    background: 'var(--color-surface)',
+                    borderRadius: 14,
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 22, height: 22 }} alt="Gemini" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Token AI sử dụng")}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gemini model screening")}</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                        {(stats?.total_tokens_used ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--color-text-muted)',
+                      borderTop: '1px dashed var(--color-border-light)',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontWeight: 500
+                    }}>
+                      <span>{t("Chi phí ước tính:")}</span>
+                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                        {(() => {
+                          const promptT = stats?.total_prompt_tokens_used ?? 0;
+                          const compT = stats?.total_completion_tokens_used ?? 0;
+                          let costUsd = 0;
+                          if (promptT > 0 || compT > 0) {
+                            costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
+                          } else {
+                            costUsd = (stats?.total_tokens_used ?? 0) * 0.0000001336;
+                          }
+                          const costVnd = costUsd * 25400;
+                          return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {healthModalTab === 'connections' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>
+                  {t("Kiểm tra trạng thái cấu hình và kết nối thời gian thực của các kênh tích hợp.")}
+                </p>
+
+                {/* 1. Google Sheets Connection */}
+                <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
+                      <FileSpreadsheet size={16} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Google Sheets Script</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Webhook nhận dữ liệu từ Sheets")}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {connections && connections.length > 0 ? `${connections.length} ${t('kết nối')}` : t('Chưa kết nối')}
+                    </span>
+                    <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: connections && connections.length > 0 ? 'var(--color-success)' : 'var(--color-warning)' }} />
+                  </div>
+                </div>
+
+                {/* 2. Zalo Notification Bot */}
+                <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: settings?.zalo_bot_token ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      <MessageCircle size={16} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Zalo Notification Bot</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gửi thông báo phân bổ Lead cho Sale")}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {settings?.zalo_bot_token ? t('Đang hoạt động') : t('Chưa cấu hình')}
+                    </span>
+                    <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: settings?.zalo_bot_token ? 'var(--color-success)' : 'var(--color-danger)' }} />
+                  </div>
+                </div>
+
+                {/* 3. AI Pre-screener Filter */}
+                <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                      <Zap size={16} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>AI Pre-screener (Gemini)</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lọc và kiểm tra chất lượng bằng AI")}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {(settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? t('Đang hoạt động') : t('Đang tắt')}
+                    </span>
+                    <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: (settings?.gemini_api_key && Number(settings?.ai_screener_enabled) === 1) ? 'var(--color-success)' : 'var(--color-warning)' }} />
+                  </div>
+                </div>
+
+                {/* 4. Core Distribution System */}
+                <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-success)' }}>
+                      <Database size={16} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Distribution Engine</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Lõi điều tuyến chia số tự động")}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t('Đang hoạt động')}
+                    </span>
+                    <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }} />
+                  </div>
+                </div>
+
+                {/* 5. Database Schema Status */}
+                <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: stats?.db_needs_migration ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stats?.db_needs_migration ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                      <Database size={16} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Database Schema Status</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {stats?.db_needs_migration ? (
+                          <a href="/backend/run_migrations.php" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-warning)', textDecoration: 'underline', fontWeight: 600 }}>
+                            {t("Cần cập nhật cấu trúc DB. Click để chạy ngay.")}
+                          </a>
+                        ) : (
+                          t("Cơ sở dữ liệu đã ở phiên bản mới nhất")
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {stats?.db_needs_migration ? t('Cần cập nhật') : t('Đang hoạt động')}
+                    </span>
+                    <span className="ping-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.db_needs_migration ? 'var(--color-warning)' : 'var(--color-success)' }} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
               <button className="btn primary sm" onClick={() => setShowHealthModal(false)}>{t("Đóng")}</button>

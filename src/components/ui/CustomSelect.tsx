@@ -29,6 +29,7 @@ interface CustomSelectProps {
   direction?: 'up' | 'down';
   multiple?: boolean;
   align?: 'left' | 'right';
+  size?: 'sm' | 'md';
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -42,7 +43,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   width,
   direction = 'down',
   multiple = false,
-  align = 'left'
+  align = 'left',
+  size = 'md'
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -149,11 +151,22 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <div 
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
         onClick={() => setIsOpen(!isOpen)}
+        style={{
+          ...(size === 'sm' ? { 
+            minHeight: '32px', 
+            padding: '4px 10px', 
+            fontSize: '0.8rem', 
+            borderRadius: 'var(--radius-md)' 
+          } : {}),
+          ...((size === 'sm' && isOpen) ? { 
+            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.1)' 
+          } : {})
+        }}
       >
         <span className={(multiple && Array.isArray(value) && value.length > 0) || selectedOption ? styles.selectedValue : styles.placeholder}>
           {renderTriggerContent()}
         </span>
-        <ChevronDown size={16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
+        <ChevronDown size={size === 'sm' ? 14 : 16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
       </div>
 
       <AnimatePresence>

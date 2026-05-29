@@ -549,25 +549,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $lPhone = $lead['phone'] ?? 'Không rõ';
 
                     // Lấy danh sách Ticket Admins nhận thông báo
-                    $adminEmails = [];
-                    $resTickAdmins = $conn->query("
-                        SELECT a.id, a.name, a.email, a.zalo_chat_id 
-                        FROM ticket_notify_settings tns
-                        JOIN accounts a ON tns.account_id = a.id
-                    ");
-                    if ($resTickAdmins && $resTickAdmins->num_rows > 0) {
-                        while ($row = $resTickAdmins->fetch_assoc()) {
-                            $adminEmails[] = $row;
-                        }
-                    } else {
-                        // Fallback: role = 'admin' or id = 1
-                        $resTickAdminsFallback = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
-                        if ($resTickAdminsFallback) {
-                            while ($row = $resTickAdminsFallback->fetch_assoc()) {
-                                $adminEmails[] = $row;
-                            }
-                        }
-                    }
+                    $adminEmails = getTicketNotifyAdmins($conn);
 
                     // Gửi thông báo xác nhận thành công cho Admin duyệt qua Zalo
                     try {
@@ -599,7 +581,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     . "❖ LÝ DO DUYỆT:\n"
                                     . "  $approval_reason\n\n"
                                     . "Lượt đền bù đã được ghi nhận cho Sale.";
-                                sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                                sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                             } catch (Exception $zEx2) {
                                 error_log("Error sending Zalo message to multiple admins in zalo_webhook: " . $zEx2->getMessage());
                             }
@@ -618,7 +600,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                 . "❖ LÝ DO DUYỆT:\n"
                                 . "  $approval_reason\n\n"
                                 . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
-                            sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                            sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                         } catch (Exception $zSaleEx) {
                             error_log("Error sending Zalo message to sale in zalo_webhook: " . $zSaleEx->getMessage());
                         }
@@ -787,25 +769,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $lPhone = $lead['phone'] ?? 'Không rõ';
 
                     // Lấy danh sách Ticket Admins nhận thông báo
-                    $adminEmails = [];
-                    $resTickAdmins = $conn->query("
-                        SELECT a.id, a.name, a.email, a.zalo_chat_id 
-                        FROM ticket_notify_settings tns
-                        JOIN accounts a ON tns.account_id = a.id
-                    ");
-                    if ($resTickAdmins && $resTickAdmins->num_rows > 0) {
-                        while ($row = $resTickAdmins->fetch_assoc()) {
-                            $adminEmails[] = $row;
-                        }
-                    } else {
-                        // Fallback: role = 'admin' or id = 1
-                        $resTickAdminsFallback = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
-                        if ($resTickAdminsFallback) {
-                            while ($row = $resTickAdminsFallback->fetch_assoc()) {
-                                $adminEmails[] = $row;
-                            }
-                        }
-                    }
+                    $adminEmails = getTicketNotifyAdmins($conn);
 
                     // Gửi thông báo xác nhận thành công cho Admin từ chối qua Zalo
                     try {
@@ -836,7 +800,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     . "  • Lỗi báo cáo: {$report['reason']}\n\n"
                                     . "❖ LÝ DO TỪ CHỐI:\n"
                                     . "  $fullRejectReason";
-                                sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                                sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                             } catch (Exception $zEx2) {
                                 error_log("Error sending Zalo message to multiple admins in zalo_webhook /reject: " . $zEx2->getMessage());
                             }
@@ -855,7 +819,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                 . "❖ LÝ DO TỪ CHỐI:\n"
                                 . "  $fullRejectReason\n\n"
                                 . "Lượt đền bù KHÔNG được ghi nhận cho báo cáo này.";
-                            sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                            sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                         } catch (Exception $zSaleEx) {
                             error_log("Error sending Zalo message to sale in zalo_webhook /reject: " . $zSaleEx->getMessage());
                         }

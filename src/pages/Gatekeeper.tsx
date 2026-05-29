@@ -9,7 +9,7 @@ import {
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight,
   Phone, Mail, Clock, Tag, XCircle,
   ExternalLink, Check, Shield, Save, Sparkles, X, Settings,
-  BarChart2, Search, CheckCircle2
+  BarChart2, Search, CheckCircle2, GitBranch, Scale
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -189,7 +189,7 @@ const extractManualReason = (note: string) => {
   if (!note) return '';
   const normalized = note.replace(/\\n/g, '\n');
   const lines = normalized.split('\n');
-  
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.includes('Bị chặn bởi Admin') || trimmed.includes('Chặn bởi Admin')) {
@@ -534,7 +534,7 @@ export const Gatekeeper = () => {
   const [heldLeads, setHeldLeads] = useState<any[]>([]);
   const [heldLeadsTotalCount, setHeldLeadsTotalCount] = useState<number>(0);
   const [heldLeadsLoading, setHeldLeadsLoading] = useState<boolean>(false);
-  
+
   // Duplicate check states
   const [showDupCheckModal, setShowDupCheckModal] = useState(false);
   const [dupCheckInput, setDupCheckInput] = useState('');
@@ -594,6 +594,13 @@ export const Gatekeeper = () => {
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
   const [statsPage, setStatsPage] = useState<number>(1);
   const STATS_ITEMS_PER_PAGE = 50;
+
+  // AI Token Stats Modal States
+  const [isTokenStatsModalOpen, setIsTokenStatsModalOpen] = useState<boolean>(false);
+  const [tokenStatsData, setTokenStatsData] = useState<any>(null);
+  const [tokenStatsLoading, setTokenStatsLoading] = useState<boolean>(false);
+  const [tokenStatsPage, setTokenStatsPage] = useState<number>(1);
+
   // Active tab state: queue (Hàng chờ duyệt), substandard (Dưới chuẩn), assigned (Giao lead), ai_pending (Chờ AI đánh giá)
   const [activeTab, setActiveTab] = useState<'queue' | 'substandard' | 'assigned' | 'ai_pending'>('queue');
   const [tabCounts, setTabCounts] = useState<{ queue: number; substandard: number; assigned: number; ai_pending: number }>({ queue: 0, substandard: 0, assigned: 0, ai_pending: 0 });
@@ -602,11 +609,16 @@ export const Gatekeeper = () => {
   // Dashboard stats state for AI evaluation strip
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [dashboardStatsLoading, setDashboardStatsLoading] = useState<boolean>(false);
+
   const paginatedRecentLeads = useMemo(() => {
     if (!statsData?.recent_below_standard) return [];
     const start = (statsPage - 1) * STATS_ITEMS_PER_PAGE;
     return statsData.recent_below_standard.slice(start, start + STATS_ITEMS_PER_PAGE);
   }, [statsData?.recent_below_standard, statsPage]);
+
+  const paginatedRecentAiLeads = useMemo(() => {
+    return tokenStatsData?.recent_leads || [];
+  }, [tokenStatsData?.recent_leads]);
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -698,12 +710,34 @@ export const Gatekeeper = () => {
     setStatsLoading(false);
   };
 
+  const fetchTokenStats = async (page: number = 1) => {
+    setTokenStatsLoading(true);
+    try {
+      const res = await fetchAPI(`get_ai_token_stats&date=${encodeURIComponent(dateFilter)}&page=${page}&pageSize=20`);
+      if (res.success) {
+        setTokenStatsData(res);
+      } else {
+        toast.error(t('Lỗi tải thống kê token AI'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối Server: ') + e.message);
+    }
+    setTokenStatsLoading(false);
+  };
+
   useEffect(() => {
     if (isStatsModalOpen) {
       setStatsPage(1);
       fetchStats();
     }
   }, [isStatsModalOpen, dateFilter]);
+
+  useEffect(() => {
+    if (isTokenStatsModalOpen) {
+      setTokenStatsPage(1);
+      fetchTokenStats();
+    }
+  }, [isTokenStatsModalOpen, dateFilter]);
 
   const handleRunDupCheck = async (overrideInput?: string) => {
     const inputVal = (overrideInput ?? dupCheckInput).trim();
@@ -1955,7 +1989,7 @@ export const Gatekeeper = () => {
             </button>
 
             <button
-              onClick={() => setIsStatsModalOpen(true)}
+              onClick={() => setIsTokenStatsModalOpen(true)}
               className="btn primary hide-on-mobile"
               style={{
                 height: 44,
@@ -1964,6 +1998,31 @@ export const Gatekeeper = () => {
                 alignItems: 'center',
                 gap: '6px',
                 marginLeft: 'auto',
+                marginRight: '8px',
+                padding: '0 16px',
+                borderRadius: 'var(--radius-lg)',
+                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Sparkles size={15} />
+              <span>{t('Thống kê token AI')}</span>
+            </button>
+
+            <button
+              onClick={() => setIsStatsModalOpen(true)}
+              className="btn primary hide-on-mobile"
+              style={{
+                height: 44,
+                fontSize: '0.825rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
                 background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
@@ -1999,10 +2058,10 @@ export const Gatekeeper = () => {
         ) : (
           <>
             {/* Desktop View Table */}
-            <div 
-              className="table-wrap hide-on-mobile" 
-              style={{ 
-                maxHeight: 'calc(100vh - 340px)', 
+            <div
+              className="table-wrap hide-on-mobile"
+              style={{
+                maxHeight: 'calc(100vh - 340px)',
                 overflowY: 'auto',
                 opacity: heldLeadsLoading ? 0.6 : 1,
                 pointerEvents: heldLeadsLoading ? 'none' : 'auto',
@@ -2273,12 +2332,12 @@ export const Gatekeeper = () => {
             </div>
 
             {/* Mobile Card List View */}
-            <div 
-              className="mobile-only" 
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '1rem', 
+            <div
+              className="mobile-only"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
                 padding: '0.5rem 0 5rem 0',
                 opacity: heldLeadsLoading ? 0.6 : 1,
                 pointerEvents: heldLeadsLoading ? 'none' : 'auto',
@@ -3069,10 +3128,11 @@ export const Gatekeeper = () => {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                   {(config.manual_rules || []).map((branch: any, bIndex: number) => (
-                                    <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', position: 'relative', background: 'var(--color-bg-alt)' }}>
-                                      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#10b981', borderRadius: '12px 0 0 12px' }} />
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0 }}>
+                                    <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem 1rem', position: 'relative', background: 'var(--color-bg-alt)', boxShadow: 'var(--shadow-sm)' }}>
+                                      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 3, background: '#10b981', borderRadius: '10px 0 0 10px' }} />
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
                                           {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
                                         </h4>
                                         <button
@@ -3089,24 +3149,24 @@ export const Gatekeeper = () => {
                                         </button>
                                       </div>
 
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {(branch.conditions || []).map((c: any, i: number) => {
                                           const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
                                           const isLast = i === branch.conditions.length - 1;
                                           return (
-                                            <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                              <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                              <div style={{ position: 'relative', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                                 {i === 0 ? (
-                                                  <div style={{ background: '#d1fae5', color: '#047857', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
+                                                  <div style={{ background: '#d1fae5', color: '#047857', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
                                                 ) : (
-                                                  <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
+                                                  <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
                                                 )}
                                                 {!isLast && (
-                                                  <div style={{ position: 'absolute', top: 32, bottom: -16, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
+                                                  <div style={{ position: 'absolute', top: 18, bottom: -18, width: 1.5, borderLeft: '1.5px dashed var(--color-border)', zIndex: 1 }} />
                                                 )}
                                               </div>
 
-                                              <div style={{ width: 140 }}>
+                                              <div style={{ width: 130 }}>
                                                 <CustomSelect
                                                   options={[
                                                     { value: 'source', label: t('Nguồn (Source)') },
@@ -3122,10 +3182,11 @@ export const Gatekeeper = () => {
                                                     setAiScreenerConfigs(updated);
                                                   }}
                                                   width="100%"
+                                                  size="sm"
                                                 />
                                               </div>
 
-                                              <div style={{ width: 150 }}>
+                                              <div style={{ width: 140 }}>
                                                 <CustomSelect
                                                   options={[
                                                     { value: 'contains', label: t('Có chứa') },
@@ -3146,6 +3207,7 @@ export const Gatekeeper = () => {
                                                     setAiScreenerConfigs(updated);
                                                   }}
                                                   width="100%"
+                                                  size="sm"
                                                 />
                                               </div>
 
@@ -3161,7 +3223,7 @@ export const Gatekeeper = () => {
                                                     }}
                                                     placeholder={t("Giá trị so khớp...")}
                                                     className="form-input"
-                                                    style={{ height: 36, fontSize: '0.825rem', width: '100%' }}
+                                                    style={{ height: 32, fontSize: '0.8rem', width: '100%', borderRadius: 'var(--radius-md)' }}
                                                   />
                                                 </div>
                                               )}
@@ -3181,13 +3243,13 @@ export const Gatekeeper = () => {
                                                   setAiScreenerConfigs(updated);
                                                 }}
                                               >
-                                                <XCircle size={16} />
+                                                <XCircle size={15} />
                                               </button>
                                             </div>
                                           );
                                         })}
 
-                                        <div style={{ paddingLeft: 32, marginTop: 4 }}>
+                                        <div style={{ paddingLeft: 44, marginTop: 4 }}>
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -3196,7 +3258,7 @@ export const Gatekeeper = () => {
                                               setAiScreenerConfigs(updated);
                                             }}
                                             className="btn ghost"
-                                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
                                           >
                                             <Plus size={12} /> {t("Thêm điều kiện (AND)")}
                                           </button>
@@ -3560,20 +3622,22 @@ export const Gatekeeper = () => {
                 marginTop: '10px'
               }}>
                 {/* 1. Breakdown by Rounds */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                <div className="card" style={{
+                  padding: '1.25rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: '1rem',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px'
                 }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed' }}></span>
-                    {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <GitBranch size={18} color="#7c3aed" />
+                      {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
+                    </h4>
+                  </div>
+                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
                     {statsData.rounds_breakdown?.length === 0 ? (
                       <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                         {t('Không có dữ liệu phân bố vòng')}
@@ -3582,15 +3646,16 @@ export const Gatekeeper = () => {
                       statsData.rounds_breakdown?.map((item: any, idx: number) => {
                         const totalBS = statsData.stats?.total_below_standard || 1;
                         const pct = Math.round((item.count / totalBS) * 100);
+                        const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+                        const color = colors[idx % colors.length];
                         return (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</span>
-                              <span>{item.count} ({pct}%)</span>
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
                             </div>
-                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #7c3aed, #9061f9)' }}></div>
-                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
                           </div>
                         );
                       })
@@ -3599,20 +3664,22 @@ export const Gatekeeper = () => {
                 </div>
 
                 {/* 2. Breakdown by Sources */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                <div className="card" style={{
+                  padding: '1.25rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: '1rem',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px'
                 }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }}></span>
-                    {t('Nguồn kết nối dưới chuẩn nhiều nhất')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <BarChart2 size={18} color="#3b82f6" />
+                      {t('Nguồn kết nối dưới chuẩn nhiều nhất')}
+                    </h4>
+                  </div>
+                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
                     {statsData.sources_breakdown?.length === 0 ? (
                       <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                         {t('Không có dữ liệu phân bố nguồn')}
@@ -3621,15 +3688,16 @@ export const Gatekeeper = () => {
                       statsData.sources_breakdown?.map((item: any, idx: number) => {
                         const totalBS = statsData.stats?.total_below_standard || 1;
                         const pct = Math.round((item.count / totalBS) * 100);
+                        const colors = ['#3b82f6', '#10b981', '#7c3aed', '#f59e0b', '#ef4444'];
+                        const color = colors[idx % colors.length];
                         return (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</span>
-                              <span>{item.count} ({pct}%)</span>
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
                             </div>
-                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)' }}></div>
-                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
                           </div>
                         );
                       })
@@ -3637,42 +3705,87 @@ export const Gatekeeper = () => {
                   </div>
                 </div>
 
-                {/* 3. Breakdown by Rejection Reason */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                {/* 3. Tỷ lệ Duyệt & Dưới chuẩn */}
+                <div className="card" style={{
+                  padding: '1.25rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: '1rem',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px'
                 }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span>
-                    {t('Lý do AI loại / giữ nhiều nhất')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
-                    {statsData.reasons_breakdown?.length === 0 ? (
-                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        {t('Không có dữ liệu phân bố lý do')}
-                      </div>
-                    ) : (
-                      statsData.reasons_breakdown?.map((item: any, idx: number) => {
-                        const totalBS = statsData.stats?.total_below_standard || 1;
-                        const pct = Math.round((item.count / totalBS) * 100);
-                        return (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t(item.reason)}</span>
-                              <span>{item.count} ({pct}%)</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Scale size={18} color="#10b981" />
+                      {t('Tỷ lệ Duyệt & Dưới chuẩn')}
+                    </h4>
+                  </div>
+                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
+                    {(() => {
+                      const stats = statsData.stats || {
+                        total_leads: 0,
+                        count_duyet: 0,
+                        count_ai_giu: 0,
+                        count_duoi_chuan: 0,
+                        count_giao_lead: 0
+                      };
+                      const totalLeads = stats.total_leads || 0;
+                      const countDuyet = stats.count_duyet || 0;
+                      const countAiGiu = stats.count_ai_giu || 0;
+                      const countDuoiChuan = stats.count_duoi_chuan || 0;
+                      const countGiaoLead = stats.count_giao_lead || 0;
+
+                      const duyetPct = totalLeads > 0 ? Math.round((countDuyet / totalLeads) * 100) : 0;
+                      const aiGiuPct = totalLeads > 0 ? Math.round((countAiGiu / totalLeads) * 100) : 0;
+                      const duoiChuanPct = totalLeads > 0 ? Math.round((countDuoiChuan / totalLeads) * 100) : 0;
+                      const giaoLeadPct = totalLeads > 0 ? 100 - duyetPct - aiGiuPct - duoiChuanPct : 0;
+                      const giaoLeadPctClamped = Math.max(0, giaoLeadPct);
+
+                      return (
+                        <>
+                          {/* Passed Row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Duyệt')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duyetPct}% ${t('tổng data')}`}</div>
                             </div>
-                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, #ef4444, #f87171)' }}></div>
-                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuyet}</div>
                           </div>
-                        );
-                      })
-                    )}
+
+                          {/* AI giữ Row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('AI giữ')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${aiGiuPct}% ${t('tổng data')}`}</div>
+                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countAiGiu}</div>
+                          </div>
+
+                          {/* Dưới chuẩn (thật) Row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Dưới chuẩn (thật)')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duoiChuanPct}% ${t('tổng data')}`}</div>
+                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuoiChuan}</div>
+                          </div>
+
+                          {/* Giao lead Row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Giao lead')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${giaoLeadPctClamped}% ${t('tổng data')}`}</div>
+                            </div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countGiaoLead}</div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -3695,7 +3808,7 @@ export const Gatekeeper = () => {
                         <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Thời gian')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Họ tên / SĐT')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nguồn / Vòng')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vòng dự kiến')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đánh giá của AI')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', width: '110px' }}>{t('Trạng thái')}</th>
                         </tr>
@@ -3728,10 +3841,25 @@ export const Gatekeeper = () => {
                                   </div>
                                 </td>
                                 <td style={{ padding: '10px 14px' }}>
-                                  <div style={{ color: 'var(--color-text)' }}>{l.source || '-'}</div>
-                                  <div style={{ color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 600, marginTop: '1.5px' }}>
-                                    {l.round_name || '-'}
-                                  </div>
+                                  {l.round_name ? (
+                                    <span style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      background: 'rgba(124, 58, 237, 0.08)',
+                                      color: '#7c3aed',
+                                      padding: '4px 10px',
+                                      borderRadius: '12px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      border: '1px solid rgba(124, 58, 237, 0.15)'
+                                    }}>
+                                      <Zap size={12} fill="#7c3aed" style={{ strokeWidth: 2 }} />
+                                      {l.round_name}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                  )}
                                 </td>
                                 <td style={{ padding: '10px 14px', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
                                   {l.ai_evaluation || l.note || t('Không có đánh giá')}
@@ -3823,6 +3951,426 @@ export const Gatekeeper = () => {
           )}
 
 
+        </div>
+      </CustomModal>
+
+      {/* AI Token Statistics Modal */}
+      <CustomModal
+        isOpen={isTokenStatsModalOpen}
+        onClose={() => setIsTokenStatsModalOpen(false)}
+        title={`${t('Thống kê sử dụng Token AI')} - ${getDisplayDateFilterText(dateFilter)}`}
+        width="950px"
+      >
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Header Filter Context */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--color-bg)',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid var(--color-border)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Filter size={16} color="var(--color-primary)" />
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                {t('Đang áp dụng bộ lọc thời gian:')}
+              </span>
+              <span style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '20px',
+                boxShadow: '0 2px 4px rgba(168, 85, 247, 0.2)'
+              }}>
+                {getDisplayDateFilterText(dateFilter)}
+              </span>
+            </div>
+            {tokenStatsLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                <RefreshCw size={12} className="spin" />
+                <span>{t('Đang tải dữ liệu...')}</span>
+              </div>
+            )}
+          </div>
+
+          {tokenStatsLoading && !tokenStatsData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '4rem 0', alignItems: 'center', justifyContent: 'center' }}>
+              <RefreshCw size={32} color="var(--color-primary)" className="spin" />
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê Token...')}</span>
+            </div>
+          ) : !tokenStatsData ? (
+            <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              {t('Không có dữ liệu thống kê Token.')}
+            </div>
+          ) : (
+            <>
+              {/* Premium Stat Cards */}
+              {(() => {
+                const stats = tokenStatsData.stats || { total_leads: 0, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+                const promptT = stats.prompt_tokens ?? 0;
+                const compT = stats.completion_tokens ?? 0;
+                let costUsd = 0;
+                if (promptT > 0 || compT > 0) {
+                  costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
+                } else {
+                  costUsd = (stats.total_tokens ?? 0) * 0.0000001336;
+                }
+                const costVnd = costUsd * 25400;
+
+                return (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '16px'
+                  }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lead đã gọi AI')}</div>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '8px' }}>{stats.total_leads.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Số khách hàng được AI đánh giá')}</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Prompt Tokens')}</div>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#3b82f6', marginTop: '8px' }}>{stats.prompt_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Token đầu vào gửi tới AI')}</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Completion Tokens')}</div>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{stats.completion_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Token phản hồi của AI')}</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '8px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '6px', background: 'rgba(168, 85, 247, 0.1)', padding: '4px 8px', borderRadius: '6px' }}>
+                        <span>~${costUsd.toFixed(4)}</span>
+                        <span>~{Math.round(costVnd).toLocaleString('vi-VN')}đ</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Token prompt vs completion breakdown progress bar */}
+              {(() => {
+                const stats = tokenStatsData.stats || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 1 };
+                const total = stats.total_tokens || 1;
+                const promptPct = Math.round((stats.prompt_tokens / total) * 100);
+                const compPct = 100 - promptPct;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                      <span>{t('Prompt (Đầu vào):')} {promptPct}%</span>
+                      <span>{t('Completion (Đầu ra):')} {compPct}%</span>
+                    </div>
+                    <div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden', display: 'flex' }}>
+                      <div style={{ width: `${promptPct}%`, background: '#3b82f6' }} title={`Prompt: ${promptPct}%`} />
+                      <div style={{ width: `${compPct}%`, background: '#10b981' }} title={`Completion: ${compPct}%`} />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Side-by-side Breakdowns */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '20px',
+                marginTop: '10px'
+              }}>
+                {/* 1. Breakdown by Rounds */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }}></span>
+                    {t('Tiêu thụ Token theo Vòng phân phối')}
+                  </h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                          <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Vòng xoay')}</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tokenStatsData.rounds_breakdown?.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
+                          </tr>
+                        ) : (
+                          tokenStatsData.rounds_breakdown?.map((item: any, idx: number) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                              <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</td>
+                              <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
+                              <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 2. Breakdown by Connection */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }}></span>
+                    {t('Tiêu thụ Token theo Trang tính (Sheet)')}
+                  </h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                          <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Nguồn / Sheet')}</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tokenStatsData.sources_breakdown?.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
+                          </tr>
+                        ) : (
+                          tokenStatsData.sources_breakdown?.map((item: any, idx: number) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                              <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</td>
+                              <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
+                              <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed lead list with token counts */}
+              <div style={{ marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={16} color="var(--color-primary)" />
+                  {t('Chi tiết sử dụng Token trên từng Lead')}
+                </h4>
+                <div style={{
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  background: 'rgba(255, 255, 255, 0.01)'
+                }}>
+                  <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                        <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Họ tên / SĐT')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Kết quả AI')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('PROMPT')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('COMPLETION')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('TOTAL')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRecentAiLeads.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              {t('Không có dữ liệu')}
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedRecentAiLeads.map((l: any, idx: number) => {
+                            let statusBadge = null;
+                            if (l.ai_screener_status === 'passed') {
+                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16,185,129,0.2)' }}>PASSED</span>;
+                            } else if (l.ai_screener_status === 'failed') {
+                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.2)' }}>FAILED</span>;
+                            } else {
+                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.2)' }}>{l.ai_screener_status?.toUpperCase() || 'ERROR'}</span>;
+                            }
+
+                            return (
+                              <tr key={idx} style={{ borderBottom: idx < paginatedRecentAiLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
+                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', width: '90px', minWidth: '90px' }}>
+                                  {(() => {
+                                    const d = new Date(l.created_at);
+                                    const hhmm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                                    const ddmm = `${d.getDate()}/${d.getMonth() + 1}`;
+                                    return `${hhmm} ${ddmm}`;
+                                  })()}
+                                </td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Avatar name={l.name} size={32} />
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
+                                      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.72rem', marginTop: '1px' }}>
+                                        {maskPhone(l.phone)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                  {statusBadge}
+                                </td>
+                                <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
+                                  {Number(l.ai_prompt_tokens).toLocaleString('vi-VN')}
+                                </td>
+                                <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
+                                  {Number(l.ai_completion_tokens).toLocaleString('vi-VN')}
+                                </td>
+                                <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {Number(l.ai_total_tokens).toLocaleString('vi-VN')}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Footer */}
+                  {tokenStatsData && tokenStatsData.total_recent_leads > 20 && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{ color: 'var(--color-text-muted)' }}>
+                        {t('Hiển thị')}{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {(tokenStatsPage - 1) * 20 + 1}
+                        </span>{' '}
+                        -{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {Math.min(tokenStatsPage * 20, tokenStatsData.total_recent_leads)}
+                        </span>{' '}
+                        {t('trên')}{' '}
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                          {tokenStatsData.total_recent_leads}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => {
+                            const newPage = Math.max(tokenStatsPage - 1, 1);
+                            setTokenStatsPage(newPage);
+                            fetchTokenStats(newPage);
+                          }}
+                          disabled={tokenStatsPage === 1}
+                          style={{
+                            padding: '6px',
+                            borderRadius: 6,
+                            border: '1px solid var(--color-border)',
+                            background: tokenStatsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
+                            color: tokenStatsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: tokenStatsPage === 1 ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {(() => {
+                            const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
+                            const maxVisible = 5;
+                            let startPage = 1;
+                            if (totalPages > maxVisible) {
+                              if (tokenStatsPage > 3) {
+                                startPage = tokenStatsPage - 2;
+                                if (startPage + maxVisible - 1 > totalPages) {
+                                  startPage = totalPages - maxVisible + 1;
+                                }
+                              }
+                            }
+                            const pageNumbers = Array.from(
+                              { length: Math.min(maxVisible, totalPages) },
+                              (_, i) => startPage + i
+                            );
+                            return pageNumbers.map(pageNum => (
+                              <button
+                                key={pageNum}
+                                onClick={() => {
+                                  setTokenStatsPage(pageNum);
+                                  fetchTokenStats(pageNum);
+                                }}
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 6,
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  border: tokenStatsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                                  background: tokenStatsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                  color: tokenStatsPage === pageNum ? 'white' : 'var(--color-text)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
+                            const newPage = Math.min(tokenStatsPage + 1, totalPages);
+                            setTokenStatsPage(newPage);
+                            fetchTokenStats(newPage);
+                          }}
+                          disabled={tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20)}
+                          style={{
+                            padding: '6px',
+                            borderRadius: 6,
+                            border: '1px solid var(--color-border)',
+                            background: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-bg)' : 'var(--color-surface)',
+                            color: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </CustomModal>
 
@@ -4355,7 +4903,7 @@ export const Gatekeeper = () => {
                     ) : selectedLead.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
                       <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                           <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
+                          <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                           <div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Người tiếp nhận')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
@@ -4382,10 +4930,10 @@ export const Gatekeeper = () => {
                         </div>
 
                         {/* Tình trạng thông báo Zalo & Email */}
-                        <div style={{ 
-                          marginTop: '1rem', 
-                          paddingTop: '1rem', 
-                          borderTop: '1px dashed var(--color-border-light)' 
+                        <div style={{
+                          marginTop: '1rem',
+                          paddingTop: '1rem',
+                          borderTop: '1px dashed var(--color-border-light)'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem' }}>
                             <RefreshCw size={12} className={notifLoading ? "spin" : ""} style={{ color: 'var(--color-primary)' }} />
@@ -4401,15 +4949,15 @@ export const Gatekeeper = () => {
                               {/* Email Status */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                                  <img 
-                                    src="/imgs/gmail-icon-free-png.webp" 
-                                    alt="Gmail" 
-                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                                  <img
+                                    src="/imgs/gmail-icon-free-png.webp"
+                                    alt="Gmail"
+                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                                   />
                                   <span style={{ flexShrink: 0 }}>Email:</span>
                                   <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
-                                    {notificationStatus.email.status === 'sent' 
-                                      ? (notificationStatus.email.sent_at || '-') 
+                                    {notificationStatus.email.status === 'sent'
+                                      ? (notificationStatus.email.sent_at || '-')
                                       : ((notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) ? t('Đang chờ gửi...') : '-')}
                                   </span>
                                 </div>
@@ -4440,15 +4988,15 @@ export const Gatekeeper = () => {
                               {/* Zalo Status */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                                  <img 
-                                    src="https://stc-zpl.zdn.vn/favicon.ico" 
-                                    alt="Zalo" 
-                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                                  <img
+                                    src="https://stc-zpl.zdn.vn/favicon.ico"
+                                    alt="Zalo"
+                                    style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                                   />
                                   <span style={{ flexShrink: 0 }}>Zalo:</span>
                                   <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
-                                    {notificationStatus.zalo.status === 'sent' 
-                                      ? (notificationStatus.zalo.sent_at || '-') 
+                                    {notificationStatus.zalo.status === 'sent'
+                                      ? (notificationStatus.zalo.sent_at || '-')
                                       : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : ((notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) ? t('Đang chờ gửi...') : '-'))}
                                   </span>
                                 </div>
@@ -4823,64 +5371,64 @@ export const Gatekeeper = () => {
                         const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
                         return history && history.length > 0 ? (
                           history.map((h: any) => {
-                          const lastDateStr = h.last_interaction_date || h.created_at;
-                          const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                          const now = new Date();
-                          const diffMs = now.getTime() - lastInt.getTime();
-                          const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+                            const lastDateStr = h.last_interaction_date || h.created_at;
+                            const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                            const now = new Date();
+                            const diffMs = now.getTime() - lastInt.getTime();
+                            const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
 
-                          let statusClass = 'muted';
-                          let statusText = h.status;
-                          if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
-                          else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
-                          else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
-                          else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
+                            let statusClass = 'muted';
+                            let statusText = h.status;
+                            if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
+                            else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
+                            else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
+                            else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
 
-                          return (
-                            <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <Avatar name={h.name} size={32} />
-                                  <div>
-                                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                            return (
+                              <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Avatar name={h.name} size={32} />
+                                    <div>
+                                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                {h.consultant_name ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
-                                    <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {h.consultant_name ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
+                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                  <div>{h.created_at}</div>
+                                  <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
+                                    {diffMonths} {t("tháng trước")}
                                   </div>
-                                ) : (
-                                  <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                )}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                <div>{h.created_at}</div>
-                                <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
-                                  {diffMonths} {t("tháng trước")}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                            {t("Không có dữ liệu lịch sử.")}
-                          </td>
-                        </tr>
-                      );
-                    })()}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              {t("Không có dữ liệu lịch sử.")}
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>

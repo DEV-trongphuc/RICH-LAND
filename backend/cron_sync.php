@@ -50,18 +50,8 @@ if (!function_exists('sendSheetSyncErrorAlert')) {
         $spreadsheetId = $connItem['spreadsheet_id'] ?? 'Không rõ';
         $timeStr = date('d/m/Y H:i:s');
         
-        // Fetch all admins
-        $adminRes = $conn->query("SELECT name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
-        if (!$adminRes) {
-            logSync("No admin found or query failed.");
-            return;
-        }
-        
-        $admins = [];
-        while ($row = $adminRes->fetch_assoc()) {
-            $admins[] = $row;
-        }
-        
+        // Fetch ticket admins
+        $admins = getTicketNotifyAdmins($conn);
         if (empty($admins)) {
             logSync("No admin accounts to notify.");
             return;
@@ -80,7 +70,7 @@ if (!function_exists('sendSheetSyncErrorAlert')) {
             foreach ($admins as $admin) {
                 if (!empty($admin['zalo_chat_id'])) {
                     try {
-                        sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                        sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
                     } catch (Exception $zEx) {
                         logSync("Error sending Zalo alert to admin {$admin['name']}: " . $zEx->getMessage());
                     }
@@ -734,8 +724,10 @@ if (!function_exists('recallInactiveLeads')) {
 }
 
 logSync("Starting Google Sheets Sync Cronjob...");
-releasePendingWorkHoursLeads($conn);
-recallInactiveLeads($conn);
+if (!isset($argv[1])) {
+    releasePendingWorkHoursLeads($conn);
+    recallInactiveLeads($conn);
+}
 
 // Get active connections
 $sql = "SELECT * FROM sheet_connections WHERE is_active = 1";
@@ -835,9 +827,12 @@ foreach ($connections as $connItem) {
         $ch = curl_init($csvUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $timeout = (php_sapi_name() === 'cli') ? 60 : 15;
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        // Force IPv4 to prevent misconfigured IPv6 gateway from causing 60s operation timeout
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
@@ -1476,7 +1471,7 @@ foreach ($connections as $connItem) {
         logSync("Finished Connection ID {$connItem['id']}. Synced $syncedCount new leads.");
 
         // Reset status
-        $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle', last_error = NULL WHERE id = ?");
+        $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle', last_error = NULL, sync_error_count = 0 WHERE id = ?");
         $upStmt->bind_param("i", $connItem['id']);
         $upStmt->execute();
         $upStmt->close();
@@ -1484,14 +1479,38 @@ foreach ($connections as $connItem) {
     } catch (Exception $e) {
         $errorMessage = $e->getMessage();
         logSync("Error processing ID {$connItem['id']}: " . $errorMessage);
-        $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error', last_error = ? WHERE id = ?");
-        $upStmt->bind_param("si", $errorMessage, $connItem['id']);
-        $upStmt->execute();
-        $upStmt->close();
-
-        // Notify admins if transition to error or if the error is different
-        if (($connItem['sync_status'] ?? 'idle') !== 'error' || ($connItem['last_error'] ?? '') !== $errorMessage) {
-            sendSheetSyncErrorAlert($conn, $connItem, $errorMessage);
+        
+        // Retrieve current sync_error_count
+        $currErrCount = 0;
+        $cntStmt = $conn->prepare("SELECT sync_error_count FROM sheet_connections WHERE id = ?");
+        if ($cntStmt) {
+            $cntStmt->bind_param("i", $connItem['id']);
+            $cntStmt->execute();
+            $cntRes = $cntStmt->get_result()->fetch_assoc();
+            $currErrCount = (int)($cntRes['sync_error_count'] ?? 0);
+            $cntStmt->close();
+        }
+        
+        $newErrCount = $currErrCount + 1;
+        
+        if ($newErrCount < 3) {
+            // Keep sync_status as idle (retries on next cron run), save error details and count
+            $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'idle', last_error = ?, sync_error_count = ? WHERE id = ?");
+            $upStmt->bind_param("sii", $errorMessage, $newErrCount, $connItem['id']);
+            $upStmt->execute();
+            $upStmt->close();
+            logSync("Self-healing: connection ID {$connItem['id']} failed $newErrCount times. Retrying next run. Error: " . $errorMessage);
+        } else {
+            // Set status to error and alert admins
+            $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error', last_error = ?, sync_error_count = ? WHERE id = ?");
+            $upStmt->bind_param("sii", $errorMessage, $newErrCount, $connItem['id']);
+            $upStmt->execute();
+            $upStmt->close();
+            
+            logSync("Connection ID {$connItem['id']} failed $newErrCount times. Setting status to error and notifying admins.");
+            
+            $alertErrorMessage = $errorMessage . " (Thử lại thất bại " . $newErrCount . " lần)";
+            sendSheetSyncErrorAlert($conn, $connItem, $alertErrorMessage);
         }
     }
 }

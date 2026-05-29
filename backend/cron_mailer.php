@@ -174,6 +174,7 @@ function runMailerCron($conn) {
                     $updLeadSuccessStmt->bind_param("i", $leadId);
                     $updLeadSuccessStmt->execute();
                 }
+                log_communication($conn, $leadId, 'email', $to, 'sent');
             } else {
                 if ($updFailStmt) {
                     $updFailStmt->bind_param("si", $lastErrorMsg, $mailId);
@@ -185,6 +186,7 @@ function runMailerCron($conn) {
                     $updLeadFailStmt->bind_param("i", $leadId);
                     $updLeadFailStmt->execute();
                 }
+                log_communication($conn, $leadId, 'email', $to, 'failed', $lastErrorMsg);
             }
         } catch (Throwable $dbEx) {
             error_log("Database write failed for mail item $mailId: " . $dbEx->getMessage());

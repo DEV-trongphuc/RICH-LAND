@@ -127,8 +127,11 @@ function runAIScreenerWorker($conn) {
                 // Tạm giữ cho Admin duyệt tay
                 $conn->begin_transaction();
                 try {
-                    $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', ai_screener_status = 'failed', ai_evaluation = ? WHERE id = ?");
-                    $updHeld->bind_param("si", $aiResult['reason'], $leadId);
+                    $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', ai_screener_status = 'failed', ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
+                    $promptT = isset($aiResult['prompt_tokens']) ? (int)$aiResult['prompt_tokens'] : 0;
+                    $completionT = isset($aiResult['completion_tokens']) ? (int)$aiResult['completion_tokens'] : 0;
+                    $totalT = isset($aiResult['total_tokens']) ? (int)$aiResult['total_tokens'] : 0;
+                    $updHeld->bind_param("siiii", $aiResult['reason'], $promptT, $completionT, $totalT, $leadId);
                     $updHeld->execute();
                     $updHeld->close();
 
@@ -188,8 +191,11 @@ function runAIScreenerWorker($conn) {
             // 2.3. Lỗi kết nối / Quá tải API (status === 'error')
             $conn->begin_transaction();
             try {
-                $updHeld = $conn->prepare("UPDATE leads SET ai_screener_status = 'error', ai_evaluation = ? WHERE id = ?");
-                $updHeld->bind_param("si", $aiResult['reason'], $leadId);
+                $updHeld = $conn->prepare("UPDATE leads SET ai_screener_status = 'error', ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
+                $promptT = isset($aiResult['prompt_tokens']) ? (int)$aiResult['prompt_tokens'] : 0;
+                $completionT = isset($aiResult['completion_tokens']) ? (int)$aiResult['completion_tokens'] : 0;
+                $totalT = isset($aiResult['total_tokens']) ? (int)$aiResult['total_tokens'] : 0;
+                $updHeld->bind_param("siiii", $aiResult['reason'], $promptT, $completionT, $totalT, $leadId);
                 $updHeld->execute();
                 $updHeld->close();
 
@@ -268,10 +274,13 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
     $conn->begin_transaction();
     try {
         $leadStatus = 'active';
-        $updLead = $conn->prepare("UPDATE leads SET status = ?, assigned_to = ?, ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+        $updLead = $conn->prepare("UPDATE leads SET status = ?, assigned_to = ?, ai_screener_status = ?, ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
         $aiStatus = $aiScreenerResult['status'];
         $aiEval = $aiScreenerResult['reason'];
-        $updLead->bind_param("sisss", $leadStatus, $assignedConsultantId, $aiStatus, $aiEval, $leadId);
+        $promptT = isset($aiScreenerResult['prompt_tokens']) ? (int)$aiScreenerResult['prompt_tokens'] : 0;
+        $completionT = isset($aiScreenerResult['completion_tokens']) ? (int)$aiScreenerResult['completion_tokens'] : 0;
+        $totalT = isset($aiScreenerResult['total_tokens']) ? (int)$aiScreenerResult['total_tokens'] : 0;
+        $updLead->bind_param("sisssiii", $leadStatus, $assignedConsultantId, $aiStatus, $aiEval, $promptT, $completionT, $totalT, $leadId);
         $updLead->execute();
         $updLead->close();
 

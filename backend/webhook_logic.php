@@ -201,15 +201,9 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                 $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
                 $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
 
-                // 2. Query all admins
-                $adminRes = $conn->query("SELECT name, email, zalo_chat_id FROM accounts WHERE role = 'admin'");
-                if ($adminRes) {
-                    $admins = [];
-                    while ($row = $adminRes->fetch_assoc()) {
-                        $admins[] = $row;
-                    }
-
-                    if (!empty($admins)) {
+                // 2. Query ticket notify admins
+                $admins = getTicketNotifyAdmins($conn);
+                if (!empty($admins)) {
                         $maskedPhone = '';
                         if (!empty($phone)) {
                             $trimmed = trim($phone);
@@ -235,7 +229,7 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                             require_once __DIR__ . '/zalo_bot.php';
                             foreach ($admins as $admin) {
                                 if (!empty($admin['zalo_chat_id'])) {
-                                    sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                                    sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
                                 }
                             }
                         }
@@ -261,7 +255,6 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                             }
                         }
                     }
-                }
             } catch (Exception $ex) {
                 error_log("Error notifying admins of blacklist match: " . $ex->getMessage());
             }
@@ -1993,6 +1986,20 @@ function runAIScreener($conn, $leadData, $customRules = null)
         return ['status' => 'error', 'reason' => "Lỗi Gemini API: " . $resJson['error']['message']];
     }
 
+    $promptTokens = 0;
+    $completionTokens = 0;
+    $totalTokens = 0;
+
+    if (isset($resJson['usageMetadata'])) {
+        $promptTokens = (int)($resJson['usageMetadata']['promptTokenCount'] ?? 0);
+        $completionTokens = (int)($resJson['usageMetadata']['candidatesTokenCount'] ?? 0);
+        $totalTokens = (int)($resJson['usageMetadata']['totalTokenCount'] ?? 0);
+    } elseif (isset($resJson['usage'])) {
+        $promptTokens = (int)($resJson['usage']['prompt_tokens'] ?? 0);
+        $completionTokens = (int)($resJson['usage']['completion_tokens'] ?? 0);
+        $totalTokens = (int)($resJson['usage']['total_tokens'] ?? 0);
+    }
+
     $rawText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
     if (empty($rawText)) {
         return ['status' => 'error', 'reason' => 'Gemini API returned an empty response.'];
@@ -2045,6 +2052,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
     // 3. Scan for reason key among common names
     foreach ($data as $key => $val) {
         if ($key === $statusKey) {
+            
             continue;
         }
         $lowerKey = strtolower($key);
@@ -2085,7 +2093,10 @@ function runAIScreener($conn, $leadData, $customRules = null)
 
     return [
         'status' => $status,
-        'reason' => $reason
+        'reason' => $reason,
+        'prompt_tokens' => $promptTokens,
+        'completion_tokens' => $completionTokens,
+        'total_tokens' => $totalTokens
     ];
 }
 
@@ -2359,13 +2370,8 @@ function sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiReason, $ro
             $adminStmt->close();
         }
     } else {
-        // Fallback: role = 'admin' OR id = 1
-        $adminRes = $conn->query("SELECT id, email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
-        if ($adminRes) {
-            while ($row = $adminRes->fetch_assoc()) {
-                $admins[] = $row;
-            }
-        }
+        // Fallback: query ticket notify admins
+        $admins = getTicketNotifyAdmins($conn);
     }
 
     if (empty($admins)) {

@@ -72,19 +72,26 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
 
     $isSent = false;
+    $errorMessage = null;
     if ($httpCode >= 200 && $httpCode < 300 && $result) {
         $resObj = json_decode($result, true);
         if (isset($resObj['ok']) && $resObj['ok'] === true) {
             $isSent = true;
         } else {
+            $errorMessage = $result;
             error_log("Zalo Bot Error: " . $result);
         }
     } else {
+        $errorMessage = "HTTP Code: " . $httpCode . ", Response: " . ($result ?: 'NO RESPONSE');
         error_log("Zalo Bot HTTP Error: $httpCode - " . $result);
     }
 
+    $newStatus = $isSent ? 'sent' : 'failed';
+    
+    // Ghi nhận nhật ký giao tiếp Zalo
+    log_communication($conn, $leadId, 'zalo', $chatId, $newStatus, $errorMessage);
+
     if ($leadId > 0) {
-        $newStatus = $isSent ? 'sent' : 'failed';
         $sentAtExpr = $isSent ? ", zalo_notify_sent_at = NOW()" : "";
         $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = ? $sentAtExpr WHERE id = ?");
         if ($stmtLead) {
@@ -98,25 +105,37 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
 }
 
 /**
- * Gửi tin nhắn qua Zalo Bot Platform cho NHIỀU người cùng lúc (Concurrent cURL)
+ * Gửi tin nhắn qua Zalo Bot Platform cho NHIỀU người cùng lúc (Concurrent cURL hoặc Queue Async)
  *
  * @param string $botToken
  * @param array $chatIdsArray
  * @param string $text
+ * @param bool $sync
+ * @param int $leadId
  * @return bool
  */
-function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text)
+function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text, $sync = true, $leadId = 0)
 {
     if (empty($botToken) || empty($chatIdsArray) || empty($text)) {
         return false;
     }
 
+    // Lọc trùng ID và loại bỏ giá trị rỗng
+    $chatIdsArray = array_unique(array_filter($chatIdsArray));
+
+    if (!$sync) {
+        $success = true;
+        foreach ($chatIdsArray as $chatId) {
+            if (!sendZaloMessage($botToken, $chatId, $text, false, $leadId)) {
+                $success = false;
+            }
+        }
+        return $success;
+    }
+
     $url = "https://bot-api.zaloplatforms.com/bot" . $botToken . "/sendMessage";
     $multiHandle = curl_multi_init();
     $curlHandles = [];
-
-    // Lọc trùng ID và loại bỏ giá trị rỗng
-    $chatIdsArray = array_unique(array_filter($chatIdsArray));
 
     foreach ($chatIdsArray as $chatId) {
         $ch = curl_init($url);

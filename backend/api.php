@@ -394,40 +394,42 @@ function logAdminAction($conn, $accountId, $action, $details = [])
     }
 }
 
-function getTicketNotifyAdmins($conn)
-{
-    $res = $conn->query("SELECT account_id FROM ticket_notify_settings");
-    $adminIds = [];
-    if ($res) {
-        while ($row = $res->fetch_assoc()) {
-            $adminIds[] = (int) $row['account_id'];
+if (!function_exists('getTicketNotifyAdmins')) {
+    function getTicketNotifyAdmins($conn)
+    {
+        $res = $conn->query("SELECT account_id FROM ticket_notify_settings");
+        $adminIds = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $adminIds[] = (int) $row['account_id'];
+            }
         }
-    }
 
-    $admins = [];
-    if (!empty($adminIds)) {
-        $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
-        $types = str_repeat('i', count($adminIds));
-        $adminStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
-        $adminStmt->bind_param($types, ...$adminIds);
-        $adminStmt->execute();
-        $adminRes = $adminStmt->get_result();
-        if ($adminRes) {
-            while ($r = $adminRes->fetch_assoc()) {
-                $admins[] = $r;
+        $admins = [];
+        if (!empty($adminIds)) {
+            $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+            $types = str_repeat('i', count($adminIds));
+            $adminStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+            $adminStmt->bind_param($types, ...$adminIds);
+            $adminStmt->execute();
+            $adminRes = $adminStmt->get_result();
+            if ($adminRes) {
+                while ($r = $adminRes->fetch_assoc()) {
+                    $admins[] = $r;
+                }
+            }
+            $adminStmt->close();
+        } else {
+            // Fallback: role = 'admin' OR id = 1
+            $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+            if ($adminRes) {
+                while ($r = $adminRes->fetch_assoc()) {
+                    $admins[] = $r;
+                }
             }
         }
-        $adminStmt->close();
-    } else {
-        // Fallback: role = 'admin' OR id = 1
-        $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
-        if ($adminRes) {
-            while ($r = $adminRes->fetch_assoc()) {
-                $admins[] = $r;
-            }
-        }
+        return $admins;
     }
-    return $admins;
 }
 
 switch ($action) {
@@ -1352,6 +1354,8 @@ switch ($action) {
             $dateCondition = "dl.received_at >= '$start 00:00:00' AND dl.received_at <= '$end 23:59:59'";
         }
 
+        $dateConditionSubQuery = str_replace('dl.received_at', 'received_at', $dateCondition);
+
         $extraCondition = "1=1";
         $isFilteringActive = false;
 
@@ -1405,7 +1409,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' AND $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             $joinLeads 
@@ -1461,7 +1465,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' AND $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
@@ -2301,7 +2305,7 @@ switch ($action) {
                                 . "⚠️ Vui lòng lưu ý để điều chỉnh nếu cần thiết.";
                         }
                         try {
-                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg, false);
                         } catch (Exception $zEx) {
                             error_log("Error sending toggle vacation Zalo warning: " . $zEx->getMessage());
                         }
@@ -3623,6 +3627,8 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_TIMEOUT, 15); // MISSING-FIX: Tránh server treo vô hạn khi Google Sheets không phản hồi
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        // Force IPv4 to prevent misconfigured IPv6 gateway from causing connection timeout
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -4140,7 +4146,7 @@ switch ($action) {
                         . "  • Luật áp dụng: $matchedRuleName\n"
                         . "  • Từ khóa tự động: $matchedKeyword\n\n"
                         . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
-                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                 }
 
                 // Send Email to Sale
@@ -4178,7 +4184,7 @@ switch ($action) {
                                 . "  • Lý do: $reason\n"
                                 . "  • Từ khóa kích hoạt: $matchedKeyword\n\n"
                                 . "Lượt đền bù đã được tự động cộng cho Sale.";
-                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                         }
                     }
 
@@ -4288,7 +4294,7 @@ switch ($action) {
                         }
                     }
                     if (!empty($adminChatIds)) {
-                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg, false);
                     }
                 }
             }
@@ -4703,7 +4709,7 @@ switch ($action) {
                         . "❖ LÝ DO DUYỆT:\n"
                         . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
                         . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
-                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                 } catch (Exception $zEx1) {
                     error_log("Error sending Zalo message to consultant in approve_report: " . $zEx1->getMessage());
                 }
@@ -4727,7 +4733,7 @@ switch ($action) {
                             . "  • Lỗi báo cáo: {$report['reason']}\n\n"
                             . "❖ LÝ DO DUYỆT:\n"
                             . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể");
-                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                     } catch (Exception $zEx2) {
                         error_log("Error sending Zalo message to multiple admins in approve_report: " . $zEx2->getMessage());
                     }
@@ -4978,7 +4984,7 @@ switch ($action) {
                         . "❖ LÝ DO TỪ CHỐI:\n"
                         . "  $reject_reason\n\n"
                         . "Bạn sẽ không được đền bù Data cho trường hợp này.";
-                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg);
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                 } catch (Exception $zEx1) {
                     error_log("Error sending Zalo to sale in reject_report: " . $zEx1->getMessage());
                 }
@@ -5002,7 +5008,7 @@ switch ($action) {
                             . "  • Lỗi báo cáo: {$report['reason']}\n\n"
                             . "❖ LÝ DO TỪ CHỐI:\n"
                             . "  $reject_reason";
-                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                     } catch (Exception $zEx2) {
                         error_log("Error sending Zalo to multiple admins in reject_report: " . $zEx2->getMessage());
                     }
@@ -5372,22 +5378,23 @@ switch ($action) {
                 return $res;
             };
 
-            // 1. Fetch general statistics
-            // Total leads overall
-            $totalLeadsSql = "SELECT COUNT(*) as cnt FROM leads l WHERE $dateCondition";
-            $totalLeads = (int) ($safeQuery($totalLeadsSql)->fetch_assoc()['cnt'] ?? 0);
+            // Calculate 4 categories
+            $countDuyetSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status = 'active' AND l.ai_screener_status = 'passed' AND l.note NOT LIKE '%[Duyệt %' AND $dateCondition";
+            $countDuyet = (int) ($safeQuery($countDuyetSql)->fetch_assoc()['cnt'] ?? 0);
 
-            // Total under-standard leads (giam & huy & approved)
-            $totalBelowStandardSql = "SELECT COUNT(*) as cnt FROM leads l WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition";
-            $totalBelowStandard = (int) ($safeQuery($totalBelowStandardSql)->fetch_assoc()['cnt'] ?? 0);
+            $countAiGiuSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status = 'pending_approval' AND $dateCondition";
+            $countAiGiu = (int) ($safeQuery($countAiGiuSql)->fetch_assoc()['cnt'] ?? 0);
 
-            // Total held (giam)
-            $totalHeldSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status = 'pending_approval' AND $dateCondition";
-            $totalHeld = (int) ($safeQuery($totalHeldSql)->fetch_assoc()['cnt'] ?? 0);
+            $countDuoiChuanSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition";
+            $countDuoiChuan = (int) ($safeQuery($countDuoiChuanSql)->fetch_assoc()['cnt'] ?? 0);
 
-            // Total rejected/blacklisted (huy)
-            $totalRejectedSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition";
-            $totalRejected = (int) ($safeQuery($totalRejectedSql)->fetch_assoc()['cnt'] ?? 0);
+            $countGiaoLeadSql = "SELECT COUNT(*) as cnt FROM leads l WHERE l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %') AND $dateCondition";
+            $countGiaoLead = (int) ($safeQuery($countGiaoLeadSql)->fetch_assoc()['cnt'] ?? 0);
+
+            $totalLeads = $countDuyet + $countAiGiu + $countDuoiChuan + $countGiaoLead;
+            $totalBelowStandard = $countAiGiu + $countDuoiChuan + $countGiaoLead;
+            $totalHeld = $countAiGiu;
+            $totalRejected = $countDuoiChuan;
 
             $ratio = $totalLeads > 0 ? round(($totalBelowStandard / $totalLeads) * 100, 1) : 0;
 
@@ -5488,12 +5495,187 @@ switch ($action) {
                     'total_below_standard' => $totalBelowStandard,
                     'ratio_below_standard' => $ratio,
                     'total_held' => $totalHeld,
-                    'total_rejected' => $totalRejected
+                    'total_rejected' => $totalRejected,
+                    'count_duyet' => $countDuyet,
+                    'count_ai_giu' => $countAiGiu,
+                    'count_duoi_chuan' => $countDuoiChuan,
+                    'count_giao_lead' => $countGiaoLead
                 ],
                 'rounds_breakdown' => $roundsBreakdown,
                 'sources_breakdown' => $sourcesBreakdown,
                 'reasons_breakdown' => $reasonsBreakdown,
                 'recent_below_standard' => $recentBelowStandard
+            ]);
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi SQL/PHP: ' . $e->getMessage()
+            ]);
+        }
+        break;
+
+    case 'get_ai_token_stats':
+        try {
+            $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
+
+            // Parse date condition using l.created_at
+            $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            if ($date === 'all' || $date === '') {
+                $dateCondition = "1=1";
+            } else if ($date === 'Hôm nay') {
+                $dateCondition = "l.created_at >= CURDATE() AND l.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+            } else if ($date === 'Hôm qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND l.created_at < CURDATE()";
+            } else if ($date === 'Tuần này') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND l.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === 'Tuần trước') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            } else if ($date === 'Tuần trước nữa') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === '7 ngày qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            } else if ($date === '30 ngày qua') {
+                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            } else if ($date === 'Tháng này') {
+                $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            } else if ($date === 'Tháng trước') {
+                $dateCondition = "l.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND l.created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+            } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+                $start = $conn->real_escape_string($matches[1]);
+                $end = $conn->real_escape_string($matches[2]);
+                $dateCondition = "l.created_at >= '$start 00:00:00' AND l.created_at <= '$end 23:59:59'";
+            }
+
+            // Helper to execute query safely and throw exception on error
+            $safeQuery = function ($sql) use ($conn) {
+                $res = $conn->query($sql);
+                if (!$res) {
+                    throw new Exception("Query failed: " . $conn->error . " | SQL: " . $sql);
+                }
+                return $res;
+            };
+
+            // 1. General stats
+            $genSql = "
+                SELECT 
+                    COUNT(*) as total_leads,
+                    IFNULL(SUM(l.ai_prompt_tokens), 0) as prompt_tokens,
+                    IFNULL(SUM(l.ai_completion_tokens), 0) as completion_tokens,
+                    IFNULL(SUM(l.ai_total_tokens), 0) as total_tokens
+                FROM leads l
+                WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
+            ";
+            $genRow = $safeQuery($genSql)->fetch_assoc();
+            $stats = [
+                'total_leads' => (int)($genRow['total_leads'] ?? 0),
+                'prompt_tokens' => (int)($genRow['prompt_tokens'] ?? 0),
+                'completion_tokens' => (int)($genRow['completion_tokens'] ?? 0),
+                'total_tokens' => (int)($genRow['total_tokens'] ?? 0)
+            ];
+
+            // 2. Breakdown by Rounds
+            $roundsSql = "
+                SELECT 
+                    l.target_round_id, 
+                    COALESCE(dr.round_name, 'Chưa phân vòng') as round_name, 
+                    COUNT(*) as lead_count,
+                    IFNULL(SUM(l.ai_prompt_tokens), 0) as prompt_tokens,
+                    IFNULL(SUM(l.ai_completion_tokens), 0) as completion_tokens,
+                    IFNULL(SUM(l.ai_total_tokens), 0) as total_tokens
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
+                GROUP BY l.target_round_id, dr.round_name
+                ORDER BY total_tokens DESC
+            ";
+            $roundsRes = $safeQuery($roundsSql);
+            $roundsBreakdown = [];
+            while ($row = $roundsRes->fetch_assoc()) {
+                $roundsBreakdown[] = [
+                    'round_id' => $row['target_round_id'],
+                    'round_name' => $row['round_name'],
+                    'lead_count' => (int)$row['lead_count'],
+                    'prompt_tokens' => (int)$row['prompt_tokens'],
+                    'completion_tokens' => (int)$row['completion_tokens'],
+                    'total_tokens' => (int)$row['total_tokens']
+                ];
+            }
+
+            // 3. Breakdown by Connection
+            $sourcesSql = "
+                SELECT 
+                    l.connection_id,
+                    COALESCE(sc.sheet_name, l.source, 'Khác/Tự nhập') as source_name,
+                    COUNT(*) as lead_count,
+                    IFNULL(SUM(l.ai_prompt_tokens), 0) as prompt_tokens,
+                    IFNULL(SUM(l.ai_completion_tokens), 0) as completion_tokens,
+                    IFNULL(SUM(l.ai_total_tokens), 0) as total_tokens
+                FROM leads l
+                LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+                WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
+                GROUP BY l.connection_id, sc.sheet_name, l.source
+                ORDER BY total_tokens DESC
+            ";
+            $sourcesRes = $safeQuery($sourcesSql);
+            $sourcesBreakdown = [];
+            while ($row = $sourcesRes->fetch_assoc()) {
+                $sourcesBreakdown[] = [
+                    'connection_id' => $row['connection_id'],
+                    'source_name' => $row['source_name'],
+                    'lead_count' => (int)$row['lead_count'],
+                    'prompt_tokens' => (int)$row['prompt_tokens'],
+                    'completion_tokens' => (int)$row['completion_tokens'],
+                    'total_tokens' => (int)$row['total_tokens']
+                ];
+            }
+
+            // 4. Recent AI leads (Paginated for performance optimization)
+            $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+            $pageSize = isset($_GET['pageSize']) ? max(1, (int)$_GET['pageSize']) : 20;
+            $offset = ($page - 1) * $pageSize;
+
+            $countSql = "
+                SELECT COUNT(*) as cnt 
+                FROM leads l 
+                WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
+            ";
+            $countRow = $safeQuery($countSql)->fetch_assoc();
+            $totalRecentLeads = (int)($countRow['cnt'] ?? 0);
+
+            $recentSql = "
+                SELECT 
+                    l.id, 
+                    l.name, 
+                    l.phone, 
+                    l.email, 
+                    l.source, 
+                    l.ai_screener_status, 
+                    l.ai_prompt_tokens, 
+                    l.ai_completion_tokens, 
+                    l.ai_total_tokens, 
+                    l.created_at, 
+                    COALESCE(dr.round_name, 'Chưa phân vòng') as round_name
+                FROM leads l
+                LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
+                ORDER BY l.created_at DESC
+                LIMIT $pageSize OFFSET $offset
+            ";
+            $recentRes = $safeQuery($recentSql);
+            $recentLeads = [];
+            while ($row = $recentRes->fetch_assoc()) {
+                $recentLeads[] = $row;
+            }
+
+            echo json_encode([
+                'success' => true,
+                'stats' => $stats,
+                'rounds_breakdown' => $roundsBreakdown,
+                'sources_breakdown' => $sourcesBreakdown,
+                'recent_leads' => $recentLeads,
+                'total_recent_leads' => $totalRecentLeads
             ]);
 
         } catch (Throwable $e) {
@@ -6951,7 +7133,7 @@ switch ($action) {
         } else {
             $subject = "Test Cấu hình Email từ DOMATION";
             $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p><p style='color:#64748b;font-size:14px;'>Gửi lúc: " . date('d/m/Y H:i:s') . "</p>";
-            $success = sendEmailNotification($email, $subject, "Kết nối thành công ✅", $body);
+            $success = sendEmailNotification($email, $subject, "Kết nối thành công ✅", $body, '', true);
         }
 
         echo json_encode(['success' => $success, 'message' => $success ? 'Email đã được gửi thành công!' : 'Gửi email thất bại, kiểm tra cấu hình.']);
@@ -8247,7 +8429,7 @@ switch ($action) {
                                     . "Chào $zName,\n"
                                     . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Domation DATA.\n\n"
                                     . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
-                                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg);
+                                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
                             }
                         } catch (Exception $zaloEx) {
                             error_log("Failed to send Zalo message to admin " . $admin['id'] . ": " . $zaloEx->getMessage());
@@ -8330,7 +8512,7 @@ switch ($action) {
                      INNER JOIN (
                          SELECT lead_id, MAX(id) as max_id 
                          FROM distribution_logs 
-                         WHERE status != 'silent'
+                         WHERE status != 'silent' AND $dateCondition
                          GROUP BY lead_id
                      ) dl_max ON dl.id = dl_max.max_id
                      WHERE $dateConditionDl 
@@ -8379,7 +8561,7 @@ switch ($action) {
                          INNER JOIN (
                              SELECT lead_id, MAX(id) as max_id 
                              FROM distribution_logs 
-                             WHERE status != 'silent'
+                             WHERE status != 'silent' AND $prevDateCondition
                              GROUP BY lead_id
                          ) dl_max ON dl.id = dl_max.max_id
                          WHERE $prevDateConditionDl 
@@ -8511,7 +8693,7 @@ switch ($action) {
                           INNER JOIN (
                               SELECT lead_id, MAX(id) as max_id 
                               FROM distribution_logs 
-                              WHERE status != 'silent'
+                              WHERE status != 'silent' AND $dateCondition
                               GROUP BY lead_id
                           ) dl_max ON dl.id = dl_max.max_id
                           WHERE $dateConditionDl 
@@ -8535,7 +8717,7 @@ switch ($action) {
                          INNER JOIN (
                              SELECT lead_id, MAX(id) as max_id 
                              FROM distribution_logs 
-                             WHERE status != 'silent'
+                             WHERE status != 'silent' AND $dateCondition
                              GROUP BY lead_id
                          ) dl_max ON dl.id = dl_max.max_id
                          WHERE $dateConditionDl 
@@ -8555,7 +8737,7 @@ switch ($action) {
                               INNER JOIN (
                                   SELECT lead_id, MAX(id) as max_id 
                                   FROM distribution_logs 
-                                  WHERE status != 'silent'
+                                  WHERE status != 'silent' AND $dateCondition
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
@@ -8760,9 +8942,40 @@ switch ($action) {
             $aiEnabled = (int) $row['setting_value'];
         }
 
+        // Query communication stats (Zalo/Email/Tokens) for dashboard modal
+        $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
+        
+        $totalZaloSent = 0;
+        $zaloSentRes = $conn->query("SELECT COUNT(*) as cnt FROM communication_logs WHERE type = 'zalo' AND status = 'sent' AND $dateConditionSent");
+        if ($zaloSentRes && $row = $zaloSentRes->fetch_assoc()) {
+            $totalZaloSent = (int)$row['cnt'];
+        }
+
+        $totalEmailsSent = 0;
+        $emailsSentRes = $conn->query("SELECT COUNT(*) as cnt FROM communication_logs WHERE type = 'email' AND status = 'sent' AND $dateConditionSent");
+        if ($emailsSentRes && $row = $emailsSentRes->fetch_assoc()) {
+            $totalEmailsSent = (int)$row['cnt'];
+        }
+
+        $totalTokensUsed = 0;
+        $totalPromptTokensUsed = 0;
+        $totalCompletionTokensUsed = 0;
+        $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionCreated");
+        if ($tokensRes && $row = $tokensRes->fetch_assoc()) {
+            $totalTokensUsed = (int)$row['cnt'];
+            $totalPromptTokensUsed = (int)$row['prompt_cnt'];
+            $totalCompletionTokensUsed = (int)$row['completion_cnt'];
+        }
+
         echo json_encode([
             'success' => true,
             'data' => [
+                'db_needs_migration' => $GLOBALS['db_needs_migration'] ?? false,
+                'total_zalo_sent' => $totalZaloSent,
+                'total_emails_sent' => $totalEmailsSent,
+                'total_tokens_used' => $totalTokensUsed,
+                'total_prompt_tokens_used' => $totalPromptTokensUsed,
+                'total_completion_tokens_used' => $totalCompletionTokensUsed,
                 'total_today' => (int) $statsRes['total'],
                 'distributed_today' => (int) $statsRes['distributed'],
                 'distributed_assigned' => (int) $assigned_total,
@@ -9587,7 +9800,7 @@ switch ($action) {
                                         . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
                                         . "━━━━━━━━━━━━━━━━━━━━━";
                                 }
-                                sendZaloMessage($botToken, $oldCZalo, $zaloMsg);
+                                sendZaloMessage($botToken, $oldCZalo, $zaloMsg, false);
                             } catch (Exception $zEx) {
                                 error_log("Error sending Zalo reassign message to old sale: " . $zEx->getMessage());
                             }
@@ -9925,7 +10138,7 @@ switch ($action) {
                             . "  • Vòng phân bổ: $round_name\n"
                             . "  • Sale phụ trách cũ: $old_consultant_name\n"
                             . "  • Đền bù cho Sale: " . ($compensate_sale ? "Có (Đã cộng 1 lượt bù)" : "Không");
-                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg);
+                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
                     } catch (Exception $zAdminEx) {
                         error_log("Error sending block lead Zalo to admins: " . $zAdminEx->getMessage());
                     }
@@ -9971,7 +10184,7 @@ switch ($action) {
                             . "  • SĐT: " . (!empty($maskedPhone) ? $maskedPhone : "Không có") . "\n"
                             . "  • Email: " . (!empty($maskedEmail) ? $maskedEmail : "Không có") . "\n\n"
                             . "Hệ thống đã tự động cộng đền bù cho bạn 1 lượt data ở vòng \"$round_name\".";
-                        sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg);
+                        sendZaloMessage($botToken, $old_consultant_zalo, $zaloMsg, false);
                     } catch (Exception $zEx) {
                         error_log("Error sending block lead Zalo to sale: " . $zEx->getMessage());
                     }
@@ -10862,6 +11075,8 @@ switch ($action) {
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        // Force IPv4 to prevent misconfigured IPv6 gateway from causing connection timeout
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
