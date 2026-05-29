@@ -5656,7 +5656,12 @@ switch ($action) {
     case 'get_ai_token_stats':
         try {
             $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
-            $dateField = "COALESCE(l.ai_screening_started_at, l.created_at)";
+            $dbVer = 0;
+            $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
+            if ($vStmt && $vStmt->num_rows > 0) {
+                $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
+            }
+            $dateField = ($dbVer >= 140) ? "COALESCE(l.ai_screening_started_at, l.created_at)" : "l.created_at";
 
             // Parse date condition using l.created_at fallback
             $dateCondition = "$dateField >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND $dateField < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
@@ -5793,12 +5798,12 @@ switch ($action) {
                     l.ai_prompt_tokens, 
                     l.ai_completion_tokens, 
                     l.ai_total_tokens, 
-                    COALESCE(l.ai_screening_started_at, l.created_at) as created_at, 
+                    " . (($dbVer >= 140) ? "COALESCE(l.ai_screening_started_at, l.created_at)" : "l.created_at") . " as created_at, 
                     COALESCE(dr.round_name, 'Chưa phân vòng') as round_name
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
                 WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
-                ORDER BY COALESCE(l.ai_screening_started_at, l.created_at) DESC
+                ORDER BY " . (($dbVer >= 140) ? "COALESCE(l.ai_screening_started_at, l.created_at)" : "l.created_at") . " DESC
                 LIMIT $pageSize OFFSET $offset
             ";
             $recentRes = $safeQuery($recentSql);
@@ -8643,6 +8648,11 @@ switch ($action) {
 
     case 'get_dashboard_stats':
         $date = $_GET['date'] ?? 'Hôm nay';
+        $dbVer = 0;
+        $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
+        if ($vStmt && $vStmt->num_rows > 0) {
+            $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
+        }
 
         // Define date filters - SARGable for performance
         $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
@@ -8800,7 +8810,9 @@ switch ($action) {
         // Query AI Pre-screener statistics (passed vs failed)
         $aiPassedCount = 0;
         $aiFailedCount = 0;
-        $dateConditionAI = str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition);
+        $dateConditionAI = ($dbVer >= 140)
+            ? str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition)
+            : str_replace('received_at', 'created_at', $dateCondition);
         $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionAI AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
         $aiScreenerRes = $conn->query($aiScreenerSql);
         if ($aiScreenerRes) {
@@ -9138,7 +9150,9 @@ switch ($action) {
         $totalTokensUsed = 0;
         $totalPromptTokensUsed = 0;
         $totalCompletionTokensUsed = 0;
-        $dateConditionAI = str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition);
+        $dateConditionAI = ($dbVer >= 140)
+            ? str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition)
+            : str_replace('received_at', 'created_at', $dateCondition);
         $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionAI");
         if ($tokensRes && $row = $tokensRes->fetch_assoc()) {
             $totalTokensUsed = (int)$row['cnt'];
