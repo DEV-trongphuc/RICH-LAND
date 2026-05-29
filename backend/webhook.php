@@ -585,6 +585,13 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
 // --- 3. Round-Robin Assignment & 4. Process new Lead and Log Distribution (Unified Transaction) ---
 $conn->begin_transaction();
 try {
+    $dupSuffix = '';
+    if ($crmCheckResult['isDuplicate']) {
+        $oldSaleName = !empty($crmCheckResult['assignedName']) ? $crmCheckResult['assignedName'] : 'Không rõ';
+        $oldSaleMonths = $crmCheckResult['monthsSinceLastInteraction'];
+        $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
+    }
+
     if ($targetRoundId) {
         $assignResult = getNextConsultantInRound($conn, $targetRoundId);
         if ($assignResult) {
@@ -593,6 +600,7 @@ try {
             $message = $assignResult['is_compensation'] 
                 ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
                 : 'Được phân bổ tự động qua vòng xoay.';
+            $message .= $dupSuffix;
 
             // Check working hours
             $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -612,8 +620,11 @@ try {
             $whStmt->close();
         } else {
             $status = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
-            $message = (isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round.';
+            $message = ((isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round.') . $dupSuffix;
         }
+    } else {
+        $status = 'unassigned';
+        $message = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.' . $dupSuffix;
     }
 
     if ($crmCheckResult['leadExists']) {

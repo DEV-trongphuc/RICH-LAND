@@ -5931,6 +5931,22 @@ switch ($action) {
                 $isDuplicate = true;
             }
 
+            $dupSuffix = '';
+            if ($crmCheckResult['isDuplicate']) {
+                $oldSaleName = !empty($crmCheckResult['assignedName']) ? $crmCheckResult['assignedName'] : 'Không rõ';
+                $oldSaleMonths = $crmCheckResult['monthsSinceLastInteraction'];
+                $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
+            }
+
+            // Append duplicate note if duplicate exists
+            if ($crmCheckResult['isDuplicate']) {
+                $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';
+                $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';
+                $dupMonths = $crmCheckResult['monthsSinceLastInteraction'] ?? $dupCheckMonths;
+                $noteAppend = "\n[Lưu ý: Trùng số của $prevName trên $dupMonths tháng. Cập nhật lần cuối: $prevDate]";
+                $lead['note'] .= $noteAppend;
+            }
+
             // Run Round Robin assignment
             if ($isDuplicate) {
                 // Skip Round-Robin, keep duplicate owner
@@ -5942,6 +5958,7 @@ switch ($action) {
                     $message = $assignResult['is_compensation']
                         ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.')
                         : 'Được phân bổ tự động qua vòng xoay.';
+                    $message .= $dupSuffix;
 
                     // Check work hours
                     $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -5961,7 +5978,7 @@ switch ($action) {
                     $whStmt->close();
                 } else {
                     $status = 'pending';
-                    $message = 'No active consultants in this round.';
+                    $message = 'No active consultants in this round.' . $dupSuffix;
                 }
             } else {
                 // Direct routing to Fallback Admin

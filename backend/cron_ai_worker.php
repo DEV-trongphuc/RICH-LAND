@@ -260,6 +260,13 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
         $isDuplicate = true;
     }
 
+    $dupSuffix = '';
+    if ($crmCheckResult['isDuplicate']) {
+        $oldSaleName = !empty($crmCheckResult['assignedName']) ? $crmCheckResult['assignedName'] : 'Không rõ';
+        $oldSaleMonths = $crmCheckResult['monthsSinceLastInteraction'];
+        $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
+    }
+
     if ($isDuplicate) {
         // Skip Round-Robin, keep duplicate owner
     } else if ($targetRoundId) {
@@ -270,6 +277,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
             $message = $assignResult['is_compensation'] 
                 ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (Chạy ngầm).' : 'Được phân bổ đền bù lượt lỗi (Chạy ngầm).') 
                 : 'Được phân bổ tự động qua vòng xoay (Chạy ngầm).';
+            $message .= $dupSuffix;
 
             // Check working hours
             $whStart = '00:00';
@@ -292,7 +300,11 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                 $status = 'pending_work_hours';
                 $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
             }
+        } else {
+            $message = 'Không có tư vấn viên hoạt động trong vòng xoay.' . $dupSuffix;
         }
+    } else {
+        $message = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.' . $dupSuffix;
     }
 
     $conn->begin_transaction();
@@ -307,6 +319,16 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
         $updLead->bind_param("sisssiii", $leadStatus, $assignedConsultantId, $aiStatus, $aiEval, $promptT, $completionT, $totalT, $leadId);
         $updLead->execute();
         $updLead->close();
+
+        // Append duplicate note if duplicate exists
+        if ($crmCheckResult['isDuplicate']) {
+            $prevName = $crmCheckResult['assignedName'] ?? 'Sale cũ';
+            $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';
+            $dupMonths = $crmCheckResult['monthsSinceLastInteraction'] ?? $dupCheckMonths;
+            $noteAppend = "\n[Lưu ý: Trùng số của $prevName trên $dupMonths tháng. Cập nhật lần cuối: $prevDate]";
+            
+            $conn->query("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '" . $conn->real_escape_string($noteAppend) . "') WHERE id = " . (int)$leadId);
+        }
 
         $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
         $chkLog->bind_param("i", $leadId);
