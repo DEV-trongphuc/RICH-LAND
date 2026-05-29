@@ -133,6 +133,121 @@ if (!function_exists('sendSheetSyncErrorAlert')) {
     }
 }
 
+if (!function_exists('sendSheetSyncDeescalateAlert')) {
+    function sendSheetSyncDeescalateAlert($conn, $connItem) {
+        logSync("Sending de-escalation final alert for connection {$connItem['sheet_name']}...");
+        
+        $sheetName = $connItem['sheet_name'];
+        $spreadsheetId = $connItem['spreadsheet_id'] ?? 'Không rõ';
+        $lastError = $connItem['last_error'] ?? 'Không rõ';
+        $timeStr = date('d/m/Y H:i:s');
+        
+        $admins = getTicketNotifyAdmins($conn);
+        if (empty($admins)) {
+            return;
+        }
+        
+        $botToken = get_system_setting($conn, 'zalo_bot_token');
+        if (!empty($botToken)) {
+            $zaloMsg = "🚨 [ CẢNH BÁO: TỰ ĐỘNG TẠM DỪNG KẾT NỐI SHEETS ]\n\n"
+                     . "- Kết nối: $sheetName\n"
+                     . "- ID Bảng tính: " . (strlen($spreadsheetId) > 20 ? substr($spreadsheetId, 0, 10) . '...' . substr($spreadsheetId, -10) : $spreadsheetId) . "\n"
+                     . "- Trạng thái: Đã tự động TẠM DỪNG HOẠT ĐỘNG (is_active = 0)\n"
+                     . "- Lý do: Lỗi đồng bộ liên tục kéo dài hơn 24 giờ.\n"
+                     . "- Chi tiết lỗi cuối: $lastError\n\n"
+                     . "Vui lòng kiểm tra lại quyền truy cập hoặc thiết lập trang tính, sau đó BẬT lại kết nối trong CRM.";
+                     
+            foreach ($admins as $admin) {
+                if (!empty($admin['zalo_chat_id'])) {
+                    try {
+                        sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
+                    } catch (Exception $zEx) {
+                        logSync("Error sending Zalo de-escalation alert: " . $zEx->getMessage());
+                    }
+                }
+            }
+        }
+        
+        $frontendUrl = get_system_setting($conn, 'frontend_url');
+        if (empty($frontendUrl)) {
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
+        }
+        $frontendUrl = rtrim($frontendUrl, '/');
+        
+        $emailContent = '
+        <p>Xin chào Admin,</p>
+        <p>Hệ thống đã <strong>TỰ ĐỘNG TẠM DỪNG HOẠT ĐỘNG</strong> của kết nối trang tính sau do lỗi liên tục kéo dài hơn 24 giờ:</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 150px; background-color: #f8fafc;">Tên kết nối:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">' . htmlspecialchars($sheetName) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Spreadsheet ID:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-family: monospace;">' . htmlspecialchars($spreadsheetId) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; color: #dc2626;">Trạng thái mới:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: bold;">TẠM DỪNG (is_active = 0)</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Chi tiết lỗi cuối:</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; color: #475569;">' . htmlspecialchars($lastError) . '</td>
+            </tr>
+        </table>
+        <p>Sau khi sửa xong lỗi trang tính, vui lòng bật lại tại trang quản trị <a href="' . $frontendUrl . '/integrations">Cấu hình tích hợp</a>.</p>
+        ';
+        
+        foreach ($admins as $admin) {
+            if (!empty($admin['email'])) {
+                try {
+                    sendEmailNotification(
+                        $admin['email'],
+                        "[CẢNH BÁO HỆ THỐNG] Tự động tạm dừng kết nối Google Sheets - " . $sheetName,
+                        "TỰ ĐỘNG TẠM DỪNG KẾT NỐI SHEETS",
+                        $emailContent,
+                        '',
+                        false
+                    );
+                } catch (Exception $eEx) {
+                    logSync("Error sending Email de-escalation alert: " . $eEx->getMessage());
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('deescalateFailedConnections')) {
+    function deescalateFailedConnections($conn) {
+        logSync("Checking for failed sheet connections to de-escalate...");
+        
+        $sql = "SELECT * FROM sheet_connections 
+                WHERE is_active = 1 
+                  AND sync_status = 'error' 
+                  AND (
+                      (last_sync_at IS NOT NULL AND last_sync_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                      OR (last_sync_at IS NULL AND created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR))
+                  )";
+        $res = $conn->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($connItem = $res->fetch_assoc()) {
+                logSync("De-escalating Connection ID {$connItem['id']} - {$connItem['sheet_name']} (In error for > 24 hours).");
+                
+                $upStmt = $conn->prepare("UPDATE sheet_connections SET is_active = 0, sync_status = 'idle', last_error = CONCAT(last_error, ' [Tự động tắt do lỗi liên tục > 24h]') WHERE id = ?");
+                if ($upStmt) {
+                    $upStmt->bind_param("i", $connItem['id']);
+                    $upStmt->execute();
+                    $upStmt->close();
+                }
+                
+                sendSheetSyncDeescalateAlert($conn, $connItem);
+            }
+        }
+    }
+}
+
 if (!function_exists('releasePendingWorkHoursLeads')) {
     function releasePendingWorkHoursLeads($conn) {
         logSync("Checking for pending work hours leads to release...");
@@ -728,6 +843,7 @@ if (!function_exists('recallInactiveLeads')) {
 
 logSync("Starting Google Sheets Sync Cronjob...");
 if (!isset($argv[1])) {
+    deescalateFailedConnections($conn);
     releasePendingWorkHoursLeads($conn);
     recallInactiveLeads($conn);
 }
@@ -776,7 +892,7 @@ foreach ($connections as $connItem) {
     $upStmt->close();
 
     if ($affected === 0) {
-        logSync("Skipping ID {$connItem['id']}: Already syncing in another process.");
+        logSync("Skipping ID {$connItem['id']}: Connection is in error status or already syncing.");
         continue;
     }
 

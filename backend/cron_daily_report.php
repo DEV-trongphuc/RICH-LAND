@@ -321,6 +321,9 @@ function runDailyReportCron($conn)
                 }
             }
         }
+
+        // 4. Prune old system logs (admin_logs, communication_logs) daily
+        pruneAdminLogs($conn);
     }
 }
 

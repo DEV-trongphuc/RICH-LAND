@@ -395,7 +395,11 @@ if ($isSilent == 1) {
         }
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, dữ liệu trùng lặp (Duplicate Key) đã tồn tại."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        }
         releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
@@ -446,7 +450,11 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         }
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Khách cũ trùng lặp (Duplicate Key) đã tồn tại."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        }
         releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
@@ -530,7 +538,11 @@ if ($aiScreenerResult && $aiScreenerResult['status'] === 'pending') {
         }
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu trùng lặp (Duplicate Key) đã tồn tại trong hàng chờ duyệt AI."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        }
         releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
@@ -563,7 +575,11 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
         }
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu trùng lặp (Duplicate Key) đã tồn tại trong hàng chờ duyệt AI."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+        }
         releaseAdvisoryLock($conn, $lockKey, $lockReleased);
         exit();
     }
@@ -656,7 +672,11 @@ try {
     }
 } catch (Exception $e) {
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+    if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+        echo json_encode(["success" => true, "status" => "duplicate", "message" => "Dữ liệu trùng lặp (Duplicate Key) đã tồn tại và đã được phân bổ."]);
+    } else {
+        echo json_encode(["success" => false, "message" => "Lỗi Database: Hệ thống đang bận, vui lòng thử lại sau."]);
+    }
     releaseAdvisoryLock($conn, $lockKey, $lockReleased);
     exit();
 }

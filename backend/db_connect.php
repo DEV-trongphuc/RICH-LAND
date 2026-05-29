@@ -139,6 +139,12 @@ if (!function_exists('pruneAdminLogs')) {
             ) tmp
         )");
         */
+
+        // Tạm thời tắt tự động dọn dẹp theo yêu cầu của Admin để giữ lại toàn bộ dữ liệu lịch sử
+        /*
+        $conn->query("DELETE FROM admin_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)");
+        $conn->query("DELETE FROM communication_logs WHERE sent_at < DATE_SUB(NOW(), INTERVAL 90 DAY)");
+        */
     }
 }
 
