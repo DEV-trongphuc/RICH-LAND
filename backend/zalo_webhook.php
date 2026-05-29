@@ -580,7 +580,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         error_log("Error sending Zalo success message to admin: " . $zAdminSuccessEx->getMessage());
                     }
 
-                    // Thông báo Zalo cho các Ticket Admins khác (tránh gửi lại cho admin thực hiện lệnh)
+                    // [TẠM TẮT] Thông báo Zalo cho các Ticket Admins khác (tránh gửi lại cho admin thực hiện lệnh)
+                    /*
                     if (!empty($botToken) && !empty($adminEmails)) {
                         $adminChatIds = [];
                         foreach ($adminEmails as $adm) {
@@ -604,6 +605,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                             }
                         }
                     }
+                    */
 
                     // Thông báo qua Zalo Bot cho Sale
                     if ($consultant && !empty($consultant['zalo_chat_id'])) {
@@ -638,6 +640,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     }
                                 }
                             }
+                            // [TẠM TẮT CC ADMIN]
+                            /*
                             foreach ($adminEmails as $adm) {
                                 if (!empty($adm['email'])) {
                                     $email = trim($adm['email']);
@@ -646,6 +650,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     }
                                 }
                             }
+                            */
                             $ccEmailsArr = array_unique($ccEmailsArr);
                             $saleEmail = strtolower(trim($consultant['email']));
                             $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
@@ -813,7 +818,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         error_log("Error sending Zalo success message to admin: " . $zAdminSuccessEx->getMessage());
                     }
 
-                    // Thông báo Zalo cho các Ticket Admins khác (tránh gửi lại cho admin thực hiện lệnh)
+                    // [TẠM TẮT] Thông báo Zalo cho các Ticket Admins khác (tránh gửi lại cho admin thực hiện lệnh)
+                    /*
                     if (!empty($botToken) && !empty($adminEmails)) {
                         $adminChatIds = [];
                         foreach ($adminEmails as $adm) {
@@ -836,6 +842,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                             }
                         }
                     }
+                    */
 
                     // Thông báo qua Zalo Bot cho Sale
                     if ($consultant && !empty($consultant['zalo_chat_id'])) {
@@ -869,6 +876,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     }
                                 }
                             }
+                            // [TẠM TẮT CC ADMIN]
+                            /*
                             foreach ($adminEmails as $adm) {
                                 if (!empty($adm['email'])) {
                                     $email = trim($adm['email']);
@@ -877,6 +886,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                                     }
                                 }
                             }
+                            */
                             $ccEmailsArr = array_unique($ccEmailsArr);
                             $saleEmail = strtolower(trim($consultant['email']));
                             $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);

@@ -957,10 +957,7 @@ function getNextConsultantInRound($conn, $roundId)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
         $isAvailable = !$isOnVacation;
 
-        $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);
-        $shouldSkipConsecutiveRR = ($isAbsoluteLast && $activeCount > 1);
-
-        if ($isAvailable && !$shouldSkipConsecutiveRR) {
+        if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
             $skipCount = (int) ($candidate['skip_count'] ?? 0);
 
@@ -1370,10 +1367,7 @@ function simulateNextConsultantInRound($conn, $roundId)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
         $isAvailable = !$isOnVacation;
 
-        $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);
-        $shouldSkipConsecutiveRR = ($isAbsoluteLast && $activeCount > 1);
-
-        if ($isAvailable && !$shouldSkipConsecutiveRR) {
+        if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
             $skipCount = (int) ($candidate['skip_count'] ?? 0);
 

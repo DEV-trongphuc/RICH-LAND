@@ -840,10 +840,12 @@ foreach ($connections as $connItem) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $csvData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
-            throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode. Spreadsheet might be private or invalid.");
+            $errDetail = $curlError ? " (cURL Error: $curlError)" : "";
+            throw new Exception("Failed to fetch CSV. HTTP Code: $httpCode$errDetail. Spreadsheet might be private or invalid.");
         }
 
         // Parse CSV data using php://temp to prevent RAM exhaustion (writes to disk if > 2MB)
@@ -1512,5 +1514,7 @@ try {
     logSync("Error running sync queue from cron_sync: " . $queueEx->getMessage());
 }
 
-$conn->close();
+if (php_sapi_name() === 'cli') {
+    $conn->close();
+}
 

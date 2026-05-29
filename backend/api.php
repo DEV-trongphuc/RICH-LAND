@@ -4008,6 +4008,9 @@ switch ($action) {
                         // 1. Check round condition
                         $roundMatch = false;
                         $ruleRounds = $rule['rounds'] ?? [];
+                        if (!is_array($ruleRounds)) {
+                            $ruleRounds = is_string($ruleRounds) ? array_map('trim', explode(',', $ruleRounds)) : [$ruleRounds];
+                        }
                         if (empty($ruleRounds) || in_array('all', $ruleRounds) || in_array((string) $round_id, array_map('strval', $ruleRounds))) {
                             $roundMatch = true;
                         }
@@ -4018,6 +4021,9 @@ switch ($action) {
                         // 2. Check sale condition
                         $saleMatch = false;
                         $ruleSales = $rule['sales'] ?? [];
+                        if (!is_array($ruleSales)) {
+                            $ruleSales = is_string($ruleSales) ? array_map('trim', explode(',', $ruleSales)) : [$ruleSales];
+                        }
                         if (empty($ruleSales) || in_array('all', $ruleSales) || in_array((string) $sale_id, array_map('strval', $ruleSales))) {
                             $saleMatch = true;
                         }
@@ -4028,6 +4034,9 @@ switch ($action) {
                         // 3. Check source (connection_id) condition
                         $sourceMatch = false;
                         $ruleConnections = $rule['connections'] ?? [];
+                        if (!is_array($ruleConnections)) {
+                            $ruleConnections = is_string($ruleConnections) ? array_map('trim', explode(',', $ruleConnections)) : [$ruleConnections];
+                        }
                         if (empty($ruleConnections) || in_array('all', $ruleConnections) || in_array((string) $leadConnId, array_map('strval', $ruleConnections))) {
                             $sourceMatch = true;
                         }
@@ -4037,8 +4046,12 @@ switch ($action) {
 
                         // 4. Check keywords/reasons
                         $keywords = $rule['keywords'] ?? [];
-                        if (!is_array($keywords) && is_string($keywords)) {
-                            $keywords = array_map('trim', explode(',', $keywords));
+                        if (!is_array($keywords)) {
+                            if (is_string($keywords)) {
+                                $keywords = array_map('trim', explode(',', $keywords));
+                            } else {
+                                $keywords = [];
+                            }
                         }
                         $keywords = array_filter($keywords);
 
@@ -4696,7 +4709,8 @@ switch ($action) {
                 }
             }
 
-            // Zalo cho các Ticket Admins (trừ admin thực hiện nếu có zalo_chat_id)
+            // [TẠM TẮT] Zalo cho các Ticket Admins (trừ admin thực hiện nếu có zalo_chat_id)
+            /*
             if (!empty($botToken) && !empty($adminEmails)) {
                 $adminChatIds = [];
                 foreach ($adminEmails as $adm) {
@@ -4719,6 +4733,7 @@ switch ($action) {
                     }
                 }
             }
+            */
 
             // Thông báo qua Email cho Sale (kèm CC)
             if (!empty($consultant['email'])) {
@@ -4736,6 +4751,8 @@ switch ($action) {
                             }
                         }
                     }
+                    // [TẠM TẮT CC ADMIN]
+                    /*
                     foreach ($adminEmails as $adm) {
                         if (!empty($adm['email'])) {
                             $email = trim($adm['email']);
@@ -4744,6 +4761,7 @@ switch ($action) {
                             }
                         }
                     }
+                    */
                     $ccEmailsArr = array_unique($ccEmailsArr);
                     $saleEmail = strtolower(trim($consultant['email']));
                     $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
@@ -4966,7 +4984,8 @@ switch ($action) {
                 }
             }
 
-            // Zalo cho các Ticket Admins (trừ admin thực hiện)
+            // [TẠM TẮT] Zalo cho các Ticket Admins (trừ admin thực hiện)
+            /*
             if (!empty($botToken) && !empty($adminEmails)) {
                 $adminChatIds = [];
                 foreach ($adminEmails as $adm) {
@@ -4989,6 +5008,7 @@ switch ($action) {
                     }
                 }
             }
+            */
 
             // Thông báo qua Email (gửi cho Sale kèm CC)
             if (!empty($consultant['email'])) {
@@ -5006,6 +5026,8 @@ switch ($action) {
                             }
                         }
                     }
+                    // [TẠM TẮT CC ADMIN]
+                    /*
                     foreach ($adminEmails as $adm) {
                         if (!empty($adm['email'])) {
                             $email = trim($adm['email']);
@@ -5014,6 +5036,7 @@ switch ($action) {
                             }
                         }
                     }
+                    */
                     $ccEmailsArr = array_unique($ccEmailsArr);
                     $saleEmail = strtolower(trim($consultant['email']));
                     $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
@@ -8250,7 +8273,7 @@ switch ($action) {
                 $output = ob_get_clean();
                 logAdminAction($conn, $decodedUser['id'], 'FORCE_SYNC', ['connection_id' => $id]);
                 echo json_encode(['success' => true, 'output' => $output]);
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 ob_end_clean();
                 echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             }
