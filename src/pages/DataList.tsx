@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -281,7 +281,7 @@ export const DataList = () => {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const location = useLocation();
-  const isActive = location.pathname === '/data';
+  const isActive = location.pathname === '/data' || location.pathname === '/calendar';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -306,6 +306,7 @@ export const DataList = () => {
   }, []);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
   const dateFilter = searchParams.get('date') || 'this_month';
@@ -442,7 +443,7 @@ export const DataList = () => {
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   // Calendar View Mode States
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>(searchParams.get('view') === 'calendar' ? 'calendar' : 'list');
+  const viewMode = location.pathname === '/calendar' ? 'calendar' : 'list';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<any>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -450,6 +451,14 @@ export const DataList = () => {
   const [dayDetails, setDayDetails] = useState<any>(null);
   const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
   const [activeModalTab, setActiveModalTab] = useState<'sales' | 'tickets' | 'blacklist'>('sales');
+  const [expandedSales, setExpandedSales] = useState<Record<string, boolean>>({});
+
+  const toggleExpandSale = (saleName: string) => {
+    setExpandedSales(prev => ({
+      ...prev,
+      [saleName]: !prev[saleName]
+    }));
+  };
 
   const fetchCalendarStats = async () => {
     setCalendarLoading(true);
@@ -937,7 +946,7 @@ export const DataList = () => {
               <button
                 type="button"
                 className={`btn-toggle-view ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
+                onClick={() => navigate('/data')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -959,7 +968,7 @@ export const DataList = () => {
               <button
                 type="button"
                 className={`btn-toggle-view ${viewMode === 'calendar' ? 'active' : ''}`}
-                onClick={() => setViewMode('calendar')}
+                onClick={() => navigate('/calendar')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -2478,7 +2487,7 @@ export const DataList = () => {
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
                                 {notificationStatus.email.status === 'sent'
                                   ? (notificationStatus.email.sent_at || '-')
-                                  : (notificationStatus.email.status === 'pending' ? t('Đang chờ gửi...') : '-')}
+                                  : ((notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) ? t('Đang chờ gửi...') : '-')}
                               </span>
                             </div>
                             <div style={{ flexShrink: 0 }}>
@@ -2487,9 +2496,9 @@ export const DataList = () => {
                                   {t('Đã gửi')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.email.status === 'pending' && (
+                              {(notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
-                                  {t('Đang chờ')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
+                                  {selectedLead?.status === 'pending_work_hours' ? t('Chờ gửi') : t('Đang chờ')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
                               {notificationStatus.email.status === 'failed' && (
@@ -2497,9 +2506,9 @@ export const DataList = () => {
                                   {t('Thất bại')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.email.status === 'missed' && (
+                              {notificationStatus.email.status === 'missed' && selectedLead?.status !== 'pending_work_hours' && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
-                                  {t('SÓT ❌')}
+                                  {t('Chưa gửi')}
                                 </span>
                               )}
                             </div>
@@ -2517,7 +2526,7 @@ export const DataList = () => {
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
                                 {notificationStatus.zalo.status === 'sent'
                                   ? (notificationStatus.zalo.sent_at || '-')
-                                  : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : (notificationStatus.zalo.status === 'pending' ? t('Đang chờ gửi...') : '-'))}
+                                  : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : ((notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) ? t('Đang chờ gửi...') : '-'))}
                               </span>
                             </div>
                             <div style={{ flexShrink: 0 }}>
@@ -2536,9 +2545,9 @@ export const DataList = () => {
                                   {t('Đã gửi')} {notificationStatus.zalo.id && notificationStatus.zalo.id !== 'Log' ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.zalo.status === 'pending' && (
+                              {(notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
-                                  {t('Đang chờ')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
+                                  {selectedLead?.status === 'pending_work_hours' ? t('Chờ gửi') : t('Đang chờ')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
                               {notificationStatus.zalo.status === 'failed' && (
@@ -2546,9 +2555,9 @@ export const DataList = () => {
                                   {t('Thất bại')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.zalo.status === 'missed' && (
+                              {notificationStatus.zalo.status === 'missed' && selectedLead?.status !== 'pending_work_hours' && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
-                                  {t('SÓT ❌')}
+                                  {t('Chưa gửi')}
                                 </span>
                               )}
                             </div>
@@ -2977,32 +2986,136 @@ export const DataList = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {dayDetails.sales.map((item: any, idx: number) => (
-                            <tr key={idx}>
-                              <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                                  <Avatar src={item.sale_avatar} name={item.sale_name} size={30} />
-                                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.sale_name}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <span style={{
-                                  background: 'var(--color-primary-light)',
-                                  color: 'var(--color-primary)',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600
-                                }}>
-                                  {item.round_name}
-                                </span>
-                              </td>
-                              <td>{getStatusBadge(item.status)}</td>
-                              <td style={{ textAlign: 'right' }}>
-                                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{item.count}</span>
-                              </td>
-                            </tr>
-                          ))}
+                          {(() => {
+                            const groupedSales: Record<string, {
+                              sale_name: string;
+                              sale_avatar?: string;
+                              items: any[];
+                              totalCount: number;
+                            }> = {};
+
+                            dayDetails.sales.forEach((item: any) => {
+                              const name = item.sale_name || t('Chưa phân bổ');
+                              if (!groupedSales[name]) {
+                                groupedSales[name] = {
+                                  sale_name: name,
+                                  sale_avatar: item.sale_avatar,
+                                  items: [],
+                                  totalCount: 0
+                                };
+                              }
+                              groupedSales[name].items.push(item);
+                              groupedSales[name].totalCount += Number(item.count) || 0;
+                            });
+
+                            const sortedGroupedNames = Object.keys(groupedSales).sort((a, b) => {
+                              const isUnassignedA = a === 'Chưa phân bổ' || a === 'Unassigned' || a === '';
+                              const isUnassignedB = b === 'Chưa phân bổ' || b === 'Unassigned' || b === '';
+                              if (isUnassignedA && !isUnassignedB) return 1;
+                              if (!isUnassignedA && isUnassignedB) return -1;
+                              return a.localeCompare(b, 'vi');
+                            });
+
+                            return sortedGroupedNames.map((name) => {
+                              const group = groupedSales[name];
+                              const isExpanded = !!expandedSales[name];
+
+                              const sortedItems = [...group.items].sort((a, b) => {
+                                const roundA = a.status === 'reminder' ? 'REMINDER' : (a.round_name || '');
+                                const roundB = b.status === 'reminder' ? 'REMINDER' : (b.round_name || '');
+                                return roundA.localeCompare(roundB, 'vi');
+                              });
+
+                              return (
+                                <Fragment key={name}>
+                                  {/* Collapsible Header Row */}
+                                  <tr 
+                                    onClick={() => toggleExpandSale(name)} 
+                                    style={{ 
+                                      background: 'var(--color-bg-light)', 
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      borderBottom: '1px solid var(--color-border)'
+                                    }}
+                                  >
+                                    <td>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', paddingLeft: '4px' }}>
+                                        <span style={{ 
+                                          display: 'inline-flex', 
+                                          alignItems: 'center', 
+                                          transition: 'transform 0.2s',
+                                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                          color: 'var(--color-text-muted)',
+                                          marginRight: '2px'
+                                        }}>
+                                          <ChevronRight size={16} />
+                                        </span>
+                                        <Avatar src={group.sale_avatar} name={group.sale_name} size={30} />
+                                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                          {group.sale_name}
+                                        </span>
+                                        <span style={{ 
+                                          fontSize: '0.7rem', 
+                                          background: 'var(--color-border-light)', 
+                                          color: 'var(--color-text-light)', 
+                                          padding: '2px 6px', 
+                                          borderRadius: '10px',
+                                          marginLeft: '6px',
+                                          fontWeight: 600
+                                        }}>
+                                          {group.items.length} {t('nhóm')}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td style={{ color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 500 }}>
+                                      {isExpanded ? '' : t('Nhấp để xem chi tiết')}
+                                    </td>
+                                    <td></td>
+                                    <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                                      <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
+                                        {group.totalCount}
+                                      </span>
+                                    </td>
+                                  </tr>
+
+                                  {/* Detail Rows when expanded */}
+                                  {isExpanded && sortedItems.map((item: any, idx: number) => {
+                                    const isReminder = item.status === 'reminder';
+                                    const roundDisplay = isReminder ? 'REMINDER' : (item.round_name || '-');
+                                    
+                                    return (
+                                      <tr key={`${name}_${idx}`} style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)' }}>
+                                        <td style={{ paddingLeft: '2.5rem' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.825rem' }}>
+                                            <span style={{ opacity: 0.5 }}>└─</span>
+                                            <span>{t('Phân bổ trong vòng')}</span>
+                                          </div>
+                                        </td>
+                                        <td>
+                                          <span style={{
+                                            background: isReminder ? 'rgba(236, 72, 153, 0.12)' : 'var(--color-primary-light)',
+                                            color: isReminder ? '#ec4899' : 'var(--color-primary)',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600
+                                          }}>
+                                            {roundDisplay}
+                                          </span>
+                                        </td>
+                                        <td>{getStatusBadge(item.status)}</td>
+                                        <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                                          <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>
+                                            {item.count}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </Fragment>
+                              );
+                            });
+                          })()}
                         </tbody>
                       </table>
                     </div>

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, Fragment } from 'react';
@@ -8,6 +8,7 @@ import { fetchAPI } from '../../utils/api';
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
+  { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },

@@ -87,10 +87,10 @@ export const INITIAL_MOCK_DB = {
   })),
 
   tickets: [
-    { id: 101, lead_name: 'Trần Văn Demo', consultant_name: 'Hải Đăng', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn ò í e' },
-    { id: 102, lead_name: 'Lê Thị Test', consultant_name: 'Thanh Thảo', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách bảo đang làm việc với C' },
-    { id: 103, lead_name: 'Phạm Văn Mẫu', consultant_name: 'Việt Dũng', reason: 'Khác', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Đã đền bù data mới', admin_note: 'Duyệt đền bù' },
-    { id: 104, lead_name: 'Nguyễn Demo 4', consultant_name: 'Minh Tuấn', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Spam chửi bậy', admin_note: 'Từ chối vì khách vẫn nghe máy' },
+    { id: 101, lead_name: 'Trần Văn Demo', consultant_id: 1, consultant_name: 'Hải Đăng', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn ò í e' },
+    { id: 102, lead_name: 'Lê Thị Test', consultant_id: 2, consultant_name: 'Thanh Thảo', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách bảo đang làm việc với C' },
+    { id: 103, lead_name: 'Phạm Văn Mẫu', consultant_id: 3, consultant_name: 'Việt Dũng', reason: 'Khác', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Đã đền bù data mới', admin_note: 'Duyệt đền bù' },
+    { id: 104, lead_name: 'Nguyễn Demo 4', consultant_id: 4, consultant_name: 'Minh Tuấn', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Spam chửi bậy', admin_note: 'Từ chối vì khách vẫn nghe máy' },
   ],
 
   rules: [

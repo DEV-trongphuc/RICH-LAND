@@ -51,7 +51,26 @@ export const processMockRequest = async (action: string, payload?: any): Promise
       return { success: true, data: MOCK_DB.rounds };
 
     case 'get_reports':
-      return { success: true, data: MOCK_DB.tickets };
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const consultantIdStr = params.get('consultant_id');
+        let filteredTickets = [...MOCK_DB.tickets];
+        if (consultantIdStr) {
+          filteredTickets = filteredTickets.filter(t => String(t.consultant_id) === String(consultantIdStr));
+        }
+        const stats = {
+          pending: filteredTickets.filter(t => t.status === 'pending').length,
+          approved: filteredTickets.filter(t => t.status === 'approved').length,
+          rejected: filteredTickets.filter(t => t.status === 'rejected').length,
+          all: filteredTickets.length
+        };
+        return { 
+          success: true, 
+          data: filteredTickets, 
+          total_count: filteredTickets.length,
+          stats
+        };
+      }
 
     case 'get_rules':
       return { success: true, data: MOCK_DB.rules };
@@ -451,26 +470,33 @@ export const processMockRequest = async (action: string, payload?: any): Promise
       }
 
     case 'get_lead_notification_status':
-      return {
-        success: true,
-        data: {
-          lead_id: payload?.lead_id || 1,
-          email: {
-            queued: true,
-            status: 'sent',
-            id: null,
-            target: 'haidang@domation.net',
-            sent_at: new Date().toISOString()
-          },
-          zalo: {
-            queued: true,
-            status: 'sent',
-            id: null,
-            target: '9082348234',
-            sent_at: new Date().toISOString()
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const leadId = Number(params.get('lead_id') || '0');
+        const mockLead = MOCK_DB.heldLeads.find(l => l.id === leadId);
+        const isPendingWorkHours = mockLead?.status === 'pending_work_hours';
+
+        return {
+          success: true,
+          data: {
+            lead_id: leadId,
+            email: {
+              queued: true,
+              status: isPendingWorkHours ? 'pending' : 'sent',
+              id: null,
+              target: 'haidang@domation.net',
+              sent_at: isPendingWorkHours ? null : new Date().toISOString()
+            },
+            zalo: {
+              queued: true,
+              status: isPendingWorkHours ? 'pending' : 'sent',
+              id: null,
+              target: '9082348234',
+              sent_at: isPendingWorkHours ? null : new Date().toISOString()
+            }
           }
-        }
-      };
+        };
+      }
 
     case 'get_fair_share_stats':
       return {

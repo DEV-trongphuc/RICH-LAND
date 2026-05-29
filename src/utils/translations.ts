@@ -94,6 +94,8 @@ export const en: Record<string, string> = {
   "Blacklist": "Blacklist",
   "Dưới chuẩn": "Below Standard",
   "dưới chuẩn": "below standard",
+  "Chưa gửi": "Not Sent",
+  "Chờ gửi": "Pending Send",
 
   // Page titles / Subtitles
   "Tổng quan Phân bổ Data": "Data Distribution Overview",

@@ -93,6 +93,27 @@ function verify_jwt($jwt, $secret)
     return false;
 }
 
+function validateWorkSchedule($schedule)
+{
+    if ($schedule === null || $schedule === '') return true;
+    $decoded = $schedule;
+    if (is_string($schedule)) {
+        $decoded = json_decode($schedule, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return false;
+        }
+    }
+    if (!is_array($decoded)) return false;
+    foreach ($decoded as $day => $config) {
+        if (!is_numeric($day) || $day < 1 || $day > 7) return false;
+        if (!is_array($config)) return false;
+        if (isset($config['active']) && !is_bool($config['active']) && $config['active'] !== 'true' && $config['active'] !== 'false' && $config['active'] !== 1 && $config['active'] !== 0 && $config['active'] !== '1' && $config['active'] !== '0') return false;
+        if (!empty($config['start']) && !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $config['start'])) return false;
+        if (!empty($config['end']) && !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $config['end'])) return false;
+    }
+    return true;
+}
+
 function getBearerToken()
 {
     if (isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
@@ -240,7 +261,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -277,7 +298,6 @@ if (!in_array($action, $publicActions)) {
         'delete_mapping',
         'approve_report',
         'reject_report',
-        'get_reports',
         'get_active_compensation_logs',
         'reassign_lead',
         'force_sync',
@@ -288,8 +308,6 @@ if (!in_array($action, $publicActions)) {
         'block_lead',
         'get_zalo_send_logs',
         'ai_chat',
-        'get_fair_share_stats',
-        'get_consultant_compensation_details',
         'test_master_sync'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
@@ -301,6 +319,7 @@ if (!in_array($action, $publicActions)) {
     // Prevent viewer role from accessing write/modifying actions (read-only constraint)
     $writeActions = [
         'upload_avatar',
+        'update_consultant_self_profile',
         'add_consultant',
         'edit_consultant',
         'toggle_consultant_vacation',
@@ -1002,8 +1021,9 @@ switch ($action) {
                    l.is_accepted, l.accepted_at, l.last_interaction_date,
                    r.round_name,
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
-                   dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason,
-                   IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes
+                   dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
+                   IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes,
+                   sc.sheet_name as connection_name
             FROM distribution_logs dl
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
@@ -1184,15 +1204,31 @@ switch ($action) {
         }
 
         $vacationMode = 0;
-        if ($isSale) {
+        $targetVacationSaleId = $isSale ? $saleId : $saleFilterId;
+        if ($targetVacationSaleId !== null) {
             $stmtV = $conn->prepare("SELECT vacation_mode FROM consultants WHERE id = ?");
-            $stmtV->bind_param("i", $saleId);
+            $stmtV->bind_param("i", $targetVacationSaleId);
             $stmtV->execute();
             $resV = $stmtV->get_result();
             if ($rowV = $resV->fetch_assoc()) {
                 $vacationMode = (int) $rowV['vacation_mode'];
             }
             $stmtV->close();
+        }
+
+        $consultantProfile = null;
+        $profileSaleId = $isSale ? $saleId : $saleFilterId;
+        if ($profileSaleId !== null) {
+            $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode FROM consultants WHERE id = ?");
+            $stmtP->bind_param("i", $profileSaleId);
+            $stmtP->execute();
+            $consultantProfile = $stmtP->get_result()->fetch_assoc();
+            if ($consultantProfile) {
+                if (!empty($consultantProfile['work_schedule'])) {
+                    $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
+                }
+            }
+            $stmtP->close();
         }
 
         $isAllowedToReport = true;
@@ -1204,6 +1240,7 @@ switch ($action) {
             'leads' => $leads,
             'rounds' => $rounds,
             'consultants' => $consultantsList,
+            'consultant_profile' => $consultantProfile,
             'vacation_mode' => $vacationMode,
             'lead_recall_minutes' => $leadRecallMinutes,
             'below_standard_fallback_round_id' => (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id'),
@@ -1948,10 +1985,12 @@ switch ($action) {
             }
 
             // 2. Validate real MIME type (prevent Content-Type spoofing)
-            $realMime = $file['type'];
-            if (function_exists('mime_content_type')) {
-                $realMime = mime_content_type($file['tmp_name']);
+            $imageInfo = getimagesize($file['tmp_name']);
+            if ($imageInfo === false) {
+                echo json_encode(['success' => false, 'message' => 'File tải lên không phải là ảnh hợp lệ.']);
+                break;
             }
+            $realMime = $imageInfo['mime'];
             if (!in_array($realMime, $allowedTypes)) {
                 echo json_encode(['success' => false, 'message' => 'Nội dung định dạng file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.']);
                 break;
@@ -1978,7 +2017,7 @@ switch ($action) {
                 $oldAvatar = $_GET['old_avatar'] ?? '';
                 if (!empty($oldAvatar)) {
                     $oldFilename = basename($oldAvatar);
-                    if ($oldFilename && strpos($oldFilename, 'avatar_') === 0) {
+                    if ($oldFilename && preg_match('/^avatar_[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$/i', $oldFilename)) {
                         $oldFilePath = $uploadDir . $oldFilename;
                         if (file_exists($oldFilePath) && is_file($oldFilePath)) {
                             unlink($oldFilePath);
@@ -2027,11 +2066,19 @@ switch ($action) {
             }
             $work_start_time = trim($input['work_start_time'] ?? '00:00');
             $work_end_time = trim($input['work_end_time'] ?? '23:59');
-            if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time))
-                $work_start_time = '00:00';
-            if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time))
-                $work_end_time = '23:59';
+            if (empty($work_start_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_start_time)) {
+                echo json_encode(['success' => false, 'message' => 'Giờ bắt đầu làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+                break;
+            }
+            if (empty($work_end_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_end_time)) {
+                echo json_encode(['success' => false, 'message' => 'Giờ kết thúc làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+                break;
+            }
             $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
+            if ($work_schedule !== null && !validateWorkSchedule($work_schedule)) {
+                echo json_encode(['success' => false, 'message' => 'Cấu hình lịch làm việc chi tiết không hợp lệ.']);
+                break;
+            }
 
             $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("ssssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar);
@@ -2095,11 +2142,19 @@ switch ($action) {
             }
             $work_start_time = trim($input['work_start_time'] ?? '00:00');
             $work_end_time = trim($input['work_end_time'] ?? '23:59');
-            if (empty($work_start_time) || !preg_match('/^\d{2}:\d{2}$/', $work_start_time))
-                $work_start_time = '00:00';
-            if (empty($work_end_time) || !preg_match('/^\d{2}:\d{2}$/', $work_end_time))
-                $work_end_time = '23:59';
+            if (empty($work_start_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_start_time)) {
+                echo json_encode(['success' => false, 'message' => 'Giờ bắt đầu làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+                break;
+            }
+            if (empty($work_end_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_end_time)) {
+                echo json_encode(['success' => false, 'message' => 'Giờ kết thúc làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+                break;
+            }
             $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
+            if ($work_schedule !== null && !validateWorkSchedule($work_schedule)) {
+                echo json_encode(['success' => false, 'message' => 'Cấu hình lịch làm việc chi tiết không hợp lệ.']);
+                break;
+            }
 
             if ($status === 'inactive' || $status === 'leave') {
                 $fallbackRounds = getSystemFallbackRoundIds($conn);
@@ -2181,6 +2236,46 @@ switch ($action) {
 
             if ($decodedUser['role'] === 'admin') {
                 logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONSULTANT_VACATION', ['id' => $id, 'name' => $row['name'], 'vacation_mode' => $newVacationMode]);
+            }
+
+            if ($newVacationMode === 1) {
+                // Gửi Zalo thông báo tới toàn bộ admin khi sale tắt nhận data
+                $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+                if (!empty($botToken)) {
+                    require_once __DIR__ . '/zalo_bot.php';
+                    $allAdmins = getTicketNotifyAdmins($conn);
+                    $adminChatIds = [];
+                    foreach ($allAdmins as $adm) {
+                        if (!empty($adm['zalo_chat_id'])) {
+                            $adminChatIds[] = $adm['zalo_chat_id'];
+                        }
+                    }
+                    if (!empty($adminChatIds)) {
+                        $saleName = $row['name'];
+                        $operatorName = $decodedUser['name'] ?? 'Hệ thống';
+                        $operatorRole = $decodedUser['role'] ?? '';
+                        if ($operatorRole === 'admin') {
+                            $zaloMsg = "[ ADMIN TẠM NGƯNG SALE ]\n\n"
+                                . "Admin $operatorName vừa TẠM NGƯNG nhận data cho Tư vấn viên:\n"
+                                . "  • Tên TVV: $saleName\n"
+                                . "  • ID TVV: $id\n"
+                                . "  • Thời gian: " . date('Y-m-d H:i:s');
+                        } else {
+                            $zaloMsg = "[ CẢNH BÁO TẠM NGƯNG ]\n\n"
+                                . "Tư vấn viên $saleName tự TẮT nhận data (Tạm ngưng):\n"
+                                . "  • Tên TVV: $saleName\n"
+                                . "  • ID TVV: $id\n"
+                                . "  • Thời gian: " . date('Y-m-d H:i:s') . "\n\n"
+                                . "⚠️ Vui lòng lưu ý để điều chỉnh nếu cần thiết.";
+                        }
+                        try {
+                            sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloMsg);
+                        } catch (Exception $zEx) {
+                            error_log("Error sending toggle vacation Zalo warning: " . $zEx->getMessage());
+                        }
+                    }
+                }
             }
 
             echo json_encode(['success' => true, 'vacation_mode' => $newVacationMode]);
@@ -4160,6 +4255,26 @@ switch ($action) {
         $round_id = isset($_GET['round_id']) ? (int) $_GET['round_id'] : 0;
         $status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
         $consultant = isset($_GET['consultant']) ? trim($_GET['consultant']) : '';
+        
+        $consultantId = isset($_GET['consultant_id']) && $_GET['consultant_id'] !== '' ? (int) $_GET['consultant_id'] : 0;
+        if ($decodedUser['role'] === 'sale') {
+            $consultantId = (int) $decodedUser['id'];
+            if ($consultantId <= 0) {
+                echo json_encode([
+                    'success' => true,
+                    'data' => [],
+                    'total_count' => 0,
+                    'stats' => [
+                        'pending' => 0,
+                        'approved' => 0,
+                        'rejected' => 0,
+                        'all' => 0
+                    ]
+                ]);
+                break;
+            }
+        }
+        
         $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
 
         $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -4180,7 +4295,11 @@ switch ($action) {
             $params[] = $round_id;
             $types .= "i";
         }
-        if ($consultant !== '' && $consultant !== 'all') {
+        if ($consultantId > 0) {
+            $conds[] = "r.consultant_id = ?";
+            $params[] = $consultantId;
+            $types .= "i";
+        } else if ($consultant !== '' && $consultant !== 'all') {
             $conds[] = "c.name = ?";
             $params[] = $consultant;
             $types .= "s";
@@ -7448,6 +7567,62 @@ switch ($action) {
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);
         }
+        break;
+
+    case 'update_consultant_self_profile':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $name = trim($input['name'] ?? '');
+        $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
+        if ($avatar === '') $avatar = null;
+        $work_start_time = trim($input['work_start_time'] ?? '00:00');
+        $work_end_time = trim($input['work_end_time'] ?? '23:59');
+        
+        $isSale = $decodedUser['role'] === 'sale';
+        $isAdmin = $decodedUser['role'] === 'admin';
+        $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
+        
+        if ($isSale) {
+            $targetId = $decodedUser['id'];
+        } else if ($isAdmin) {
+            $targetId = $saleFilterId;
+        } else {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden: Bạn không có quyền cập nhật hồ sơ tư vấn viên này.']);
+            break;
+        }
+
+        if (!$targetId) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
+            break;
+        }
+
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên không được để trống.']);
+            break;
+        }
+
+        if (empty($work_start_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_start_time)) {
+            echo json_encode(['success' => false, 'message' => 'Giờ bắt đầu làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+            break;
+        }
+        if (empty($work_end_time) || !preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $work_end_time)) {
+            echo json_encode(['success' => false, 'message' => 'Giờ kết thúc làm việc không hợp lệ (định dạng HH:MM từ 00:00 đến 23:59)']);
+            break;
+        }
+        $work_schedule = isset($input['work_schedule']) ? (is_array($input['work_schedule']) ? json_encode($input['work_schedule']) : $input['work_schedule']) : null;
+        if ($work_schedule !== null && !validateWorkSchedule($work_schedule)) {
+            echo json_encode(['success' => false, 'message' => 'Cấu hình lịch làm việc chi tiết không hợp lệ.']);
+            break;
+        }
+
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
+        $stmt->bind_param("sssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $targetId);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật cấu hình cá nhân.']);
+        }
+        $stmt->close();
         break;
 
     case 'get_my_activity_logs':

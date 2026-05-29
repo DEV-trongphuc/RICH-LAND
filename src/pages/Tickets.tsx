@@ -2260,7 +2260,7 @@ export const Tickets = () => {
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
                                 {notificationStatus.email.status === 'sent' 
                                   ? (notificationStatus.email.sent_at || '-') 
-                                  : (notificationStatus.email.status === 'pending' ? t('Đang chờ gửi...') : '-')}
+                                  : ((notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) ? t('Đang chờ gửi...') : '-')}
                               </span>
                             </div>
                             <div style={{ flexShrink: 0 }}>
@@ -2269,9 +2269,9 @@ export const Tickets = () => {
                                   {t('Đã gửi')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.email.status === 'pending' && (
+                              {(notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
-                                  {t('Đang chờ')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
+                                  {selectedLead?.status === 'pending_work_hours' ? t('Chờ gửi') : t('Đang chờ')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
                               {notificationStatus.email.status === 'failed' && (
@@ -2279,9 +2279,9 @@ export const Tickets = () => {
                                   {t('Thất bại')} {notificationStatus.email.id ? `#${notificationStatus.email.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.email.status === 'missed' && (
+                              {notificationStatus.email.status === 'missed' && selectedLead?.status !== 'pending_work_hours' && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
-                                  {t('SÓT ❌')}
+                                  {t('Chưa gửi')}
                                 </span>
                               )}
                             </div>
@@ -2299,7 +2299,7 @@ export const Tickets = () => {
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
                                 {notificationStatus.zalo.status === 'sent' 
                                   ? (notificationStatus.zalo.sent_at || '-') 
-                                  : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : (notificationStatus.zalo.status === 'pending' ? t('Đang chờ gửi...') : '-'))}
+                                  : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : ((notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) ? t('Đang chờ gửi...') : '-'))}
                               </span>
                             </div>
                             <div style={{ flexShrink: 0 }}>
@@ -2318,9 +2318,9 @@ export const Tickets = () => {
                                   {t('Đã gửi')} {notificationStatus.zalo.id && notificationStatus.zalo.id !== 'Log' ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.zalo.status === 'pending' && (
+                              {(notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
-                                  {t('Đang chờ')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
+                                  {selectedLead?.status === 'pending_work_hours' ? t('Chờ gửi') : t('Đang chờ')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
                               {notificationStatus.zalo.status === 'failed' && (
@@ -2328,9 +2328,9 @@ export const Tickets = () => {
                                   {t('Thất bại')} {notificationStatus.zalo.id ? `#${notificationStatus.zalo.id}` : ''}
                                 </span>
                               )}
-                              {notificationStatus.zalo.status === 'missed' && (
+                              {notificationStatus.zalo.status === 'missed' && selectedLead?.status !== 'pending_work_hours' && (
                                 <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
-                                  {t('SÓT ❌')}
+                                  {t('Chưa gửi')}
                                 </span>
                               )}
                             </div>

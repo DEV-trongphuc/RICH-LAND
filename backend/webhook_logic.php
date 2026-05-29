@@ -1411,16 +1411,29 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
 
     $limit = $excludeLatestIfReminder ? 6 : 5;
     $stmt = $conn->prepare("
-        SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, c.avatar as consultant_avatar, dr.round_name 
-        FROM distribution_logs dl 
-        LEFT JOIN consultants c ON dl.assigned_to = c.id 
-        LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
-        WHERE dl.lead_id = ? 
-        ORDER BY dl.received_at DESC 
+        SELECT received_at, status, message, consultant_name, consultant_avatar, round_name, is_ticket, ticket_status, ticket_reason, ticket_reject_reason
+        FROM (
+            SELECT dl.received_at, dl.status, dl.message, c.name as consultant_name, c.avatar as consultant_avatar, dr.round_name,
+                   0 as is_ticket, '' as ticket_status, '' as ticket_reason, '' as ticket_reject_reason
+            FROM distribution_logs dl 
+            LEFT JOIN consultants c ON dl.assigned_to = c.id 
+            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id 
+            WHERE dl.lead_id = ?
+
+            UNION ALL
+
+            SELECT rep.created_at as received_at, 'ticket' as status, '' as message, c.name as consultant_name, c.avatar as consultant_avatar, dr.round_name,
+                   1 as is_ticket, rep.status as ticket_status, rep.reason as ticket_reason, rep.reject_reason as ticket_reject_reason
+            FROM data_reports rep
+            LEFT JOIN consultants c ON rep.consultant_id = c.id
+            LEFT JOIN distribution_rounds dr ON rep.round_id = dr.id
+            WHERE rep.lead_id = ?
+        ) AS combined
+        ORDER BY received_at DESC 
         LIMIT ?
     ");
     if ($stmt) {
-        $stmt->bind_param("ii", $leadId, $limit);
+        $stmt->bind_param("iii", $leadId, $leadId, $limit);
         $stmt->execute();
         $res = $stmt->get_result();
 
@@ -1431,7 +1444,8 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
             'silent' => 'Đồng bộ ẩn',
             'pending_work_hours' => 'Chờ khung giờ',
             'pending' => 'Chờ xử lý',
-            'unassigned' => 'Chưa phân bổ'
+            'unassigned' => 'Chưa phân bổ',
+            'ticket' => 'Báo cáo lỗi'
         ];
 
         $isFirst = true;
@@ -1496,7 +1510,11 @@ function getLeadHistoryTimeline($conn, $leadId, $excludeLatestIfReminder = false
                 'message' => $msg,
                 'consultant_name' => $row['consultant_name'],
                 'consultant_avatar' => $row['consultant_avatar'],
-                'round_name' => $row['round_name']
+                'round_name' => $row['round_name'],
+                'is_ticket' => (int) ($row['is_ticket'] ?? 0),
+                'ticket_status' => $row['ticket_status'] ?? '',
+                'ticket_reason' => $row['ticket_reason'] ?? '',
+                'ticket_reject_reason' => $row['ticket_reject_reason'] ?? ''
             ];
         }
         $stmt->close();

@@ -64,7 +64,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper'];
-  const userPaths = ['/', '/data'];
+  const userPaths = ['/', '/data', '/calendar'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -88,8 +88,8 @@ const AppTabs = () => {
           </Suspense>
         )}
       </div>
-      <div style={{ display: currentPath === '/data' ? 'block' : 'none' }}>
-        {visitedPaths.includes('/data') && (
+      <div style={{ display: (currentPath === '/data' || currentPath === '/calendar') ? 'block' : 'none' }}>
+        {(visitedPaths.includes('/data') || visitedPaths.includes('/calendar')) && (
           <Suspense fallback={<PageLoader />}>
             <DataList />
           </Suspense>

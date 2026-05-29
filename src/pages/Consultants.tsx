@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -591,6 +591,16 @@ export const Consultants = () => {
                     </td>
                     <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
+                        <button
+                          onClick={() => {
+                            navigate(`/sale-portal?sale_id=${u.id}`);
+                          }}
+                          className="btn ghost sm"
+                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-success)' }}
+                          title={t("Xem giao diện Portal")}
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button
                           onClick={() => {
                             setStatsConsultant(u);
