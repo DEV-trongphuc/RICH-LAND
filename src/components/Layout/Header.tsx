@@ -51,7 +51,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
 
-  // Listen to system changes if theme is not set
+  // Listen to system changes if theme is not set and sync with external theme changes
   useEffect(() => {
     const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
     if (localTheme) {
@@ -61,14 +61,62 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
       setTheme('light');
       document.documentElement.setAttribute('data-theme', 'light');
     }
+
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => {
+      window.removeEventListener('theme-change', handleThemeChange);
+    };
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = (event?: React.MouseEvent) => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    localStorage.setItem('domation_theme', nextTheme);
-    window.dispatchEvent(new Event('theme-change'));
+
+    // Check if View Transition is supported and user does not prefer reduced motion
+    if (!(document as any).startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTheme(nextTheme);
+      document.documentElement.setAttribute('data-theme', nextTheme);
+      localStorage.setItem('domation_theme', nextTheme);
+      window.dispatchEvent(new Event('theme-change'));
+      return;
+    }
+
+    // Get click position or fallback to center of the viewport
+    const x = event ? event.clientX : window.innerWidth / 2;
+    const y = event ? event.clientY : window.innerHeight / 2;
+
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = (document as any).startViewTransition(() => {
+      setTheme(nextTheme);
+      document.documentElement.setAttribute('data-theme', nextTheme);
+      localStorage.setItem('domation_theme', nextTheme);
+      window.dispatchEvent(new Event('theme-change'));
+    });
+
+    transition.ready.then(() => {
+      const clipPath = [
+        `circle(0px at ${x}px ${y}px)`,
+        `circle(${endRadius}px at ${x}px ${y}px)`
+      ];
+      document.documentElement.animate(
+        {
+          clipPath: clipPath,
+        },
+        {
+          duration: 30000,
+          easing: 'linear',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+    });
   };
 
   const getRoleLabel = (role?: string) => {

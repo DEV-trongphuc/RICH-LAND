@@ -2558,3 +2558,16 @@ th.col-check {
   }
 }
 
+/* View Transition API animations for Light/Dark Mode theme switch */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  opacity: 1;
+}
+::view-transition-new(root) {
+  opacity: 1;
+}
+
