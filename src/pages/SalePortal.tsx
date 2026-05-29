@@ -3314,7 +3314,7 @@ export const SalePortal = () => {
             {activeTab === 'dashboard' && renderDashboardView()}
             {activeTab === 'data' && renderDataView()}
             {activeTab === 'calendar' && renderCalendarView()}
-            {activeTab === 'fair-share' && <FairShareAudit />}
+            {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
             {activeTab === 'tickets' && renderTicketsView()}
             {activeTab === 'schedule' && renderScheduleView()}
           </div>

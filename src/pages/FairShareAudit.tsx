@@ -17,11 +17,15 @@ import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export const FairShareAudit = () => {
+interface FairShareAuditProps {
+  forceActive?: boolean;
+}
+
+export const FairShareAudit = ({ forceActive = false }: FairShareAuditProps = {}) => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const isActive = location.pathname === '/fair-share';
+  const isActive = forceActive || location.pathname === '/fair-share';
   const [data, setData] = useState<any>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
