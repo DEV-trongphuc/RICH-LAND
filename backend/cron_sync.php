@@ -1319,6 +1319,13 @@ foreach ($connections as $connItem) {
                 // --- 3. Round-Robin Assignment & 4. Process Lead (Unified Transaction) ---
                 $conn->begin_transaction();
                 try {
+                    $dupSuffix = '';
+                    if ($crmCheckResult['isDuplicate']) {
+                        $oldSaleName = !empty($crmCheckResult['assignedName']) ? $crmCheckResult['assignedName'] : 'Không rõ';
+                        $oldSaleMonths = $crmCheckResult['monthsSinceLastInteraction'];
+                        $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
+                    }
+
                     if ($targetRoundId) {
                         $assignResult = getNextConsultantInRound($conn, $targetRoundId);
                         if ($assignResult) {
@@ -1327,6 +1334,7 @@ foreach ($connections as $connItem) {
                             $cronMessage = $assignResult['is_compensation'] 
                                 ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (đồng bộ hệ thống).' : 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).') 
                                 : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
+                            $cronMessage .= $dupSuffix;
 
                             // Check working hours
                             if ($whStmt) {
@@ -1347,8 +1355,11 @@ foreach ($connections as $connItem) {
                         } else {
                             $assignedConsultantId = null;
                             $cronStatus = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
-                            $cronMessage = (isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round via cron_sync.';
+                            $cronMessage = ((isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round via cron_sync.') . $dupSuffix;
                         }
+                    } else {
+                        $cronStatus = 'unassigned';
+                        $cronMessage = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.' . $dupSuffix;
                     }
 
                     if ($crmCheckResult['leadExists']) {
