@@ -141,7 +141,7 @@ export const SalePortal = () => {
           clipPath: clipPath,
         },
         {
-          duration: 30000,
+          duration: 50000,
           easing: 'linear',
           pseudoElement: '::view-transition-new(root)',
         }

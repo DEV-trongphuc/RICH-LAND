@@ -111,7 +111,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           clipPath: clipPath,
         },
         {
-          duration: 30000,
+          duration: 50000,
           easing: 'linear',
           pseudoElement: '::view-transition-new(root)',
         }
