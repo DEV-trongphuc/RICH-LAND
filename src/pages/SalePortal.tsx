@@ -210,6 +210,7 @@ export const SalePortal = () => {
   const [editWorkStartTime, setEditWorkStartTime] = useState('08:00');
   const [editWorkEndTime, setEditWorkEndTime] = useState('17:30');
   const [editWorkSchedule, setEditWorkSchedule] = useState<any>(DEFAULT_SCHEDULE);
+  const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -411,7 +412,15 @@ export const SalePortal = () => {
       setEditAvatar(data.consultant_profile.avatar || '');
       setEditWorkStartTime(data.consultant_profile.work_start_time || '08:00');
       setEditWorkEndTime(data.consultant_profile.work_end_time || '17:30');
-      setEditWorkSchedule(data.consultant_profile.work_schedule || DEFAULT_SCHEDULE);
+      
+      const schedule = data.consultant_profile.work_schedule;
+      if (schedule && Object.keys(schedule).length > 0) {
+        setEditWorkSchedule(schedule);
+        setScheduleMode('custom');
+      } else {
+        setEditWorkSchedule(DEFAULT_SCHEDULE);
+        setScheduleMode('daily');
+      }
     }
   }, [data.consultant_profile]);
 
@@ -458,7 +467,7 @@ export const SalePortal = () => {
         avatar: editAvatar,
         work_start_time: editWorkStartTime,
         work_end_time: editWorkEndTime,
-        work_schedule: editWorkSchedule
+        work_schedule: scheduleMode === 'custom' ? editWorkSchedule : null
       };
 
       const res = await fetchAPI('update_consultant_self_profile', {
@@ -2578,120 +2587,147 @@ export const SalePortal = () => {
               )}
             </div>
 
-            {/* Daily Default Work Hours Card */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={18} color="var(--color-primary)" />
-                {t('GIỜ LÀM VIỆC MẶC ĐỊNH HÀNG NGÀY')}
-              </h3>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    {t('Bắt đầu làm việc')}
-                  </label>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={editWorkStartTime}
-                    onChange={(e) => setEditWorkStartTime(e.target.value)}
-                    style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
-                  />
-                </div>
-                <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    {t('Kết thúc làm việc')}
-                  </label>
-                  <input
-                    type="time"
-                    className="form-input"
-                    value={editWorkEndTime}
-                    onChange={(e) => setEditWorkEndTime(e.target.value)}
-                    style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
-                  />
-                </div>
-              </div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                💡 {t('Lưu ý: Lead mới sẽ chỉ được phân bổ tự động cho bạn trong khoảng thời gian làm việc đã thiết lập.')}
-              </p>
-            </div>
-
-            {/* Weekly Detailed Work Schedule Card */}
+            {/* Combined Work Hours & Schedule Card */}
             <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Calendar size={18} color="var(--color-primary)" />
-                  {t('LỊCH LÀM VIỆC CHI TIẾT THEO TUẦN')}
+                  <Clock size={18} color="var(--color-primary)" />
+                  {t('GIỜ LÀM VIỆC & LỊCH TRÌNH')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
-                  {t('Tùy chỉnh ngày làm việc/nghỉ và khung giờ hoạt động riêng cho từng ngày.')}
+                  {t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')}
                 </p>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
-                  const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
-                  const isActive = config.active;
 
-                  return (
-                    <div
-                      key={dayKey}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
-                        background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
-                        transition: 'all 0.2s',
-                        boxShadow: isActive ? 'var(--shadow-xs)' : 'none'
-                      }}
-                    >
-                      {/* Day Label with custom checkbox */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-                        <input
-                          type="checkbox"
-                          className="custom-checkbox"
-                          checked={isActive}
-                          onChange={(e) => handleDayActiveToggle(dayKey, e.target.checked)}
-                        />
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-                          {t(dayLabel)}
-                        </span>
-                      </label>
-
-                      {/* Day Hour Inputs / Offline badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {isActive ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <input
-                              type="time"
-                              className="form-input"
-                              style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
-                              value={config.start || editWorkStartTime}
-                              onChange={(e) => handleDayTimeChange(dayKey, 'start', e.target.value)}
-                            />
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
-                            <input
-                              type="time"
-                              className="form-input"
-                              style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
-                              value={config.end || editWorkEndTime}
-                              onChange={(e) => handleDayTimeChange(dayKey, 'end', e.target.value)}
-                            />
-                          </div>
-                        ) : (
-                          <span style={{
-                            padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
-                            background: 'var(--color-danger-light)',
-                            color: 'var(--color-danger)'
-                          }}>
-                            {t('Nghỉ')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Segmented Control for Schedule Mode */}
+              <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('daily')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                    background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                    color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                    transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                  }}
+                >{t('Cố định hàng ngày')}</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleMode('custom');
+                    if (!editWorkSchedule) {
+                      setEditWorkSchedule(DEFAULT_SCHEDULE);
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                    background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                    color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                    transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                  }}
+                >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
               </div>
+
+              {scheduleMode === 'daily' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'slideUp 0.15s ease-out' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                        {t('Bắt đầu làm việc')}
+                      </label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={editWorkStartTime}
+                        onChange={(e) => setEditWorkStartTime(e.target.value)}
+                        style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                      />
+                    </div>
+                    <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                        {t('Kết thúc làm việc')}
+                      </label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={editWorkEndTime}
+                        onChange={(e) => setEditWorkEndTime(e.target.value)}
+                        style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                      />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    💡 {t('Lưu ý: Lead mới sẽ chỉ được phân bổ tự động cho bạn trong khoảng thời gian làm việc đã thiết lập.')}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'slideUp 0.15s ease-out' }}>
+                  {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
+                    const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
+                    const isActive = config.active;
+
+                    return (
+                      <div
+                        key={dayKey}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
+                          background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
+                          transition: 'all 0.2s',
+                          boxShadow: isActive ? 'var(--shadow-xs)' : 'none'
+                        }}
+                      >
+                        {/* Day Label with custom checkbox */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            className="custom-checkbox"
+                            checked={isActive}
+                            onChange={(e) => handleDayActiveToggle(dayKey, e.target.checked)}
+                          />
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                            {t(dayLabel)}
+                          </span>
+                        </label>
+
+                        {/* Day Hour Inputs / Offline badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {isActive ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <input
+                                type="time"
+                                className="form-input"
+                                style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                value={config.start || editWorkStartTime}
+                                onChange={(e) => handleDayTimeChange(dayKey, 'start', e.target.value)}
+                              />
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
+                              <input
+                                type="time"
+                                className="form-input"
+                                style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                value={config.end || editWorkEndTime}
+                                onChange={(e) => handleDayTimeChange(dayKey, 'end', e.target.value)}
+                              />
+                            </div>
+                          ) : (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                              background: 'var(--color-danger-light)',
+                              color: 'var(--color-danger)'
+                            }}>
+                              {t('Nghỉ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
           </div>
