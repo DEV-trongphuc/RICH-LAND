@@ -1622,7 +1622,7 @@ export const SalePortal = () => {
                                 {t('Từ chối')}
                               </span>
                             )}
-                            {!lead.report_status && isAllowedToReport &&
+                            {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' &&
                               (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                               (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                               <button onClick={() => handleOpenReportModal(lead)} className="btn sm danger" style={{ height: 30, padding: '0 10px' }}>
@@ -1779,7 +1779,7 @@ export const SalePortal = () => {
                                 <XCircle size={16} />
                               </div>
                             )}
-                            {!lead.report_status && isAllowedToReport && 
+                            {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' && 
                               (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
                               (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                               <button

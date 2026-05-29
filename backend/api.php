@@ -3937,7 +3937,7 @@ switch ($action) {
 
         // SECURITY: Verify ownership — lead must truly belong to this consultant in this round
         $verifyStmt = $conn->prepare("
-            SELECT id FROM distribution_logs 
+            SELECT id, status FROM distribution_logs 
             WHERE lead_id = ? AND assigned_to = ? AND round_id = ? 
             LIMIT 1
         ");
@@ -3947,6 +3947,11 @@ switch ($action) {
         $verifyStmt->close();
         if ($verifyRes->num_rows === 0) {
             echo json_encode(['success' => false, 'message' => 'Thông tin không hợp lệ: Data này không thuộc về bạn trong vòng này.']);
+            break;
+        }
+        $logRow = $verifyRes->fetch_assoc();
+        if (($logRow['status'] ?? '') === 'reminder') {
+            echo json_encode(['success' => false, 'message' => 'Không thể báo cáo lỗi cho dữ liệu nhắc lại.']);
             break;
         }
 
