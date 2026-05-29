@@ -308,7 +308,8 @@ if (!in_array($action, $publicActions)) {
         'block_lead',
         'get_zalo_send_logs',
         'ai_chat',
-        'test_master_sync'
+        'test_master_sync',
+        'rollback_admin_action'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -364,7 +365,8 @@ if (!in_array($action, $publicActions)) {
         'block_lead',
         'send_quick_zalo_message',
         'manual_insert_lead',
-        'delete_import_history'
+        'delete_import_history',
+        'rollback_admin_action'
     ];
     if (in_array($action, $writeActions) && $decodedUser['role'] === 'viewer') {
         http_response_code(403);
@@ -2187,10 +2189,29 @@ switch ($action) {
                 }
             }
 
+            // Fetch old consultant state for audit log rollback support
+            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar FROM consultants WHERE id = " . $id);
+            $oldData = $oldRes ? $oldRes->fetch_assoc() : null;
+
             $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
             $stmt->bind_param("ssssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $id);
             if ($stmt->execute()) {
-                logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', ['id' => $id, 'name' => $name, 'email' => $email, 'status' => $status]);
+                logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', [
+                    'id' => $id,
+                    'old' => $oldData,
+                    'new' => [
+                        'name' => $name,
+                        'email' => $email,
+                        'status' => $status,
+                        'leave_start' => $leave_start,
+                        'leave_end' => $leave_end,
+                        'zalo_chat_id' => $zalo_chat_id,
+                        'work_start_time' => $work_start_time,
+                        'work_end_time' => $work_end_time,
+                        'work_schedule' => $work_schedule,
+                        'avatar' => $avatar
+                    ]
+                ]);
             }
             $stmt->close();
             echo json_encode(['success' => true]);
@@ -6915,6 +6936,206 @@ switch ($action) {
         while ($row = $res->fetch_assoc())
             $data[] = $row;
         echo json_encode(['success' => true, 'data' => $data]);
+        break;
+
+    case 'rollback_admin_action':
+        if ($decodedUser['role'] !== 'admin') {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện hành động này.']);
+            break;
+        }
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $logId = (int) ($input['log_id'] ?? 0);
+
+            if (!$logId) {
+                throw new Exception('ID log không hợp lệ');
+            }
+
+            // Fetch the log
+            $stmt = $conn->prepare("SELECT * FROM admin_logs WHERE id = ?");
+            $stmt->bind_param("i", $logId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) {
+                $stmt->close();
+                throw new Exception('Không tìm thấy bản ghi nhật ký hoạt động.');
+            }
+            $log = $res->fetch_assoc();
+            $stmt->close();
+
+            if ((int)$log['is_rolled_back'] === 1) {
+                throw new Exception('Hành động này đã được hoàn tác trước đó.');
+            }
+
+            $action = $log['action'];
+            $details = json_decode($log['details'], true) ?: [];
+
+            $conn->begin_transaction();
+
+            switch ($action) {
+                case 'REASSIGN_LEAD':
+                    $leadId = (int) ($details['lead_id'] ?? 0);
+                    $oldConsultantId = (int) ($details['old_consultant_id'] ?? 0);
+                    $newConsultantId = (int) ($details['new_consultant_id'] ?? 0);
+                    $compensated = !empty($details['compensated']);
+
+                    if (!$leadId || !$oldConsultantId) {
+                        throw new Exception('Dữ liệu nhật ký không đầy đủ để hoàn tác.');
+                    }
+
+                    // 1. Reassign the lead's assigned_to back
+                    $updLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'assigned' WHERE id = ?");
+                    $updLead->bind_param("ii", $oldConsultantId, $leadId);
+                    $updLead->execute();
+                    $updLead->close();
+
+                    // 2. Revert distribution_logs entries
+                    // Delete the reassignment log entry
+                    $delDistLog = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND status = 'reassigned' ORDER BY id DESC LIMIT 1");
+                    $delDistLog->bind_param("ii", $leadId, $newConsultantId);
+                    $delDistLog->execute();
+                    $delDistLog->close();
+
+                    // Update the original entry back to 'assigned'
+                    $updOriginalDist = $conn->prepare("UPDATE distribution_logs SET status = 'assigned' WHERE lead_id = ? AND assigned_to = ? ORDER BY id DESC LIMIT 1");
+                    $updOriginalDist->bind_param("ii", $leadId, $oldConsultantId);
+                    $updOriginalDist->execute();
+                    $updOriginalDist->close();
+
+                    // 3. Revert compensation if it was given
+                    if ($compensated) {
+                        $roundId = isset($details['round_id']) ? (int)$details['round_id'] : 0;
+                        if (!$roundId) {
+                            $rRes = $conn->query("SELECT round_id FROM distribution_logs WHERE lead_id = " . $leadId . " ORDER BY id DESC LIMIT 1");
+                            if ($rRes && $rRes->num_rows > 0) {
+                                $roundId = (int) $rRes->fetch_assoc()['round_id'];
+                            }
+                        }
+
+                        if ($roundId) {
+                            $updRC = $conn->prepare("UPDATE round_consultants SET compensation_count = GREATEST(0, compensation_count - 1) WHERE round_id = ? AND consultant_id = ?");
+                            $updRC->bind_param("ii", $roundId, $oldConsultantId);
+                            $updRC->execute();
+                            $updRC->close();
+
+                            $reasonLike = "%chuyển giao Lead%sang cho TVV%";
+                            $delComp = $conn->prepare("DELETE FROM active_compensation_logs WHERE round_id = ? AND consultant_id = ? AND reason LIKE ? ORDER BY id DESC LIMIT 1");
+                            $delComp->bind_param("iis", $roundId, $oldConsultantId, $reasonLike);
+                            $delComp->execute();
+                            $delComp->close();
+                        }
+                    }
+                    break;
+
+                case 'TOGGLE_CONSULTANT_VACATION':
+                    $consId = (int) ($details['id'] ?? 0);
+                    $loggedVacationMode = (int) ($details['vacation_mode'] ?? 0);
+
+                    if (!$consId) {
+                        throw new Exception('ID tư vấn viên không hợp lệ trong log.');
+                    }
+
+                    $oldVacationMode = $loggedVacationMode ? 0 : 1;
+                    $updVac = $conn->prepare("UPDATE consultants SET vacation_mode = ? WHERE id = ?");
+                    $updVac->bind_param("ii", $oldVacationMode, $consId);
+                    $updVac->execute();
+                    $updVac->close();
+                    break;
+
+                case 'EDIT_CONSULTANT':
+                    $consId = (int) ($details['id'] ?? 0);
+                    $oldData = $details['old'] ?? null;
+
+                    if (!$consId || !$oldData) {
+                        throw new Exception('Không tìm thấy dữ liệu cũ để hoàn tác.');
+                    }
+
+                    $updCons = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
+                    $updCons->bind_param(
+                        "ssssssssssi",
+                        $oldData['name'],
+                        $oldData['email'],
+                        $oldData['status'],
+                        $oldData['leave_start'],
+                        $oldData['leave_end'],
+                        $oldData['zalo_chat_id'],
+                        $oldData['work_start_time'],
+                        $oldData['work_end_time'],
+                        $oldData['work_schedule'],
+                        $oldData['avatar'],
+                        $consId
+                    );
+                    $updCons->execute();
+                    $updCons->close();
+                    break;
+
+                case 'APPROVE_REPORT':
+                    $leadId = (int) ($details['lead_id'] ?? 0);
+                    $consId = (int) ($details['consultant_id'] ?? 0);
+                    $roundId = (int) ($details['round_id'] ?? 0);
+
+                    if (!$leadId) {
+                        throw new Exception('ID lead không hợp lệ trong log.');
+                    }
+
+                    $updReport = $conn->prepare("UPDATE data_reports SET status = 'pending', resolved_at = NULL, resolved_by = NULL, approval_reason = NULL WHERE lead_id = ?");
+                    $updReport->bind_param("i", $leadId);
+                    $updReport->execute();
+                    $updReport->close();
+
+                    $updLead = $conn->prepare("UPDATE leads SET status = 'error' WHERE id = ?");
+                    $updLead->bind_param("i", $leadId);
+                    $updLead->execute();
+                    $updLead->close();
+
+                    if ($roundId && $consId) {
+                        $updRC = $conn->prepare("UPDATE round_consultants SET compensation_count = GREATEST(0, compensation_count - 1) WHERE round_id = ? AND consultant_id = ?");
+                        $updRC->bind_param("ii", $roundId, $consId);
+                        $updRC->execute();
+                        $updRC->close();
+                    }
+                    break;
+
+                case 'REJECT_REPORT':
+                    $leadId = (int) ($details['lead_id'] ?? 0);
+
+                    if (!$leadId) {
+                        throw new Exception('ID lead không hợp lệ trong log.');
+                    }
+
+                    $updReport = $conn->prepare("UPDATE data_reports SET status = 'pending', resolved_at = NULL, resolved_by = NULL, reject_reason = NULL WHERE lead_id = ?");
+                    $updReport->bind_param("i", $leadId);
+                    $updReport->execute();
+                    $updReport->close();
+
+                    $updLead = $conn->prepare("UPDATE leads SET status = 'error' WHERE id = ?");
+                    $updLead->bind_param("i", $leadId);
+                    $updLead->execute();
+                    $updLead->close();
+                    break;
+
+                default:
+                    throw new Exception('Hành động này không hỗ trợ hoàn tác.');
+            }
+
+            // Mark the original log as rolled back
+            $updLog = $conn->prepare("UPDATE admin_logs SET is_rolled_back = 1 WHERE id = ?");
+            $updLog->bind_param("i", $logId);
+            $updLog->execute();
+            $updLog->close();
+
+            logAdminAction($conn, $decodedUser['id'], 'ROLLBACK_ACTION', [
+                'target_log_id' => $logId,
+                'target_action' => $action
+            ]);
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'message' => 'Hoàn tác thành công!']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'get_admin_logs':

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -151,6 +151,28 @@ export const Accounts = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsPage, setLogsPage] = useState(1);
+  const [rollingBackLogId, setRollingBackLogId] = useState<number | null>(null);
+
+  const handleRollback = async (logId: number) => {
+    if (!window.confirm(t("Bạn có chắc chắn muốn hoàn tác hành động này không?"))) return;
+    setRollingBackLogId(logId);
+    try {
+      const res = await fetchAPI('rollback_admin_action', {
+        method: 'POST',
+        body: JSON.stringify({ log_id: logId })
+      });
+      if (res.success) {
+        toast.success(res.message || t('Hoàn tác thành công!'));
+        fetchLogs();
+      } else {
+        toast.error(res.message || t('Hoàn tác thất bại'));
+      }
+    } catch (e: any) {
+      toast.error(`${t('Lỗi')}: ` + e.message);
+    } finally {
+      setRollingBackLogId(null);
+    }
+  };
 
   const fetchLogs = async () => {
     setLoadingLogs(true);
@@ -545,6 +567,7 @@ export const Accounts = () => {
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Hành động')}</th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Chi tiết')}</th>
                     <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>IP Address</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thao tác')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -736,8 +759,12 @@ export const Accounts = () => {
                       }
                     };
 
+                    const rollbackableActions = ['REASSIGN_LEAD', 'EDIT_CONSULTANT', 'TOGGLE_CONSULTANT_VACATION', 'APPROVE_REPORT', 'REJECT_REPORT'];
+                    const isRollbackable = rollbackableActions.includes(log.action);
+                    const isRolledBack = Number(log.is_rolled_back) === 1;
+
                     return (
-                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="table-row-hover">
+                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', opacity: isRolledBack ? 0.65 : 1 }} className="table-row-hover">
                         <td data-label={t('Thời gian')} style={{ padding: '1rem 1.5rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
@@ -755,12 +782,13 @@ export const Accounts = () => {
                         </td>
                         <td data-label={t('Hành động')} style={{ padding: '1rem 1.5rem' }}>
                           <span style={{
-                            background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(124, 58, 237, 0.1)',
-                            color: log.action === 'LOGIN' ? '#3b82f6' : 'var(--color-primary)',
+                            background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : isRolledBack ? 'var(--color-border)' : 'rgba(124, 58, 237, 0.1)',
+                            color: log.action === 'LOGIN' ? '#3b82f6' : isRolledBack ? 'var(--color-text-muted)' : 'var(--color-primary)',
                             padding: '4px 10px',
                             borderRadius: 6,
                             fontSize: '0.75rem',
-                            fontWeight: 700
+                            fontWeight: 700,
+                            textDecoration: isRolledBack ? 'line-through' : 'none'
                           }}>
                             {log.action}
                           </span>
@@ -771,12 +799,54 @@ export const Accounts = () => {
                         <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                           {log.ip_address}
                         </td>
+                        <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                          {isRolledBack ? (
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              color: 'var(--color-text-muted)', 
+                              background: 'var(--color-bg)',
+                              padding: '4px 8px', 
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              <Check size={12} /> {t('Đã hoàn tác')}
+                            </span>
+                          ) : isRollbackable ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRollback(log.id); }}
+                              disabled={rollingBackLogId === log.id}
+                              className="btn ghost sm"
+                              style={{ 
+                                padding: '4px 8px', 
+                                color: 'var(--color-danger)', 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: 4,
+                                fontSize: '0.75rem',
+                                fontWeight: 600
+                              }}
+                              title={t("Hoàn tác hành động này")}
+                            >
+                              {rollingBackLogId === log.id ? (
+                                <RefreshCw size={12} className="spin" />
+                              ) : (
+                                <RotateCcw size={12} />
+                              )}
+                              <span>{t('Hoàn tác')}</span>
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>-</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                   {logs.length === 0 && (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                           {t('Chưa có lịch sử hoạt động nào được ghi lại.')}
                         </div>

@@ -70,7 +70,8 @@ CREATE TABLE `admin_logs` (
   `action` varchar(100) NOT NULL,
   `details` longtext DEFAULT NULL COMMENT 'JSON details',
   `ip_address` varchar(45) DEFAULT NULL,
-  `created_at` datetime DEFAULT current_timestamp()
+  `created_at` datetime DEFAULT current_timestamp(),
+  `is_rolled_back` tinyint(1) DEFAULT 0 COMMENT 'Đánh dấu log đã được hoàn tác'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

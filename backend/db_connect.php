@@ -145,7 +145,7 @@ if ($checkSettings && $checkSettings->num_rows > 0) {
     $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
     if ($vStmt && $vStmt->num_rows > 0) {
         $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-        if ($dbVer >= 132) {
+        if ($dbVer >= 133) {
             $runMigration = false;
         }
     }
@@ -166,7 +166,7 @@ if ($runMigration) {
                 $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
                 if ($vStmt && $vStmt->num_rows > 0) {
                     $dbVer = (int)$vStmt->fetch_assoc()['setting_value'];
-                    if ($dbVer >= 132) {
+                    if ($dbVer >= 133) {
                         $runMigration = false;
                     }
                 }
@@ -753,6 +753,13 @@ if ($runMigration) {
     }
     
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '132') ON DUPLICATE KEY UPDATE setting_value = '132'");
+
+    // Auto-migrate: Version 133 - is_rolled_back column in admin_logs table
+    $chkColRolledBack = $conn->query("SHOW COLUMNS FROM admin_logs LIKE 'is_rolled_back'");
+    if ($chkColRolledBack && $chkColRolledBack->num_rows === 0) {
+        $conn->query("ALTER TABLE admin_logs ADD COLUMN is_rolled_back TINYINT(1) DEFAULT 0 COMMENT 'Đánh dấu log đã được hoàn tác'");
+    }
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '133') ON DUPLICATE KEY UPDATE setting_value = '133'");
 
     // Release Advisory Lock
     $relStmt = $conn->prepare("SELECT RELEASE_LOCK('db_migration_lock')");

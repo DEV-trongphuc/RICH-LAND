@@ -752,6 +752,19 @@ function getNextConsultantInRound($conn, $roundId)
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
 
+    // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
+    $absoluteLastAssignedId = null;
+    $logStmt = $conn->prepare("SELECT assigned_to FROM distribution_logs WHERE round_id = ? ORDER BY id DESC LIMIT 1");
+    if ($logStmt) {
+        $logStmt->bind_param("i", $roundId);
+        $logStmt->execute();
+        $logRes = $logStmt->get_result();
+        if ($logRow = $logRes->fetch_assoc()) {
+            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int)$logRow['assigned_to'] : null;
+        }
+        $logStmt->close();
+    }
+
     // Load starvation prevention settings
     $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
     $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
@@ -840,6 +853,15 @@ function getNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
+    // Calculate active count of available consultants
+    $activeCount = 0;
+    foreach ($consultants as $c) {
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
+        if (!$isOnVacation) {
+            $activeCount++;
+        }
+    }
+
     foreach ($consultants as $row) {
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
@@ -847,7 +869,12 @@ function getNextConsultantInRound($conn, $roundId)
         $isAvailable = !$isOnVacation;
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
-        if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
+        // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
+        // Nếu Sale này vừa nhận lead trước đó (absoluteLastAssignedId từ logs), ta sẽ bỏ qua lượt đền bù này nếu trong vòng còn có TVV khác đang hoạt động.
+        $isLastAssigned = ($absoluteLastAssignedId !== null && (int)$row['id'] === (int)$absoluteLastAssignedId);
+        $shouldSkipConsecutiveComp = ($isLastAssigned && $activeCount > 1);
+
+        if (empty($compensatedConsultant) && $isAvailable && !$shouldSkipConsecutiveComp && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
 
@@ -930,7 +957,10 @@ function getNextConsultantInRound($conn, $roundId)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
 
-        if ($isAvailable) {
+        $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);
+        $shouldSkipConsecutiveRR = ($isAbsoluteLast && $activeCount > 1);
+
+        if ($isAvailable && !$shouldSkipConsecutiveRR) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
             $skipCount = (int) ($candidate['skip_count'] ?? 0);
 
@@ -945,8 +975,8 @@ function getNextConsultantInRound($conn, $roundId)
                 $nextIdx = ($nextIdx + 1) % count($consultants);
             }
         } else {
-            // Unavailable: skipped
-            if ($starvationEnabled === 1) {
+            // Unavailable or skipped due to consecutive rule
+            if ($starvationEnabled === 1 && !$isAvailable) {
                 $skippedConsultants[] = (int) $candidate['id'];
             }
             $nextIdx = ($nextIdx + 1) % count($consultants);
@@ -1165,6 +1195,19 @@ function simulateNextConsultantInRound($conn, $roundId)
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
 
+    // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
+    $absoluteLastAssignedId = null;
+    $logStmt = $conn->prepare("SELECT assigned_to FROM distribution_logs WHERE round_id = ? ORDER BY id DESC LIMIT 1");
+    if ($logStmt) {
+        $logStmt->bind_param("i", $roundId);
+        $logStmt->execute();
+        $logRes = $logStmt->get_result();
+        if ($logRow = $logRes->fetch_assoc()) {
+            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int)$logRow['assigned_to'] : null;
+        }
+        $logStmt->close();
+    }
+
     $starvationEnabled = (int) get_system_setting($conn, 'starvation_prevention_enabled');
     $starvationMaxPerHour = (int) get_system_setting($conn, 'starvation_max_leads_per_hour');
     if ($starvationMaxPerHour <= 0) {
@@ -1248,13 +1291,26 @@ function simulateNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
+    // Calculate active count of available consultants
+    $activeCount = 0;
+    foreach ($consultants as $c) {
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
+        if (!$isOnVacation) {
+            $activeCount++;
+        }
+    }
+
     foreach ($consultants as $row) {
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
 
         // Priority 1: Compensation
-        if (empty($compensatedConsultant) && $isAvailable && intval($row['compensation_count']) > 0) {
+        // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
+        $isLastAssigned = ($absoluteLastAssignedId !== null && (int)$row['id'] === (int)$absoluteLastAssignedId);
+        $shouldSkipConsecutiveComp = ($isLastAssigned && $activeCount > 1);
+
+        if (empty($compensatedConsultant) && $isAvailable && !$shouldSkipConsecutiveComp && intval($row['compensation_count']) > 0) {
             $compensatedConsultant = $row;
         }
 
@@ -1314,7 +1370,10 @@ function simulateNextConsultantInRound($conn, $roundId)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
 
-        if ($isAvailable) {
+        $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);
+        $shouldSkipConsecutiveRR = ($isAbsoluteLast && $activeCount > 1);
+
+        if ($isAvailable && !$shouldSkipConsecutiveRR) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
             $skipCount = (int) ($candidate['skip_count'] ?? 0);
 

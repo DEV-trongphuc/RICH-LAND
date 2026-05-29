@@ -2109,7 +2109,10 @@ export const SalePortal = () => {
 
     const y = currentDate.getFullYear();
     const m = currentDate.getMonth();
-    const monthName = new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long' }).format(currentDate);
+    const monthName = new Intl.DateTimeFormat(
+      language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : 'en-US',
+      { month: 'long' }
+    ).format(currentDate);
 
     const days = [];
     const totalDays = daysInMonth(y, m);
@@ -2180,7 +2183,7 @@ export const SalePortal = () => {
                 fontSize: '0.6875rem',
                 fontWeight: 600
               }} title={t("Đã chia")}>
-                <span>Chia:</span>
+                <span>{t('Chia')}:</span>
                 <strong>{dayData.distributed}</strong>
               </div>
             )}
@@ -2197,7 +2200,7 @@ export const SalePortal = () => {
                 fontWeight: 600,
                 border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe'
               }} title={t("Ticket lỗi")}>
-                <span>Ticket:</span>
+                <span>{t('Ticket')}:</span>
                 <strong>{dayData.ticket_total}</strong>
               </div>
             )}
