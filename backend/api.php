@@ -1153,12 +1153,13 @@ switch ($action) {
         $stmtT->close();
 
         // 4. Query distribution by round
+        $whereClauseNoReminder = $whereClause . " AND dl.status != 'reminder'";
         $sqlByRound = "
             SELECT r.round_name, COUNT(dl.id) as count
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
             JOIN distribution_rounds r ON dl.round_id = r.id
-            WHERE $whereClause
+            WHERE $whereClauseNoReminder
             GROUP BY dl.round_id
         ";
         $stmtBR = $conn->prepare($sqlByRound);
@@ -1178,7 +1179,7 @@ switch ($action) {
             SELECT HOUR(dl.received_at) as hr, COUNT(dl.id) as count
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
-            WHERE $whereClause
+            WHERE $whereClauseNoReminder
             GROUP BY HOUR(dl.received_at)
             ORDER BY hr ASC
         ";
@@ -1251,7 +1252,7 @@ switch ($action) {
             'report_error_reasons' => get_normalized_report_error_reasons($conn),
             'is_allowed_to_report' => true,
             'stats' => [
-                'total_received' => count($leads),
+                'total_received' => count(array_filter($leads, function($l) { return $l['status'] !== 'reminder'; })),
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),
                 'tickets_approved' => (int) ($ticketStats['approved'] ?? 0),
                 'tickets_rejected' => (int) ($ticketStats['rejected'] ?? 0),

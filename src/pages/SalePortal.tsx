@@ -714,7 +714,7 @@ export const SalePortal = () => {
   const getDailyChartData = () => {
     const dailyMap: { [key: string]: number } = {};
     if (data.leads && Array.isArray(data.leads)) {
-      data.leads.forEach((lead: any) => {
+      data.leads.filter((l: any) => l.status !== 'reminder').forEach((lead: any) => {
         if (lead.received_at) {
           const dateStr = lead.received_at.split(' ')[0]; // "YYYY-MM-DD"
           dailyMap[dateStr] = (dailyMap[dateStr] || 0) + 1;
@@ -1275,7 +1275,7 @@ export const SalePortal = () => {
               {(() => {
                 const getSourceStats = () => {
                   const counts: Record<string, number> = {};
-                  data.leads.forEach((lead: any) => {
+                  data.leads.filter((l: any) => l.status !== 'reminder').forEach((lead: any) => {
                     const name = lead.connection_name || t('Nhập tay');
                     counts[name] = (counts[name] || 0) + 1;
                   });
@@ -1291,7 +1291,7 @@ export const SalePortal = () => {
 
                 const getLeadSourceStats = () => {
                   const counts: Record<string, number> = {};
-                  data.leads.forEach((lead: any) => {
+                  data.leads.filter((l: any) => l.status !== 'reminder').forEach((lead: any) => {
                     const name = lead.source?.trim() || t('Không xác định');
                     counts[name] = (counts[name] || 0) + 1;
                   });
