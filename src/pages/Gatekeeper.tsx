@@ -2114,7 +2114,7 @@ export const Gatekeeper = () => {
                               }
                               return (
                                 <>
-                                  <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                                  <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                                 </>
                               );
                             })()}
@@ -2448,7 +2448,7 @@ export const Gatekeeper = () => {
                         }
                         return (
                           <>
-                            <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
+                            <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
                             {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
                           </>
                         );
