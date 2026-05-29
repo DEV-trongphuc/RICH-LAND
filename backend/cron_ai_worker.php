@@ -30,8 +30,10 @@ function runAIScreenerWorker($conn) {
     ");
 
     $leads = [];
+    $ids = [];
     while ($row = $res->fetch_assoc()) {
         $leads[] = $row;
+        $ids[] = (int)$row['id'];
     }
 
     if (empty($leads)) {
@@ -42,7 +44,9 @@ function runAIScreenerWorker($conn) {
         return;
     }
 
-    // Commit transaction ngay để nhường lock cho các tiến trình khác
+    // Đánh dấu trạng thái 'screening' ngay trong transaction để tránh bị tranh chấp khi commit sớm
+    $idsStr = implode(',', $ids);
+    $conn->query("UPDATE leads SET ai_screener_status = 'screening' WHERE id IN ($idsStr)");
     $conn->commit();
 
     echo "[" . date('Y-m-d H:i:s') . "] Found " . count($leads) . " leads for AI screening. Processing...\n";

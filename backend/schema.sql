@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 28, 2026 lúc 08:31 AM
+-- Thời gian đã tạo: Th5 29, 2026 lúc 01:32 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -184,7 +184,12 @@ CREATE TABLE `leads` (
   `status` varchar(50) DEFAULT 'active' COMMENT 'Trạng thái lead (active, pending_approval, rejected, blacklisted)',
   `target_round_id` int(11) DEFAULT NULL COMMENT 'Vòng xoay phân bổ dự kiến',
   `ai_screener_status` varchar(50) DEFAULT 'not_screened' COMMENT 'Đánh giá AI (passed, failed, skipped, error)',
-  `ai_evaluation` text DEFAULT NULL COMMENT 'Chi tiết đánh giá của AI'
+  `ai_evaluation` text DEFAULT NULL COMMENT 'Chi tiết đánh giá của AI',
+  `ai_attempts` int(11) DEFAULT 0 COMMENT 'Số lần thử gọi AI',
+  `zalo_notify_status` varchar(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Zalo',
+  `email_notify_status` varchar(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Email',
+  `zalo_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Zalo thành công',
+  `email_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Email thành công'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -203,7 +208,8 @@ CREATE TABLE `mail_queue` (
   `created_at` datetime DEFAULT current_timestamp(),
   `sent_at` datetime DEFAULT NULL,
   `attempts` int(11) DEFAULT 0,
-  `last_error` text DEFAULT NULL
+  `last_error` text DEFAULT NULL,
+  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -323,6 +329,25 @@ CREATE TABLE `ticket_notify_settings` (
   `account_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `zalo_queue`
+--
+
+CREATE TABLE `zalo_queue` (
+  `id` int(11) NOT NULL,
+  `bot_token` varchar(255) NOT NULL,
+  `chat_id` varchar(255) NOT NULL,
+  `body_text` text NOT NULL,
+  `status` enum('pending','sent','failed') DEFAULT 'pending',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `sent_at` datetime DEFAULT NULL,
+  `attempts` int(11) DEFAULT 0,
+  `last_error` text DEFAULT NULL,
+  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 --
 -- Chỉ mục cho các bảng đã đổ
 --
@@ -420,14 +445,14 @@ ALTER TABLE `leads`
 --
 ALTER TABLE `mail_queue`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_status` (`status`);
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_lead_id` (`lead_id`);
 
 --
 -- Chỉ mục cho bảng `round_consultants`
 --
 ALTER TABLE `round_consultants`
   ADD PRIMARY KEY (`round_id`,`consultant_id`),
-  ADD UNIQUE KEY `idx_round_consultant_unique` (`round_id`,`consultant_id`),
   ADD KEY `consultant_id` (`consultant_id`);
 
 --
@@ -472,6 +497,14 @@ ALTER TABLE `system_settings`
 ALTER TABLE `ticket_notify_settings`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `idx_account_unique` (`account_id`);
+
+--
+-- Chỉ mục cho bảng `zalo_queue`
+--
+ALTER TABLE `zalo_queue`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_lead_id` (`lead_id`);
 
 --
 -- AUTO_INCREMENT cho các bảng đã đổ
@@ -559,6 +592,12 @@ ALTER TABLE `sync_queue`
 -- AUTO_INCREMENT cho bảng `ticket_notify_settings`
 --
 ALTER TABLE `ticket_notify_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `zalo_queue`
+--
+ALTER TABLE `zalo_queue`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
