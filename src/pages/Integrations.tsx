@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -307,7 +308,7 @@ function normalizePhone(phone) {
 }
 }`;
 
-export const Integrations = () => {
+const IntegrationsInner = () => {
   const { language, t } = useLanguage();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selected, setSelected] = useState<Connection | null>(null);
@@ -1654,7 +1655,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title={t("Kết nối Google Sheets")}
         width="700px"
       >
-        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
+        {showAddConn && (
+          <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 16, left: 0, right: 0, height: 1, background: 'var(--color-border)', zIndex: 0 }}></div>
@@ -2059,6 +2061,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
           )}
 
         </div>
+        )}
       </CustomModal>
 
       <ConfirmModal
@@ -2085,7 +2088,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title={selected?.connection_type === 'landing_page' ? t("Chỉnh sửa cấu hình Landing Page") : t("Chỉnh sửa cấu hình đồng bộ")}
         width="600px"
       >
-        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
+        {showEditConn && (
+          <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2355,6 +2359,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
             </div>
           </div>
         </div>
+        )}
       </CustomModal>
 
       <CustomModal
@@ -2363,37 +2368,43 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         title={t("Tạo API Landing Page")}
         width="500px"
       >
-        <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {t('Kết nối Landing Page')} <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem' }}><Zap size={14} /></div>
-              </h2>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                {t('Tạo một Endpoint (Đường dẫn API) để gắn vào trang đích của bạn.')}
-              </p>
-            </div>
-
-            <div>
-              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>{t('Tên kết nối')}</label>
-              <input
-                className="form-input"
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text)' }}
-                placeholder={t("VD: Landing Page Bất Động Sản")}
-                value={newApiName}
-                onChange={e => setNewApiName(e.target.value)}
-              />
+        {showAddApi && (
+          <>
+            <div style={{ padding: '1.5rem', background: 'var(--color-surface)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {t('Kết nối Landing Page')} <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem' }}><Zap size={14} /></div>
+                </h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  {t('Tạo một Endpoint (Đường dẫn API) để gắn vào trang đích của bạn.')}
+                </p>
+              </div>
+  
+              <div>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>{t('Tên kết nối')}</label>
+                <input
+                  className="form-input"
+                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text)' }}
+                  placeholder={t("VD: Landing Page Bất Động Sản")}
+                  value={newApiName}
+                  onChange={e => setNewApiName(e.target.value)}
+                />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-          <button className="btn outline" onClick={() => setShowAddApi(false)}>{t('Hủy')}</button>
-          <button className="btn primary" onClick={handleAddApiConnection} disabled={isSaving || !newApiName.trim()} style={{ background: 'var(--color-primary)', border: 'none' }}>
-            {isSaving ? t('Đang tạo...') : t('Tạo API Endpoint')}
-          </button>
-        </div>
+  
+          <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button className="btn outline" onClick={() => setShowAddApi(false)}>{t('Hủy')}</button>
+            <button className="btn primary" onClick={handleAddApiConnection} disabled={isSaving || !newApiName.trim()} style={{ background: 'var(--color-primary)', border: 'none' }}>
+              {isSaving ? t('Đang tạo...') : t('Tạo API Endpoint')}
+            </button>
+          </div>
+        </>
+        )}
       </CustomModal>
     </>
   );
 };
+
+export const Integrations = withRouterFreezer(IntegrationsInner, '/integrations');

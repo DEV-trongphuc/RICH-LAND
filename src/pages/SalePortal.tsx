@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import {
   LogOut, Search, Filter, AlertCircle, CheckCircle2,
   XCircle, Clock, FileText,
@@ -72,9 +73,8 @@ const parseServerDate = (dateStr: string) => {
   return new Date(isoStr);
 };
 
-export const SalePortal = () => {
+const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, token, login, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -4135,3 +4135,5 @@ export const SalePortal = () => {
     </div>
   );
 };
+
+export const SalePortal = withRouterFreezer(SalePortalInner, '/sale-portal');

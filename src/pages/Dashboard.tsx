@@ -12,7 +12,8 @@ import {
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
@@ -30,11 +31,9 @@ const parseServerDate = (dateStr: string) => {
   return new Date(isoStr);
 };
 
-export const Dashboard = () => {
+const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isActive = location.pathname === '/';
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1086,30 +1085,32 @@ export const Dashboard = () => {
         title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
-          <div>
-            <label className="form-label">{t('Từ ngày')}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-            />
+        {showDateModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+            <div>
+              <label className="form-label">{t('Từ ngày')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">{t('Đến ngày')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn outline" onClick={() => setShowDateModal(false)}>{t('Hủy')}</button>
+              <button className="btn primary" onClick={handleCustomDateSubmit}>{t('Áp dụng')}</button>
+            </div>
           </div>
-          <div>
-            <label className="form-label">{t('Đến ngày')}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t('Hủy')}</button>
-            <button className="btn primary" onClick={handleCustomDateSubmit}>{t('Áp dụng')}</button>
-          </div>
-        </div>
+        )}
       </CustomModal>
 
       {/* Statistics Modal */}
@@ -1754,3 +1755,5 @@ export const Dashboard = () => {
     </div>
   );
 };
+
+export const Dashboard = withRouterFreezer(DashboardInner, '/');

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+
 import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
@@ -9,6 +9,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 
 type Lead = {
   id: number;
@@ -209,10 +210,8 @@ const parseBlacklistNote = (note: string) => {
   return { admin, time, reason };
 };
 
-export const Tickets = () => {
+const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any }) => {
   const { t } = useLanguage();
-  const location = useLocation();
-  const isActive = location.pathname === '/tickets';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -226,7 +225,6 @@ export const Tickets = () => {
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
   const dateFilter = searchParams.get('date') || 'Tháng này';
@@ -310,7 +308,7 @@ export const Tickets = () => {
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   const updateParams = (key: string, value: string) => {
-    setSearchParams(prev => {
+    setSearchParams((prev: any) => {
       if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
       else prev.set(key, value);
       if (key !== 'page') prev.delete('page');
@@ -877,7 +875,7 @@ export const Tickets = () => {
         {/* Clear filters */}
         {hasActiveFilters && (
           <button onClick={() => {
-            setSearchParams(prev => {
+            setSearchParams((prev: any) => {
               prev.delete('consultant');
               prev.delete('date');
               prev.delete('page');
@@ -1377,7 +1375,8 @@ export const Tickets = () => {
         title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+        {showDateModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">{t("Từ ngày")}</label>
             <input
@@ -1401,13 +1400,15 @@ export const Tickets = () => {
             <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
           </div>
         </div>
+        )}
       </CustomModal>
 
 
 
       {/* Reject Modal */}
       <CustomModal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title={t("Từ chối Báo cáo Lỗi")}>
-        <form onSubmit={submitReject}>
+        {rejectModalOpen && (
+          <form onSubmit={submitReject}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
               {t("Vui lòng nhập lý do từ chối để Tư vấn viên biết lý do không được đền bù Data:")}
@@ -1432,11 +1433,13 @@ export const Tickets = () => {
             </div>
           </div>
         </form>
+        )}
       </CustomModal>
 
       {/* Quick Message Modal */}
       <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`${t("Nhắn tin cho")} ${quickMessageTarget?.name || t("Sale")}`}>
-        <form onSubmit={handleSendQuickMessage}>
+        {quickMessageOpen && (
+          <form onSubmit={handleSendQuickMessage}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>{t("Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]")}</p>
             <div className="form-group">
@@ -1459,11 +1462,13 @@ export const Tickets = () => {
             </div>
           </div>
         </form>
+        )}
       </CustomModal>
 
       {/* Approve Modal */}
       <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title={t("Duyệt & Đền Bù Data")}>
-        <form onSubmit={submitApprove}>
+        {approveModalOpen && (
+          <form onSubmit={submitApprove}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
               {t("Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.")}
@@ -1521,6 +1526,7 @@ export const Tickets = () => {
             </div>
           </div>
         </form>
+        )}
       </CustomModal>
 
       {/* Customer Detail Modal */}
@@ -2404,7 +2410,8 @@ export const Tickets = () => {
         title={t("Xác nhận Giao lại Lead")}
         width={500}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+        {confirmReassignOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
@@ -2457,6 +2464,7 @@ export const Tickets = () => {
             )}
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Confirm Block Modal */}
@@ -2470,7 +2478,8 @@ export const Tickets = () => {
         title={t("Xác nhận Chặn & Blacklist")}
         width="550px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+        {confirmBlockOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)',
@@ -2605,6 +2614,7 @@ export const Tickets = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Auto-Approve Settings Modal */}
@@ -2614,7 +2624,8 @@ export const Tickets = () => {
         title={t("Cấu hình Tự Động Duyệt Ticket")}
         width="680px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
+        {showAutoApproveModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
 
           {/* Main switch toggle */}
           <div style={{
@@ -2823,6 +2834,7 @@ export const Tickets = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Custom Modal for Auto-Approve Rule */}
@@ -2832,7 +2844,8 @@ export const Tickets = () => {
         title={editingRule ? t("Chỉnh sửa Luật Tự Động Duyệt") : t("Thêm Luật Tự Động Duyệt Mới")}
         width="620px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
+        {ruleModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
           {/* Name */}
           <div>
             <label className="form-label" style={{ fontWeight: 600 }}>{t("Tên luật duyệt tự động")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
@@ -2989,6 +3002,7 @@ export const Tickets = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       <style>{`
@@ -3004,6 +3018,8 @@ export const Tickets = () => {
     </div>
   );
 };
+
+export const Tickets = withRouterFreezer(TicketsInner, '/tickets');
 
 // ─────────────────────────────────────────────────────────────
 // TicketSettingsModal — Chọn admin nhận email thông báo Ticket
@@ -3055,7 +3071,8 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <CustomModal isOpen={open} onClose={onClose} title={t("Cài đặt thông báo Ticket")}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {loadingData ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t("Đang tải...")}</div>
         ) : (
@@ -3135,6 +3152,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
           </button>
         </div>
       </div>
+      )}
     </CustomModal>
   );
 };

@@ -3,10 +3,11 @@ import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshC
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 
 type Lead = {
   id: number;
@@ -277,11 +278,9 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
   return null;
 };
 
-export const DataList = () => {
+const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const { user } = useAuth();
   const { language, t } = useLanguage();
-  const location = useLocation();
-  const isActive = location.pathname === '/data' || location.pathname === '/calendar';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -305,7 +304,6 @@ export const DataList = () => {
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
@@ -399,7 +397,7 @@ export const DataList = () => {
   }, [searchParams, isActive]);
 
   const updateParams = (key: string, value: string) => {
-    setSearchParams(prev => {
+    setSearchParams((prev: any) => {
       if (value === 'all' || value === '') prev.delete(key);
       else prev.set(key, value);
       if (key !== 'page') prev.delete('page');
@@ -2631,7 +2629,8 @@ export const DataList = () => {
         title={t("Xác nhận Giao lại Lead")}
         width={500}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+        {confirmReassignOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
@@ -2684,6 +2683,7 @@ export const DataList = () => {
             )}
           </div>
         </div>
+        )}
       </CustomModal>
 
       <CustomModal
@@ -2696,7 +2696,8 @@ export const DataList = () => {
         title={t("Xác nhận Chặn & Blacklist")}
         width="550px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+        {confirmBlockOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%', background: '#fee2e2',
@@ -2831,6 +2832,7 @@ export const DataList = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Day Details Modal */}
@@ -2844,7 +2846,9 @@ export const DataList = () => {
         title={`${t('Chi tiết hoạt động ngày')} ${selectedDate ? new Date(selectedDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
         width="900px"
       >
-        {dayDetailsLoading ? (
+        {selectedDate !== null && (
+          <>
+            {dayDetailsLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
             <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
             <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
@@ -3309,6 +3313,8 @@ export const DataList = () => {
             {t('Có lỗi xảy ra khi hiển thị chi tiết.')}
           </div>
         )}
+          </>
+        )}
       </CustomModal>
 
       {/* Check Lead Duplicate Modal */}
@@ -3322,7 +3328,8 @@ export const DataList = () => {
         title={t("Kiểm tra trùng Lead")}
         width="950px"
       >
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {showDupCheckModal && (
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
             {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
           </p>
@@ -3548,6 +3555,7 @@ export const DataList = () => {
             </div>
           )}
         </div>
+        )}
       </CustomModal>
       <style>{`
         :root {
@@ -3643,3 +3651,5 @@ export const DataList = () => {
     </div>
   );
 };
+
+export const DataList = withRouterFreezer(DataListInner, (path) => path === '/data' || path === '/calendar');

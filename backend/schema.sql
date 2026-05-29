@@ -209,7 +209,8 @@ CREATE TABLE `leads` (
   `email_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Email thành công',
   `ai_prompt_tokens` int(11) DEFAULT 0 COMMENT 'Số token prompt AI sử dụng',
   `ai_completion_tokens` int(11) DEFAULT 0 COMMENT 'Số token completion AI sử dụng',
-  `ai_total_tokens` int(11) DEFAULT 0 COMMENT 'Tổng số token AI sử dụng'
+  `ai_total_tokens` int(11) DEFAULT 0 COMMENT 'Tổng số token AI sử dụng',
+  `ai_screening_started_at` datetime DEFAULT NULL COMMENT 'Thời điểm bắt đầu gọi AI'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -224,8 +225,9 @@ CREATE TABLE `mail_queue` (
   `cc_email` varchar(255) DEFAULT NULL,
   `subject` varchar(255) NOT NULL,
   `body_html` longtext NOT NULL,
-  `status` enum('pending','sent','failed') DEFAULT 'pending',
+  `status` enum('pending','processing','sent','failed') DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `sent_at` datetime DEFAULT NULL,
   `attempts` int(11) DEFAULT 0,
   `last_error` text DEFAULT NULL,
@@ -361,8 +363,9 @@ CREATE TABLE `zalo_queue` (
   `bot_token` varchar(255) NOT NULL,
   `chat_id` varchar(255) NOT NULL,
   `body_text` text NOT NULL,
-  `status` enum('pending','sent','failed') DEFAULT 'pending',
+  `status` enum('pending','processing','sent','failed') DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `sent_at` datetime DEFAULT NULL,
   `attempts` int(11) DEFAULT 0,
   `last_error` text DEFAULT NULL,
@@ -404,7 +407,8 @@ ALTER TABLE `admin_logs`
 --
 ALTER TABLE `consultants`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_name` (`name`);
 
 --
 -- Chỉ mục cho bảng `communication_logs`

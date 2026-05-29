@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { Plus, Users, Edit3, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -23,7 +24,7 @@ const getColorForName = (name: string) => {
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
-export const Rounds = () => {
+const RoundsInner = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1550,3 +1551,5 @@ export const Rounds = () => {
     </div>
   );
 };
+
+export const Rounds = withRouterFreezer(RoundsInner, '/rounds');

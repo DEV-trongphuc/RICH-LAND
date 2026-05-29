@@ -304,9 +304,9 @@ function findConsultantByEmailOrName($conn, $value)
 
     // 1. Try finding by email
     if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
-        $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(email) = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         if ($stmt) {
-            $stmt->bind_param("s", $lowerVal);
+            $stmt->bind_param("s", $value);
             $stmt->execute();
             $res = $stmt->get_result();
             $row = $res->fetch_assoc();
@@ -318,9 +318,9 @@ function findConsultantByEmailOrName($conn, $value)
         }
     }
     // 2. Try finding by name (case-insensitive or exact name match)
-    $stmt = $conn->prepare("SELECT id FROM consultants WHERE LOWER(name) = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
     if ($stmt) {
-        $stmt->bind_param("s", $lowerVal);
+        $stmt->bind_param("s", $value);
         $stmt->execute();
         $res = $stmt->get_result();
         $row = $res->fetch_assoc();

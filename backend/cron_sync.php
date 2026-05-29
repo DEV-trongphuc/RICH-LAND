@@ -21,8 +21,8 @@ if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
 
-// Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run
-$conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing'");
+// Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run (older than 10 minutes)
+$conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing' AND (last_sync_at IS NULL OR last_sync_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
 
 // Ensure sheet_sync_records table exists
 $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
@@ -768,11 +768,17 @@ foreach ($connections as $connItem) {
 
     logSync("Syncing Connection ID {$connItem['id']} - {$connItem['sheet_name']}...");
     
-    // Update status to syncing
-    $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'syncing' WHERE id = ?");
+    // Update status to syncing atomically to prevent concurrent sync executions
+    $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'syncing' WHERE id = ? AND sync_status = 'idle'");
     $upStmt->bind_param("i", $connItem['id']);
     $upStmt->execute();
+    $affected = $upStmt->affected_rows;
     $upStmt->close();
+
+    if ($affected === 0) {
+        logSync("Skipping ID {$connItem['id']}: Already syncing in another process.");
+        continue;
+    }
 
     try {
         // Fetch field mappings

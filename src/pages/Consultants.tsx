@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -56,7 +57,7 @@ const formatScheduleTooltip = (schedule: any, t: any): string => {
   }).join('\n');
 };
 
-export const Consultants = () => {
+const ConsultantsInner = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1415,3 +1416,5 @@ export const Consultants = () => {
     </div>
   );
 };
+
+export const Consultants = withRouterFreezer(ConsultantsInner, '/consultants');

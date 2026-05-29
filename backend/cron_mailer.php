@@ -34,14 +34,33 @@ function runMailerCron($conn) {
 
     $provider = $settings['email_provider'] ?? 'appscript';
 
-    // 2. Kéo tối đa 50 email đang chờ gửi hoặc bị lỗi dưới 3 lần
-    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html, attempts, lead_id FROM mail_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
-    if (!$res || $res->num_rows === 0) {
+    // 2. Tự động khôi phục các mail bị kẹt ở trạng thái 'processing' từ phiên chạy trước bị lỗi (quá 10 phút)
+    $conn->query("UPDATE mail_queue SET status = 'pending' WHERE status = 'processing' AND (updated_at IS NULL OR updated_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
+
+    // 3. Kéo tối đa 50 email đang chờ gửi hoặc bị lỗi dưới 3 lần sử dụng FOR UPDATE SKIP LOCKED
+    $conn->begin_transaction();
+    $res = $conn->query("SELECT id, to_email, cc_email, subject, body_html, attempts, lead_id FROM mail_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50 FOR UPDATE SKIP LOCKED");
+    
+    $mails = [];
+    $ids = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $mails[] = $row;
+            $ids[] = (int)$row['id'];
+        }
+    }
+
+    if (empty($mails)) {
+        $conn->commit();
         echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable emails to send.\n";
         return;
     }
 
-    echo "[" . date('Y-m-d H:i:s') . "] Found " . $res->num_rows . " emails to process. Processing...\n";
+    $idsStr = implode(',', $ids);
+    $conn->query("UPDATE mail_queue SET status = 'processing' WHERE id IN ($idsStr)");
+    $conn->commit();
+
+    echo "[" . date('Y-m-d H:i:s') . "] Found " . count($mails) . " emails to process. Processing...\n";
 
     $successCount = 0;
     $failCount = 0;
@@ -79,7 +98,7 @@ function runMailerCron($conn) {
         }
     }
 
-    while ($row = $res->fetch_assoc()) {
+    foreach ($mails as $row) {
         $mailId = $row['id'];
         $to = $row['to_email'];
         $ccEmailString = $row['cc_email'];
@@ -223,14 +242,33 @@ function runMailerCron($conn) {
 function runZaloMailerCron($conn) {
     require_once __DIR__ . '/zalo_bot.php';
 
-    // 1. Kéo tối đa 50 tin nhắn Zalo đang chờ gửi hoặc bị lỗi dưới 3 lần
-    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts, lead_id FROM zalo_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50");
-    if (!$res || $res->num_rows === 0) {
+    // 1. Tự động khôi phục các tin nhắn Zalo bị kẹt ở trạng thái 'processing' từ phiên chạy trước bị lỗi (quá 10 phút)
+    $conn->query("UPDATE zalo_queue SET status = 'pending' WHERE status = 'processing' AND (updated_at IS NULL OR updated_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
+
+    // 2. Kéo tối đa 50 tin nhắn Zalo đang chờ gửi hoặc bị lỗi dưới 3 lần sử dụng FOR UPDATE SKIP LOCKED
+    $conn->begin_transaction();
+    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts, lead_id FROM zalo_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50 FOR UPDATE SKIP LOCKED");
+    
+    $msgs = [];
+    $ids = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $msgs[] = $row;
+            $ids[] = (int)$row['id'];
+        }
+    }
+
+    if (empty($msgs)) {
+        $conn->commit();
         echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable Zalo messages to send.\n";
         return;
     }
 
-    echo "[" . date('Y-m-d H:i:s') . "] Found " . $res->num_rows . " Zalo messages to process. Processing...\n";
+    $idsStr = implode(',', $ids);
+    $conn->query("UPDATE zalo_queue SET status = 'processing' WHERE id IN ($idsStr)");
+    $conn->commit();
+
+    echo "[" . date('Y-m-d H:i:s') . "] Found " . count($msgs) . " Zalo messages to process. Processing...\n";
 
     $successCount = 0;
     $failCount = 0;
@@ -238,7 +276,7 @@ function runZaloMailerCron($conn) {
     $updSuccessStmt = $conn->prepare("UPDATE zalo_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
     $updFailStmt = $conn->prepare("UPDATE zalo_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
 
-    while ($row = $res->fetch_assoc()) {
+    foreach ($msgs as $row) {
         $msgId = $row['id'];
         $botToken = $row['bot_token'];
         $chatId = $row['chat_id'];

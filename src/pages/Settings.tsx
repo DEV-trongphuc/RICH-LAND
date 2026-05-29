@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -69,7 +70,7 @@ const DEFAULT_REPORT_REASONS = [
   { reason: 'Khác', note: 'Là data Unqualified. Mọi data như đăng kí khác chuyên ngành như Luật/NNA, data mới cấp 3, không có tiếng anh (được ghi chú từ đầu bởi thông báo của MKT), là những data được định nghĩa Unqualified như trên Misa thì cứ báo cáo và ghi lý do ở dưới. Tạm thời c vẫn sẽ bù vòng.' }
 ];
 
-export const Settings = () => {
+const SettingsInner = () => {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -3104,7 +3105,8 @@ function doPost(e) {
         title={editingRule ? t("Chỉnh sửa Luật Tự Động Duyệt") : t("Thêm Luật Tự Động Duyệt Mới")}
         width="650px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+        {ruleModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
           {/* Name */}
           <div>
             <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên luật duyệt tự động')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
@@ -3260,6 +3262,7 @@ function doPost(e) {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       <ConfirmModal
@@ -3388,3 +3391,5 @@ function doPost(e) {
     </div>
   );
 };
+
+export const Settings = withRouterFreezer(SettingsInner, '/settings');

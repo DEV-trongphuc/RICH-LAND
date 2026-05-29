@@ -17,8 +17,8 @@ function runAIScreenerWorker($conn) {
     // Đặt thời gian thực thi không giới hạn
     set_time_limit(0);
 
-    // Tự động khôi phục các lead bị kẹt ở trạng thái 'screening' từ phiên chạy trước bị lỗi/crash
-    $conn->query("UPDATE leads SET ai_screener_status = 'pending' WHERE status = 'pending_approval' AND ai_screener_status = 'screening'");
+    // Tự động khôi phục các lead bị kẹt ở trạng thái 'screening' từ phiên chạy trước bị lỗi/crash (quá 10 phút)
+    $conn->query("UPDATE leads SET ai_screener_status = 'pending', ai_screening_started_at = NULL WHERE status = 'pending_approval' AND ai_screener_status = 'screening' AND (ai_screening_started_at IS NULL OR ai_screening_started_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
 
     // 1. Lấy danh sách tối đa 20 Lead đang chờ duyệt AI hoặc bị lỗi kết nối dưới 3 lần
     $conn->begin_transaction();
@@ -49,7 +49,7 @@ function runAIScreenerWorker($conn) {
 
     // Đánh dấu trạng thái 'screening' ngay trong transaction để tránh bị tranh chấp khi commit sớm
     $idsStr = implode(',', $ids);
-    $conn->query("UPDATE leads SET ai_screener_status = 'screening' WHERE id IN ($idsStr)");
+    $conn->query("UPDATE leads SET ai_screener_status = 'screening', ai_screening_started_at = NOW() WHERE id IN ($idsStr)");
     $conn->commit();
 
     echo "[" . date('Y-m-d H:i:s') . "] Found " . count($leads) . " leads for AI screening. Processing...\n";
@@ -241,7 +241,28 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
     $status = 'pending';
     $message = 'Không có tư vấn viên hoạt động trong vòng xoay.';
 
-    if ($targetRoundId) {
+    // --- Check CRM (Duplication & dynamic threshold rule) ---
+    $phone = $leadData['phone'] ?? '';
+    $email = $leadData['email'] ?? '';
+    $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+
+    // Load dynamic duplicate check threshold
+    $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+    if ($dupCheckMonths <= 0) {
+        $dupCheckMonths = 6;
+    }
+
+    $isDuplicate = false;
+    if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+        $assignedConsultantId = $crmCheckResult['assignedTo'];
+        $status = 'reminder';
+        $message = 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Chạy ngầm).';
+        $isDuplicate = true;
+    }
+
+    if ($isDuplicate) {
+        // Skip Round-Robin, keep duplicate owner
+    } else if ($targetRoundId) {
         $assignResult = getNextConsultantInRound($conn, $targetRoundId);
         if ($assignResult) {
             $assignedConsultantId = $assignResult['id'];

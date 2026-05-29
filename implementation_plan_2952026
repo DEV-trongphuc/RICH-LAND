@@ -1,0 +1,105 @@
+# Implementation Plan - Frontend UI Performance Optimization
+
+This plan outlines the optimization strategy to achieve maximum front-end rendering performance, instantaneous tab transitions, and ultra-fast modal opening speeds across the entire React application.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The optimization uses a high-performance HOC wrapper (`withRouterFreezer`) to isolate pages from the React Router context. This guarantees that inactive hidden tabs do not re-render when switching tabs, preventing the "render storm" that currently causes transitions to stutter.
+
+> [!TIP]
+> All exit transitions for `Framer Motion` inside `CustomModal` are fully preserved because the outer modal wrapper remains mounted while the inner content is lazy-loaded/unmounted safely.
+
+## Proposed Changes
+
+### Core Architecture & UI Components
+
+#### [NEW] [RouterFreezer.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/components/RouterFreezer.tsx)
+- Create a Higher-Order Component (HOC) called `withRouterFreezer` that wraps pages and freezes their React Router context subscriptions when they are not active.
+- It tracks `useLocation` and `useSearchParams` in the wrapper. If the page is active, it caches the current params in a ref. If inactive, it passes the cached (frozen) params to the wrapped component, preventing re-renders.
+
+```tsx
+import React, { useRef } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
+
+export function withRouterFreezer<P extends object>(
+  WrappedComponent: React.ComponentType<P & { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }>
+) {
+  const MemoizedInner = React.memo(WrappedComponent) as any;
+
+  return function RouterFreezerWrapper(props: P & { pathToCheck?: string | ((path: string) => boolean) }) {
+    const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const pathname = location.pathname;
+    
+    // Check if the current route matches the component path
+    const isActive = props.pathToCheck
+      ? (typeof props.pathToCheck === 'function' ? props.pathToCheck(pathname) : pathname === props.pathToCheck)
+      : true;
+
+    const lastParams = useRef({ searchParams, location });
+    if (isActive) {
+      lastParams.current = { searchParams, location };
+    }
+
+    return (
+      <MemoizedInner
+        {...props}
+        isActive={isActive}
+        searchParams={lastParams.current.searchParams}
+        setSearchParams={setSearchParams}
+        location={lastParams.current.location}
+      />
+    );
+  };
+}
+```
+
+---
+
+### Pages & Tab Components (Applying Freezer and Lazy Modals)
+
+We will refactor the major monolithic pages to use the `withRouterFreezer` HOC, split heavy lists, and implement lazy evaluation for all closed modals.
+
+#### [MODIFY] [Gatekeeper.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Gatekeeper.tsx)
+- Extract the main code body of `Gatekeeper` into `GatekeeperInner`, wrapped with `React.memo`.
+- Export `Gatekeeper = withRouterFreezer(GatekeeperInner)` mapping the route to `/gatekeeper`.
+- Wrap the children of all 7+ `CustomModal` elements in `{isOpen && ( ... )}` blocks (e.g., `isSettingsModalOpen`, `showDupCheckModal`, etc.) so closed modals do not compile/evaluate JSX.
+- Memoize the main queue table and the details section using `useMemo` to isolate rendering when modal toggles or hover state changes.
+
+#### [MODIFY] [Tickets.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Tickets.tsx)
+- Extract the main code body into `TicketsInner` wrapped with `React.memo`.
+- Export `Tickets = withRouterFreezer(TicketsInner)` mapping the route to `/tickets`.
+- Wrap the children of the 8+ `CustomModal` elements in `{isOpen && ( ... )}` blocks.
+- Memoize the main ticket lists and details.
+
+#### [MODIFY] [DataList.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/DataList.tsx)
+- Extract the main code body into `DataListInner` wrapped with `React.memo`.
+- Export `DataList = withRouterFreezer(DataListInner)` mapping the route to `/data` or `/calendar`.
+- Make the large data tables and the calendar views memoized based only on `leads` data.
+- Wrap all edit/detail modals in `{isOpen && ...}` blocks.
+
+#### [MODIFY] [SalePortal.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/SalePortal.tsx)
+- Apply the same pattern for `SalePortalInner` and export `SalePortal = withRouterFreezer(SalePortalInner)`.
+- Lazy-load the heavy forms inside its modals.
+
+#### [MODIFY] [Settings.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Settings.tsx)
+- Apply the same pattern to optimize the system configurations page.
+
+#### [MODIFY] [RuleSettings.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/RuleSettings.tsx), [Integrations.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Integrations.tsx), [Consultants.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Consultants.tsx), [Rounds.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Rounds.tsx), [Accounts.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Accounts.tsx), [FairShareAudit.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/FairShareAudit.tsx), [Dashboard.tsx](file:///e:/GIAO_DATA_GOOGLESHEETS/src/pages/Dashboard.tsx)
+- Refactor the rest of the tab pages to use `withRouterFreezer` to guarantee a 100% frozen rendering state when inactive.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Build and compile the Vite project to ensure no TS errors or breaking component changes:
+  ```powershell
+  npm run build
+  ```
+
+### Manual Verification
+- Deploy and switch tabs to feel the transition speed.
+- Verify modals open and close with smooth animations and zero lag.
+- Check browser console to confirm no double renders or React warnings are triggered.

@@ -9,8 +9,9 @@ import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 
-export const Accounts = () => {
+const AccountsInner = () => {
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -916,7 +917,8 @@ export const Accounts = () => {
       )}
 
       <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? t('Sửa Tài khoản') : t('Thêm Tài khoản Mới')} width="680px">
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {modalOpen && (
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Avatar Upload Area */}
           <div style={{ 
             display: 'flex', 
@@ -1186,6 +1188,7 @@ export const Accounts = () => {
             </button>
           </div>
         </form>
+        )}
       </CustomModal>
 
       <ConfirmModal 
@@ -1280,3 +1283,5 @@ export const Accounts = () => {
     </div>
   );
 };
+
+export const Accounts = withRouterFreezer(AccountsInner, '/accounts');

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
@@ -248,7 +249,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
 };
 
 
-export const RuleSettings = () => {
+const RuleSettingsInner = () => {
   const { t } = useLanguage();
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
@@ -700,7 +701,8 @@ export const RuleSettings = () => {
         title={editingRule ? t("Chỉnh sửa Quy tắc") : t("Thêm Quy tắc mới")}
         width="800px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
+        {isModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">{t("Áp dụng cho Nguồn (Connection)")}</label>
             <CustomSelect
@@ -1002,7 +1004,8 @@ export const RuleSettings = () => {
               {isSaving ? t('Đang lưu...') : (editingRule ? t('Cập nhật') : t('Thêm mới'))}
             </button>
           </div>
-        </div>
+          </div>
+        )}
       </CustomModal>
 
       {/* Global Confirm Modal for Deletion */}
@@ -1021,17 +1024,19 @@ export const RuleSettings = () => {
         title={t("Chưa có kết nối Google Sheets")}
         width={400}
       >
-        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-          <div style={{ background: 'var(--color-warning-light)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-            <Link2 size={32} color="var(--color-warning)" />
+        {isNoSheetModalOpen && (
+          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+            <div style={{ background: 'var(--color-warning-light)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <Link2 size={32} color="var(--color-warning)" />
+            </div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t("Bạn cần kết nối Sheets trước")}</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>{t("Hệ thống quy tắc định tuyến cần có cấu hình cột từ Google Sheets để hoạt động. Vui lòng thiết lập ít nhất 1 kết nối Tích hợp trước khi tạo quy tắc.")}</p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button className="btn outline" onClick={() => setIsNoSheetModalOpen(false)}>{t("Hủy bỏ")}</button>
+              <button className="btn primary" onClick={() => navigate('/integrations')}>{t("Đi tới Tích hợp")}</button>
+            </div>
           </div>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t("Bạn cần kết nối Sheets trước")}</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>{t("Hệ thống quy tắc định tuyến cần có cấu hình cột từ Google Sheets để hoạt động. Vui lòng thiết lập ít nhất 1 kết nối Tích hợp trước khi tạo quy tắc.")}</p>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-            <button className="btn outline" onClick={() => setIsNoSheetModalOpen(false)}>{t("Hủy bỏ")}</button>
-            <button className="btn primary" onClick={() => navigate('/integrations')}>{t("Đi tới Tích hợp")}</button>
-          </div>
-        </div>
+        )}
       </CustomModal>
 
       {/* Simulator Modal (Hộp thử nghiệm) */}
@@ -1041,7 +1046,8 @@ export const RuleSettings = () => {
         title={t("Thử nghiệm Định tuyến Lead")}
         width="1050px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+        {isSimulateModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
             {t("Giả lập một lead mới đi vào hệ thống định tuyến để kiểm tra xem rule nào khớp và Sale nào sẽ nhận được data.")}
           </p>
@@ -1461,9 +1467,10 @@ export const RuleSettings = () => {
             </div>
           </div>
         </div>
-
-
+        )}
       </CustomModal>
     </div>
   );
 };
+
+export const RuleSettings = withRouterFreezer(RuleSettingsInner, '/rules');

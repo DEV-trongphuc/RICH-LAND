@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import {
@@ -244,7 +245,7 @@ interface AIScreenerConfig {
   below_standard_auto_approve?: boolean;
 }
 
-export const Gatekeeper = () => {
+const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any }) => {
   const { t } = useLanguage();
   const getStatusBadge = (status: string, reportStatus?: string) => {
     if (status === 'assigned' && reportStatus === 'pending') {
@@ -510,8 +511,6 @@ export const Gatekeeper = () => {
     }
   };
   const { user } = useAuth();
-  const location = useLocation();
-  const isActive = location.pathname === '/gatekeeper';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -526,7 +525,6 @@ export const Gatekeeper = () => {
   }, []);
 
   // Search Params
-  const [searchParams, setSearchParams] = useSearchParams();
   const dateFilter = searchParams.get('date') || 'Tháng này';
   const currentPage = Number(searchParams.get('page') || '1');
 
@@ -645,7 +643,7 @@ export const Gatekeeper = () => {
     if (currentValue === value || (value === '1' && key === 'page' && !searchParams.has('page'))) {
       return;
     }
-    setSearchParams(prev => {
+    setSearchParams((prev: any) => {
       const next = new URLSearchParams(prev);
       if (value === '' || (key !== 'status' && value === 'all')) next.delete(key);
       else next.set(key, value);
@@ -2714,13 +2712,15 @@ export const Gatekeeper = () => {
         title={t("Cấu hình Bộ lọc AI")}
         width="950px"
       >
-        <style>{`
-          div:has(> .settings-modal-container) {
-            overflow: hidden !important;
-            padding: 0 !important;
-          }
-        `}</style>
-        <div className="settings-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
+        {isSettingsModalOpen && (
+          <>
+            <style>{`
+              div:has(> .settings-modal-container) {
+                overflow: hidden !important;
+                padding: 0 !important;
+              }
+            `}</style>
+            <div className="settings-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -3446,6 +3446,8 @@ export const Gatekeeper = () => {
             </button>
           </div>
         </div>
+          </>
+        )}
       </CustomModal>
 
       {/* Guide Modal */}
@@ -3455,13 +3457,15 @@ export const Gatekeeper = () => {
         title={t("Ưu điểm & Hướng dẫn sử dụng Bộ lọc AI")}
         width="950px"
       >
-        <style>{`
-          div:has(> .guide-modal-container) {
-            overflow: hidden !important;
-            padding: 0 !important;
-          }
-        `}</style>
-        <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', overflowX: 'hidden' }}>
+        {isGuideModalOpen && (
+          <>
+            <style>{`
+              div:has(> .guide-modal-container) {
+                overflow: hidden !important;
+                padding: 0 !important;
+              }
+            `}</style>
+            <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', overflowX: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
@@ -3518,6 +3522,8 @@ export const Gatekeeper = () => {
             </button>
           </div>
         </div>
+          </>
+        )}
       </CustomModal>
 
       {/* Custom Date Picker Modal */}
@@ -3560,7 +3566,8 @@ export const Gatekeeper = () => {
         title={t("Thống kê bộ lọc AI Pre-screener")}
         width="1000px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
+        {isStatsModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
 
           {/* Header/Subtitle containing selected Date Filter */}
           <div style={{
@@ -3966,6 +3973,7 @@ export const Gatekeeper = () => {
 
 
         </div>
+        )}
       </CustomModal>
 
       {/* AI Token Statistics Modal */}
@@ -3975,7 +3983,8 @@ export const Gatekeeper = () => {
         title={`${t('Thống kê sử dụng Token AI')} - ${getDisplayDateFilterText(dateFilter)}`}
         width="950px"
       >
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {isTokenStatsModalOpen && (
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Header Filter Context */}
           <div style={{
             display: 'flex',
@@ -4381,6 +4390,7 @@ export const Gatekeeper = () => {
             </>
           )}
         </div>
+        )}
       </CustomModal>
 
       {/* Approve Held Lead Modal */}
@@ -4390,7 +4400,8 @@ export const Gatekeeper = () => {
         title={t("Phê duyệt & Phân bổ Lead")}
         width="450px"
       >
-        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {heldActionModalOpen === 'approve' && (
+          <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
             {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
           </p>
@@ -4477,6 +4488,7 @@ export const Gatekeeper = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Reject Held Lead Modal */}
@@ -4486,7 +4498,8 @@ export const Gatekeeper = () => {
         title={t("Xác nhận dưới chuẩn")}
         width="450px"
       >
-        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {heldActionModalOpen === 'reject' && (
+          <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
             {t("Vui lòng nhập lý do xác nhận dưới chuẩn cho lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
           </p>
@@ -4517,6 +4530,7 @@ export const Gatekeeper = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Blacklist Held Lead Modal */}
@@ -4526,7 +4540,8 @@ export const Gatekeeper = () => {
         title={t("Chặn & Đưa vào Blacklist")}
         width="450px"
       >
-        <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {heldActionModalOpen === 'blacklist' && (
+          <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
             {t("Xác nhận chặn số điện thoại này. Số điện thoại sẽ bị lưu vào danh sách đen (Global Exclusion Contacts) để tự động từ chối trong tương lai.")}
           </p>
@@ -4557,6 +4572,7 @@ export const Gatekeeper = () => {
             </button>
           </div>
         </div>
+        )}
       </CustomModal>
 
       {/* Customer Detail Drawer/Modal */}
@@ -5219,7 +5235,8 @@ export const Gatekeeper = () => {
         title={t("Kiểm tra trùng Lead")}
         width="950px"
       >
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {showDupCheckModal && (
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
             {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
           </p>
@@ -5445,6 +5462,7 @@ export const Gatekeeper = () => {
             </div>
           )}
         </div>
+        )}
       </CustomModal>
 
       <style>{`
@@ -5550,3 +5568,5 @@ export const Gatekeeper = () => {
     </div>
   );
 };
+
+export const Gatekeeper = withRouterFreezer(GatekeeperInner, '/gatekeeper');

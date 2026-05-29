@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 138;
+$targetVersion = 140;
 $currentVersion = 0;
 
 // Query current DB version
@@ -164,6 +164,9 @@ if (!$apply) {
 
             // Version 138
             echo "<tr><td>v138</td><td>Thêm cột sync_error_count để hỗ trợ đếm số lần lỗi đồng bộ liên tiếp, cho phép tự chữa lành trước khi báo lỗi thực sự.</td><td>" . ($currentVersion >= 138 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+            
+            // Version 139
+            echo "<tr><td>v139</td><td>Thêm INDEX idx_name vào bảng consultants để tối ưu hóa tìm kiếm Sale theo tên.</td><td>" . ($currentVersion >= 139 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
 
             echo "</tbody></table>";
             echo "</div>";
@@ -1084,6 +1087,61 @@ try {
         $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '138') ON DUPLICATE KEY UPDATE setting_value = '138'");
         $currentVersion = 138;
         $logMsg("Hoàn thành cập nhật phiên bản 138.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 10: Version 139 (Add index on consultants name column)
+    // --------------------------------------------------
+    if ($currentVersion < 139) {
+        $logMsg("Đang chạy cập nhật phiên bản 139 (Thêm INDEX idx_name vào consultants)...", "info");
+        
+        $chkIdxName = $conn->query("SHOW INDEX FROM consultants WHERE Key_name='idx_name'");
+        if ($chkIdxName && $chkIdxName->num_rows === 0) {
+            $conn->query("ALTER TABLE consultants ADD INDEX `idx_name` (`name`)");
+            $logMsg("Đã thêm INDEX idx_name vào consultants.", "success");
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '139') ON DUPLICATE KEY UPDATE setting_value = '139'");
+        $currentVersion = 139;
+        $logMsg("Hoàn thành cập nhật phiên bản 139.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 11: Version 140 (Add ai_screening_started_at to leads, add 'processing' to mail_queue/zalo_queue enums, add updated_at)
+    // --------------------------------------------------
+    if ($currentVersion < 140) {
+        $logMsg("Đang chạy cập nhật phiên bản 140 (Tối ưu hóa khóa concurrency và trạng thái queue)...", "info");
+        
+        // 1. Column ai_screening_started_at in leads
+        $chkColASSA = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_screening_started_at'");
+        if ($chkColASSA && $chkColASSA->num_rows === 0) {
+            $conn->query("ALTER TABLE leads ADD COLUMN ai_screening_started_at DATETIME NULL COMMENT 'Thời điểm bắt đầu gọi AI'");
+            $logMsg("Đã thêm cột ai_screening_started_at vào leads.", "success");
+        }
+        
+        // 2. Modify mail_queue status & add updated_at
+        $conn->query("ALTER TABLE mail_queue MODIFY COLUMN status ENUM('pending','processing','sent','failed') DEFAULT 'pending'");
+        $logMsg("Đã cập nhật ENUM status của mail_queue.", "success");
+        
+        $chkColMailUA = $conn->query("SHOW COLUMNS FROM mail_queue LIKE 'updated_at'");
+        if ($chkColMailUA && $chkColMailUA->num_rows === 0) {
+            $conn->query("ALTER TABLE mail_queue ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            $logMsg("Đã thêm cột updated_at vào mail_queue.", "success");
+        }
+        
+        // 3. Modify zalo_queue status & add updated_at
+        $conn->query("ALTER TABLE zalo_queue MODIFY COLUMN status ENUM('pending','processing','sent','failed') DEFAULT 'pending'");
+        $logMsg("Đã cập nhật ENUM status của zalo_queue.", "success");
+        
+        $chkColZaloUA = $conn->query("SHOW COLUMNS FROM zalo_queue LIKE 'updated_at'");
+        if ($chkColZaloUA && $chkColZaloUA->num_rows === 0) {
+            $conn->query("ALTER TABLE zalo_queue ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            $logMsg("Đã thêm cột updated_at vào zalo_queue.", "success");
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '140') ON DUPLICATE KEY UPDATE setting_value = '140'");
+        $currentVersion = 140;
+        $logMsg("Hoàn thành cập nhật phiên bản 140.", "success");
     }
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

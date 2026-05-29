@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { withRouterFreezer } from '../components/RouterFreezer';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers,
@@ -21,11 +21,9 @@ interface FairShareAuditProps {
   forceActive?: boolean;
 }
 
-export const FairShareAudit = ({ forceActive = false }: FairShareAuditProps = {}) => {
+const FairShareAuditInner = ({ forceActive = false, isActive: propActive, searchParams }: FairShareAuditProps & { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const { t } = useLanguage();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
-  const isActive = forceActive || location.pathname === '/fair-share';
+  const isActive = forceActive || propActive;
   const [data, setData] = useState<any>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1716,115 +1714,95 @@ export const FairShareAudit = ({ forceActive = false }: FairShareAuditProps = {}
         title={t("Tùy chỉnh thời gian")}
         width="400px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
-          <div>
-            <label className="form-label">{t("Từ ngày")}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-            />
+        {showDateModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+            <div>
+              <label className="form-label">{t("Từ ngày")}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">{t("Đến ngày")}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
+              <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
+            </div>
           </div>
-          <div>
-            <label className="form-label">{t("Đến ngày")}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
-            <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
-          </div>
-        </div>
+        )}
       </CustomModal>
 
       {/* Copy Report Preview Modal */}
       <CustomModal
         isOpen={showCopyModal}
         onClose={() => setShowCopyModal(false)}
-        title={t("Xem trước báo cáo đối soát nhanh")}
-        width="550px"
+        title={t("Sao chép nhanh Báo cáo Đối soát")}
+        width="600px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', margin: 0 }}>
-            {t("Xem trước nội dung báo cáo. Bạn có thể sao chép văn bản này để gửi nhanh qua các nhóm chat.")}
-          </p>
-          <textarea
-            readOnly
-            value={copyReportText}
-            style={{
-              width: '100%',
-              height: '300px',
-              fontFamily: 'monospace',
-              fontSize: '0.75rem',
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-border-light)',
-              color: 'var(--color-text)',
-              resize: 'none',
-              lineHeight: '1.5'
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button className="btn outline" onClick={() => setShowCopyModal(false)}>{t("Hủy")}</button>
-            <button className="btn primary" onClick={handleExecuteCopy}>{t("Sao chép")}</button>
+        {showCopyModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', margin: 0 }}>
+              {t("Xem trước nội dung báo cáo. Bạn có thể sao chép văn bản này để gửi nhanh qua các nhóm chat.")}
+            </p>
+            <textarea
+              readOnly
+              value={copyReportText}
+              style={{
+                width: '100%',
+                height: '300px',
+                fontFamily: 'monospace',
+                fontSize: '0.75rem',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-border-light)',
+                color: 'var(--color-text)',
+                resize: 'none',
+                lineHeight: '1.5'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setShowCopyModal(false)}>{t("Hủy")}</button>
+              <button className="btn primary" onClick={handleExecuteCopy}>{t("Sao chép")}</button>
+            </div>
           </div>
-        </div>
+        )}
       </CustomModal>
 
       {/* Info Terminology Modal */}
       <CustomModal
         isOpen={showInfoModal}
         onClose={() => setShowInfoModal(false)}
-        title={t("Giải thích thuật ngữ & Công thức tính toán")}
-        width="550px"
-        showCloseIcon={false}
+        title={t("Thuật ngữ đối soát")}
+        width="500px"
       >
-        <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '70vh', overflowY: 'auto' }} className="custom-scrollbar">
-          <div>
-            <h4 style={{ fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-              <Scale size={16} color="var(--color-primary)" /> {t("Chỉ số công bằng (Fairness Index)")}
-            </h4>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-              {t("Được tính toán dựa trên")} <strong>{t("Hệ số Gini (Gini Coefficient)")}</strong> {t("đã được chuẩn hóa theo Tỷ lệ nhận lead (Receive Ratio) cài đặt của từng TVV.")}
-              {t("Công thức:")} <code>Fairness Index = (1 - Gini) * 100%</code>.
-              {t("Chỉ số đạt 100% tương đương với mức công bằng hoàn hảo (mọi Sale đều nhận được lượng lead tỷ lệ thuận tuyệt đối với cài đặt của họ).")}
-            </p>
+        {showInfoModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            <div>
+              <h4 style={{ fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
+                <BarChart2 size={16} color="#3b82f6" /> {t("Chuẩn hóa tỷ lệ phân bổ (Normalized Share)")}
+              </h4>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
+                {t("Khi một vòng phân bổ thiết lập tỷ lệ chia cho Sale A là x2 và Sale B là x1, thì việc Sale A nhận được số lead gấp đôi Sale B là hoàn toàn công bằng.")}
+                {t("Thuật toán đối soát công bằng sẽ tự động chia số lead của từng Sale cho Ratio của họ trước khi chạy tính toán Gini để đảm bảo độ chính xác tuyệt đối.")}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button className="btn primary" onClick={() => setShowInfoModal(false)}>{t("Đóng")}</button>
+            </div>
           </div>
-
-          <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)' }} />
-
-          <div>
-            <h4 style={{ fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-              <AlertTriangle size={16} color="#fbbf24" /> {t("Độ lệch chuẩn (Standard Deviation - SD)")}
-            </h4>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-              {t("Biểu thị mức độ phân tán của số lượng lead được chia xung quanh giá trị trung bình.")}
-              {t("Nếu SD = 0, tất cả các Sale nhận được số lượng lead hoàn toàn bằng nhau. SD càng nhỏ, thuật toán chia lead càng ít xảy ra sai số.")}
-            </p>
-          </div>
-
-          <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)' }} />
-
-          <div>
-            <h4 style={{ fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-              <BarChart2 size={16} color="#3b82f6" /> {t("Chuẩn hóa tỷ lệ phân bổ (Normalized Share)")}
-            </h4>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-              {t("Khi một vòng phân bổ thiết lập tỷ lệ chia cho Sale A là x2 và Sale B là x1, thì việc Sale A nhận được số lead gấp đôi Sale B là hoàn toàn công bằng.")}
-              {t("Thuật toán đối soát công bằng sẽ tự động chia số lead của từng Sale cho Ratio của họ trước khi chạy tính toán Gini để đảm bảo độ chính xác tuyệt đối.")}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <button className="btn primary" onClick={() => setShowInfoModal(false)}>{t("Đóng")}</button>
-          </div>
-        </div>
+        )}
       </CustomModal>
 
       {/* Compensation Details Modal */}
@@ -1834,270 +1812,274 @@ export const FairShareAudit = ({ forceActive = false }: FairShareAuditProps = {}
         title={t("Đối Soát Chi Tiết Data Bù")}
         width="600px"
       >
-        {detailsLoading ? (
-          <div style={{ padding: '2rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <div className="spin" style={{ width: '32px', height: '32px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%' }} />
-            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>{t("Đang tải dữ liệu đối soát...")}</span>
-          </div>
-        ) : compensationDetails ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-
-            {/* Consultant Profile Summary */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-border-light)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-              <Avatar src={compensationDetails.avatar} name={compensationDetails.name} size={48} />
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-                  {compensationDetails.name}
-                </h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
-                  ID: {compensationDetails.consultant_id} • {t("Thời gian")}: <span style={{ fontWeight: 600 }}>{t(dateFilter)}</span>
-                </p>
+        {showDetailsModal && (
+          <>
+            {detailsLoading ? (
+              <div style={{ padding: '2rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                <div className="spin" style={{ width: '32px', height: '32px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%' }} />
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>{t("Đang tải dữ liệu đối soát...")}</span>
               </div>
-            </div>
+            ) : compensationDetails ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
 
-            {/* Core Stats Overview */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Tổng Data Đã Chia")}</span>
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
-              </div>
-              <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Data Bù Đã Nhận")}</span>
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981' }}>{compensationDetails.total_compensation_received}</span>
-              </div>
-            </div>
-
-            {/* Compensation Breakdown Header */}
-            <div>
-              <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0', borderBottom: '1px dashed var(--color-border)', paddingBottom: '6px' }}>
-                {t("Thống Kê Chi Tiết Nguồn Bù")}
-              </h5>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* Tickets Approved */}
-                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div 
-                    onClick={() => toggleSection('ticket')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                        <CheckCircle size={14} />
-                      </span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do duyệt ticket lỗi")}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.ticket} {t("lead")}</span>
-                      {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
-                        expandedSections.ticket ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
-                      )}
-                    </div>
+                {/* Consultant Profile Summary */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-border-light)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                  <Avatar src={compensationDetails.avatar} name={compensationDetails.name} size={48} />
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                      {compensationDetails.name}
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                      ID: {compensationDetails.consultant_id} • {t("Thời gian")}: <span style={{ fontWeight: 600 }}>{t(dateFilter)}</span>
+                    </p>
                   </div>
-
-                  {expandedSections.ticket && compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
-                    <div style={{ 
-                      borderTop: '1px dashed var(--color-border-light)', 
-                      marginTop: '4px', 
-                      paddingTop: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '8px', 
-                      paddingLeft: '32px',
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      paddingRight: '4px'
-                    }}>
-                      {compensationDetails.breakdown.ticket_details.map((tkt: any, idx: number) => {
-                        const dateStr = new Date(tkt.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Avatar src={tkt.admin_avatar} name={tkt.admin_name} size={16} />
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{tkt.admin_name}</span>
-                              <span style={{ color: 'var(--color-text-muted)' }}>({tkt.reason ? t(tkt.reason) : ''})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
 
-                {/* Blacklist block */}
-                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div 
-                    onClick={() => toggleSection('blacklist')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                        <AlertTriangle size={14} />
-                      </span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do blacklist chặn")}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.blacklist} {t("lead")}</span>
-                      {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
-                        expandedSections.blacklist ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
-                      )}
-                    </div>
+                {/* Core Stats Overview */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Tổng Data Đã Chia")}</span>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
                   </div>
-
-                  {expandedSections.blacklist && compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
-                    <div style={{ 
-                      borderTop: '1px dashed var(--color-border-light)', 
-                      marginTop: '4px', 
-                      paddingTop: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '8px', 
-                      paddingLeft: '32px',
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      paddingRight: '4px'
-                    }}>
-                      {compensationDetails.breakdown.blacklist_details.map((bl: any, idx: number) => {
-                        const dateStr = new Date(bl.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Avatar src={bl.admin_avatar} name={bl.admin_name} size={16} />
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{bl.admin_name}</span>
-                              <span style={{ color: 'var(--color-text-muted)' }}>({bl.reason ? t(bl.reason) : ''})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Data Bù Đã Nhận")}</span>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981' }}>{compensationDetails.total_compensation_received}</span>
+                  </div>
                 </div>
 
-                {/* Reassignments */}
-                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div 
-                    onClick={() => toggleSection('reassign')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-                        <Layers size={14} />
-                      </span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do thu hồi / chuyển lead")}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.reassign} {t("lead")}</span>
-                      {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
-                        expandedSections.reassign ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                {/* Compensation Breakdown Header */}
+                <div>
+                  <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0', borderBottom: '1px dashed var(--color-border)', paddingBottom: '6px' }}>
+                    {t("Thống Kê Chi Tiết Nguồn Bù")}
+                  </h5>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Tickets Approved */}
+                    <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        onClick={() => toggleSection('ticket')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                            <CheckCircle size={14} />
+                          </span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do duyệt ticket lỗi")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.ticket} {t("lead")}</span>
+                          {compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
+                            expandedSections.ticket ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          )}
+                        </div>
+                      </div>
+
+                      {expandedSections.ticket && compensationDetails.breakdown.ticket_details && compensationDetails.breakdown.ticket_details.length > 0 && (
+                        <div style={{ 
+                          borderTop: '1px dashed var(--color-border-light)', 
+                          marginTop: '4px', 
+                          paddingTop: '8px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '8px', 
+                          paddingLeft: '32px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          paddingRight: '4px'
+                        }}>
+                          {compensationDetails.breakdown.ticket_details.map((tkt: any, idx: number) => {
+                            const dateStr = new Date(tkt.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <Avatar src={tkt.admin_avatar} name={tkt.admin_name} size={16} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{tkt.admin_name}</span>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>({tkt.reason ? t(tkt.reason) : ''})</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {expandedSections.reassign && compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
-                    <div style={{ 
-                      borderTop: '1px dashed var(--color-border-light)', 
-                      marginTop: '4px', 
-                      paddingTop: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '8px', 
-                      paddingLeft: '32px',
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      paddingRight: '4px'
-                    }}>
-                      {compensationDetails.breakdown.reassign_details.map((re: any, idx: number) => {
-                        const dateStr = new Date(re.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Avatar src={re.admin_avatar} name={re.admin_name} size={16} />
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{re.admin_name}</span>
-                              <span style={{ color: 'var(--color-text-muted)' }}>({re.reason ? t(re.reason) : ''})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                    {/* Blacklist block */}
+                    <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        onClick={() => toggleSection('blacklist')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                            <AlertTriangle size={14} />
+                          </span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do blacklist chặn")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.blacklist} {t("lead")}</span>
+                          {compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
+                            expandedSections.blacklist ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          )}
+                        </div>
+                      </div>
 
-                {/* Manual/Active Compensations */}
-                <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div 
-                    onClick={() => toggleSection('active')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
-                        <RotateCcw size={14} />
-                      </span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động ")}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.active_total} {t("lead")}</span>
-                      {compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
-                        expandedSections.active ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      {expandedSections.blacklist && compensationDetails.breakdown.blacklist_details && compensationDetails.breakdown.blacklist_details.length > 0 && (
+                        <div style={{ 
+                          borderTop: '1px dashed var(--color-border-light)', 
+                          marginTop: '4px', 
+                          paddingTop: '8px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '8px', 
+                          paddingLeft: '32px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          paddingRight: '4px'
+                        }}>
+                          {compensationDetails.breakdown.blacklist_details.map((bl: any, idx: number) => {
+                            const dateStr = new Date(bl.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <Avatar src={bl.admin_avatar} name={bl.admin_name} size={16} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{bl.admin_name}</span>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>({bl.reason ? t(bl.reason) : ''})</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Active details reasons sub-list */}
-                  {expandedSections.active && compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
-                    <div style={{ 
-                      borderTop: '1px dashed var(--color-border-light)', 
-                      marginTop: '4px', 
-                      paddingTop: '8px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '8px', 
-                      paddingLeft: '32px',
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      paddingRight: '4px'
-                    }}>
-                      {compensationDetails.breakdown.active_details.map((act: any, idx: number) => {
-                        const dateStr = new Date(act.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Avatar src={act.admin_avatar} name={act.admin_name} size={16} />
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{act.admin_name}</span>
-                              <span style={{ color: 'var(--color-text-muted)' }}>({act.reason ? t(act.reason) : ''})</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+{act.count} {t("lead")}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    {/* Reassignments */}
+                    <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        onClick={() => toggleSection('reassign')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                            <Layers size={14} />
+                          </span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù do thu hồi / chuyển lead")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.reassign} {t("lead")}</span>
+                          {compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
+                            expandedSections.reassign ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          )}
+                        </div>
+                      </div>
+
+                      {expandedSections.reassign && compensationDetails.breakdown.reassign_details && compensationDetails.breakdown.reassign_details.length > 0 && (
+                        <div style={{ 
+                          borderTop: '1px dashed var(--color-border-light)', 
+                          marginTop: '4px', 
+                          paddingTop: '8px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '8px', 
+                          paddingLeft: '32px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          paddingRight: '4px'
+                        }}>
+                          {compensationDetails.breakdown.reassign_details.map((re: any, idx: number) => {
+                            const dateStr = new Date(re.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <Avatar src={re.admin_avatar} name={re.admin_name} size={16} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{re.admin_name}</span>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>({re.reason ? t(re.reason) : ''})</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+1 {t("lead")}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Manual/Active Compensations */}
+                    <div style={{ padding: '10px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        onClick={() => toggleSection('active')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
+                            <RotateCcw size={14} />
+                          </span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động ")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>+{compensationDetails.breakdown.active_total} {t("lead")}</span>
+                          {compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
+                            expandedSections.active ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Active details reasons sub-list */}
+                      {expandedSections.active && compensationDetails.breakdown.active_details && compensationDetails.breakdown.active_details.length > 0 && (
+                        <div style={{ 
+                          borderTop: '1px dashed var(--color-border-light)', 
+                          marginTop: '4px', 
+                          paddingTop: '8px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '8px', 
+                          paddingLeft: '32px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          paddingRight: '4px'
+                        }}>
+                          {compensationDetails.breakdown.active_details.map((act: any, idx: number) => {
+                            const dateStr = new Date(act.created_at).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-light)', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <Avatar src={act.admin_avatar} name={act.admin_name} size={16} />
+                                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{act.admin_name}</span>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>({act.reason ? t(act.reason) : ''})</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{dateStr}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>+{act.count} {t("lead")}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
 
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button className="btn primary" onClick={() => setShowDetailsModal(false)}>{t("Đóng")}</button>
+                </div>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button className="btn primary" onClick={() => setShowDetailsModal(false)}>{t("Đóng")}</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-light)' }}>
-            {t("Không tải được chi tiết đối soát.")}
-          </div>
+            ) : (
+              <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-light)' }}>
+                {t("Không tải được chi tiết đối soát.")}
+              </div>
+            )}
+          </>
         )}
       </CustomModal>
 
@@ -2182,3 +2164,5 @@ export const FairShareAudit = ({ forceActive = false }: FairShareAuditProps = {}
     </div>
   );
 };
+
+export const FairShareAudit = withRouterFreezer(FairShareAuditInner, '/fair-share');

@@ -5910,8 +5910,30 @@ switch ($action) {
             $fallbackAdminData = null;
             $fallbackCcEmails = '';
 
+            // --- Check CRM (Duplication & dynamic threshold rule) ---
+            require_once __DIR__ . '/webhook_logic.php';
+            $phone = $lead['phone'] ?? '';
+            $email = $lead['email'] ?? '';
+            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+
+            // Load dynamic duplicate check threshold
+            $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+            if ($dupCheckMonths <= 0) {
+                $dupCheckMonths = 6;
+            }
+
+            $isDuplicate = false;
+            if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+                $assignedConsultantId = $crmCheckResult['assignedTo'];
+                $status = 'reminder';
+                $message = 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.';
+                $isDuplicate = true;
+            }
+
             // Run Round Robin assignment
-            if ($targetRoundId > 0) {
+            if ($isDuplicate) {
+                // Skip Round-Robin, keep duplicate owner
+            } else if ($targetRoundId > 0) {
                 $assignResult = getNextConsultantInRound($conn, $targetRoundId);
                 if ($assignResult) {
                     $assignedConsultantId = $assignResult['id'];
@@ -6426,7 +6448,7 @@ switch ($action) {
             }
 
             // Validate exact duplicate mapping
-            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND LOWER(sheet_column) = LOWER(?) AND system_field = ?");
+            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND sheet_column = ? AND system_field = ?");
             $dupStmt->bind_param("iss", $conn_id, $sheet_col, $sys_field);
             $dupStmt->execute();
             if ($dupStmt->get_result()->fetch_assoc()) {
@@ -6487,7 +6509,7 @@ switch ($action) {
             }
 
             // Validate exact duplicate mapping
-            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND LOWER(sheet_column) = LOWER(?) AND system_field = ? AND id != ?");
+            $dupStmt = $conn->prepare("SELECT id FROM field_mappings WHERE connection_id = ? AND sheet_column = ? AND system_field = ? AND id != ?");
             $dupStmt->bind_param("issi", $conn_id, $sheet_col, $sys_field, $id);
             $dupStmt->execute();
             if ($dupStmt->get_result()->fetch_assoc()) {
