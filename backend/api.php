@@ -3854,9 +3854,76 @@ switch ($action) {
         $sale_id = (int) ($_GET['sale_id'] ?? 0);
         $round_id = (int) ($_GET['round_id'] ?? 0);
 
-        if (!$lead_id || !$sale_id || !$round_id) {
+        if (!$lead_id || !$sale_id) {
             echo json_encode(['success' => false, 'message' => 'Thiếu tham số']);
             break;
+        }
+
+        // Auto-discover original assignment if this is a reminder lead (status = 'reminder') or round_id = 0
+        $isReminder = false;
+        if ($round_id <= 0) {
+            $isReminder = true;
+        } else {
+            $chkLog = $conn->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND round_id = ? LIMIT 1");
+            if ($chkLog) {
+                $chkLog->bind_param("iii", $lead_id, $sale_id, $round_id);
+                $chkLog->execute();
+                $resLog = $chkLog->get_result()->fetch_assoc();
+                if ($resLog && $resLog['status'] === 'reminder') {
+                    $isReminder = true;
+                }
+                $chkLog->close();
+            }
+        }
+
+        if ($isReminder) {
+            $findOrigStmt = $conn->prepare("
+                SELECT dl.round_id, dl.assigned_to
+                FROM distribution_logs dl
+                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'compensation') AND dl.round_id > 0
+                ORDER BY dl.received_at DESC
+            ");
+            if ($findOrigStmt) {
+                $findOrigStmt->bind_param("i", $lead_id);
+                $findOrigStmt->execute();
+                $origRes = $findOrigStmt->get_result();
+                $findOrigStmt->close();
+
+                $foundOriginal = false;
+                while ($origRow = $origRes->fetch_assoc()) {
+                    $origRoundId = (int)$origRow['round_id'];
+                    $origSaleId = (int)$origRow['assigned_to'];
+
+                    // Check if ticket is processed (approved or rejected)
+                    $ticketChk = $conn->prepare("
+                        SELECT id FROM data_reports 
+                        WHERE lead_id = ? AND consultant_id = ? AND round_id = ? AND status IN ('approved', 'rejected') 
+                        LIMIT 1
+                    ");
+                    if ($ticketChk) {
+                        $ticketChk->bind_param("iii", $lead_id, $origSaleId, $origRoundId);
+                        $ticketChk->execute();
+                        $ticketRes = $ticketChk->get_result();
+                        $hasTicketProcessed = ($ticketRes->num_rows > 0);
+                        $ticketChk->close();
+
+                        if (!$hasTicketProcessed) {
+                            $round_id = $origRoundId;
+                            $sale_id = $origSaleId;
+                            $foundOriginal = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$foundOriginal) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Không thể báo cáo lỗi cho dữ liệu nhắc lại và không tìm thấy lượt phân bổ gốc chưa được xử lý.'
+                    ]);
+                    break;
+                }
+            }
         }
 
         // Verify ownership: lead must be assigned to this consultant in this round
@@ -3902,6 +3969,9 @@ switch ($action) {
         echo json_encode([
             'success' => true,
             'data' => [
+                'lead_id' => $lead_id,
+                'sale_id' => $sale_id,
+                'round_id' => $round_id,
                 'lead_name' => $ctx['lead_name'],
                 'lead_phone' => $ctx['lead_phone'],
                 'lead_email' => $ctx['lead_email'],
@@ -3927,6 +3997,73 @@ switch ($action) {
         $sale_id = (int) ($input['sale_id'] ?? 0);
         $round_id = (int) ($input['round_id'] ?? 0);
         $reason = trim($input['reason'] ?? '');
+
+        // Auto-discover original assignment if this is a reminder lead (status = 'reminder') or round_id = 0
+        $isReminder = false;
+        if ($round_id <= 0) {
+            $isReminder = true;
+        } else {
+            $chkLog = $conn->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND round_id = ? LIMIT 1");
+            if ($chkLog) {
+                $chkLog->bind_param("iii", $lead_id, $sale_id, $round_id);
+                $chkLog->execute();
+                $resLog = $chkLog->get_result()->fetch_assoc();
+                if ($resLog && $resLog['status'] === 'reminder') {
+                    $isReminder = true;
+                }
+                $chkLog->close();
+            }
+        }
+
+        if ($isReminder) {
+            $findOrigStmt = $conn->prepare("
+                SELECT dl.round_id, dl.assigned_to
+                FROM distribution_logs dl
+                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'compensation') AND dl.round_id > 0
+                ORDER BY dl.received_at DESC
+            ");
+            if ($findOrigStmt) {
+                $findOrigStmt->bind_param("i", $lead_id);
+                $findOrigStmt->execute();
+                $origRes = $findOrigStmt->get_result();
+                $findOrigStmt->close();
+
+                $foundOriginal = false;
+                while ($origRow = $origRes->fetch_assoc()) {
+                    $origRoundId = (int)$origRow['round_id'];
+                    $origSaleId = (int)$origRow['assigned_to'];
+
+                    // Check if ticket is processed (approved or rejected)
+                    $ticketChk = $conn->prepare("
+                        SELECT id FROM data_reports 
+                        WHERE lead_id = ? AND consultant_id = ? AND round_id = ? AND status IN ('approved', 'rejected') 
+                        LIMIT 1
+                    ");
+                    if ($ticketChk) {
+                        $ticketChk->bind_param("iii", $lead_id, $origSaleId, $origRoundId);
+                        $ticketChk->execute();
+                        $ticketRes = $ticketChk->get_result();
+                        $hasTicketProcessed = ($ticketRes->num_rows > 0);
+                        $ticketChk->close();
+
+                        if (!$hasTicketProcessed) {
+                            $round_id = $origRoundId;
+                            $sale_id = $origSaleId;
+                            $foundOriginal = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$foundOriginal) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Không thể báo cáo lỗi cho dữ liệu nhắc lại và không tìm thấy lượt phân bổ gốc chưa được xử lý.'
+                    ]);
+                    break;
+                }
+            }
+        }
 
         if (!$lead_id || !$sale_id || !$round_id || empty($reason)) {
             echo json_encode(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);

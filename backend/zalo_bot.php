@@ -425,23 +425,6 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     }
 
     $text .= "\n⚡ Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
-
-    // Build Report URL
-    $reportUrl = '';
-    if ($leadId > 0) {
-        $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
-        if (empty($frontendUrl)) {
-            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
-        }
-        $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id=0";
-    }
-
-    if (!empty($reportUrl)) {
-        $text .= "\n\n⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
-            . "👉 Link: $reportUrl";
-    }
     $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
