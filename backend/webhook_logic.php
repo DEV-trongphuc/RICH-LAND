@@ -495,8 +495,8 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $isActuallyOnLeave = false;
         if ($consultantStatus === 'leave') {
             $isActuallyOnLeave = true;
-        } else if ($consultantStatus === 'active' && !empty($leaveStart)) {
-            if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
+        } else if ($consultantStatus === 'active' && !empty($leaveStart) && !empty($leaveEnd)) {
+            if ($today >= $leaveStart && $today <= $leaveEnd) {
                 $isActuallyOnLeave = true;
             }
         }
@@ -856,7 +856,7 @@ function getNextConsultantInRound($conn, $roundId)
     // Calculate active count of available consultants
     $activeCount = 0;
     foreach ($consultants as $c) {
-        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && !empty($c['leave_end']) && $today >= $c['leave_start'] && $today <= $c['leave_end']));
         if (!$isOnVacation) {
             $activeCount++;
         }
@@ -864,7 +864,7 @@ function getNextConsultantInRound($conn, $roundId)
 
     foreach ($consultants as $row) {
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
-        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && !empty($row['leave_end']) && $today >= $row['leave_start'] && $today <= $row['leave_end']));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
 
@@ -954,7 +954,7 @@ function getNextConsultantInRound($conn, $roundId)
         $candidate = $consultants[$nextIdx];
 
         // Check availability (only vacation/leave counts as unavailable for skipping)
-        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
         $isAvailable = !$isOnVacation;
 
         $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);
@@ -1294,14 +1294,14 @@ function simulateNextConsultantInRound($conn, $roundId)
     // Calculate active count of available consultants
     $activeCount = 0;
     foreach ($consultants as $c) {
-        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && !empty($c['leave_end']) && $today >= $c['leave_start'] && $today <= $c['leave_end']));
         if (!$isOnVacation) {
             $activeCount++;
         }
     }
 
     foreach ($consultants as $row) {
-        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && !empty($row['leave_end']) && $today >= $row['leave_start'] && $today <= $row['leave_end']));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
 
@@ -1367,7 +1367,7 @@ function simulateNextConsultantInRound($conn, $roundId)
     do {
         $candidate = $simulatedConsultants[$nextIdx];
 
-        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
         $isAvailable = !$isOnVacation;
 
         $isAbsoluteLast = ($absoluteLastAssignedId !== null && (int)$candidate['id'] === (int)$absoluteLastAssignedId);

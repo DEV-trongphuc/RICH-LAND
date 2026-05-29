@@ -2115,6 +2115,15 @@ switch ($action) {
             $status = $input['status'] ?? 'active';
             $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
             $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
+
+            // Auto-clear past/stale leave dates when setting status to active or inactive
+            if ($status === 'active' || $status === 'inactive') {
+                $today = date('Y-m-d');
+                if (empty($leave_start) || $leave_start <= $today || $status === 'inactive') {
+                    $leave_start = null;
+                    $leave_end = null;
+                }
+            }
             $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
             $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
             if ($avatar === '')
@@ -10615,7 +10624,9 @@ switch ($action) {
                     if ($isSilent == 1) {
                         if ($crmCheck['isDuplicate']) {
                             $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
+                            // If current database lead has no owner (assignedTo is empty), write the owner. Otherwise, only update interaction date.
+                            $onlyUpdateDate = !empty($crmCheck['assignedTo']);
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', '', null, $customDate, $name, $onlyUpdateDate);
                             $duplicateCount++;
                             logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).', false);
                         } else {
@@ -10627,7 +10638,9 @@ switch ($action) {
                     } else {
                         if ($crmCheck['isDuplicate']) {
                             $assignedTo = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
-                            $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name, true);
+                            // If current database lead has no owner (assignedTo is empty), write the owner. Otherwise, only update interaction date.
+                            $onlyUpdateDate = !empty($crmCheck['assignedTo']);
+                            $leadId = updateLead($conn, $phone, $email, $assignedTo, 'Excel Import', 'Excel', '', null, $customDate, $name, $onlyUpdateDate);
                             logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Trung so tu file Excel nhap vao.', false);
                             $duplicateCount++;
 

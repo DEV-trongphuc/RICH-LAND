@@ -177,8 +177,8 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
             $isActuallyOnLeaveOrInactive = false;
             if ($status !== 'active') {
                 $isActuallyOnLeaveOrInactive = true;
-            } else if (!empty($leaveStart)) {
-                if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
+            } else if (!empty($leaveStart) && !empty($leaveEnd)) {
+                if ($today >= $leaveStart && $today <= $leaveEnd) {
                     $isActuallyOnLeaveOrInactive = true;
                 }
             }
