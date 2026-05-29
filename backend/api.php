@@ -5656,33 +5656,34 @@ switch ($action) {
     case 'get_ai_token_stats':
         try {
             $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
+            $dateField = "COALESCE(l.ai_screening_started_at, l.created_at)";
 
-            // Parse date condition using l.created_at
-            $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            // Parse date condition using l.created_at fallback
+            $dateCondition = "$dateField >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND $dateField < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
             if ($date === 'all' || $date === '') {
                 $dateCondition = "1=1";
             } else if ($date === 'Hôm nay') {
-                $dateCondition = "l.created_at >= CURDATE() AND l.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+                $dateCondition = "$dateField >= CURDATE() AND $dateField < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
             } else if ($date === 'Hôm qua') {
-                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND l.created_at < CURDATE()";
+                $dateCondition = "$dateField >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND $dateField < CURDATE()";
             } else if ($date === 'Tuần này') {
-                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND l.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+                $dateCondition = "$dateField >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND $dateField < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
             } else if ($date === 'Tuần trước') {
-                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+                $dateCondition = "$dateField >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND $dateField < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
             } else if ($date === 'Tuần trước nữa') {
-                $dateCondition = "l.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+                $dateCondition = "$dateField >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND $dateField < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
             } else if ($date === '7 ngày qua') {
-                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                $dateCondition = "$dateField >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
             } else if ($date === '30 ngày qua') {
-                $dateCondition = "l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                $dateCondition = "$dateField >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
             } else if ($date === 'Tháng này') {
-                $dateCondition = "l.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND l.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+                $dateCondition = "$dateField >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND $dateField < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
             } else if ($date === 'Tháng trước') {
-                $dateCondition = "l.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND l.created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+                $dateCondition = "$dateField >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND $dateField < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
             } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
                 $start = $conn->real_escape_string($matches[1]);
                 $end = $conn->real_escape_string($matches[2]);
-                $dateCondition = "l.created_at >= '$start 00:00:00' AND l.created_at <= '$end 23:59:59'";
+                $dateCondition = "$dateField >= '$start 00:00:00' AND $dateField <= '$end 23:59:59'";
             }
 
             // Helper to execute query safely and throw exception on error
@@ -5792,12 +5793,12 @@ switch ($action) {
                     l.ai_prompt_tokens, 
                     l.ai_completion_tokens, 
                     l.ai_total_tokens, 
-                    l.created_at, 
+                    COALESCE(l.ai_screening_started_at, l.created_at) as created_at, 
                     COALESCE(dr.round_name, 'Chưa phân vòng') as round_name
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
                 WHERE l.ai_screener_status != 'not_screened' AND $dateCondition
-                ORDER BY l.created_at DESC
+                ORDER BY COALESCE(l.ai_screening_started_at, l.created_at) DESC
                 LIMIT $pageSize OFFSET $offset
             ";
             $recentRes = $safeQuery($recentSql);
@@ -8782,7 +8783,8 @@ switch ($action) {
         // Query AI Pre-screener statistics (passed vs failed)
         $aiPassedCount = 0;
         $aiFailedCount = 0;
-        $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionCreated AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
+        $dateConditionAI = str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition);
+        $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionAI AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
         $aiScreenerRes = $conn->query($aiScreenerSql);
         if ($aiScreenerRes) {
             while ($row = $aiScreenerRes->fetch_assoc()) {
@@ -9119,7 +9121,8 @@ switch ($action) {
         $totalTokensUsed = 0;
         $totalPromptTokensUsed = 0;
         $totalCompletionTokensUsed = 0;
-        $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionCreated");
+        $dateConditionAI = str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition);
+        $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionAI");
         if ($tokensRes && $row = $tokensRes->fetch_assoc()) {
             $totalTokensUsed = (int)$row['cnt'];
             $totalPromptTokensUsed = (int)$row['prompt_cnt'];
