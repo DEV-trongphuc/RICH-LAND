@@ -9294,18 +9294,23 @@ switch ($action) {
             $sources = ['FB Ads', 'Google Ads', 'TikTok Ads', 'Google Sheet'];
         }
 
-        // Query lead assignment counts grouped by status
-        $leadCountsSql = "SELECT assigned_to, status, COUNT(*) as cnt 
+        // Query lead assignment counts grouped by status (adjust pending compensation to be counted as compensation)
+        $leadCountsSql = "SELECT assigned_to, 
+                                 CASE 
+                                   WHEN status = 'pending_work_hours' AND (message LIKE '%đền bù%' OR message LIKE '%compensation%' OR message LIKE '%Bù lượt%') THEN 'compensation'
+                                   ELSE status 
+                                 END as adjusted_status, 
+                                 COUNT(*) as cnt 
                           FROM distribution_logs 
                           WHERE $dateCondition $roundCondition 
                             AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
-                          GROUP BY assigned_to, status";
+                          GROUP BY assigned_to, adjusted_status";
         $countsRes = $conn->query($leadCountsSql);
         $consultantStatusCounts = [];
         if ($countsRes) {
             while ($row = $countsRes->fetch_assoc()) {
                 $cId = (int) $row['assigned_to'];
-                $status = $row['status'];
+                $status = $row['adjusted_status'];
                 $cnt = (int) $row['cnt'];
                 if (!isset($consultantStatusCounts[$cId])) {
                     $consultantStatusCounts[$cId] = [
@@ -9330,20 +9335,25 @@ switch ($action) {
         }
         unset($c);
 
-        // Query source breakdown per consultant grouped by status
-        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source, dl.status, COUNT(*) as cnt 
+        // Query source breakdown per consultant grouped by status (adjust pending compensation to be counted as compensation)
+        $sourceCountsSql = "SELECT dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source, 
+                                   CASE 
+                                     WHEN dl.status = 'pending_work_hours' AND (dl.message LIKE '%đền bù%' OR dl.message LIKE '%compensation%' OR dl.message LIKE '%Bù lượt%') THEN 'compensation'
+                                     ELSE dl.status 
+                                   END as adjusted_status, 
+                                   COUNT(*) as cnt 
                             FROM distribution_logs dl
                             JOIN leads l ON dl.lead_id = l.id
                             WHERE $dateCondition $roundCondition 
                               AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
-                            GROUP BY dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định'), dl.status";
+                            GROUP BY dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định'), adjusted_status";
         $srcRes = $conn->query($sourceCountsSql);
         $consultantSourceStatusCounts = [];
         if ($srcRes) {
             while ($row = $srcRes->fetch_assoc()) {
                 $cId = (int) $row['assigned_to'];
                 $sourceName = $row['source'] ?: 'Không xác định';
-                $status = $row['status'];
+                $status = $row['adjusted_status'];
                 $cnt = (int) $row['cnt'];
 
                 if (!isset($consultantSourceStatusCounts[$cId])) {
@@ -9615,13 +9625,19 @@ switch ($action) {
         if ($roundId > 0) {
             $roundCondition = " AND round_id = $roundId";
         }
-        $assignedSql = "SELECT status, COUNT(*) as cnt 
+        // Adjust pending compensation to be counted as compensation
+        $assignedSql = "SELECT 
+                          CASE 
+                            WHEN status = 'pending_work_hours' AND (message LIKE '%đền bù%' OR message LIKE '%compensation%' OR message LIKE '%Bù lượt%') THEN 'compensation'
+                            ELSE status 
+                          END as adjusted_status, 
+                          COUNT(*) as cnt 
                         FROM distribution_logs 
                         WHERE assigned_to = ? 
                           AND received_at BETWEEN ? AND ? 
                           $roundCondition
                           AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
-                        GROUP BY status";
+                        GROUP BY adjusted_status";
 
         $totalAssigned = 0;
         $totalCompensationReceived = 0;
@@ -9639,7 +9655,7 @@ switch ($action) {
             $stmtA->execute();
             $resA = $stmtA->get_result();
             while ($row = $resA->fetch_assoc()) {
-                $statusCounts[$row['status']] = (int) $row['cnt'];
+                $statusCounts[$row['adjusted_status']] = (int) $row['cnt'];
             }
             $stmtA->close();
         }
