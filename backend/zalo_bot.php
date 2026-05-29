@@ -383,7 +383,7 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
 
     $text = "🔄 [ KHÁCH HÀNG ĐĂNG KÝ LẠI ] 🔄\n"
-        . "⚠️ (KHÔNG TÍNH VÒNG PHÂN BỔ)\n"
+        . "🕒 Đây là tin nhắn thông báo không tính vào vòng phân bổ\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
         . "👤 THÔNG TIN KHÁCH HÀNG:\n"
@@ -625,9 +625,9 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $roundTotal = max(0, $normalTotal - $compensation);
 
         $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-        $saleStats .= "    └─> " . $roundTotal . " chia vòng\n";
-        $saleStats .= "    └─> " . $compensation . " bù\n";
-        $saleStats .= "    └─> " . $reminderTotal . " nhắc lại\n";
+        $saleStats .= "    └─ " . $roundTotal . " chia vòng\n";
+        $saleStats .= "    └─ " . $compensation . " bù\n";
+        $saleStats .= "    └─ " . $reminderTotal . " 🕒 nhắc trùng\n";
 
         $totalData += $normalTotal;
         $totalReminder += $reminderTotal;
