@@ -593,7 +593,7 @@ export const Gatekeeper = () => {
   const [statsData, setStatsData] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
   const [statsPage, setStatsPage] = useState<number>(1);
-  const STATS_ITEMS_PER_PAGE = 50;
+  const STATS_ITEMS_PER_PAGE = 20;
 
   // AI Token Stats Modal States
   const [isTokenStatsModalOpen, setIsTokenStatsModalOpen] = useState<boolean>(false);
@@ -3721,7 +3721,7 @@ export const Gatekeeper = () => {
                       {t('Tỷ lệ Duyệt & Dưới chuẩn')}
                     </h4>
                   </div>
-                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {(() => {
                       const stats = statsData.stats || {
                         total_leads: 0,
@@ -3764,11 +3764,11 @@ export const Gatekeeper = () => {
                             <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countAiGiu}</div>
                           </div>
 
-                          {/* Dưới chuẩn (thật) Row */}
+                          {/* Dưới chuẩn Row */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Dưới chuẩn (thật)')}</div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Dưới chuẩn')}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duoiChuanPct}% ${t('tổng data')}`}</div>
                             </div>
                             <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuoiChuan}</div>
@@ -3802,21 +3802,20 @@ export const Gatekeeper = () => {
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.01)'
                 }}>
-                  <div className="responsive-table-wrap" style={{ overflowX: 'auto' }}>
+                  <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                      <thead>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
                         <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Thời gian')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Họ tên / SĐT')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vòng dự kiến')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đánh giá của AI')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', width: '110px' }}>{t('Trạng thái')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', minWidth: '200px' }}>{t('Họ tên / SĐT')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%', minWidth: '220px' }}>{t('Đánh giá của AI')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '110px' }}>{t('Trạng thái')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', textAlign: 'right' }}>{t('Thời gian')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedRecentLeads.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                            <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                               {t('Không có lead nào dưới chuẩn')}
                             </td>
                           </tr>
@@ -3826,9 +3825,6 @@ export const Gatekeeper = () => {
 
                             return (
                               <tr key={idx} style={{ borderBottom: idx < paginatedRecentLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
-                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                                  {new Date(l.created_at).toLocaleString('vi-VN')}
-                                </td>
                                 <td style={{ padding: '10px 14px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <Avatar name={l.name} size="sm" />
@@ -3840,32 +3836,14 @@ export const Gatekeeper = () => {
                                     </div>
                                   </div>
                                 </td>
-                                <td style={{ padding: '10px 14px' }}>
-                                  {l.round_name ? (
-                                    <span style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      background: 'rgba(124, 58, 237, 0.08)',
-                                      color: '#7c3aed',
-                                      padding: '4px 10px',
-                                      borderRadius: '12px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      border: '1px solid rgba(124, 58, 237, 0.15)'
-                                    }}>
-                                      <Zap size={12} fill="#7c3aed" style={{ strokeWidth: 2 }} />
-                                      {l.round_name}
-                                    </span>
-                                  ) : (
-                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                  )}
-                                </td>
                                 <td style={{ padding: '10px 14px', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
                                   {l.ai_evaluation || l.note || t('Không có đánh giá')}
                                 </td>
                                 <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
                                   {statusBadge}
+                                </td>
+                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                                  {new Date(l.created_at).toLocaleString('vi-VN')}
                                 </td>
                               </tr>
                             );
@@ -3876,7 +3854,7 @@ export const Gatekeeper = () => {
                   </div>
 
                   {/* Pagination Footer */}
-                  {statsData.recent_below_standard && statsData.recent_below_standard.length > STATS_ITEMS_PER_PAGE && (
+                  {statsData.recent_below_standard && statsData.recent_below_standard.length > 0 && (
                     <div className="responsive-pagination" style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -3900,47 +3878,83 @@ export const Gatekeeper = () => {
                           {statsData.recent_below_standard.length}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <button
                           onClick={() => setStatsPage(p => Math.max(p - 1, 1))}
                           disabled={statsPage === 1}
                           style={{
-                            padding: '6px 10px',
-                            borderRadius: '6px',
+                            padding: '6px',
+                            borderRadius: 6,
                             border: '1px solid var(--color-border)',
                             background: statsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
                             color: statsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
                             cursor: statsPage === 1 ? 'not-allowed' : 'pointer',
-                            fontSize: '0.75rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            justifyContent: 'center'
                           }}
                         >
-                          <ChevronLeft size={12} />
-                          {t('Trước')}
+                          <ChevronLeft size={16} />
                         </button>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
-                          {t('Trang')} {statsPage} / {Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
-                        </span>
+
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {(() => {
+                            const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
+                            const maxVisible = 5;
+                            let startPage = 1;
+                            if (totalPages > maxVisible) {
+                              if (statsPage > 3) {
+                                startPage = statsPage - 2;
+                                if (startPage + maxVisible - 1 > totalPages) {
+                                  startPage = totalPages - maxVisible + 1;
+                                }
+                              }
+                            }
+                            const pageNumbers = Array.from(
+                              { length: Math.min(maxVisible, totalPages) },
+                              (_, i) => startPage + i
+                            );
+                            return pageNumbers.map(pageNum => (
+                              <button
+                                key={pageNum}
+                                onClick={() => setStatsPage(pageNum)}
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 6,
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  border: statsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                                  background: statsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                  color: statsPage === pageNum ? 'white' : 'var(--color-text)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+
                         <button
-                          onClick={() => setStatsPage(p => Math.min(p + 1, Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)))}
+                          onClick={() => {
+                            const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
+                            setStatsPage(p => Math.min(p + 1, totalPages));
+                          }}
                           disabled={statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
                           style={{
-                            padding: '6px 10px',
-                            borderRadius: '6px',
+                            padding: '6px',
+                            borderRadius: 6,
                             border: '1px solid var(--color-border)',
                             background: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)',
                             color: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)',
                             cursor: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer',
-                            fontSize: '0.75rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            justifyContent: 'center'
                           }}
                         >
-                          {t('Sau')}
-                          <ChevronRight size={12} />
+                          <ChevronRight size={16} />
                         </button>
                       </div>
                     </div>
@@ -4185,12 +4199,12 @@ export const Gatekeeper = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
                       <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
                         <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Họ tên / SĐT')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%' }}>{t('Họ tên / SĐT')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Kết quả AI')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('PROMPT')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('COMPLETION')}</th>
                           <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('TOTAL')}</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4213,14 +4227,6 @@ export const Gatekeeper = () => {
 
                             return (
                               <tr key={idx} style={{ borderBottom: idx < paginatedRecentAiLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
-                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', width: '90px', minWidth: '90px' }}>
-                                  {(() => {
-                                    const d = new Date(l.created_at);
-                                    const hhmm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                                    const ddmm = `${d.getDate()}/${d.getMonth() + 1}`;
-                                    return `${hhmm} ${ddmm}`;
-                                  })()}
-                                </td>
                                 <td style={{ padding: '10px 14px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <Avatar name={l.name} size={32} />
@@ -4243,6 +4249,9 @@ export const Gatekeeper = () => {
                                 </td>
                                 <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
                                   {Number(l.ai_total_tokens).toLocaleString('vi-VN')}
+                                </td>
+                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                                  {new Date(l.created_at).toLocaleString('vi-VN')}
                                 </td>
                               </tr>
                             );

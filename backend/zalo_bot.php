@@ -701,6 +701,41 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $stmtBlocked->close();
     }
 
+    // Lấy số data bị AI tạm giữ và dưới chuẩn trong kỳ báo cáo
+    $totalHeldByAI = 0;
+    $totalBelowStandard = 0;
+    $stmtScreenerStats = $conn->prepare("
+        SELECT 
+            SUM(CASE WHEN status = 'pending_approval' THEN 1 ELSE 0 END) as held_count,
+            SUM(CASE WHEN status IN ('pending_approval', 'rejected', 'blacklisted') THEN 1 ELSE 0 END) as below_std_count
+        FROM leads
+        WHERE created_at >= ?
+          AND created_at <= ?
+    ");
+    if ($stmtScreenerStats) {
+        $stmtScreenerStats->bind_param("ss", $startTimestamp, $endTimestamp);
+        $stmtScreenerStats->execute();
+        $resScreenerStats = $stmtScreenerStats->get_result();
+        if ($resScreenerStats && $row = $resScreenerStats->fetch_assoc()) {
+            $totalHeldByAI = (int) ($row['held_count'] ?? 0);
+            $totalBelowStandard = (int) ($row['below_std_count'] ?? 0);
+        }
+        $stmtScreenerStats->close();
+    }
+
+    // Lấy tổng số lượng hiện tại (toàn bộ thời gian) đang chờ xử lý
+    $totalHoldingGlobal = 0;
+    $resH = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE status = 'pending_approval'");
+    if ($resH) {
+        $totalHoldingGlobal = (int)$resH->fetch_assoc()['cnt'];
+    }
+
+    $totalPendingTicketsGlobal = 0;
+    $resP = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'pending'");
+    if ($resP) {
+        $totalPendingTicketsGlobal = (int)$resP->fetch_assoc()['cnt'];
+    }
+
     $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ] 📊\n";
     $msg .= "━━━━━━━━━━\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
@@ -712,15 +747,20 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     }
     $msg .= "──────────\n";
     $msg .= $saleStats . "\n";
+    $msg .= "🤖 AI PRE-SCREENER:\n";
+    $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
+    $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n";
+    $msg .= "  • Tổng AI đang giữ hiện tại: $totalHoldingGlobal\n\n";
     $msg .= "🎫 BÁO CÁO LỖI (TICKETS):\n";
     if ($totalTicket > 0) {
         $msg .= "  • Tổng số ticket phát sinh: $totalTicket ⚠️\n";
         $msg .= "  • ✅ Thành công (đã duyệt): $approvedTicket\n";
         $msg .= "  • ❌ Thất bại (bị từ chối): $rejectedTicket\n";
-        $msg .= "  • ⏳ Chờ duyệt: $pendingTicket\n\n";
+        $msg .= "  • ⏳ Chờ duyệt: $pendingTicket\n";
     } else {
-        $msg .= "  • Tổng số ticket phát sinh: 0\n\n";
+        $msg .= "  • Tổng số ticket phát sinh: 0\n";
     }
+    $msg .= "  • Tổng ticket đang chờ hiện tại: $totalPendingTicketsGlobal\n\n";
     $msg .= "🚫 CHẶN DATA (BLACKLIST):\n";
     $msg .= "  • Tổng số data bị chặn: $totalBlocked\n";
     $msg .= "━━━━━━━━━━\n";

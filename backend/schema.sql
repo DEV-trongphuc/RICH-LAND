@@ -99,6 +99,22 @@ CREATE TABLE `consultants` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `communication_logs`
+--
+
+CREATE TABLE `communication_logs` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `type` enum('zalo','email') NOT NULL,
+  `recipient` varchar(255) NOT NULL,
+  `status` enum('sent','failed') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `sent_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `data_reports`
 --
 
@@ -190,7 +206,10 @@ CREATE TABLE `leads` (
   `zalo_notify_status` varchar(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Zalo',
   `email_notify_status` varchar(50) DEFAULT 'none' COMMENT 'Trạng thái gửi thông báo Email',
   `zalo_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Zalo thành công',
-  `email_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Email thành công'
+  `email_notify_sent_at` datetime DEFAULT NULL COMMENT 'Thời gian gửi thông báo Email thành công',
+  `ai_prompt_tokens` int(11) DEFAULT 0 COMMENT 'Số token prompt AI sử dụng',
+  `ai_completion_tokens` int(11) DEFAULT 0 COMMENT 'Số token completion AI sử dụng',
+  `ai_total_tokens` int(11) DEFAULT 0 COMMENT 'Tổng số token AI sử dụng'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -275,7 +294,8 @@ CREATE TABLE `sheet_connections` (
   `last_error` varchar(255) DEFAULT NULL COMMENT 'Chi tiết lỗi đồng bộ gần nhất',
   `two_way_sync` tinyint(1) DEFAULT 0 COMMENT 'Đồng bộ 2 chiều ngược về Sheet',
   `google_script_url` varchar(512) DEFAULT NULL COMMENT 'URL Web App Google Apps Script',
-  `lead_recall_minutes` int(11) DEFAULT 0 COMMENT 'Thời gian tự động thu hồi lead không tiếp nhận (phút, 0=tắt)'
+  `lead_recall_minutes` int(11) DEFAULT 0 COMMENT 'Thời gian tự động thu hồi lead không tiếp nhận (phút, 0=tắt)',
+  `sync_error_count` int(11) DEFAULT 0 COMMENT 'Số lần lỗi đồng bộ liên tiếp'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -385,6 +405,14 @@ ALTER TABLE `admin_logs`
 ALTER TABLE `consultants`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Chỉ mục cho bảng `communication_logs`
+--
+ALTER TABLE `communication_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_type_sent` (`type`,`sent_at`),
+  ADD KEY `idx_lead_id` (`lead_id`);
 
 --
 -- Chỉ mục cho bảng `data_reports`
@@ -533,6 +561,12 @@ ALTER TABLE `admin_logs`
 -- AUTO_INCREMENT cho bảng `consultants`
 --
 ALTER TABLE `consultants`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `communication_logs`
+--
+ALTER TABLE `communication_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

@@ -2,6 +2,9 @@
 require_once 'db_connect.php';
 require_once 'zalo_bot.php';
 
+// Đặt thời gian thực thi không giới hạn để tránh timeout
+set_time_limit(0);
+
 function runDailyReportCron($conn)
 {
     // --- PREVENT CONCURRENT EXECUTION ---
@@ -123,14 +126,14 @@ function runDailyReportCron($conn)
             $roundTotal = max(0, $normalTotal - $compensation);
 
             $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-            $saleStats .= "    └─> " . $roundTotal . " chia vòng\n";
-            $saleStats .= "    └─> " . $compensation . " bù\n";
-            $saleStats .= "    └─> " . $reminderTotal . " nhắc lại\n";
+            $saleStats .= "    └─ " . $roundTotal . " chia vòng\n";
+            $saleStats .= "    └─ " . $compensation . " bù\n";
+            $saleStats .= "    └─ " . $reminderTotal . " nhắc lại\n";
 
             $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $normalTotal . " data<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $roundTotal . " chia vòng<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $compensation . " bù<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─&gt; " . $reminderTotal . " nhắc lại</li>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $roundTotal . " chia vòng<br>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $compensation . " bù<br>";
+            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $reminderTotal . " nhắc lại</li>";
 
             $totalData += $normalTotal;
             $totalReminder += $reminderTotal;
@@ -207,6 +210,19 @@ function runDailyReportCron($conn)
             $stmtScreenerStats->close();
         }
 
+        // Lấy tổng số lượng hiện tại (toàn bộ thời gian) đang chờ xử lý
+        $totalHoldingGlobal = 0;
+        $resH = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE status = 'pending_approval'");
+        if ($resH) {
+            $totalHoldingGlobal = (int)$resH->fetch_assoc()['cnt'];
+        }
+
+        $totalPendingTicketsGlobal = 0;
+        $resP = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'pending'");
+        if ($resP) {
+            $totalPendingTicketsGlobal = (int)$resP->fetch_assoc()['cnt'];
+        }
+
         // 4. Lấy danh sách Admin nhận báo cáo
         // Ưu tiên danh sách đã được cấu hình; nếu chưa có thì gửi cho tất cả admin + super admin
         $adminIds = [];
@@ -258,14 +274,16 @@ function runDailyReportCron($conn)
             $msg .= $saleStats . "\n";
             $msg .= "🤖 AI PRE-SCREENER:\n";
             $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
-            $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n\n";
+            $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n";
+            $msg .= "  • Tổng AI đang giữ hiện tại: $totalHoldingGlobal\n\n";
             $msg .= "🎫 BÁO CÁO LỖI (TICKET):\n";
             if ($totalTicket > 0) {
                 $msg .= "  • Tổng ticket phát sinh: $totalTicket ⚠️\n";
-                $msg .= "    (Đã duyệt: $approvedTicket | Từ chối: $rejectedTicket | Chờ duyệt: $pendingTicket)\n\n";
+                $msg .= "    (Đã duyệt: $approvedTicket | Từ chối: $rejectedTicket | Chờ duyệt: $pendingTicket)\n";
             } else {
-                $msg .= "  • Tổng ticket phát sinh: 0\n\n";
+                $msg .= "  • Tổng ticket phát sinh: 0\n";
             }
+            $msg .= "  • Tổng ticket đang chờ hiện tại: $totalPendingTicketsGlobal\n\n";
             $msg .= "CHẶN DATA (BLACKLIST):\n";
             $msg .= "  • Tổng số data bị chặn: $totalBlocked\n\n";
             $msg .= "----------\n";

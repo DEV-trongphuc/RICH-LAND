@@ -5392,7 +5392,7 @@ switch ($action) {
             $countGiaoLead = (int) ($safeQuery($countGiaoLeadSql)->fetch_assoc()['cnt'] ?? 0);
 
             $totalLeads = $countDuyet + $countAiGiu + $countDuoiChuan + $countGiaoLead;
-            $totalBelowStandard = $countAiGiu + $countDuoiChuan + $countGiaoLead;
+            $totalBelowStandard = $countDuoiChuan;
             $totalHeld = $countAiGiu;
             $totalRejected = $countDuoiChuan;
 
@@ -5406,7 +5406,7 @@ switch ($action) {
                     COUNT(*) as cnt
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
-                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
+                WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition
                 GROUP BY l.target_round_id, dr.round_name
                 ORDER BY cnt DESC
             ";
@@ -5430,7 +5430,7 @@ switch ($action) {
                     COUNT(*) as cnt
                 FROM leads l
                 LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
+                WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition
                 GROUP BY l.connection_id, sc.sheet_name, l.source
                 ORDER BY cnt DESC
             ";
@@ -5452,7 +5452,7 @@ switch ($action) {
                     COALESCE(NULLIF(TRIM(l.ai_evaluation), ''), NULLIF(TRIM(l.note), ''), 'Chưa rõ lý do') as reason_name,
                     COUNT(*) as cnt
                 FROM leads l
-                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
+                WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition
                 GROUP BY reason_name
                 ORDER BY cnt DESC
                 LIMIT 5
@@ -5477,7 +5477,7 @@ switch ($action) {
                 SELECT l.id, l.name, l.phone, l.email, l.source, l.note, l.ai_evaluation, l.status, l.created_at, dr.round_name
                 FROM leads l
                 LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
-                WHERE (l.status IN ('pending_approval', 'rejected', 'blacklisted') OR (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %'))) AND $dateCondition
+                WHERE l.status IN ('rejected', 'blacklisted') AND $dateCondition
                 ORDER BY l.created_at DESC
             ";
             $recentRes = $safeQuery($recentSql);

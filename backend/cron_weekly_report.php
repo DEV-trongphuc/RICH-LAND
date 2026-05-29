@@ -3,6 +3,9 @@ require_once 'db_connect.php';
 require_once 'zalo_bot.php';
 require_once 'mailer.php';
 
+// Đặt thời gian thực thi không giới hạn để tránh timeout
+set_time_limit(0);
+
 function runWeeklyReportCron($conn) {
     // --- PREVENT CONCURRENT EXECUTION ---
     $lockFile = __DIR__ . '/cron_weekly_report.lock';
@@ -92,7 +95,7 @@ function runWeeklyReportCron($conn) {
 
                 // Send Zalo Bot message to this Sale if linked
                 if (!empty($botToken) && !empty($saleZaloId)) {
-                    sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg']);
+                    sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg'], false);
                 }
 
                 // Send Email to this Sale if email exists

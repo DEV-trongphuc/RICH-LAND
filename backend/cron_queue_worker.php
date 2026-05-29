@@ -11,6 +11,9 @@ function processSyncQueue($conn) {
         return;
     }
 
+    // Auto-recover any sync queue items stuck in 'processing' status from a previous crashed run
+    $conn->query("UPDATE sync_queue SET status = 'pending' WHERE status = 'processing'");
+
     // 1. Fetch pending items with pessimistic locking (FOR UPDATE SKIP LOCKED) to support concurrent multi-server execution
     $conn->begin_transaction();
     $res = $conn->query("

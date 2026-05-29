@@ -17,6 +17,9 @@ function runAIScreenerWorker($conn) {
     // Đặt thời gian thực thi không giới hạn
     set_time_limit(0);
 
+    // Tự động khôi phục các lead bị kẹt ở trạng thái 'screening' từ phiên chạy trước bị lỗi/crash
+    $conn->query("UPDATE leads SET ai_screener_status = 'pending' WHERE status = 'pending_approval' AND ai_screener_status = 'screening'");
+
     // 1. Lấy danh sách tối đa 20 Lead đang chờ duyệt AI hoặc bị lỗi kết nối dưới 3 lần
     $conn->begin_transaction();
     $res = $conn->query("

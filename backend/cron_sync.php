@@ -21,6 +21,9 @@ if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
 
+// Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run
+$conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing'");
+
 // Ensure sheet_sync_records table exists
 $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
     connection_id INT,
