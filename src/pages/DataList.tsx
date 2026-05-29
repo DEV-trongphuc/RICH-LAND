@@ -264,14 +264,14 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
       avatar: "/imgs/angry_icon.jpg",
       title: "Domation AI",
       badgeText: t("Bị chặn"),
-      badgeBg: 'linear-gradient(135deg, #374151 0%, #111827 100%)',
+      badgeBg: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
       badgeColor: '#ffffff',
       content: selectedLead.ai_evaluation || t('Chặn tự động'),
-      accentColor: '#4b5563',
-      textAccentColor: theme === 'dark' ? '#9ca3af' : '#4b5563',
-      topAccentGradient: 'linear-gradient(90deg, #4b5563 0%, #1f2937 100%)',
-      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(55, 65, 81, 0.08) 0%, rgba(17, 24, 39, 0.08) 100%)' : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-      borderColor: theme === 'dark' ? '1px solid rgba(55, 65, 81, 0.25)' : '1px solid rgba(55, 65, 81, 0.15)',
+      accentColor: '#ef4444',
+      textAccentColor: theme === 'dark' ? '#f87171' : '#dc2626',
+      topAccentGradient: 'linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(185, 28, 28, 0.08) 100%)' : 'linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.15)',
     };
   }
   return null;

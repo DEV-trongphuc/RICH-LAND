@@ -912,11 +912,11 @@ switch ($action) {
         $endDate = $_GET['end_date'] ?? '';
 
         if ($isSale) {
-            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation')"];
+            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback')"];
             $params = [$saleId];
             $types = "i";
         } else {
-            $where = ["dl.status IN ('assigned', 'compensation')"];
+            $where = ["dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback')"];
             $params = [];
             $types = "";
             if ($saleFilterId !== null) {
@@ -1275,7 +1275,7 @@ switch ($action) {
             $stmtCheck = $conn->prepare("
                 SELECT 1 
                 FROM distribution_logs 
-                WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation', 'reminder') 
+                WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback') 
                 LIMIT 1
             ");
             $stmtCheck->bind_param("ii", $leadId, $saleId);

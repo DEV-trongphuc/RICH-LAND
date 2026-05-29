@@ -726,7 +726,7 @@ export const SalePortal = () => {
   const filteredLeads = data.leads.filter((lead: any) => {
     if (statusFilter !== 'all') {
       if (statusFilter === 'assigned') {
-        if (lead.status !== 'assigned' || lead.report_status) return false;
+        if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback'].includes(lead.status) || lead.report_status) return false;
       } else if (statusFilter === 'compensation') {
         if (lead.status !== 'compensation' || lead.report_status) return false;
       } else if (statusFilter === 'reminder') {
