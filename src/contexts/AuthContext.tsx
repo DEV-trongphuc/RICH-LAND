@@ -49,8 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('DOMATION_DEMO_MODE');
   }, []);
 
+  const contextValue = React.useMemo(() => ({ user, token, login, logout }), [user, token, login, logout]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

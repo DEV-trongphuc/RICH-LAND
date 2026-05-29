@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 type Language = 'vi' | 'en' | 'ja' | 'zh';
 
@@ -47,11 +47,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
   }, [language, loadedTranslations]);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('domation_lang', lang);
     window.dispatchEvent(new Event('language-change'));
-  };
+  }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -64,14 +64,21 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [language]);
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     if (language === 'vi' || !loadedTranslations) return key;
     const dict = loadedTranslations[language];
     return (dict && dict[key]) || key;
-  };
+  }, [language, loadedTranslations]);
+
+  const contextValue = useMemo(() => ({
+    language,
+    setLanguage,
+    t,
+    isTranslationLoading
+  }), [language, setLanguage, t, isTranslationLoading]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isTranslationLoading }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );
