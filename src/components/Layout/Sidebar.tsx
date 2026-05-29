@@ -8,7 +8,7 @@ import { fetchAPI } from '../../utils/api';
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
-  { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
+  { name: 'Lịch Data', href: '/calendar', icon: Calendar },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
