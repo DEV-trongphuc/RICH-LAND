@@ -1073,90 +1073,7 @@ export const QuickAddLeadModal = () => {
           />
         </div>
 
-        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ tên')}</label>
-            <input className="form-input" placeholder={t("VD: Nguyễn Văn A")} value={manualData.name} onChange={e => setManualData({ ...manualData, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số điện thoại (*)')}</label>
-            <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })} />
-          </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
-            <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
-          </div>
-          <div ref={sourceRef} style={{ position: 'relative' }}>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
-            <input
-              className="form-input"
-              placeholder="VD: FB_Ads"
-              value={manualData.source}
-              onChange={e => setManualData({ ...manualData, source: e.target.value })}
-              onFocus={() => setShowSourceSuggestions(true)}
-            />
-            {showSourceSuggestions && (
-              (() => {
-                const filtered = existingSources.filter(src =>
-                  src.toLowerCase().includes((manualData.source || '').toLowerCase())
-                );
-                if (filtered.length === 0) return null;
-                return (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      zIndex: 1000,
-                      background: theme === 'dark' ? 'var(--color-surface)' : 'white',
-                      border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                      maxHeight: '180px',
-                      overflowY: 'auto',
-                      marginTop: '4px'
-                    }}
-                  >
-                    {filtered.map((src, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => handleSelectSource(src)}
-                        style={{
-                          padding: '8px 12px',
-                          fontSize: '0.8125rem',
-                          cursor: 'pointer',
-                          color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
-                          transition: 'background-color 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#f5f3ff';
-                          e.currentTarget.style.color = '#7c3aed';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
-                        }}
-                      >
-                        {src}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
-            <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>
-            <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
-          </div>
-        </div>
-
-        <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: '1.5rem' }}>
+        <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview
           </h4>
@@ -1286,6 +1203,89 @@ export const QuickAddLeadModal = () => {
               )}
             </div>
           )}
+        </div>
+
+        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ tên')}</label>
+            <input className="form-input" placeholder={t("VD: Nguyễn Văn A")} value={manualData.name} onChange={e => setManualData({ ...manualData, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số điện thoại (*)')}</label>
+            <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })} />
+          </div>
+          <div>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
+            <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
+          </div>
+          <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
+            <input
+              className="form-input"
+              placeholder="VD: FB_Ads"
+              value={manualData.source}
+              onChange={e => setManualData({ ...manualData, source: e.target.value })}
+              onFocus={() => setShowSourceSuggestions(true)}
+            />
+            {showSourceSuggestions && (
+              (() => {
+                const filtered = existingSources.filter(src =>
+                  src.toLowerCase().includes((manualData.source || '').toLowerCase())
+                );
+                if (filtered.length === 0) return null;
+                return (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 1000,
+                      background: theme === 'dark' ? 'var(--color-surface)' : 'white',
+                      border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}
+                  >
+                    {filtered.map((src, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSource(src)}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '0.8125rem',
+                          cursor: 'pointer',
+                          color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
+                          transition: 'background-color 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#f5f3ff';
+                          e.currentTarget.style.color = '#7c3aed';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
+                        }}
+                      >
+                        {src}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
+          </div>
+          <div>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
+            <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>
+            <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
+          </div>
         </div>
       </div>
       <div style={{ padding: '1rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>

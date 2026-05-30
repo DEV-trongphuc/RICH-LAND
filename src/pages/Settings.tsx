@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -126,6 +126,10 @@ const SettingsInner = () => {
   const [zaloWeeklyReportDay, setZaloWeeklyReportDay] = useState('0');
   const [zaloWeeklyReportTime, setZaloWeeklyReportTime] = useState('08:00');
 
+  // Monthly report config
+  const [zaloMonthlyReportEnabled, setZaloMonthlyReportEnabled] = useState('0');
+  const [zaloMonthlyReportTime, setZaloMonthlyReportTime] = useState('08:00');
+
   // Fallback round config
   const [rounds, setRounds] = useState<any[]>([]);
   const [fallbackRoundId, setFallbackRoundId] = useState('');
@@ -133,6 +137,7 @@ const SettingsInner = () => {
   const [reassignIfOwnerInactive, setReassignIfOwnerInactive] = useState(true);
   const [starvationPreventionEnabled, setStarvationPreventionEnabled] = useState(false);
   const [starvationMaxLeadsPerHour, setStarvationMaxLeadsPerHour] = useState(3);
+  const [dbVersion, setDbVersion] = useState('');
   const [reportErrorReasons, setReportErrorReasons] = useState<{ reason: string; note: string }[]>([]);
 
   const handleAddReasonRow = () => {
@@ -280,6 +285,7 @@ const SettingsInner = () => {
 
       const json = await fetchAPI('get_settings');
       if (json.success && json.data) {
+        if (json.data.db_version) setDbVersion(json.data.db_version);
         if (json.data.email_provider) {
           setProvider(json.data.email_provider);
           if (json.data.email_provider === 'appscript') {
@@ -305,6 +311,8 @@ const SettingsInner = () => {
         }
         if (json.data.zalo_weekly_report_day) setZaloWeeklyReportDay(json.data.zalo_weekly_report_day);
         if (json.data.zalo_weekly_report_time) setZaloWeeklyReportTime(json.data.zalo_weekly_report_time);
+        if (json.data.zalo_monthly_report_enabled) setZaloMonthlyReportEnabled(json.data.zalo_monthly_report_enabled.toString());
+        if (json.data.zalo_monthly_report_time) setZaloMonthlyReportTime(json.data.zalo_monthly_report_time);
         if (json.data.fallback_round_id) setFallbackRoundId(json.data.fallback_round_id);
         if (json.data.fallback_type) setFallbackType(json.data.fallback_type);
         if (json.data.fallback_admin_id) setFallbackAdminId(json.data.fallback_admin_id);
@@ -421,6 +429,8 @@ const SettingsInner = () => {
       daily_report_admins: dailyReportAdmins,
       zalo_weekly_report_day: zaloWeeklyReportDay,
       zalo_weekly_report_time: zaloWeeklyReportTime,
+      zalo_monthly_report_enabled: zaloMonthlyReportEnabled,
+      zalo_monthly_report_time: zaloMonthlyReportTime,
       fallback_round_id: fallbackRoundId,
       fallback_type: fallbackType,
       fallback_admin_id: fallbackAdminId,
@@ -827,10 +837,29 @@ const SettingsInner = () => {
           </h1>
           <p className="page-subtitle">{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
         </div>
-        <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
-          {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
-          <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {dbVersion && (
+            <span style={{
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              background: 'var(--color-primary-light)',
+              color: 'var(--color-primary)',
+              padding: '6px 12px',
+              borderRadius: 20,
+              border: '1px solid rgba(124, 58, 237, 0.2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
+              {t('Phiên bản')} v{dbVersion}
+            </span>
+          )}
+          <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
+            {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
+            <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Mobile Tab Selector */}
@@ -1996,6 +2025,43 @@ function doPost(e) {
                         style={{ flex: 1, height: '42px' }}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Báo cáo Tháng */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', background: '#ec4899', color: 'white', padding: 4, borderRadius: 6 }}><Calendar size={16} /></span>
+                    {t('Lịch gửi Báo cáo Tháng (cho Sale)')}
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                    {t('Tự động gửi thống kê nhận data và tình trạng ticket đền bù của nguyên tháng trước trực tiếp cho từng Sale qua Email và Zalo vào ngày 1 hàng tháng.')}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label className="form-label">{t('Lịch gửi báo cáo tháng')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: '0', label: t('Tắt báo cáo tháng') },
+                          { value: '1', label: t('Bật báo cáo tháng (Gửi vào ngày 1 hàng tháng)') }
+                        ]}
+                        value={zaloMonthlyReportEnabled}
+                        onChange={val => setZaloMonthlyReportEnabled(val.toString())}
+                        width="100%"
+                      />
+                    </div>
+                    {zaloMonthlyReportEnabled === '1' && (
+                      <div style={{ flex: '0 0 180px', display: 'flex', flexDirection: 'column' }}>
+                        <label className="form-label">{t('Giờ gửi báo cáo')}</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={zaloMonthlyReportTime}
+                          onChange={e => setZaloMonthlyReportTime(e.target.value)}
+                          style={{ flex: 1, height: '42px' }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 

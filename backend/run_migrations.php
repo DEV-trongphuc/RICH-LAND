@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 141;
+$targetVersion = 144;
 $currentVersion = 0;
 
 // Query current DB version
@@ -173,6 +173,15 @@ if (!$apply) {
             
             // Version 141
             echo "<tr><td>v141</td><td>Thêm chỉ mục index cho trường source trong bảng leads để tối ưu hóa hiệu năng.</td><td>" . ($currentVersion >= 141 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+
+            // Version 142
+            echo "<tr><td>v142</td><td>Thêm cột notify_admin vào bảng sheet_connections để cấu hình thông báo cho Admin.</td><td>" . ($currentVersion >= 142 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+
+            // Version 143
+            echo "<tr><td>v143</td><td>Cập nhật mặc định notify_admin: landing page mặc định bật, sheets mặc định tắt.</td><td>" . ($currentVersion >= 143 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+
+            // Version 144
+            echo "<tr><td>v144</td><td>Thêm thiết lập gửi báo cáo tháng cho Sale và lịch gửi vào ngày 1 hàng tháng.</td><td>" . ($currentVersion >= 144 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
 
             echo "</tbody></table>";
             echo "</div>";
@@ -1165,6 +1174,59 @@ try {
         $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '141') ON DUPLICATE KEY UPDATE setting_value = '141'");
         $currentVersion = 141;
         $logMsg("Hoàn thành cập nhật phiên bản 141.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 13: Version 142 (Add notify_admin column to sheet_connections table)
+    // --------------------------------------------------
+    if ($currentVersion < 142) {
+        $logMsg("Đang chạy cập nhật phiên bản 142 (Thêm cột notify_admin vào sheet_connections)...", "info");
+        
+        $chkColNotify = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'notify_admin'");
+        if ($chkColNotify && $chkColNotify->num_rows === 0) {
+            $conn->query("ALTER TABLE sheet_connections ADD COLUMN notify_admin TINYINT(1) DEFAULT 1 COMMENT 'Thông báo cho Admin khi có Data mới'");
+            $logMsg("Đã thêm cột notify_admin vào sheet_connections.", "success");
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '142') ON DUPLICATE KEY UPDATE setting_value = '142'");
+        $currentVersion = 142;
+        $logMsg("Hoàn thành cập nhật phiên bản 142.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 14: Version 143 (Set default of notify_admin to 0, update existing sheet connections: landing page to 1, sheets to 0)
+    // --------------------------------------------------
+    if ($currentVersion < 143) {
+        $logMsg("Đang chạy cập nhật phiên bản 143 (Cập nhật mặc định notify_admin: landing page bật, sheets tắt)...", "info");
+        
+        // Alter column default to 0
+        $conn->query("ALTER TABLE sheet_connections MODIFY COLUMN notify_admin TINYINT(1) DEFAULT 0 COMMENT 'Thông báo cho Admin khi có Data mới'");
+        $logMsg("Đã thay đổi mặc định notify_admin thành 0.", "success");
+        
+        // Update existing values
+        $conn->query("UPDATE sheet_connections SET notify_admin = 1 WHERE connection_type = 'landing_page'");
+        $conn->query("UPDATE sheet_connections SET notify_admin = 0 WHERE connection_type != 'landing_page' OR connection_type IS NULL");
+        $logMsg("Đã cập nhật các giá trị notify_admin hiện tại (Landing Page = 1, các loại khác = 0).", "success");
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '143') ON DUPLICATE KEY UPDATE setting_value = '143'");
+        $currentVersion = 143;
+        $logMsg("Hoàn thành cập nhật phiên bản 143.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 15: Version 144 (Add monthly report configuration settings)
+    // --------------------------------------------------
+    if ($currentVersion < 144) {
+        $logMsg("Đang chạy cập nhật phiên bản 144 (Thêm cấu hình gửi báo cáo tháng cho Sale)...", "info");
+        
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_monthly_report_enabled', '0')");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_monthly_report_time', '08:00')");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_monthly_report_date', '')");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('last_monthly_report_timestamp', '')");
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '144') ON DUPLICATE KEY UPDATE setting_value = '144'");
+        $currentVersion = 144;
+        $logMsg("Hoàn thành cập nhật phiên bản 144.", "success");
     }
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

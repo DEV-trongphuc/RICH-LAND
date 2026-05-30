@@ -293,6 +293,7 @@ if (!in_array($action, $publicActions)) {
         'delete_connection',
         'toggle_connection',
         'toggle_require_both',
+        'toggle_notify_admin',
         'add_mapping',
         'edit_mapping',
         'delete_mapping',
@@ -309,7 +310,9 @@ if (!in_array($action, $publicActions)) {
         'get_zalo_send_logs',
         'ai_chat',
         'test_master_sync',
-        'rollback_admin_action'
+        'rollback_admin_action',
+        'update_lead_fields',
+        'send_lead_reminder'
     ];
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
         http_response_code(403);
@@ -337,6 +340,7 @@ if (!in_array($action, $publicActions)) {
         'delete_connection',
         'toggle_connection',
         'toggle_require_both',
+        'toggle_notify_admin',
         'add_rule',
         'edit_rule',
         'delete_rule',
@@ -366,7 +370,9 @@ if (!in_array($action, $publicActions)) {
         'send_quick_zalo_message',
         'manual_insert_lead',
         'delete_import_history',
-        'rollback_admin_action'
+        'rollback_admin_action',
+        'update_lead_fields',
+        'send_lead_reminder'
     ];
     if (in_array($action, $writeActions) && $decodedUser['role'] === 'viewer') {
         http_response_code(403);
@@ -3485,9 +3491,10 @@ switch ($action) {
             $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
             $googleScriptUrl = $input['google_script_url'] ?? null;
             $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
+            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : ($connectionType === 'landing_page' ? 1 : 0);
 
-            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
-            $stmt->bind_param("sssiiissiisiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes);
+            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes, notify_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
+            $stmt->bind_param("sssiiissiisiiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin);
             if ($stmt->execute()) {
                 $insertId = $stmt->insert_id;
                 logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $insertId, 'sheet_name' => $name]);
@@ -3518,9 +3525,10 @@ switch ($action) {
             $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
             $googleScriptUrl = $input['google_script_url'] ?? null;
             $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
+            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : ($connectionType === 'landing_page' ? 1 : 0);
 
-            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
-            $stmt->bind_param("ssiiissiisiisi", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $id);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, notify_admin=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
+            $stmt->bind_param("ssiiissiisiisii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
             }
@@ -3680,6 +3688,22 @@ switch ($action) {
             $stmt->bind_param("ii", $require, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'TOGGLE_REQUIRE_BOTH', ['id' => $id, 'require_both_contact' => $require]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'toggle_notify_admin':
+        try {
+            $id = (int) ($_GET['id'] ?? 0);
+            $notify = (int) ($_GET['notify'] ?? 0);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET notify_admin=? WHERE id=?");
+            $stmt->bind_param("ii", $notify, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'TOGGLE_NOTIFY_ADMIN', ['id' => $id, 'notify_admin' => $notify]);
             }
             $stmt->close();
             echo json_encode(['success' => true]);
@@ -10375,6 +10399,213 @@ switch ($action) {
         echo json_encode(['success' => true]);
         break;
 
+    case 'update_lead_fields':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $lead_id = isset($input['lead_id']) ? (int) $input['lead_id'] : 0;
+        $name = isset($input['name']) ? trim($input['name']) : '';
+        $phone = isset($input['phone']) ? trim($input['phone']) : '';
+        $email = isset($input['email']) ? trim($input['email']) : '';
+        $source = isset($input['source']) ? trim($input['source']) : '';
+        $type = isset($input['type']) ? trim($input['type']) : '';
+        $note = isset($input['note']) ? trim($input['note']) : '';
+
+        if (!$lead_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID khách hàng']);
+            break;
+        }
+
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Tên khách hàng không được để trống']);
+            break;
+        }
+
+        // Fetch current values for logging
+        $stmt = $conn->prepare("SELECT name, phone, email, source, type, note FROM leads WHERE id = ? LIMIT 1");
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối CSDL']);
+            break;
+        }
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy khách hàng']);
+            $stmt->close();
+            break;
+        }
+        $lead = $res->fetch_assoc();
+        $stmt->close();
+
+        // Update lead fields
+        $updStmt = $conn->prepare("UPDATE leads SET name = ?, phone = ?, email = ?, source = ?, type = ?, note = ? WHERE id = ?");
+        if (!$updStmt) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật CSDL']);
+            break;
+        }
+        $updStmt->bind_param("ssssssi", $name, $phone, $email, $source, $type, $note, $lead_id);
+        if ($updStmt->execute()) {
+            // Log admin action
+            $adminAccountId = isset($decodedUser['id']) ? (int) $decodedUser['id'] : 0;
+            logAdminAction($conn, $adminAccountId, 'UPDATE_LEAD_FIELDS', [
+                'lead_id' => $lead_id,
+                'lead_name' => $lead['name'],
+                'old_name' => $lead['name'],
+                'new_name' => $name,
+                'old_phone' => $lead['phone'],
+                'new_phone' => $phone,
+                'old_email' => $lead['email'],
+                'new_email' => $email,
+                'old_source' => $lead['source'],
+                'new_source' => $source,
+                'old_type' => $lead['type'],
+                'new_type' => $type,
+                'old_note' => $lead['note'],
+                'new_note' => $note
+            ]);
+            echo json_encode(['success' => true, 'message' => 'Cập nhật thông tin khách hàng thành công']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi lưu thông tin']);
+        }
+        $updStmt->close();
+        break;
+
+    case 'send_lead_reminder':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $lead_id = isset($input['lead_id']) ? (int) $input['lead_id'] : 0;
+        $send_zalo = isset($input['send_zalo']) ? (bool) $input['send_zalo'] : false;
+        $send_email = isset($input['send_email']) ? (bool) $input['send_email'] : false;
+
+        if (!$lead_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID khách hàng']);
+            break;
+        }
+
+        if (!$send_zalo && !$send_email) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn ít nhất một kênh để gửi nhắc nhở (Zalo hoặc Email)']);
+            break;
+        }
+
+        // Fetch lead and assignee details
+        $stmt = $conn->prepare("
+            SELECT l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.note, l.source, l.type, l.assigned_to as consultant_id,
+                   c.name as consultant_name, c.email as consultant_email,
+                   dl.id as log_id, dl.round_id, r.round_name, r.cc_emails
+            FROM leads l
+            LEFT JOIN consultants c ON l.assigned_to = c.id
+            LEFT JOIN distribution_logs dl ON l.id = dl.lead_id AND dl.status = 'assigned'
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            WHERE l.id = ?
+            ORDER BY dl.id DESC LIMIT 1
+        ");
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối CSDL']);
+            break;
+        }
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy thông tin khách hàng']);
+            $stmt->close();
+            break;
+        }
+        $row = $res->fetch_assoc();
+        $stmt->close();
+
+        $consultant_id = (int)$row['consultant_id'];
+        $consultant_name = $row['consultant_name'];
+        $consultant_email = $row['consultant_email'];
+
+        if (!$consultant_id) {
+            echo json_encode(['success' => false, 'message' => 'Khách hàng này hiện chưa được bàn giao cho Tư vấn viên nào']);
+            break;
+        }
+
+        require_once __DIR__ . '/webhook_logic.php';
+        require_once __DIR__ . '/zalo_bot.php';
+        require_once __DIR__ . '/mailer.php';
+
+        $timeline = getLeadHistoryTimeline($conn, $lead_id, true);
+        $roundNameStr = $row['round_name'] ?? '';
+
+        $zaloSuccess = true;
+        $emailSuccess = true;
+        $channelsTried = [];
+
+        if ($send_zalo) {
+            $channelsTried[] = 'Zalo';
+            try {
+                $zaloResult = sendLeadReminderZaloMessageToSale(
+                    $consultant_id,
+                    $consultant_name,
+                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                    $row['phone'] ?: '',
+                    $row['note'] ?: '',
+                    $row['source'] ?: '',
+                    $roundNameStr,
+                    $timeline,
+                    $lead_id,
+                    $row['lead_email'] ?: '',
+                    $row['type'] ?: '',
+                    true // send synchronously to check if it succeeded
+                );
+                if (!$zaloResult) {
+                    $zaloSuccess = false;
+                }
+            } catch (Exception $zEx) {
+                error_log("Error sending manual reminder Zalo to sale: " . $zEx->getMessage());
+                $zaloSuccess = false;
+            }
+        }
+
+        if ($send_email) {
+            $channelsTried[] = 'Email';
+            if (empty($consultant_email)) {
+                $emailSuccess = false;
+            } else {
+                try {
+                    // sendLeadReminderEmailToSale pushes to queue by default
+                    sendLeadReminderEmailToSale(
+                        $consultant_email,
+                        $consultant_name,
+                        $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                        $row['phone'] ?: '',
+                        $row['note'] ?: '',
+                        $row['source'] ?: '',
+                        $row['cc_emails'] ?: '',
+                        $roundNameStr,
+                        $timeline,
+                        $lead_id
+                    );
+                } catch (Exception $eEx) {
+                    error_log("Error sending manual reminder Email to sale: " . $eEx->getMessage());
+                    $emailSuccess = false;
+                }
+            }
+        }
+
+        // Log admin action
+        $adminAccountId = isset($decodedUser['id']) ? (int) $decodedUser['id'] : 0;
+        logAdminAction($conn, $adminAccountId, 'SEND_LEAD_REMINDER', [
+            'lead_id' => $lead_id,
+            'lead_name' => $row['lead_name'],
+            'consultant_id' => $consultant_id,
+            'consultant_name' => $consultant_name,
+            'channels' => implode(', ', $channelsTried),
+            'zalo_success' => $zaloSuccess,
+            'email_success' => $emailSuccess
+        ]);
+
+        if ($send_zalo && !$zaloSuccess && $send_email && !$emailSuccess) {
+            echo json_encode(['success' => false, 'message' => 'Gửi nhắc nhở thất bại trên cả 2 kênh Zalo và Email. Vui lòng kiểm tra lại cấu hình Zalo Bot/SMTP.']);
+        } else if ($send_zalo && !$zaloSuccess) {
+            echo json_encode(['success' => true, 'message' => 'Đã gửi Email thành công nhưng gửi Zalo thất bại (có thể do TVV chưa liên kết Zalo hoặc lỗi Bot)']);
+        } else if ($send_email && !$emailSuccess) {
+            echo json_encode(['success' => true, 'message' => 'Đã gửi Zalo thành công nhưng gửi Email thất bại (có thể do TVV chưa cấu hình Email)']);
+        } else {
+            echo json_encode(['success' => true, 'message' => 'Đã gửi nhắc nhở thành công cho Tư vấn viên ' . $consultant_name]);
+        }
+        break;
 
     case 'block_lead':
         $input = json_decode(file_get_contents('php://input'), true);

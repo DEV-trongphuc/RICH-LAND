@@ -2622,4 +2622,165 @@ function getScreenerConfigForRound($conn, $roundId)
     return null;
 }
 
+function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customerData, $distData)
+{
+    // 1. Fetch target admins
+    $adminsJson = get_system_setting($conn, 'daily_report_admins');
+    $adminIds = json_decode($adminsJson, true);
+    $admins = [];
+
+    if (is_array($adminIds) && !empty($adminIds)) {
+        $adminIds = array_map('intval', $adminIds);
+        $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+        $types = str_repeat('i', count($adminIds));
+        $adminStmt = $conn->prepare("SELECT id, email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+        if ($adminStmt) {
+            $adminStmt->bind_param($types, ...$adminIds);
+            $adminStmt->execute();
+            $adminRes = $adminStmt->get_result();
+            if ($adminRes) {
+                while ($row = $adminRes->fetch_assoc()) {
+                    $admins[] = $row;
+                }
+            }
+            $adminStmt->close();
+        }
+    } else {
+        $admins = getTicketNotifyAdmins($conn);
+    }
+
+    if (empty($admins)) {
+        return false;
+    }
+
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+
+    // 2. Resolve Sale Name and Round Name
+    $saleName = 'Không có';
+    if (!empty($distData['assigned_to_id'])) {
+        $stmt = $conn->prepare("SELECT name FROM consultants WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $distData['assigned_to_id']);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            if ($res) {
+                $saleName = $res['name'];
+            }
+            $stmt->close();
+        }
+    } else if (!empty($distData['assigned_to_name'])) {
+        $saleName = $distData['assigned_to_name'];
+    }
+
+    $roundName = 'Không có';
+    if (!empty($distData['round_id'])) {
+        $stmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $distData['round_id']);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            if ($res) {
+                $roundName = $res['round_name'];
+            }
+            $stmt->close();
+        }
+    } else if (!empty($distData['round_name'])) {
+        $roundName = $distData['round_name'];
+    }
+
+    // 3. Map status to Vietnamese
+    $statusText = 'Không rõ';
+    switch ($distData['status']) {
+        case 'assigned':
+            $statusText = 'Chia mới thành công (Round-robin)';
+            break;
+        case 'compensation':
+            $statusText = 'Chia đền bù';
+            break;
+        case 'pending_work_hours':
+            $statusText = 'Tạm giữ (Ngoài giờ làm việc)';
+            break;
+        case 'silent':
+            $statusText = 'Chỉ đồng bộ check trùng (Không chia số)';
+            break;
+        case 'duplicate':
+            $statusText = 'Trùng số - Nhắc lại cho Sale cũ';
+            break;
+        case 'pending_approval':
+            $statusText = 'Tạm giữ chờ AI duyệt';
+            break;
+        case 'unassigned':
+            $statusText = 'Chưa phân bổ (Không khớp quy tắc)';
+            break;
+        case 'pending':
+            $statusText = 'Chờ phân bổ (Vòng không có sale hoạt động)';
+            break;
+        case 'fallback':
+            $statusText = 'Chuyển hướng Admin dự phòng';
+            break;
+    }
+
+    // 4. Construct messages
+    $zaloMsg = "📥 [ BÁO CÁO LEAD MỚI TỪ API ] 📥\n"
+        . "━━━━━━━━\n"
+        . "• Nguồn API: " . ($connData['sheet_name'] ?? 'Không rõ') . "\n"
+        . "• Token: " . ($connData['webhook_token'] ?? '-') . "\n\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+        . "  - Họ tên: " . (!empty($customerData['name']) ? $customerData['name'] : 'Ẩn danh') . "\n"
+        . "  - Số ĐT: " . (!empty($customerData['phone']) ? $customerData['phone'] : 'Không có') . "\n"
+        . "  - Email: " . (!empty($customerData['email']) ? $customerData['email'] : 'Không có') . "\n"
+        . "  - Phân loại: " . (!empty($customerData['type']) ? $customerData['type'] : 'Không có') . "\n"
+        . "  - Nguồn ghi nhận: " . (!empty($customerData['source']) ? $customerData['source'] : 'Không có') . "\n"
+        . "  - Ghi chú: " . (!empty($customerData['note']) ? $customerData['note'] : 'Không có') . "\n\n"
+        . "⚙️ THÔNG TIN PHÂN BỔ:\n"
+        . "  - Trạng thái: " . $statusText . "\n"
+        . "  - Vòng phân bổ: " . $roundName . "\n"
+        . "  - Sale phụ trách: " . $saleName . "\n"
+        . "  - Chi tiết: " . ($distData['message'] ?? 'Không có');
+
+    $emailSubj = "[Domation API] Báo cáo Lead mới từ API - " . (!empty($customerData['name']) ? $customerData['name'] : 'Ẩn danh');
+    $emailBody = "<h3>Báo cáo Lead mới nhận từ API</h3>"
+        . "<p><strong>Nguồn API:</strong> " . htmlspecialchars($connData['sheet_name'] ?? 'Không rõ') . " (Token: <code>" . htmlspecialchars($connData['webhook_token'] ?? '') . "</code>)</p>"
+        . "<h4>Thông tin khách hàng:</h4>"
+        . "<ul>"
+        . "    <li><strong>Họ tên:</strong> " . htmlspecialchars(!empty($customerData['name']) ? $customerData['name'] : 'Ẩn danh') . "</li>"
+        . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars(!empty($customerData['phone']) ? $customerData['phone'] : '-') . "</li>"
+        . "    <li><strong>Email:</strong> " . htmlspecialchars(!empty($customerData['email']) ? $customerData['email'] : '-') . "</li>"
+        . "    <li><strong>Phân loại (Type):</strong> " . htmlspecialchars(!empty($customerData['type']) ? $customerData['type'] : '-') . "</li>"
+        . "    <li><strong>Nguồn ghi nhận (Source):</strong> " . htmlspecialchars(!empty($customerData['source']) ? $customerData['source'] : '-') . "</li>"
+        . "    <li><strong>Ghi chú:</strong> " . nl2br(htmlspecialchars(!empty($customerData['note']) ? $customerData['note'] : '-')) . "</li>"
+        . "</ul>"
+        . "<h4>Thông tin phân bổ:</h4>"
+        . "<ul>"
+        . "    <li><strong>Trạng thái phân bổ:</strong> " . htmlspecialchars($statusText) . "</li>"
+        . "    <li><strong>Vòng phân bổ:</strong> " . htmlspecialchars($roundName) . "</li>"
+        . "    <li><strong>Sale phụ trách:</strong> " . htmlspecialchars($saleName) . "</li>"
+        . "    <li><strong>Chi tiết:</strong> " . htmlspecialchars($distData['message'] ?? '-') . "</li>"
+        . "</ul>";
+
+    // 5. Send notifications
+    foreach ($admins as $admin) {
+        // Send Zalo
+        if (!empty($botToken) && !empty($admin['zalo_chat_id'])) {
+            try {
+                require_once __DIR__ . '/zalo_bot.php';
+                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
+            } catch (Exception $e) {
+                error_log("Error sending new lead API Zalo to admin " . $admin['name'] . ": " . $e->getMessage());
+            }
+        }
+        // Send Email
+        if (!empty($admin['email'])) {
+            try {
+                require_once __DIR__ . '/mailer.php';
+                sendEmailNotification($admin['email'], $emailSubj, 'Báo cáo Lead API', $emailBody, '');
+            } catch (Exception $e) {
+                error_log("Error sending new lead API email to admin " . $admin['name'] . ": " . $e->getMessage());
+            }
+        }
+    }
+
+    return true;
+}
+
 

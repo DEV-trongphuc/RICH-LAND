@@ -297,7 +297,8 @@ CREATE TABLE `sheet_connections` (
   `two_way_sync` tinyint(1) DEFAULT 0 COMMENT 'Đồng bộ 2 chiều ngược về Sheet',
   `google_script_url` varchar(512) DEFAULT NULL COMMENT 'URL Web App Google Apps Script',
   `lead_recall_minutes` int(11) DEFAULT 0 COMMENT 'Thời gian tự động thu hồi lead không tiếp nhận (phút, 0=tắt)',
-  `sync_error_count` int(11) DEFAULT 0 COMMENT 'Số lần lỗi đồng bộ liên tiếp'
+  `sync_error_count` int(11) DEFAULT 0 COMMENT 'Số lần lỗi đồng bộ liên tiếp',
+  `notify_admin` tinyint(1) DEFAULT 0 COMMENT 'Thông báo cho Admin khi có Data mới'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

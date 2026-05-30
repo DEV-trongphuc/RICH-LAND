@@ -35,6 +35,7 @@ type Connection = {
   email_template?: string;
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
+  notify_admin?: number | boolean;
   last_sync_at?: string;
   two_way_sync?: number | boolean;
   google_script_url?: string;
@@ -396,6 +397,7 @@ const IntegrationsInner = () => {
           connection_type: c.connection_type,
           is_silent: Boolean(Number(c.is_silent)),
           sync_saleperson: Boolean(Number(c.sync_saleperson)),
+          notify_admin: Boolean(Number(c.notify_admin !== undefined ? c.notify_admin : (c.connection_type === 'landing_page' ? 1 : 0))),
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
         }));
         setConnections(conns);
@@ -489,7 +491,8 @@ const IntegrationsInner = () => {
       is_silent: isSilent ? 1 : 0,
       sync_saleperson: syncSaleperson ? 1 : 0,
       email_template: emailTemplate,
-      lead_recall_minutes: 0
+      lead_recall_minutes: 0,
+      notify_admin: 0
     };
 
     if (isSaving) return;
@@ -536,7 +539,8 @@ const IntegrationsInner = () => {
       is_active: 1,
       sync_interval: 0,
       connection_type: 'landing_page',
-      lead_recall_minutes: 0
+      lead_recall_minutes: 0,
+      notify_admin: 1
     };
 
     if (isSaving) return;
@@ -582,7 +586,8 @@ const IntegrationsInner = () => {
       email_template: editEmailTemplate,
       two_way_sync: editTwoWaySync ? 1 : 0,
       google_script_url: editGoogleScriptUrl,
-      lead_recall_minutes: editLeadRecallMinutes
+      lead_recall_minutes: editLeadRecallMinutes,
+      notify_admin: selected.notify_admin ? 1 : 0
     };
 
     if (isSaving) return;
@@ -724,6 +729,19 @@ const IntegrationsInner = () => {
       const json = await fetchAPI(`toggle_require_both&id=${conn.id}&require=${newRequire}`);
       if (json.success) {
         toast.success(newRequire ? t('Đã bật yêu cầu Số Điện Thoại') : t('Đã tắt yêu cầu Số Điện Thoại'));
+        fetchData();
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+  };
+
+  const handleToggleNotifyAdmin = async (conn: any) => {
+    try {
+      const newNotify = conn.notify_admin ? 0 : 1;
+      const json = await fetchAPI(`toggle_notify_admin&id=${conn.id}&notify=${newNotify}`);
+      if (json.success) {
+        toast.success(newNotify ? t('Đã bật báo cáo Admin') : t('Đã tắt báo cáo Admin'));
         fetchData();
       }
     } catch (e: any) {
@@ -1414,6 +1432,31 @@ const IntegrationsInner = () => {
                     <div style={{
                       width: 18, height: 18, borderRadius: '50%', background: 'white',
                       position: 'absolute', top: 3, left: selected.require_both_contact ? 23 : 3,
+                      transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {t('Thông báo cho Admin khi có Data mới')}
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      {t('Nếu bật, hệ thống sẽ tự động gửi báo cáo chi tiết cho các Admin qua Zalo/Email mỗi khi có data mới đổ về.')}
+                    </p>
+                  </div>
+                  <div
+                    onClick={() => handleToggleNotifyAdmin(selected)}
+                    style={{
+                      width: 44, height: 24, borderRadius: 24, cursor: 'pointer', position: 'relative',
+                      background: selected.notify_admin ? 'var(--color-success)' : 'var(--color-border)',
+                      transition: 'background 0.3s'
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: 3, left: selected.notify_admin ? 23 : 3,
                       transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }} />
                   </div>

@@ -1,8 +1,9 @@
 import { useState, useEffect, Fragment } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -408,27 +409,122 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<any>(null);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [isAdminEditingLead, setIsAdminEditingLead] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    source: '',
+    type: '',
+    note: ''
+  });
+  const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+
+  const fetchNotificationStatus = async (leadId: number) => {
+    setNotifLoading(true);
+    try {
+      const json = await fetchAPI(`get_lead_notification_status&lead_id=${leadId}`);
+      if (json.success) {
+        setNotificationStatus(json.data);
+      }
+    } catch (err) {
+      console.error("Lỗi lấy trạng thái thông báo:", err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedLead) {
       setNotificationStatus(null);
-      setNotifLoading(true);
-      fetchAPI(`get_lead_notification_status&lead_id=${selectedLead.lead_id || selectedLead.id}`)
-        .then(json => {
-          if (json.success) {
-            setNotificationStatus(json.data);
-          }
-        })
-        .catch(err => {
-          console.error("Lỗi lấy trạng thái thông báo:", err);
-        })
-        .finally(() => {
-          setNotifLoading(false);
-        });
+      fetchNotificationStatus(selectedLead.lead_id || selectedLead.id);
+
+      setEditForm({
+        name: selectedLead.name || '',
+        phone: selectedLead.phone || '',
+        email: selectedLead.email || '',
+        source: selectedLead.source || '',
+        type: selectedLead.type || '',
+        note: selectedLead.note || ''
+      });
+      setIsAdminEditingLead(false);
     } else {
       setNotificationStatus(null);
+      setIsAdminEditingLead(false);
     }
   }, [selectedLead]);
+
+  const handleSendReminder = async () => {
+    if (!selectedLead) return;
+    setIsSendingReminder(true);
+    try {
+      const res = await fetchAPI('send_lead_reminder', {
+        method: 'POST',
+        body: JSON.stringify({
+          lead_id: selectedLead.lead_id || selectedLead.id,
+          send_zalo: reminderChannels.zalo,
+          send_email: reminderChannels.email
+        })
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đã gửi nhắc nhở thành công!'));
+        setIsReminderModalOpen(false);
+        fetchNotificationStatus(selectedLead.lead_id || selectedLead.id);
+      } else {
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể gửi nhắc nhở')));
+      }
+    } catch (err: any) {
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
+    }
+    setIsSendingReminder(false);
+  };
+
+  const handleSaveLeadFields = async () => {
+    if (!selectedLead) return;
+    if (!editForm.name.trim()) {
+      toast.error(t('Tên khách hàng không được để trống'));
+      return;
+    }
+    setIsSavingLeadFields(true);
+    try {
+      const res = await fetchAPI('update_lead_fields', {
+        method: 'POST',
+        body: JSON.stringify({
+          lead_id: selectedLead.lead_id || selectedLead.id,
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim(),
+          email: editForm.email.trim(),
+          source: editForm.source.trim(),
+          type: editForm.type.trim(),
+          note: editForm.note.trim()
+        })
+      });
+      if (res.success) {
+        toast.success(t('Cập nhật thông tin khách hàng thành công!'));
+        setSelectedLead({
+          ...selectedLead,
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim(),
+          email: editForm.email.trim(),
+          source: editForm.source.trim(),
+          type: editForm.type.trim(),
+          note: editForm.note.trim()
+        });
+        setIsAdminEditingLead(false);
+        fetchLeads();
+        window.dispatchEvent(new CustomEvent('lead-added'));
+      } else {
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể lưu thông tin')));
+      }
+    } catch (err: any) {
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
+    } finally {
+      setIsSavingLeadFields(false);
+    }
+  };
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string; vacation_mode?: number }[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [reassignConsId, setReassignConsId] = useState<string>('');
@@ -1664,49 +1760,202 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
               {/* Cột Trái: Chi Tiết */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <Avatar name={selectedLead.name} size={48} />
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
-                      {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && (
-                        <button
-                          onClick={() => {
-                            const isTicket = selectedLead.status === 'error' || selectedLead.report_status === 'approved' || selectedLead.report_status === 'pending';
-                            setCompensateBlock(selectedLead.assigned_to_name !== '-' && !isTicket);
-                            setConfirmBlockOpen(true);
-                          }}
-                          title={t("Chặn & Blacklist khách hàng này")}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <Avatar name={selectedLead.name} size={48} />
+                    <div>
+                      {isAdminEditingLead ? (
+                        <input
+                          type="text"
+                          value={editForm.name}
+                          onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                          placeholder={t("Nhập tên khách hàng")}
                           style={{
-                            background: '#fee2e2',
-                            border: '1px solid #fecaca',
-                            borderRadius: '6px',
-                            padding: '3px 8px',
-                            color: '#ef4444',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            lineHeight: 1,
-                            transition: 'all 0.2s'
+                            fontSize: '1.25rem',
+                            fontWeight: 800,
+                            color: 'var(--color-text)',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-primary-light)',
+                            borderRadius: '10px',
+                            padding: '8px 14px',
+                            width: '240px',
+                            outline: 'none',
+                            transition: 'all 0.2s ease-in-out',
+                            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.08)'
                           }}
-                          onMouseOver={e => {
-                            e.currentTarget.style.background = '#fca5a5';
-                            e.currentTarget.style.color = '#b91c1c';
+                          onFocus={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.15)';
                           }}
-                          onMouseOut={e => {
-                            e.currentTarget.style.background = '#fee2e2';
-                            e.currentTarget.style.color = '#ef4444';
+                          onBlur={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.08)';
                           }}
-                        >
-                          <AlertTriangle size={12} />
-                          {t('Chặn')}
-                        </button>
+                        />
+                      ) : (
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{selectedLead.name}</h2>
                       )}
+                      <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ID: #{selectedLead.id}</div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {user?.role === 'admin' && (
+                      <>
+                        {isAdminEditingLead ? (
+                          <>
+                            <button
+                              onClick={handleSaveLeadFields}
+                              disabled={isSavingLeadFields}
+                              title={t("Lưu thay đổi")}
+                              style={{
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '8px 18px',
+                                color: '#ffffff',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                              }}
+                              onMouseOver={e => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)';
+                              }}
+                              onMouseOut={e => {
+                                e.currentTarget.style.transform = 'none';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
+                              }}
+                            >
+                              <Check size={14} />
+                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu thay đổi')}
+                            </button>
+                            <button
+                              onClick={() => setIsAdminEditingLead(false)}
+                              title={t("Hủy")}
+                              style={{
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '10px',
+                                padding: '8px 18px',
+                                color: 'var(--color-text-muted)',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                              }}
+                              onMouseOver={e => {
+                                e.currentTarget.style.background = 'var(--color-border-light)';
+                                e.currentTarget.style.color = 'var(--color-text)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                              }}
+                              onMouseOut={e => {
+                                e.currentTarget.style.background = 'var(--color-surface)';
+                                e.currentTarget.style.color = 'var(--color-text-muted)';
+                                e.currentTarget.style.transform = 'none';
+                              }}
+                            >
+                              <X size={14} />
+                              {t('Hủy')}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditForm({
+                                name: selectedLead.name || '',
+                                phone: selectedLead.phone || '',
+                                email: selectedLead.email || '',
+                                source: selectedLead.source || '',
+                                type: selectedLead.type || '',
+                                note: selectedLead.note || ''
+                              });
+                              setIsAdminEditingLead(true);
+                            }}
+                            title={t("Sửa thông tin")}
+                            style={{
+                              background: 'rgba(124, 58, 237, 0.08)',
+                              border: '1px solid var(--color-primary-light)',
+                              borderRadius: '10px',
+                              padding: '8px 18px',
+                              color: 'var(--color-primary)',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
+                            }}
+                            onMouseOver={e => {
+                              e.currentTarget.style.background = 'var(--color-primary)';
+                              e.currentTarget.style.color = '#ffffff';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.2)';
+                            }}
+                            onMouseOut={e => {
+                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                              e.currentTarget.style.color = 'var(--color-primary)';
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(124, 58, 237, 0.05)';
+                            }}
+                          >
+                            <Edit size={14} />
+                            {t('Sửa')}
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
+                      <button
+                        onClick={() => {
+                          const isTicket = selectedLead.status === 'error' || selectedLead.report_status === 'approved' || selectedLead.report_status === 'pending';
+                          setCompensateBlock(selectedLead.assigned_to_name !== '-' && !isTicket);
+                          setConfirmBlockOpen(true);
+                        }}
+                        title={t("Chặn & Blacklist khách hàng này")}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid var(--color-danger-light)',
+                          borderRadius: '10px',
+                          padding: '8px 18px',
+                          color: 'var(--color-danger)',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = 'var(--color-danger)';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(239, 68, 68, 0.2)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                          e.currentTarget.style.color = 'var(--color-danger)';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.05)';
+                        }}
+                      >
+                        <AlertTriangle size={14} />
+                        {t('Chặn')}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1718,19 +1967,109 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 }}>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> Phone</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                      {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
-                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.phone}
+                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          transition: 'all 0.2s ease-in-out',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                        }}
+                        onFocus={e => {
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                        }}
+                        onBlur={e => {
+                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                        {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                      </div>
+                    )}
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> Email</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
-                      {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
-                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.email}
+                        onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          transition: 'all 0.2s ease-in-out',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                        }}
+                        onFocus={e => {
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                        }}
+                        onBlur={e => {
+                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
+                        {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                      </div>
+                    )}
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><ExternalLink size={12} /> {t('Nguồn')}</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.source}
+                        onChange={e => setEditForm({ ...editForm, source: e.target.value })}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          transition: 'all 0.2s ease-in-out',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                        }}
+                        onFocus={e => {
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                        }}
+                        onBlur={e => {
+                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
+                    )}
                   </div>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
@@ -1805,17 +2144,81 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t('Ghi chú & Phân loại')}</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t('Loại Data:')}</span>
-                            <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
-                          </div>
-
-                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '8px', marginTop: '4px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '4px' }}>{t('Nội dung ghi chú:')}</span>
-                            <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                              {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t('Không có ghi chú thêm')}</em>}
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {isAdminEditingLead ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', width: '80px', flexShrink: 0 }}>{t('Loại Data:')}</span>
+                              <input
+                                type="text"
+                                value={editForm.type}
+                                onChange={e => setEditForm({ ...editForm, type: e.target.value })}
+                                style={{
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                  color: 'var(--color-text)',
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                                  borderRadius: '10px',
+                                  padding: '8px 12px',
+                                  flex: 1,
+                                  outline: 'none',
+                                  transition: 'all 0.2s ease-in-out',
+                                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                                }}
+                                onFocus={e => {
+                                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                                }}
+                                onBlur={e => {
+                                  e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                                }}
+                              />
                             </div>
+                          ) : (
+                            <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
+                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t('Loại Data:')}</span>
+                              <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
+                            </div>
+                          )}
+
+                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '10px', marginTop: '2px' }}>
+                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '6px' }}>{t('Nội dung ghi chú:')}</span>
+                            {isAdminEditingLead ? (
+                              <textarea
+                                value={editForm.note}
+                                onChange={e => setEditForm({ ...editForm, note: e.target.value })}
+                                rows={4}
+                                style={{
+                                  fontSize: '0.875rem',
+                                  fontWeight: 500,
+                                  color: 'var(--color-text)',
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                                  borderRadius: '10px',
+                                  padding: '10px 14px',
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  lineHeight: 1.5,
+                                  resize: 'vertical',
+                                  outline: 'none',
+                                  transition: 'all 0.2s ease-in-out',
+                                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                                }}
+                                onFocus={e => {
+                                  e.currentTarget.style.borderColor = '#d97706';
+                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(245, 158, 11, 0.15)';
+                                }}
+                                onBlur={e => {
+                                  e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.25)';
+                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                                }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
+                                {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t('Không có ghi chú thêm')}</em>}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2568,6 +2971,48 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                           {t('Không lấy được trạng thái gửi thông báo')}
                         </div>
+                      )}
+
+                      {/* Manual Reminder Button */}
+                      {user?.role === 'admin' && selectedLead.assigned_to_name !== '-' && (
+                        <button
+                          onClick={() => {
+                            setReminderChannels({ zalo: true, email: true });
+                            setIsReminderModalOpen(true);
+                          }}
+                          style={{
+                            marginTop: '0.75rem',
+                            width: '100%',
+                            background: 'rgba(124, 58, 237, 0.08)',
+                            border: '1px solid var(--color-primary-light)',
+                            borderRadius: '10px',
+                            padding: '8px 12px',
+                            color: 'var(--color-primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                          }}
+                          onMouseOver={e => {
+                            e.currentTarget.style.background = 'var(--color-primary)';
+                            e.currentTarget.style.color = '#ffffff';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 10px rgba(124, 58, 237, 0.15)';
+                          }}
+                          onMouseOut={e => {
+                            e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.color = 'var(--color-primary)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        >
+                          <Bell size={12} />
+                          {t('Nhắc lại thông báo')}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -3555,6 +4000,119 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             </div>
           )}
         </div>
+        )}
+      </CustomModal>
+
+      {/* Reminder Confirmation Modal */}
+      <CustomModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        title={t("Xác nhận nhắc lại cho Tư vấn viên")}
+        width="480px"
+      >
+        {isReminderModalOpen && selectedLead && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Avatar
+                src={selectedLead.assigned_to_avatar}
+                name={selectedLead.assigned_to_name}
+                size={44}
+              />
+              <div>
+                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0, fontWeight: 500 }}>
+                  {t('Gửi thông báo nhắc nhở chăm sóc khách hàng')} <strong>"{selectedLead.name}"</strong> {t('đến Tư vấn viên')} <strong>"{selectedLead.assigned_to_name}"</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '12px',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('Kênh nhận thông báo:')}
+              </span>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <img
+                    src="https://stc-zpl.zdn.vn/favicon.ico"
+                    alt="Zalo"
+                    style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: '50%' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>Zalo Bot Message</span>
+                </div>
+                <ToggleSwitch
+                  checked={reminderChannels.zalo}
+                  onChange={checked => setReminderChannels({ ...reminderChannels, zalo: checked })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <img
+                    src="/imgs/gmail-icon-free-png.webp"
+                    alt="Gmail"
+                    style={{ width: 16, height: 16, objectFit: 'contain' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>Gmail SMTP Notification</span>
+                </div>
+                <ToggleSwitch
+                  checked={reminderChannels.email}
+                  onChange={checked => setReminderChannels({ ...reminderChannels, email: checked })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => setIsReminderModalOpen(false)}
+                style={{
+                  borderRadius: '10px',
+                  padding: '8px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {t('Hủy')}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleSendReminder}
+                disabled={isSendingReminder || (!reminderChannels.zalo && !reminderChannels.email)}
+                style={{
+                  borderRadius: '10px',
+                  padding: '8px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)',
+                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.25s'
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.3)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.2)';
+                }}
+              >
+                {isSendingReminder ? <RefreshCw size={14} className="spin" /> : <Bell size={14} />}
+                {isSendingReminder ? t('Đang gửi...') : t('Xác nhận')}
+              </button>
+            </div>
+          </div>
         )}
       </CustomModal>
       <style>{`

@@ -10,6 +10,40 @@ require_once 'db_connect.php';
 
 require_once 'webhook_logic.php';
 
+function respondAndNotifyAdmin($conn, $connData, $leadId, $customerData, $distData, $responseJson, $lockKey, &$lockReleased) {
+    if (function_exists('releaseAdvisoryLock')) {
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+    }
+
+    if (function_exists('fastcgi_finish_request')) {
+        echo json_encode($responseJson);
+        fastcgi_finish_request();
+    } else {
+        ignore_user_abort(true);
+        ob_start();
+        echo json_encode($responseJson);
+        $size = ob_get_length();
+        header("Content-Length: $size");
+        header("Connection: close");
+        ob_end_flush();
+        @ob_flush();
+        flush();
+    }
+
+    $notifyAdmin = (int) ($connData['notify_admin'] ?? 1);
+    if ($notifyAdmin === 1 && !empty($leadId)) {
+        try {
+            require_once __DIR__ . '/webhook_logic.php';
+            sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customerData, $distData);
+        } catch (Exception $e) {
+            error_log("Error in sendNewLeadApiNotificationToAdmins: " . $e->getMessage());
+        }
+    }
+    
+    $conn->close();
+    exit();
+}
+
 // Handle CORS Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -39,7 +73,7 @@ $spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
 
 $connData = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, sync_saleperson, spreadsheet_id FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, sheet_name, require_both_contact, connection_type, is_silent, sync_saleperson, spreadsheet_id, notify_admin, webhook_token FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -57,7 +91,7 @@ if (!empty($token)) {
     }
     $stmt->close();
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, require_both_contact, connection_type, is_silent, sync_saleperson, webhook_token FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, sheet_name, require_both_contact, connection_type, is_silent, sync_saleperson, webhook_token, notify_admin FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -433,8 +467,14 @@ if ($isSilent == 1) {
         }
     }
 
-    echo json_encode(["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."]);
-    exit();
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'silent',
+        'assigned_to_id' => $actualOwnerId,
+        'round_name' => '',
+        'message' => 'Chỉ đồng bộ check trùng, không định tuyến.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."], $lockKey, $lockReleased);
 }
 
 if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
@@ -486,8 +526,14 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
         error_log("Error during webhook duplicate reminder notifications: " . $notifyEx->getMessage());
     }
 
-    echo json_encode(["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < " . $dupCheckMonths . " months."]);
-    exit();
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'duplicate',
+        'assigned_to_id' => $assignedTo,
+        'round_name' => $roundName,
+        'message' => 'Trùng khách cũ chăm sóc lại trong vòng ' . $dupCheckMonths . ' tháng.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < " . $dupCheckMonths . " months."], $lockKey, $lockReleased);
 }
 
 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
@@ -547,9 +593,14 @@ if ($aiScreenerResult && $aiScreenerResult['status'] === 'pending') {
         exit();
     }
     
-    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
-    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Lead đã được lưu và đưa vào hàng chờ duyệt AI."]);
-    exit();
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'pending_approval',
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => 'Lead đã được lưu và đưa vào hàng chờ duyệt AI.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "pending_approval", "message" => "Lead đã được lưu và đưa vào hàng chờ duyệt AI."], $lockKey, $lockReleased);
 }
 
 if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
@@ -591,11 +642,14 @@ if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreene
         error_log("Error during AI screener notifications: " . $notifyEx->getMessage());
     }
     
-    // Release advisory lock
-    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
-    
-    echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Pre-screener: " . $aiScreenerResult['reason']]);
-    exit();
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'pending_approval',
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => 'Dữ liệu bị tạm giữ bởi AI Pre-screener: ' . $aiScreenerResult['reason']
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "pending_approval", "message" => "Dữ liệu bị tạm giữ bởi AI Pre-screener: " . $aiScreenerResult['reason']], $lockKey, $lockReleased);
 }
 
 // --- 3. Round-Robin Assignment & 4. Process new Lead and Log Distribution (Unified Transaction) ---
@@ -682,9 +736,14 @@ try {
 }
 
 if ($status === 'unassigned' || $status === 'pending' || ($status === 'fallback' && !$isFallbackAdmin)) {
-    echo json_encode(["success" => true, "status" => $status, "message" => $message]);
-    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
-    exit();
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => $status,
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => $message
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => $status, "message" => $message], $lockKey, $lockReleased);
 }
 
 // Send success response immediately to prevent Google Sheets Webhook timeout
@@ -774,6 +833,25 @@ try {
     }
 } catch (Exception $notifyEx) {
     error_log("Error during webhook new assignment notifications: " . $notifyEx->getMessage());
+}
+
+// Notify Admin if enabled
+$notifyAdmin = (int) ($connData['notify_admin'] ?? 1);
+if ($notifyAdmin === 1 && !empty($leadId)) {
+    try {
+        $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+        $distData = [
+            'status' => $status,
+            'assigned_to_id' => $isFallbackAdmin ? null : $assignedConsultantId,
+            'assigned_to_name' => $isFallbackAdmin ? ($fallbackAdminData['name'] ?? 'Admin dự phòng') : null,
+            'round_id' => $targetRoundId,
+            'round_name' => $isFallbackAdmin ? 'Fallback Admin' : null,
+            'message' => $message
+        ];
+        sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $custData, $distData);
+    } catch (Exception $e) {
+        error_log("Error in sendNewLeadApiNotificationToAdmins: " . $e->getMessage());
+    }
 }
 
 // Release advisory lock before closing connection

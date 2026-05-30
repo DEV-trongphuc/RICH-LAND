@@ -1009,3 +1009,147 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     ];
 }
 
+/**
+ * Tạo nội dung báo cáo tháng cho một Consultant/Sale cụ thể
+ */
+function generateMonthlyReportMessage($conn, $sale, $startTimestamp, $endTimestamp)
+{
+    $saleId = $sale['id'];
+    $saleName = $sale['name'];
+    $saleEmail = $sale['email'];
+
+    $windowStart = date('d/m/Y', strtotime($startTimestamp));
+    $windowEnd = date('d/m/Y', strtotime($endTimestamp));
+
+    // Query data breakdown similar to daily report but filtered by this consultant
+    $stmtData = $conn->prepare("
+        SELECT dl.status, COUNT(*) as cnt
+        FROM distribution_logs dl
+        WHERE dl.assigned_to = ?
+          AND dl.received_at >= ?
+          AND dl.received_at <= ?
+          AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder')
+        GROUP BY dl.status
+    ");
+    $stmtData->bind_param("iss", $saleId, $startTimestamp, $endTimestamp);
+    $stmtData->execute();
+    $resData = $stmtData->get_result();
+
+    $stats = [
+        'assigned' => 0,
+        'compensation' => 0,
+        'rule_6_month' => 0,
+        'pending_work_hours' => 0,
+        'error' => 0,
+        'reminder' => 0
+    ];
+    if ($resData) {
+        while ($row = $resData->fetch_assoc()) {
+            $status = $row['status'];
+            if (isset($stats[$status])) {
+                $stats[$status] = (int) $row['cnt'];
+            }
+        }
+    }
+    $stmtData->close();
+
+    $normalTotal = $stats['assigned'] + $stats['compensation'] + $stats['rule_6_month'] + $stats['pending_work_hours'] + max(0, $stats['error'] - $stats['compensation']);
+    $reminderTotal = $stats['reminder'];
+    $compensation = $stats['compensation'];
+    $roundTotal = max(0, $normalTotal - $compensation);
+
+    // Query tickets (data_reports) raised by this sale in the time window
+    $stmtTicket = $conn->prepare("
+        SELECT 
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_tickets,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_tickets,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tickets
+        FROM data_reports
+        WHERE consultant_id = ?
+          AND created_at >= ?
+          AND created_at <= ?
+    ");
+    $stmtTicket->bind_param("iss", $saleId, $startTimestamp, $endTimestamp);
+    $stmtTicket->execute();
+    $resTicket = $stmtTicket->get_result();
+    
+    $approvedTickets = 0;
+    $rejectedTickets = 0;
+    $pendingTickets = 0;
+    if ($resTicket && $row = $resTicket->fetch_assoc()) {
+        $approvedTickets = (int) ($row['approved_tickets'] ?? 0);
+        $rejectedTickets = (int) ($row['rejected_tickets'] ?? 0);
+        $pendingTickets = (int) ($row['pending_tickets'] ?? 0);
+    }
+    $stmtTicket->close();
+    $totalTickets = $approvedTickets + $rejectedTickets + $pendingTickets;
+
+    // Query current compensation settings (tổng bù còn lại) in all rounds for this consultant
+    $stmtCompOwed = $conn->prepare("
+        SELECT SUM(compensation_count) as total_owed
+        FROM round_consultants
+        WHERE consultant_id = ?
+    ");
+    $stmtCompOwed->bind_param("i", $saleId);
+    $stmtCompOwed->execute();
+    $resCompOwed = $stmtCompOwed->get_result();
+    
+    $totalCompOwed = 0;
+    if ($resCompOwed && $row = $resCompOwed->fetch_assoc()) {
+        $totalCompOwed = (int) ($row['total_owed'] ?? 0);
+    }
+    $stmtCompOwed->close();
+
+    // Fetch frontend URL for portal link
+    $frontendUrl = '';
+    $urlRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
+    if ($urlRes && $urlRes->num_rows > 0) {
+        $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
+    }
+    if (empty($frontendUrl)) {
+        $frontendUrl = 'http://localhost:5173'; // Fallback
+    }
+    $portalUrl = $frontendUrl . '/sale-portal';
+
+    // Construct Zalo message content
+    $msg = "📊 [ BÁO CÁO THÁNG ] 📊\n";
+    $msg .= "👤 Sale: $saleName\n";
+    $msg .= "📅 Kỳ: $windowStart → $windowEnd\n";
+    $msg .= "____\n\n";
+
+    $msg .= "📥 DATA NHẬN: $normalTotal data\n";
+    $msg .= "  • 🔄 Chia vòng: $roundTotal data\n";
+    $msg .= "  • 🎁 Bù: $compensation data\n";
+    $msg .= "  • ⏳ Nhắc lại: $reminderTotal data\n";
+
+    $msg .= "\n🎫 VÉ LỖI (TICKETS): $totalTickets\n";
+    $msg .= "  • ✅ Thành công: $approvedTickets\n";
+    $msg .= "  • ❌ Thất bại: $rejectedTickets\n";
+    $msg .= "  • ⏳ Chờ duyệt: $pendingTickets\n";
+
+    $msg .= "\n🎁 ĐỀN BÙ:\n";
+    $msg .= "  • 🔄 Đã bù tháng này: $compensation lượt\n";
+    $msg .= "  • ⏳ Chờ bù tiếp theo: $totalCompOwed lượt\n";
+
+    $msg .= "\n🔗 Link Portal: $portalUrl\n";
+    $msg .= "____\n";
+    $msg .= "✨ Chúc bạn một tháng mới tràn đầy năng lượng và bùng nổ doanh số! 🚀";
+
+    return [
+        'msg' => $msg,
+        'totalData' => $normalTotal,
+        'roundTotal' => $roundTotal,
+        'compensation' => $compensation,
+        'reminderTotal' => $reminderTotal,
+        'totalTickets' => $totalTickets,
+        'approvedTickets' => $approvedTickets,
+        'rejectedTickets' => $rejectedTickets,
+        'pendingTickets' => $pendingTickets,
+        'totalCompReceived' => $compensation,
+        'totalCompOwed' => $totalCompOwed,
+        'windowStart' => $windowStart,
+        'windowEnd' => $windowEnd
+    ];
+}
+
+
