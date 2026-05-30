@@ -478,7 +478,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               gap: '0.75rem',
               background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
               border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
-              height: '94px',
+              minHeight: '94px',
+              height: 'auto',
               boxSizing: 'border-box',
               animation: 'slideUp 0.4s ease-out both',
               animationDelay: '120ms'
@@ -515,7 +516,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
                 border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
                 cursor: 'pointer',
-                height: '94px',
+                minHeight: '94px',
+                height: 'auto',
                 boxSizing: 'border-box',
                 opacity: loading ? 0.7 : 1,
                 transition: 'opacity 0.2s ease'

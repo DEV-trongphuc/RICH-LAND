@@ -1708,7 +1708,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             gap: '0.75rem',
             background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
             border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
-            height: '94px',
+            minHeight: '94px',
+            height: 'auto',
             boxSizing: 'border-box'
           }}
         >
@@ -1738,7 +1739,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             animation: 'fadeIn 0.3s ease-out',
             background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
             border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
-            height: '94px',
+            minHeight: '94px',
+            height: 'auto',
             boxSizing: 'border-box',
             opacity: dashboardStatsLoading ? 0.6 : 1,
             transition: 'opacity 0.2s ease',
