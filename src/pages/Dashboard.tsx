@@ -600,7 +600,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               key={i}
               style={{
                 animation: 'slideUp 0.4s ease-out both',
-                animationDelay: `${180 + i * 50}ms`
+                animationDelay: '180ms'
               }}
             >
               <KpiCardSkeleton />
@@ -618,7 +618,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 flexDirection: 'column',
                 cursor: 'pointer',
                 animation: 'slideUp 0.4s ease-out both',
-                animationDelay: `${180 + i * 50}ms`
+                animationDelay: '180ms'
               }}
               onClick={() => navigate(`/data?status=${card.statusValue}&date=${encodeURIComponent(dateFilter)}`)}
             >
@@ -712,12 +712,12 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       {/* Chart + List row */}
       {loading && !stats ? (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '400ms' }}>
+          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
             <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
             <Skeleton width={300} height={11} style={{ marginBottom: 24 }} />
             <Skeleton width="100%" height={260} borderRadius={12} />
           </div>
-          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '450ms' }}>
+          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
             <Skeleton width={180} height={16} style={{ marginBottom: 20 }} />
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
@@ -733,7 +733,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       ) : (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '400ms' }}>
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px' }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
@@ -813,7 +813,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             )}
           </div>
 
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '450ms' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('Lịch sử giao Data gần đây')}</h3>
               <span
