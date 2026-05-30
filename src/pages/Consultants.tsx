@@ -787,6 +787,9 @@ const ConsultantsInner = () => {
                             onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
                           />
                         </div>
+                        <p style={{ gridColumn: 'span 2', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.3' }}>
+                          {t('Lưu ý: Trong thời gian nghỉ phép, Sale sẽ tạm ngưng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ được tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale này.')}
+                        </p>
                       </div>
                     )}
 
@@ -960,11 +963,13 @@ const ConsultantsInner = () => {
 
                   {editingUser && formData.status === 'active' && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
-                      <div>
+                      <div style={{ flex: 1, paddingRight: '0.5rem' }}>
                         <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Trạng thái nhận data phân bổ hiện tại')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
+                          {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                         <ToggleSwitch
                           checked={!Boolean(Number(editingUser.vacation_mode))}
                           onChange={async () => {

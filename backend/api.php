@@ -945,80 +945,76 @@ switch ($action) {
             $types .= "i";
         }
 
-        $today = date('Y-m-d');
+        $dateCondition = "1=1";
         if ($dateMode === 'today') {
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $today . ' 00:00:00';
-            $params[] = $today . ' 23:59:59';
-            $types .= "ss";
+            $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
         } elseif ($dateMode === 'this_week') {
-            $weekday = date('N') - 1;
-            $monday = date('Y-m-d', strtotime("-$weekday days"));
-            $sunday = date('Y-m-d', strtotime("+" . (6 - $weekday) . " days"));
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $monday . ' 00:00:00';
-            $params[] = $sunday . ' 23:59:59';
-            $types .= "ss";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } elseif ($dateMode === 'last_week') {
-            $weekday = date('N') - 1;
-            $monday = date('Y-m-d', strtotime("-" . ($weekday + 7) . " days"));
-            $sunday = date('Y-m-d', strtotime("-" . ($weekday + 1) . " days"));
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $monday . ' 00:00:00';
-            $params[] = $sunday . ' 23:59:59';
-            $types .= "ss";
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
         } elseif ($dateMode === 'two_weeks_ago') {
-            $weekday = date('N') - 1;
-            $monday = date('Y-m-d', strtotime("-" . ($weekday + 14) . " days"));
-            $sunday = date('Y-m-d', strtotime("-" . ($weekday + 8) . " days"));
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $monday . ' 00:00:00';
-            $params[] = $sunday . ' 23:59:59';
-            $types .= "ss";
+            $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
         } elseif ($dateMode === 'yesterday') {
-            $yesterday = date('Y-m-d', strtotime('-1 day'));
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $yesterday . ' 00:00:00';
-            $params[] = $yesterday . ' 23:59:59';
-            $types .= "ss";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
         } elseif ($dateMode === '7_days') {
-            $where[] = "dl.received_at >= ?";
-            $params[] = date('Y-m-d', strtotime('-7 days')) . ' 00:00:00';
-            $types .= "s";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         } elseif ($dateMode === '30_days') {
-            $where[] = "dl.received_at >= ?";
-            $params[] = date('Y-m-d', strtotime('-30 days')) . ' 00:00:00';
-            $types .= "s";
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
         } elseif ($dateMode === 'this_month') {
-            $where[] = "dl.received_at >= ?";
-            $params[] = date('Y-m-01') . ' 00:00:00';
-            $types .= "s";
+            $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
         } elseif ($dateMode === 'last_month') {
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at < ?";
-            $params[] = date('Y-m-01', strtotime('first day of last month')) . ' 00:00:00';
-            $params[] = date('Y-m-01') . ' 00:00:00';
-            $types .= "ss";
+            $dateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
         } elseif ($dateMode === 'this_year') {
-            $where[] = "dl.received_at >= ?";
-            $params[] = date('Y-01-01') . ' 00:00:00';
-            $types .= "s";
+            $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-01-01')";
         } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
-            $where[] = "dl.received_at >= ?";
-            $where[] = "dl.received_at <= ?";
-            $params[] = $startDate . ' 00:00:00';
-            $params[] = $endDate . ' 23:59:59';
-            $types .= "ss";
+            $startEsc = $conn->real_escape_string($startDate);
+            $endEsc = $conn->real_escape_string($endDate);
+            $dateCondition = "received_at >= '$startEsc 00:00:00' AND received_at <= '$endEsc 23:59:59'";
+        }
+
+        $dateConditionDl = str_replace('received_at', 'dl.received_at', $dateCondition);
+        $dateConditionSubQuery = $dateCondition;
+
+        if ($dateConditionDl !== "1=1") {
+            $where[] = $dateConditionDl;
         }
 
         $whereClause = implode(" AND ", $where);
 
-        // 1. Query leads
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 0;
+        $pageSize = isset($_GET['pageSize']) ? (int) $_GET['pageSize'] : 50;
+
+        // Count query for pagination support
+        $sqlCount = "
+            SELECT COUNT(*) as cnt
+            FROM distribution_logs dl
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                WHERE status != 'silent' AND $dateConditionSubQuery
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
+            JOIN leads l ON dl.lead_id = l.id
+            WHERE $whereClause
+        ";
+        $totalCount = 0;
+        $stmtCount = $conn->prepare($sqlCount);
+        if ($stmtCount) {
+            if (!empty($types)) {
+                $stmtCount->bind_param($types, ...$params);
+            }
+            $stmtCount->execute();
+            $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtCount->close();
+        }
+
+        $limitStr = "";
+        if ($page > 0) {
+            $offset = ($page - 1) * $pageSize;
+            $limitStr = "LIMIT $pageSize OFFSET $offset";
+        }
+
+        // 1. Query leads with date filter pushed down into the subquery and limits applied
         $sqlLeads = "
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
@@ -1032,7 +1028,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' AND $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
@@ -1042,6 +1038,7 @@ switch ($action) {
             LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
             WHERE $whereClause
             ORDER BY dl.received_at DESC
+            $limitStr
         ";
 
         $stmtLeads = $conn->prepare($sqlLeads);
@@ -1243,6 +1240,7 @@ switch ($action) {
         echo json_encode([
             'success' => true,
             'leads' => $leads,
+            'total_count' => $totalCount,
             'rounds' => $rounds,
             'consultants' => $consultantsList,
             'consultant_profile' => $consultantProfile,
@@ -3847,6 +3845,164 @@ switch ($action) {
         }
         break;
 
+    case 'evaluate_rules_ai':
+        try {
+            $apiKey = get_system_setting($conn, 'gemini_api_key');
+            $model = get_system_setting($conn, 'gemini_model') ?: 'gemini-2.5-flash-lite';
+            
+            if (empty($apiKey)) {
+                echo json_encode(['success' => false, 'message' => 'Gemini API Key chưa được cấu hình trong phần Cài đặt.']);
+                break;
+            }
+
+            // Read POST JSON input
+            $input = json_decode(file_get_contents('php://input'), true);
+            $sentRules = $input['rules'] ?? null;
+
+            $rules = [];
+            if (is_array($sentRules)) {
+                // Use sent rules
+                $roundRes = $conn->query("SELECT id, round_name FROM distribution_rounds");
+                $roundMap = [];
+                while ($rRow = $roundRes->fetch_assoc()) {
+                    $roundMap[$rRow['id']] = $rRow['round_name'];
+                }
+                foreach ($sentRules as $r) {
+                    $target_round_id = $r['target_round_id'] ?? 0;
+                    $rName = $r['round_name'] ?? ($roundMap[$target_round_id] ?? ("Vòng ID " . $target_round_id));
+                    $rules[] = [
+                        'id' => $r['id'] ?? 0,
+                        'connection_id' => $r['connection_id'] ?? '',
+                        'condition_column' => $r['condition_column'] ?? '',
+                        'condition_operator' => $r['condition_operator'] ?? '',
+                        'condition_value' => $r['condition_value'] ?? '',
+                        'conditions_json' => is_array($r['conditions_json']) ? json_encode($r['conditions_json'], JSON_UNESCAPED_UNICODE) : ($r['conditions_json'] ?? ''),
+                        'target_round_id' => $target_round_id,
+                        'round_name' => $rName
+                    ];
+                }
+            } else {
+                // Fetch all rules from database as fallback
+                $res = $conn->query("SELECT rr.*, r.round_name FROM routing_rules rr LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id ORDER BY rr.priority ASC, rr.id ASC");
+                while ($row = $res->fetch_assoc()) {
+                    $rules[] = $row;
+                }
+            }
+
+            if (empty($rules)) {
+                echo json_encode(['success' => false, 'message' => 'Hệ thống hiện tại chưa có quy tắc định tuyến nào để đánh giá.']);
+                break;
+            }
+
+            // Fetch connections
+            $connRes = $conn->query("SELECT id, sheet_name FROM sheet_connections");
+            $connMap = [];
+            while ($cRow = $connRes->fetch_assoc()) {
+                $connMap[$cRow['id']] = $cRow['sheet_name'];
+            }
+
+            // Build rules text representation for prompt
+            $rulesDesc = "";
+            foreach ($rules as $idx => $r) {
+                $priority = $idx + 1;
+                $connStr = "Tất cả kết nối";
+                if ($r['connection_id'] !== null && $r['connection_id'] !== '' && $r['connection_id'] !== 'all') {
+                    $cIds = explode(',', $r['connection_id']);
+                    $cNames = [];
+                    foreach ($cIds as $cId) {
+                        $cId = trim($cId);
+                        if ($cId === '-1') $cNames[] = "Tất cả Google Sheets";
+                        elseif ($cId === '-2') $cNames[] = "Tất cả API / Landing Pages";
+                        elseif ($cId === '-3') $cNames[] = "Data Nhập tay";
+                        elseif (isset($connMap[$cId])) $cNames[] = $connMap[$cId];
+                        else $cNames[] = "Kết nối ID $cId";
+                    }
+                    $connStr = implode(', ', $cNames);
+                }
+
+                $conditions = [];
+                if (!empty($r['conditions_json'])) {
+                    $branches = json_decode($r['conditions_json'], true);
+                    if (is_array($branches)) {
+                        foreach ($branches as $bIdx => $branch) {
+                            $condsStr = [];
+                            $conds = $branch['conditions'] ?? [];
+                            foreach ($conds as $c) {
+                                $condsStr[] = "{$c['col']} {$c['op']} '{$c['val']}'";
+                            }
+                            $conditions[] = ($bIdx > 0 ? "HOẶC " : "") . "(" . implode(" VÀ ", $condsStr) . ")";
+                        }
+                    }
+                }
+                
+                if (empty($conditions)) {
+                    $conditions[] = "{$r['condition_column']} {$r['condition_operator']} '{$r['condition_value']}'";
+                }
+
+                $condsDesc = implode(" ", $conditions);
+                $roundName = $r['round_name'] ?: "Vòng ID " . $r['target_round_id'];
+
+                $rulesDesc .= "Ưu tiên {$priority} (ID: {$r['id']}):\n";
+                $rulesDesc .= "  - Áp dụng cho: {$connStr}\n";
+                $rulesDesc .= "  - Điều kiện: {$condsDesc}\n";
+                $rulesDesc .= "  - Hành động xử lý (Phân phối về vòng): {$roundName}\n\n";
+            }
+
+            // Build Prompt
+            $prompt = "Bạn là một chuyên gia cao cấp về thiết kế hệ thống phân phối dữ liệu khách hàng (Routing Rule Engine).\n"
+                . "Dưới đây là danh sách các quy tắc định tuyến của chúng tôi (được sắp xếp theo thứ tự ưu tiên giảm dần từ trên xuống dưới, nghĩa là quy tắc khớp trước sẽ được áp dụng trước và dừng tìm kiếm):\n\n"
+                . $rulesDesc
+                . "Hãy phân tích toàn bộ cấu hình quy tắc trên và phản hồi bằng định dạng Markdown (tiếng Việt), tập trung vào các nội dung sau:\n"
+                . "1. **Tổng quan**: Đánh giá ngắn gọn số lượng và độ phủ của các quy tắc.\n"
+                . "2. **Xung đột logic hoặc Trùng lặp**: Chỉ ra các quy tắc bị che phủ bởi quy tắc ưu tiên cao hơn (Redundant/Shadowed rules - ví dụ: một quy tắc ở dưới có điều kiện hẹp hơn hoặc bằng quy tắc ở trên cùng kết nối và cùng vòng/khác vòng, khiến nó không bao giờ được chạy), hoặc mâu thuẫn điều kiện.\n"
+                . "3. **Khe hở định tuyến (Gaps)**: Có trường hợp dữ liệu nào đổ về có nguy cơ không khớp bất kỳ quy tắc nào và bị trôi nổi không (thiếu quy tắc fallback cuối cùng).\n"
+                . "4. **Đề xuất tối ưu hóa cụ thể**: Đề xuất cụ thể cách sắp xếp lại thứ tự, chỉnh sửa hoặc gộp các quy tắc để tăng độ tin cậy và chính xác.\n\n"
+                . "Hãy trình bày mạch lạc, dễ hiểu, định dạng đẹp mắt bằng Markdown, chỉ tập trung phân tích logic của quy tắc.";
+
+            // Make Gemini request
+            $payload = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
+                        ]
+                    ]
+                ]
+            ];
+
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($response === false || $httpCode !== 200) {
+                echo json_encode(['success' => false, 'message' => "Lỗi kết nối Gemini API (HTTP $httpCode)"]);
+                break;
+            }
+
+            $resJson = json_decode($response, true);
+            $rawText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            
+            if (empty($rawText)) {
+                echo json_encode(['success' => false, 'message' => "Gemini API trả về kết quả trống."]);
+                break;
+            }
+
+            echo json_encode(['success' => true, 'feedback' => $rawText]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
     // --- REPORT DATA ENDPOINTS ---
     case 'get_report_context':
         // PUBLIC: Load lead/consultant/round info for the report page
@@ -4602,15 +4758,22 @@ switch ($action) {
                    l.source as lead_source, l.type as lead_type, l.note as lead_note,
                    l.created_at as lead_created_at, l.ai_screener_status, l.ai_evaluation,
                    c.name as consultant_name, c.zalo_chat_id, c.avatar as consultant_avatar, dr.round_name,
-                   (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_id,
-                   (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_status,
-                   (SELECT dl.received_at FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1) as log_received_at,
-                   (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = r.lead_id AND id < (SELECT dl.id FROM distribution_logs dl WHERE dl.lead_id = r.lead_id AND dl.assigned_to = r.consultant_id AND dl.round_id = r.round_id ORDER BY dl.id DESC LIMIT 1)) as last_activity_at,
-                   (SELECT a.avatar FROM accounts a WHERE a.name = r.resolved_by LIMIT 1) as resolved_by_avatar
+                   dl.id as log_id,
+                   dl.status as log_status,
+                   dl.received_at as log_received_at,
+                   (SELECT MAX(dl2.received_at) FROM distribution_logs dl2 WHERE dl2.lead_id = r.lead_id AND dl2.id < dl.id) as last_activity_at,
+                   a.avatar as resolved_by_avatar
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
             JOIN consultants c ON r.consultant_id = c.id
             JOIN distribution_rounds dr ON r.round_id = dr.id
+            LEFT JOIN (
+                SELECT lead_id, assigned_to, round_id, MAX(id) as max_id
+                FROM distribution_logs
+                GROUP BY lead_id, assigned_to, round_id
+            ) dl_max ON r.lead_id = dl_max.lead_id AND r.consultant_id = dl_max.assigned_to AND r.round_id = dl_max.round_id
+            LEFT JOIN distribution_logs dl ON dl.id = dl_max.max_id
+            LEFT JOIN accounts a ON r.resolved_by = a.name
             $recordsWhere
             ORDER BY r.created_at DESC
             LIMIT ? OFFSET ?
@@ -7909,73 +8072,133 @@ switch ($action) {
         }
 
         $mailLogs = [];
-        $resMail = $conn->query("
-            SELECT id, to_email as target, subject, body_html as body, status, created_at, sent_at 
-            FROM mail_queue 
-            ORDER BY id DESC LIMIT 200
-        ");
-        if ($resMail) {
-            while ($row = $resMail->fetch_assoc()) {
-                $mailLogs[] = [
-                    'id' => 'mail_' . $row['id'],
-                    'channel' => 'email',
-                    'target' => $row['target'],
-                    'subject' => $row['subject'],
-                    'body' => strip_tags($row['body']),
-                    'status' => $row['status'],
-                    'created_at' => $row['created_at'],
-                    'sent_at' => $row['sent_at'] ?: $row['created_at']
-                ];
+        if ($channel === 'all' || $channel === 'email') {
+            $mailConds = ["1=1"];
+            $mailParams = [];
+            $mailTypes = "";
+            if ($saleId > 0) {
+                if (!empty($saleEmail)) {
+                    $mailConds[] = "to_email = ?";
+                    $mailParams[] = $saleEmail;
+                    $mailTypes .= "s";
+                } else {
+                    $mailConds[] = "1=0";
+                }
+            }
+            if (!empty($search)) {
+                $searchParam = '%' . $search . '%';
+                $mailConds[] = "(to_email LIKE ? OR subject LIKE ? OR body_html LIKE ?)";
+                $mailParams[] = $searchParam;
+                $mailParams[] = $searchParam;
+                $mailParams[] = $searchParam;
+                $mailTypes .= "sss";
+            }
+            $mailWhere = implode(" AND ", $mailConds);
+            $stmtM = $conn->prepare("
+                SELECT id, to_email as target, subject, body_html as body, status, created_at, sent_at 
+                FROM mail_queue 
+                WHERE $mailWhere 
+                ORDER BY id DESC LIMIT 1000
+            ");
+            if ($stmtM) {
+                if (!empty($mailTypes)) {
+                    $stmtM->bind_param($mailTypes, ...$mailParams);
+                }
+                $stmtM->execute();
+                $resMail = $stmtM->get_result();
+                while ($row = $resMail->fetch_assoc()) {
+                    $mailLogs[] = [
+                        'id' => 'mail_' . $row['id'],
+                        'channel' => 'email',
+                        'target' => $row['target'],
+                        'subject' => $row['subject'],
+                        'body' => strip_tags($row['body']),
+                        'status' => $row['status'],
+                        'created_at' => $row['created_at'],
+                        'sent_at' => $row['sent_at'] ?: $row['created_at']
+                    ];
+                }
+                $stmtM->close();
             }
         }
 
         $zaloQueueLogs = [];
-        $resZalo = $conn->query("
-            SELECT id, chat_id as target, body_text as body, status, created_at, sent_at 
-            FROM zalo_queue 
-            ORDER BY id DESC LIMIT 200
-        ");
-        if ($resZalo) {
-            while ($row = $resZalo->fetch_assoc()) {
-                $zaloQueueLogs[] = [
-                    'id' => 'zalo_' . $row['id'],
-                    'channel' => 'zalo',
-                    'target' => $row['target'],
-                    'subject' => 'Zalo Message',
-                    'body' => $row['body'],
-                    'status' => $row['status'],
-                    'created_at' => $row['created_at'],
-                    'sent_at' => $row['sent_at'] ?: $row['created_at']
-                ];
-            }
-        }
-
-        $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
-        $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile);
-
-        // Lọc bỏ các bản ghi trùng lặp trong file log zalo_send_log.txt (Direct cURL)
-        // nếu tin nhắn đó đã được ghi nhận trong cơ sở dữ liệu zalo_queue (Tránh hiển thị nhân đôi logs)
-        $dedupedDirectLogs = [];
-        foreach ($zaloDirectLogs as $dirLog) {
-            $isDup = false;
-            $dirTime = strtotime($dirLog['created_at']);
-            $dirBodyTrim = trim($dirLog['body']);
-            
-            foreach ($zaloQueueLogs as $qLog) {
-                if ($qLog['target'] === $dirLog['target'] && trim($qLog['body']) === $dirBodyTrim) {
-                    $qTime = strtotime($qLog['created_at']);
-                    // Nếu thời gian chênh lệch không quá 3 phút (180 giây), coi như trùng lặp
-                    if (abs($dirTime - $qTime) <= 180) {
-                        $isDup = true;
-                        break;
-                    }
+        if ($channel === 'all' || $channel === 'zalo') {
+            $zaloConds = ["1=1"];
+            $zaloParams = [];
+            $zaloTypes = "";
+            if ($saleId > 0) {
+                if (!empty($saleZaloChatId)) {
+                    $zaloConds[] = "chat_id = ?";
+                    $zaloParams[] = $saleZaloChatId;
+                    $zaloTypes .= "s";
+                } else {
+                    $zaloConds[] = "1=0";
                 }
             }
-            if (!$isDup) {
-                $dedupedDirectLogs[] = $dirLog;
+            if (!empty($search)) {
+                $searchParam = '%' . $search . '%';
+                $zaloConds[] = "(chat_id LIKE ? OR body_text LIKE ?)";
+                $zaloParams[] = $searchParam;
+                $zaloParams[] = $searchParam;
+                $zaloTypes .= "ss";
+            }
+            $zaloWhere = implode(" AND ", $zaloConds);
+            $stmtZ = $conn->prepare("
+                SELECT id, chat_id as target, body_text as body, status, created_at, sent_at 
+                FROM zalo_queue 
+                WHERE $zaloWhere 
+                ORDER BY id DESC LIMIT 1000
+            ");
+            if ($stmtZ) {
+                if (!empty($zaloTypes)) {
+                    $stmtZ->bind_param($zaloTypes, ...$zaloParams);
+                }
+                $stmtZ->execute();
+                $resZalo = $stmtZ->get_result();
+                while ($row = $resZalo->fetch_assoc()) {
+                    $zaloQueueLogs[] = [
+                        'id' => 'zalo_' . $row['id'],
+                        'channel' => 'zalo',
+                        'target' => $row['target'],
+                        'subject' => 'Zalo Message',
+                        'body' => $row['body'],
+                        'status' => $row['status'],
+                        'created_at' => $row['created_at'],
+                        'sent_at' => $row['sent_at'] ?: $row['created_at']
+                    ];
+                }
+                $stmtZ->close();
             }
         }
-        $zaloDirectLogs = $dedupedDirectLogs;
+
+        $zaloDirectLogs = [];
+        if ($channel === 'all' || $channel === 'zalo') {
+            $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
+            $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile);
+            
+            // Deduplicate direct logs with zalo queue logs in memory
+            $dedupedDirectLogs = [];
+            foreach ($zaloDirectLogs as $dirLog) {
+                $isDup = false;
+                $dirTime = strtotime($dirLog['created_at']);
+                $dirBodyTrim = trim($dirLog['body']);
+                
+                foreach ($zaloQueueLogs as $qLog) {
+                    if ($qLog['target'] === $dirLog['target'] && trim($qLog['body']) === $dirBodyTrim) {
+                        $qTime = strtotime($qLog['created_at']);
+                        if (abs($dirTime - $qTime) <= 180) {
+                            $isDup = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$isDup) {
+                    $dedupedDirectLogs[] = $dirLog;
+                }
+            }
+            $zaloDirectLogs = $dedupedDirectLogs;
+        }
 
         $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs);
 
@@ -8005,34 +8228,34 @@ switch ($action) {
             
             $item['type'] = $isAdmin ? 'admin' : 'sale';
 
-            if ($channel !== 'all' && $item['channel'] !== $channel) {
-                continue;
-            }
             if ($type !== 'all' && $item['type'] !== $type) {
                 continue;
             }
-            if ($saleId > 0) {
-                $isMatchSale = false;
-                $cleanTarget = strtolower(trim($item['target']));
-                if (!empty($saleEmail) && strtolower($saleEmail) === $cleanTarget) {
-                    $isMatchSale = true;
+            // Check direct logs for saleId and search filter since parse_zalo_direct_logs returns raw log entries
+            if (!empty($item['is_direct'])) {
+                if ($saleId > 0) {
+                    $isMatchSale = false;
+                    $cleanTarget = strtolower(trim($item['target']));
+                    if (!empty($saleEmail) && strtolower($saleEmail) === $cleanTarget) {
+                        $isMatchSale = true;
+                    }
+                    if (!empty($saleZaloChatId) && strtolower($saleZaloChatId) === $cleanTarget) {
+                        $isMatchSale = true;
+                    }
+                    if (!$isMatchSale) {
+                        continue;
+                    }
                 }
-                if (!empty($saleZaloChatId) && strtolower($saleZaloChatId) === $cleanTarget) {
-                    $isMatchSale = true;
-                }
-                if (!$isMatchSale) {
-                    continue;
-                }
-            }
-            if (!empty($search)) {
-                $lowerSearch = mb_strtolower($search, 'UTF-8');
-                $matchSearch = (
-                    strpos(mb_strtolower($item['target'], 'UTF-8'), $lowerSearch) !== false ||
-                    strpos(mb_strtolower($item['subject'], 'UTF-8'), $lowerSearch) !== false ||
-                    strpos($lowerBody, $lowerSearch) !== false
-                );
-                if (!$matchSearch) {
-                    continue;
+                if (!empty($search)) {
+                    $lowerSearch = mb_strtolower($search, 'UTF-8');
+                    $matchSearch = (
+                        strpos(mb_strtolower($item['target'], 'UTF-8'), $lowerSearch) !== false ||
+                        strpos(mb_strtolower($item['subject'], 'UTF-8'), $lowerSearch) !== false ||
+                        strpos($lowerBody, $lowerSearch) !== false
+                    );
+                    if (!$matchSearch) {
+                        continue;
+                    }
                 }
             }
 
@@ -8810,9 +9033,13 @@ switch ($action) {
         // Query AI Pre-screener statistics (passed vs failed)
         $aiPassedCount = 0;
         $aiFailedCount = 0;
-        $dateConditionAI = ($dbVer >= 140)
-            ? str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition)
-            : str_replace('received_at', 'created_at', $dateCondition);
+        if ($dbVer >= 140) {
+            $cond1 = str_replace('received_at', 'ai_screening_started_at', $dateCondition);
+            $cond2 = str_replace('received_at', 'created_at', $dateCondition);
+            $dateConditionAI = "(($cond1) OR (ai_screening_started_at IS NULL AND $cond2))";
+        } else {
+            $dateConditionAI = str_replace('received_at', 'created_at', $dateCondition);
+        }
         $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionAI AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
         $aiScreenerRes = $conn->query($aiScreenerSql);
         if ($aiScreenerRes) {
@@ -9150,9 +9377,13 @@ switch ($action) {
         $totalTokensUsed = 0;
         $totalPromptTokensUsed = 0;
         $totalCompletionTokensUsed = 0;
-        $dateConditionAI = ($dbVer >= 140)
-            ? str_replace('received_at', 'COALESCE(ai_screening_started_at, created_at)', $dateCondition)
-            : str_replace('received_at', 'created_at', $dateCondition);
+        if ($dbVer >= 140) {
+            $cond1 = str_replace('received_at', 'ai_screening_started_at', $dateCondition);
+            $cond2 = str_replace('received_at', 'created_at', $dateCondition);
+            $dateConditionAI = "(($cond1) OR (ai_screening_started_at IS NULL AND $cond2))";
+        } else {
+            $dateConditionAI = str_replace('received_at', 'created_at', $dateCondition);
+        }
         $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionAI");
         if ($tokensRes && $row = $tokensRes->fetch_assoc()) {
             $totalTokensUsed = (int)$row['cnt'];
@@ -11101,7 +11332,7 @@ switch ($action) {
                                 $stmtC->execute();
                                 $cRow = $stmtC->get_result()->fetch_assoc();
                                 $stmtC->close();
-                                if ($cRow && $cRow['status'] === 'active') {
+                                if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                                     require_once __DIR__ . '/mailer.php';
                                     require_once __DIR__ . '/zalo_bot.php';
                                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, 'Trung so tu file Excel nhap vao', 'Excel Import', '', '', [], $leadId);
@@ -11580,7 +11811,7 @@ switch ($action) {
                 $cRow = $stmtC->get_result()->fetch_assoc();
                 $stmtC->close();
 
-                if ($cRow && $cRow['status'] === 'active') {
+                if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                     try {
                         require_once __DIR__ . '/mailer.php';
                         require_once __DIR__ . '/zalo_bot.php';

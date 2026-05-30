@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 140;
+$targetVersion = 141;
 $currentVersion = 0;
 
 // Query current DB version
@@ -167,6 +167,12 @@ if (!$apply) {
             
             // Version 139
             echo "<tr><td>v139</td><td>Thêm INDEX idx_name vào bảng consultants để tối ưu hóa tìm kiếm Sale theo tên.</td><td>" . ($currentVersion >= 139 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+            
+            // Version 140
+            echo "<tr><td>v140</td><td>Tối ưu hóa khóa concurrency và trạng thái queue, thêm ai_screening_started_at.</td><td>" . ($currentVersion >= 140 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+            
+            // Version 141
+            echo "<tr><td>v141</td><td>Thêm chỉ mục index cho trường source trong bảng leads để tối ưu hóa hiệu năng.</td><td>" . ($currentVersion >= 141 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
 
             echo "</tbody></table>";
             echo "</div>";
@@ -1142,6 +1148,23 @@ try {
         $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '140') ON DUPLICATE KEY UPDATE setting_value = '140'");
         $currentVersion = 140;
         $logMsg("Hoàn thành cập nhật phiên bản 140.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 12: Version 141 (Add idx_leads_source index on leads table for performance optimization)
+    // --------------------------------------------------
+    if ($currentVersion < 141) {
+        $logMsg("Đang chạy cập nhật phiên bản 141 (Thêm chỉ mục index cho trường source trong bảng leads)...", "info");
+        
+        $chkIdxSource = $conn->query("SHOW INDEX FROM leads WHERE Key_name='idx_leads_source'");
+        if ($chkIdxSource && $chkIdxSource->num_rows === 0) {
+            $conn->query("ALTER TABLE leads ADD INDEX `idx_leads_source` (`source`)");
+            $logMsg("Đã thêm chỉ mục idx_leads_source vào bảng leads.", "success");
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '141') ON DUPLICATE KEY UPDATE setting_value = '141'");
+        $currentVersion = 141;
+        $logMsg("Hoàn thành cập nhật phiên bản 141.", "success");
     }
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

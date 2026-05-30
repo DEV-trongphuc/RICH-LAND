@@ -219,12 +219,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (user?.role === 'admin') {
-      fetchAPI('get_reports&status=pending')
+      fetchAPI('get_reports&status=pending&date=all&pageSize=1')
         .then(res => {
-          if (res.success && Array.isArray(res.data)) {
-            const pending = res.data.filter((r: any) => r.status === 'pending');
-            if (pending.length > 0) {
-              setPendingTicketsCount(pending.length);
+          if (res.success) {
+            const count = res.total_count ?? 0;
+            if (count > 0) {
+              setPendingTicketsCount(count);
               setIsTicketModalOpen(true);
             }
           }

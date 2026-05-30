@@ -79,8 +79,10 @@ if ($row = $dbRes->fetch_assoc()) {
     $effectiveStatus = $isActuallyOnLeave ? 'leave' : $consultantStatus;
     echo "Effective status: $effectiveStatus\n";
     
+    $isInactive = ($consultantStatus === 'inactive');
+
     if ($reassignIfOwnerInactive === '1') {
-        $isDuplicate = ($effectiveStatus === 'active');
+        $isDuplicate = !$isInactive;
         $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
     } else {
         $isDuplicate = true;

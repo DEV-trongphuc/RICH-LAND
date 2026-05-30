@@ -16,6 +16,15 @@ export const Login = () => {
   const handleGoogleLoginResponse = async (response: any) => {
     setLoading(true);
     setError('');
+
+    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      login('demo_token_12345', { username: 'admin', email: 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+      navigate('/');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('https://open.domation.net/sale_data/api.php?action=login_google', {
         method: 'POST',
@@ -71,6 +80,28 @@ export const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Support matching roles based on email input
+      const isSale = email.includes('sale') || email.includes('haidang') || email.includes('thao') || email.includes('dung') || email.includes('tuan');
+      if (isSale) {
+        let cId = 1;
+        let name = 'Hải Đăng';
+        let cEmail = 'haidang@domation.net';
+        if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@domation.net'; }
+        else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@domation.net'; }
+        else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@domation.net'; }
+
+        login(`demo_token_sale_${cId}`, { username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
+        navigate('/sale-portal');
+      } else {
+        login('demo_token_12345', { username: (email || 'admin@domation.net').split('@')[0], email: email || 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+        navigate('/');
+      }
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch('https://open.domation.net/sale_data/api.php?action=login', {
@@ -266,6 +297,41 @@ export const Login = () => {
           >
             {loading ? t('Đang xác thực...') : <><LogIn size={18} /> {t("Đăng nhập")}</>}
           </button>
+
+          {localStorage.getItem('DOMATION_DEMO_MODE') === 'true' && (
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setTimeout(() => {
+                  login('demo_token_12345', { username: 'admin', email: 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+                  navigate('/');
+                  setLoading(false);
+                }, 500);
+              }}
+              className="login-btn"
+              style={{
+                width: '100%',
+                padding: '0 1.5rem',
+                height: 48,
+                marginTop: '0.75rem',
+                fontSize: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                border: 'none',
+                borderRadius: 12,
+                color: 'white',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <LogIn size={18} /> {t("Đăng nhập Demo (Admin)")}
+            </button>
+          )}
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>

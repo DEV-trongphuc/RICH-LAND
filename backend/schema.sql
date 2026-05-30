@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 29, 2026 lúc 01:32 PM
+-- Thời gian đã tạo: Th5 30, 2026 lúc 05:44 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.21
 
@@ -77,6 +77,22 @@ CREATE TABLE `admin_logs` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `communication_logs`
+--
+
+CREATE TABLE `communication_logs` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `type` enum('zalo','email') NOT NULL,
+  `recipient` varchar(255) NOT NULL,
+  `status` enum('sent','failed') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `sent_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `consultants`
 --
 
@@ -94,22 +110,6 @@ CREATE TABLE `consultants` (
   `work_schedule` longtext DEFAULT NULL COMMENT 'Cấu hình lịch làm việc chi tiết dạng JSON',
   `avatar` varchar(255) DEFAULT NULL COMMENT 'Đường dẫn ảnh đại diện của Sale',
   `vacation_mode` tinyint(1) DEFAULT 0 COMMENT 'Chế độ nghỉ phép nhanh'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Cấu trúc bảng cho bảng `communication_logs`
---
-
-CREATE TABLE `communication_logs` (
-  `id` int(11) NOT NULL,
-  `lead_id` int(11) DEFAULT NULL,
-  `type` enum('zalo','email') NOT NULL,
-  `recipient` varchar(255) NOT NULL,
-  `status` enum('sent','failed') NOT NULL,
-  `error_message` text DEFAULT NULL,
-  `sent_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -227,11 +227,11 @@ CREATE TABLE `mail_queue` (
   `body_html` longtext NOT NULL,
   `status` enum('pending','processing','sent','failed') DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `sent_at` datetime DEFAULT NULL,
   `attempts` int(11) DEFAULT 0,
   `last_error` text DEFAULT NULL,
-  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết'
+  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết',
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -365,11 +365,11 @@ CREATE TABLE `zalo_queue` (
   `body_text` text NOT NULL,
   `status` enum('pending','processing','sent','failed') DEFAULT 'pending',
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `sent_at` datetime DEFAULT NULL,
   `attempts` int(11) DEFAULT 0,
   `last_error` text DEFAULT NULL,
-  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết'
+  `lead_id` int(11) DEFAULT NULL COMMENT 'ID của Lead liên kết',
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -403,20 +403,20 @@ ALTER TABLE `admin_logs`
   ADD KEY `idx_action_created` (`action`,`created_at`);
 
 --
--- Chỉ mục cho bảng `consultants`
---
-ALTER TABLE `consultants`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`),
-  ADD KEY `idx_name` (`name`);
-
---
 -- Chỉ mục cho bảng `communication_logs`
 --
 ALTER TABLE `communication_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_type_sent` (`type`,`sent_at`),
   ADD KEY `idx_lead_id` (`lead_id`);
+
+--
+-- Chỉ mục cho bảng `consultants`
+--
+ALTER TABLE `consultants`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_name` (`name`);
 
 --
 -- Chỉ mục cho bảng `data_reports`
@@ -486,6 +486,7 @@ ALTER TABLE `mail_queue`
 --
 ALTER TABLE `round_consultants`
   ADD PRIMARY KEY (`round_id`,`consultant_id`),
+  ADD UNIQUE KEY `idx_round_consultant_unique` (`round_id`,`consultant_id`),
   ADD KEY `consultant_id` (`consultant_id`);
 
 --
@@ -562,15 +563,15 @@ ALTER TABLE `admin_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT cho bảng `consultants`
---
-ALTER TABLE `consultants`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT cho bảng `communication_logs`
 --
 ALTER TABLE `communication_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `consultants`
+--
+ALTER TABLE `consultants`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

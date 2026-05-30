@@ -403,7 +403,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     $isDynamic = true;
     if (count($phones) === 1 && count($emails) === 0) {
         if ($stmtPhone === null) {
-            $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+            $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                          FROM leads l 
                                          LEFT JOIN consultants c ON l.assigned_to = c.id 
                                          WHERE l.phone = ? 
@@ -415,7 +415,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $isDynamic = false;
     } else if (count($phones) === 0 && count($emails) === 1) {
         if ($stmtEmail === null) {
-            $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+            $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                          FROM leads l 
                                          LEFT JOIN consultants c ON l.assigned_to = c.id 
                                          WHERE l.email = ? 
@@ -427,7 +427,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $isDynamic = false;
     } else if (count($phones) === 1 && count($emails) === 1) {
         if ($stmtBoth === null) {
-            $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+            $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                          FROM leads l 
                                          LEFT JOIN consultants c ON l.assigned_to = c.id 
                                          WHERE l.phone = ? OR l.email = ? 
@@ -449,7 +449,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $types .= 's';
         }
         $whereClause = implode(" OR ", $where);
-        $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end 
+        $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                 FROM leads l 
                                 LEFT JOIN consultants c ON l.assigned_to = c.id 
                                 WHERE $whereClause 
@@ -486,21 +486,27 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $today = date('Y-m-d');
 
         $isActuallyOnLeave = false;
-        if ($consultantStatus === 'leave') {
+        if ($consultantStatus === 'leave' || (isset($row['vacation_mode']) && $row['vacation_mode'] == 1)) {
             $isActuallyOnLeave = true;
-        } else if ($consultantStatus === 'active' && !empty($leaveStart) && !empty($leaveEnd)) {
-            if ($today >= $leaveStart && $today <= $leaveEnd) {
+        } else if ($consultantStatus === 'active' && !empty($leaveStart)) {
+            if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
                 $isActuallyOnLeave = true;
             }
         }
 
         $effectiveStatus = $isActuallyOnLeave ? 'leave' : $consultantStatus;
 
+        // Đánh giá xem có phải ngừng hoạt động hẳn hay không (chỉ status = 'inactive' mới tính là ngừng hoạt động)
+        // Nếu nghỉ phép (status = 'leave' hoặc có lịch nghỉ, vacation_mode), vẫn được coi là hoạt động/giữ khách cũ.
+        $isInactive = ($consultantStatus === 'inactive');
+
         if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
-            $isDuplicate = ($effectiveStatus === 'active');
+            // Chỉ chuyển giao cho Sale khác nếu Sale cũ đã NGỪNG HOẠT ĐỘNG (status = inactive)
+            // Nếu chỉ nghỉ phép (status = leave, vacation_mode = 1, hoặc lịch nghỉ), vẫn giữ lại khách cũ (isDuplicate = true)
+            $isDuplicate = !$isInactive;
             $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
         } else {
-            // OFF or ignored: Always count as duplicate, keep the original owner
+            // OFF hoặc bỏ qua: Luôn coi là trùng và giữ nguyên Sale cũ
             $isDuplicate = true;
             $assignedTo = $row['assigned_to'];
         }

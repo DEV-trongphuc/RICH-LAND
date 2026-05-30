@@ -1263,7 +1263,7 @@ foreach ($connections as $connItem) {
                             }
                             $cRow = $consultantCache[$ownerId];
                             
-                            if ($cRow && $cRow['status'] === 'active') {
+                            if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                                 $timeline = getLeadHistoryTimeline($conn, $leadId, true);
                                 try {
                                     sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);
@@ -1316,7 +1316,7 @@ foreach ($connections as $connItem) {
                     }
                     $cRow = $consultantCache[$assignedTo];
                     
-                    if ($cRow && $cRow['status'] === 'active') {
+                    if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                         $timeline = getLeadHistoryTimeline($conn, $leadId, true);
                         try {
                             sendLeadReminderEmailToSale($cRow['email'], $cRow['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $timeline, $leadId);

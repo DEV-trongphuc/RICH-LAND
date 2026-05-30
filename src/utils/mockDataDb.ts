@@ -58,11 +58,11 @@ export const INITIAL_MOCK_DB = {
   },
   
   consultants: [
-    { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', status: 'active', zalo_chat_id: '9082348234' },
-    { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', status: 'active', zalo_chat_id: '9183492834' },
-    { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', status: 'leave', zalo_chat_id: '9843573845', leave_start: '2026-05-18', leave_end: '2026-05-25' },
-    { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', status: 'active', zalo_chat_id: '9238472938' },
-    { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', status: 'inactive', zalo_chat_id: '9123847283' }
+    { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', status: 'active', zalo_chat_id: '9082348234', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: true, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', status: 'active', zalo_chat_id: '9183492834', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', status: 'leave', zalo_chat_id: '9843573845', leave_start: '2026-05-18', leave_end: '2026-05-25', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150', vacation_mode: 1, work_start_time: '08:30', work_end_time: '18:00', work_schedule: { "1": { active: true, start: "08:30", end: "18:00" }, "2": { active: true, start: "08:30", end: "18:00" }, "3": { active: true, start: "08:30", end: "18:00" }, "4": { active: true, start: "08:30", end: "18:00" }, "5": { active: true, start: "08:30", end: "18:00" }, "6": { active: true, start: "08:30", end: "18:00" }, "7": { active: false, start: "08:30", end: "18:00" } } },
+    { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', status: 'active', zalo_chat_id: '9238472938', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', status: 'inactive', zalo_chat_id: '9123847283', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } }
   ],
 
   rounds: [
@@ -71,26 +71,66 @@ export const INITIAL_MOCK_DB = {
     { id: 3, round_name: 'Vòng Hỗ Trợ: Organic Search', is_active: 0, total_distributed: 272, consultants: 'Hải Đăng, Thanh Thảo, Việt Dũng', consultant_ids: '1,2,3', next_assigned_name: 'Thanh Thảo' },
   ],
 
-  logs: Array.from({ length: 50 }).map((_, i) => ({
-    id: 1000 - i,
-    lead_name: `Khách hàng Demo ${1000 - i}`,
-    phone: `09${Math.floor(10000000 + Math.random() * 90000000)}`,
-    email: `khachhang${i}@demo.com`,
-    source: Math.random() > 0.5 ? 'Facebook Ads' : 'Zalo Ads',
-    type: 'Tư vấn',
-    note: 'Demo data from mock engine',
-    status: Math.random() > 0.8 ? (Math.random() > 0.5 ? 'error' : 'compensation') : 'assigned',
-    assigned_to_name: ['Hải Đăng', 'Thanh Thảo', 'Việt Dũng', 'Minh Tuấn'][Math.floor(Math.random() * 4)],
-    round_name: ['Vòng Phân Bổ: Facebook & TikTok Ads', 'Vòng Ưu Tiên: Zalo ZCA & Hotline'][Math.floor(Math.random() * 2)],
-    created_at: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
-    report_status: null
-  })),
+  logs: (() => {
+    const vietnameseNames = [
+      'Nguyễn Trần Khánh Vy', 'Phạm Minh Hoàng', 'Lê Hải Yến', 'Trần Quốc Bảo', 
+      'Đỗ Thùy Chi', 'Ngô Tiến Dũng', 'Vũ Hoài Nam', 'Hoàng Lệ Quyên', 
+      'Bùi Anh Tuấn', 'Nguyễn Thanh Tùng', 'Dương Mỹ Linh', 'Phan Văn Hậu', 
+      'Trần Thị Mai Anh', 'Nguyễn Đức Huy', 'Lê Minh Khôi', 'Hoàng Diệp Chi',
+      'Đặng Hoài Thu', 'Phạm Gia Bảo', 'Vũ Thu Trang', 'Nguyễn Tuấn Kiệt'
+    ];
+    const sources = ['Facebook Ads', 'Google Ads', 'Website Direct', 'Excel Import'];
+    const notes = [
+      'Quan tâm khóa học IELTS cấp tốc, cần tư vấn lộ trình học gấp',
+      'Đăng ký học thử khóa lập trình React Native, hỏi mức học phí và khuyến mãi',
+      'Cần tư vấn gói giải pháp chuyển đổi số cho doanh nghiệp vừa và nhỏ',
+      'Tư vấn mua sỉ sản phẩm, muốn nhận bảng chiết khấu đại lý',
+      'Muốn đăng ký lớp online buổi tối cho người đi làm bận rộn',
+      'Khách hàng từ Google Ads tìm hiểu dịch vụ kế toán thuế trọn gói',
+      'Đăng ký nhận tài liệu thiết kế đồ họa UI/UX miễn phí',
+      'Quan tâm khóa học giao tiếp tiếng Anh 1 kèm 1 cho người mất gốc'
+    ];
+    const consultants = ['Hải Đăng', 'Thanh Thảo', 'Việt Dũng', 'Minh Tuấn'];
+    const rounds = ['Vòng Phân Bổ: Facebook & TikTok Ads', 'Vòng Ưu Tiên: Zalo ZCA & Hotline', 'Vòng Hỗ Trợ: Organic Search'];
+
+    return Array.from({ length: 100 }).map((_, i) => {
+      const name = vietnameseNames[i % vietnameseNames.length];
+      const source = sources[i % sources.length];
+      const note = notes[i % notes.length];
+      const assigned = consultants[i % consultants.length];
+      const round = rounds[i % rounds.length];
+      const statusSeed = Math.random();
+      let status = 'assigned';
+      if (statusSeed > 0.85) status = 'compensation';
+      else if (statusSeed > 0.75) status = 'reminder';
+      else if (statusSeed > 0.65) status = 'error';
+
+      // 3 days window
+      const date = new Date(Date.now() - Math.floor(i / 10) * 3600000 * 6 - (i % 10) * 1800000);
+      
+      return {
+        id: 2000 - i,
+        lead_name: name,
+        phone: `09${10000000 + (i * 7654321) % 90000000}`,
+        email: `${name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "")}${i}@demo.com`,
+        source,
+        type: 'Tư vấn',
+        note,
+        status,
+        assigned_to_name: assigned,
+        round_name: round,
+        created_at: date.toISOString(),
+        report_status: null
+      };
+    });
+  })(),
 
   tickets: [
-    { id: 101, lead_name: 'Trần Văn Demo', consultant_id: 1, consultant_name: 'Hải Đăng', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn ò í e' },
-    { id: 102, lead_name: 'Lê Thị Test', consultant_id: 2, consultant_name: 'Thanh Thảo', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách bảo đang làm việc với C' },
-    { id: 103, lead_name: 'Phạm Văn Mẫu', consultant_id: 3, consultant_name: 'Việt Dũng', reason: 'Khác', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Đã đền bù data mới', admin_note: 'Duyệt đền bù' },
-    { id: 104, lead_name: 'Nguyễn Demo 4', consultant_id: 4, consultant_name: 'Minh Tuấn', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Spam chửi bậy', admin_note: 'Từ chối vì khách vẫn nghe máy' },
+    { id: 101, lead_name: 'Nguyễn Trần Khánh Vy', consultant_id: 1, consultant_name: 'Hải Đăng', reason: 'Sai số điện thoại / Số ảo', status: 'pending', created_at: new Date(Date.now() - 3600000).toISOString(), note: 'Gọi toàn thuê bao không liên lạc được nhiều lần' },
+    { id: 102, lead_name: 'Phạm Minh Hoàng', consultant_id: 2, consultant_name: 'Thanh Thảo', reason: 'Trùng của người khác', status: 'pending', created_at: new Date(Date.now() - 7200000).toISOString(), note: 'Khách báo đang làm việc với bạn Hải Đăng bên mình' },
+    { id: 103, lead_name: 'Lê Hải Yến', consultant_id: 3, consultant_name: 'Việt Dũng', reason: 'Sai số điện thoại / Số ảo', status: 'approved', created_at: new Date(Date.now() - 86400000).toISOString(), note: 'Nhầm số điện thoại, người nghe báo không đăng ký gì', admin_note: 'Đã xác minh và duyệt đền bù data mới' },
+    { id: 104, lead_name: 'Trần Quốc Bảo', consultant_id: 4, consultant_name: 'Minh Tuấn', reason: 'Spam ảo / Junk lead', status: 'rejected', created_at: new Date(Date.now() - 172800000).toISOString(), note: 'Khách điền linh tinh chửi bậy hệ thống', admin_note: 'Từ chối vì khách vẫn nghe máy và xác nhận đăng ký tư vấn' },
+    { id: 105, lead_name: 'Đỗ Thùy Chi', consultant_id: 1, consultant_name: 'Hải Đăng', reason: 'Không có nhu cầu / Điền nhầm', status: 'approved', created_at: new Date(Date.now() - 43200000).toISOString(), note: 'Khách báo ấn nhầm nút quảng cáo', admin_note: 'Duyệt bù lượt' }
   ],
 
   rules: [

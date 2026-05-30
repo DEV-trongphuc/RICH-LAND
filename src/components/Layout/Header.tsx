@@ -111,8 +111,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           clipPath: clipPath,
         },
         {
-          duration: 50000,
-          easing: 'linear',
+          duration: 600,
+          easing: 'ease-in-out',
           pseudoElement: '::view-transition-new(root)',
         }
       );
@@ -174,7 +174,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     const delayDebounce = setTimeout(async () => {
       setSearching(true);
       try {
-        const json = await fetchAPI(`get_logs&search=${encodeURIComponent(searchQuery)}`);
+        const json = await fetchAPI(`get_logs&search=${encodeURIComponent(searchQuery)}&page=1&pageSize=5`);
         if (json.success && Array.isArray(json.data)) {
           setLeadResults(json.data.slice(0, 5));
         }

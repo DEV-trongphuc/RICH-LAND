@@ -414,7 +414,7 @@ if ($isSilent == 1) {
                 $stmtC->execute();
                 $cRow = $stmtC->get_result()->fetch_assoc();
                 $stmtC->close();
-                if ($cRow && $cRow['status'] === 'active') {
+                if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                     require_once __DIR__ . '/mailer.php';
                     require_once __DIR__ . '/zalo_bot.php';
                     $timeline = getLeadHistoryTimeline($conn, $leadId, true);
@@ -466,7 +466,7 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
             $stmtC->close();
-            if ($cRow && $cRow['status'] === 'active') {
+            if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
                 require_once __DIR__ . '/mailer.php';
                 require_once __DIR__ . '/zalo_bot.php';
                 $timeline = getLeadHistoryTimeline($conn, $leadId, true);

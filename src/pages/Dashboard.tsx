@@ -126,7 +126,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
       const [statsJson, logsJson, settingsJson, connectionsJson] = await Promise.all([
         fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}`),
-        fetchAPI('get_logs&exclude_status=silent'),
+        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=5'),
         fetchAPI('get_settings'),
         fetchAPI('get_connections')
       ]);

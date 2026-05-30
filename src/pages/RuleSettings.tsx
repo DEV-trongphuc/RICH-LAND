@@ -248,6 +248,23 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
   );
 };
 
+const parseMarkdownToHtml = (markdown: string) => {
+  if (!markdown) return '';
+  let html = markdown
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/^### (.*$)/gim, '<h4 style="font-size: 1rem; font-weight: 700; color: var(--color-primary); margin-top: 1rem; margin-bottom: 0.5rem;">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.15rem; font-weight: 800; color: var(--color-primary); margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--color-border-light); padding-bottom: 4px;">$1</h3>')
+    .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.3rem; font-weight: 800; color: var(--color-primary); margin-top: 1.5rem; margin-bottom: 1rem;">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li style="margin-left: 1.25rem; margin-bottom: 0.25rem; list-style-type: disc;">$1</li>')
+    .replace(/\n\n/g, '<div style="margin-bottom: 0.75rem;"></div>')
+    .replace(/\n/g, '<br/>');
+
+  return html;
+};
 
 const RuleSettingsInner = () => {
   const { t } = useLanguage();
@@ -271,6 +288,39 @@ const RuleSettingsInner = () => {
   const [connectionId, setConnectionId] = useState<any[]>(['all']);
   const [connections, setConnections] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<number | 'all' | null>('all');
+  const [activeRoundFilter, setActiveRoundFilter] = useState<number | 'all'>('all');
+
+  // AI Evaluation states
+  const [isAiEvalModalOpen, setIsAiEvalModalOpen] = useState(false);
+  const [aiEvalFeedback, setAiEvalFeedback] = useState('');
+  const [aiEvalStep, setAiEvalStep] = useState<'preview' | 'loading' | 'result'>('preview');
+
+  const handleAIEvaluateRules = () => {
+    setIsAiEvalModalOpen(true);
+    setAiEvalStep('preview');
+    setAiEvalFeedback('');
+  };
+
+  const triggerAiEvaluation = async () => {
+    setAiEvalStep('loading');
+    setAiEvalFeedback('');
+    try {
+      const res = await fetchAPI('evaluate_rules_ai', {
+        method: 'POST',
+        body: JSON.stringify({ rules })
+      });
+      if (res.success) {
+        setAiEvalFeedback(res.feedback || '');
+        setAiEvalStep('result');
+      } else {
+        toast.error(res.message || t('Lỗi đánh giá quy tắc'));
+        setAiEvalStep('preview');
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+      setAiEvalStep('preview');
+    }
+  };
 
   // Simulator states
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
@@ -580,12 +630,26 @@ const RuleSettingsInner = () => {
   ];
 
   const filteredRules = rules.filter(r => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === null) return r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
+    let matchConnection = true;
+    if (activeFilter === 'all') {
+      matchConnection = true;
+    } else if (activeFilter === null) {
+      matchConnection = r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
+    } else {
+      if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') {
+        matchConnection = false;
+      } else {
+        const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
+        matchConnection = cIds.includes(activeFilter);
+      }
+    }
 
-    if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') return false;
-    const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
-    return cIds.includes(activeFilter);
+    let matchRound = true;
+    if (activeRoundFilter !== 'all') {
+      matchRound = Number(r.target_round_id) === Number(activeRoundFilter);
+    }
+
+    return matchConnection && matchRound;
   });
 
   return (
@@ -597,7 +661,14 @@ const RuleSettingsInner = () => {
           </h1>
           <p className="page-subtitle">{t("Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.")}</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="btn outline" onClick={handleAIEvaluateRules} style={{ borderColor: '#7c3aed', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <img 
+              src="https://crm-domation.vercel.app/LOGO.jpg" 
+              alt="Gemini" 
+              style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} 
+            /> {t("AI Đánh giá Quy tắc")}
+          </button>
           <button className="btn outline" onClick={openSimulateModal} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
             <Play size={16} style={{ fill: 'currentColor' }} /> {t("Thử nghiệm Định tuyến")}
           </button>
@@ -628,23 +699,42 @@ const RuleSettingsInner = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t("Lọc theo nguồn:")}</div>
-        <div style={{ width: 320 }}>
-          <CustomSelect
-            options={[
-              { value: 'all', label: t('Hiển thị tất cả Quy tắc'), icon: <Filter size={14} color="#64748b" /> },
-              { value: 'null', label: t('Chỉ các Quy tắc "Tất cả mọi kết nối"'), icon: <Globe size={14} color="#6366f1" /> },
-              { value: -1, label: t('Chỉ nhóm "Tất cả các Google Sheets"'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
-              { value: -2, label: t('Chỉ nhóm "Tất cả API / Landing Pages"'), icon: <Zap size={14} color="#f59e0b" /> },
-              { value: -3, label: t('Chỉ nhóm "Data Nhập tay"'), icon: <Keyboard size={14} color="#ec4899" /> },
-              ...connections.map(c => ({ value: c.id, label: t("Nguồn: {name}").replace('{name}', c.sheet_name), icon: <FileSpreadsheet size={14} color="#10b981" /> }))
-            ]}
-            value={activeFilter === null ? 'null' : activeFilter.toString()}
-            onChange={(v) => setActiveFilter(v === 'all' ? 'all' : (v === 'null' ? null : Number(v)))}
-          />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        {/* Filter 1: Connection */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{t("Lọc theo nguồn:")}</div>
+          <div style={{ width: 280 }}>
+            <CustomSelect
+              options={[
+                { value: 'all', label: t('Hiển thị tất cả nguồn'), icon: <Filter size={14} color="#64748b" /> },
+                { value: 'null', label: t('Chỉ các Quy tắc "Tất cả kết nối"'), icon: <Globe size={14} color="#6366f1" /> },
+                { value: -1, label: t('Tất cả Google Sheets'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
+                { value: -2, label: t('Tất cả API / Landing Pages'), icon: <Zap size={14} color="#f59e0b" /> },
+                { value: -3, label: t('Chỉ nhóm "Data Nhập tay"'), icon: <Keyboard size={14} color="#ec4899" /> },
+                ...connections.map(c => ({ value: c.id, label: c.sheet_name, icon: <FileSpreadsheet size={14} color="#10b981" /> }))
+              ]}
+              value={activeFilter === null ? 'null' : activeFilter.toString()}
+              onChange={(v) => setActiveFilter(v === 'all' ? 'all' : (v === 'null' ? null : Number(v)))}
+            />
+          </div>
         </div>
-        {activeFilter !== 'all' && (
+
+        {/* Filter 2: Round */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{t("Lọc theo vòng hành động xử lý:")}</div>
+          <div style={{ width: 280 }}>
+            <CustomSelect
+              options={[
+                { value: 'all', label: t('Hiển thị tất cả vòng hành động'), icon: <Filter size={14} color="#64748b" /> },
+                ...rounds.map(r => ({ value: r.id.toString(), label: r.round_name, icon: <MapPin size={14} color="var(--color-primary)" /> }))
+              ]}
+              value={activeRoundFilter.toString()}
+              onChange={(v) => setActiveRoundFilter(v === 'all' ? 'all' : Number(v))}
+            />
+          </div>
+        </div>
+
+        {(activeFilter !== 'all' || activeRoundFilter !== 'all') && (
           <div style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Filter size={14} /> {t("Chế độ lọc đang bật. Kéo thả thứ tự tạm khóa.")}
           </div>
@@ -1467,6 +1557,153 @@ const RuleSettingsInner = () => {
             </div>
           </div>
         </div>
+        )}
+      </CustomModal>
+
+      {/* AI Evaluation Modal */}
+      <CustomModal
+        isOpen={isAiEvalModalOpen}
+        onClose={() => setIsAiEvalModalOpen(false)}
+        title={t("AI Đánh giá cấu hình Quy tắc")}
+        width="800px"
+      >
+        {isAiEvalModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '12px' }}>
+              <img 
+                src="https://crm-domation.vercel.app/LOGO.jpg" 
+                alt="Gemini AI Logo" 
+                style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-primary-light)', boxShadow: 'var(--shadow-sm)' }} 
+              />
+              <div>
+                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)' }}>{t("Trợ lý Domation AI Đánh giá")}</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t("Phân tích xung đột, tối ưu thứ tự ưu tiên và phát hiện kẽ hở định tuyến")}</p>
+              </div>
+            </div>
+            {aiEvalStep === 'preview' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t("Nhấn xác nhận bên dưới để gửi toàn bộ cấu hình quy tắc định tuyến hiện tại lên Gemini AI phân tích các xung đột logic, tối ưu thứ tự ưu tiên và phát hiện kẽ hở định tuyến.")}
+                </p>
+                <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h5 style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                    {t("Cấu hình sẽ gửi lên AI gồm {count} quy tắc:").replace('{count}', String(rules.length))}
+                  </h5>
+                  <div className="no-scrollbar" style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {rules.map((r, idx) => {
+                      let parsedConds = [];
+                      if (r.conditions_json) {
+                        try {
+                          parsedConds = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : r.conditions_json;
+                        } catch (e) {}
+                      }
+                      let condText = "";
+                      if (Array.isArray(parsedConds) && parsedConds.length > 0) {
+                        const firstBranch = parsedConds[0];
+                        const conds = firstBranch.conditions || [];
+                        condText = conds.map((c: any) => `${c.col} ${c.op} "${c.val}"`).join(' VÀ ');
+                        if (parsedConds.length > 1) condText += ` (+ ${parsedConds.length - 1} nhánh OR)`;
+                      } else {
+                        condText = `${r.condition_column} ${r.condition_operator} "${r.condition_value}"`;
+                      }
+                      
+                      return (
+                        <div key={idx} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '12px', 
+                          fontSize: '0.85rem', 
+                          padding: '10px 16px', 
+                          background: 'var(--color-surface)', 
+                          borderRadius: 'var(--radius-md)', 
+                          border: '1px solid var(--color-border)', 
+                          boxShadow: 'var(--shadow-xs)' 
+                        }}>
+                          <span style={{ 
+                            width: '24px', 
+                            height: '24px', 
+                            borderRadius: '50%', 
+                            background: 'var(--color-bg)', 
+                            border: '1px solid var(--color-border)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            fontSize: '0.75rem', 
+                            fontWeight: 800, 
+                            color: 'var(--color-primary)',
+                            flexShrink: 0
+                          }}>
+                            {idx + 1}
+                          </span>
+                          <span style={{ color: 'var(--color-text-light)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {t("Điều kiện:")} <strong style={{ color: 'var(--color-text)' }}>{condText}</strong>
+                          </span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>&rarr;</span>
+                          <span style={{ 
+                            background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.12))',
+                            border: '1px solid var(--color-primary-light)',
+                            color: 'var(--color-primary)',
+                            padding: '4px 14px',
+                            borderRadius: '50px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            boxShadow: '0 2px 4px rgba(124, 58, 237, 0.05)'
+                          }}>
+                            {r.round_name || `Vòng ${r.target_round_id}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button className="btn outline" onClick={() => setIsAiEvalModalOpen(false)}>{t("Hủy bỏ")}</button>
+                  <button className="btn primary" onClick={triggerAiEvaluation} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {t("Xác nhận và Gửi đánh giá")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {aiEvalStep === 'loading' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1.25rem', color: 'var(--color-text-muted)' }}>
+                <div style={{ width: 48, height: 48, border: '4px solid var(--color-border-light)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{t("Gemini AI đang phân tích thiết lập và thứ tự ưu tiên của các Quy tắc...")}</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', maxWidth: 450, margin: 0 }}>
+                  {t("Hệ thống đang chạy kiểm tra các xung đột logic, quy tắc bị che phủ (redundant/shadowed), khe hở định tuyến (gaps) và đề xuất tối ưu hóa tốt nhất.")}
+                </p>
+              </div>
+            )}
+
+            {aiEvalStep === 'result' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div 
+                  className="ai-feedback-content"
+                  style={{ 
+                    maxHeight: '500px', 
+                    overflowY: 'auto', 
+                    padding: '1.25rem', 
+                    background: 'var(--color-bg)', 
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: 'var(--color-text)'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(aiEvalFeedback) }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button className="btn outline" onClick={() => setAiEvalStep('preview')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <RefreshCw size={14} /> {t("Xem lại cấu hình")}
+                  </button>
+                  <button className="btn primary" onClick={() => setIsAiEvalModalOpen(false)}>{t("Đóng")}</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </CustomModal>
     </div>

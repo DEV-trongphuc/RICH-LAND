@@ -17,14 +17,30 @@ export const processMockRequest = async (action: string, payload?: any): Promise
       return { success: true, message: 'Đã thiết lập lại cơ sở dữ liệu demo thành công.' };
 
     case 'login':
-      if (payload?.email === 'admin' || payload?.email === 'admin@gmail.com') {
+      {
+        const email = payload?.email || '';
+        if (email.includes('sale') || email.includes('haidang') || email.includes('thao') || email.includes('dung') || email.includes('tuan')) {
+          let cId = 1;
+          let name = 'Hải Đăng';
+          let cEmail = 'haidang@domation.net';
+          if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@domation.net'; }
+          else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@domation.net'; }
+          else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@domation.net'; }
+
+          return {
+            success: true,
+            token: `demo_token_sale_${cId}`,
+            user: { id: cId, email: cEmail, name: name, role: 'sale', consultant_id: cId, is_confirmed: 1 }
+          };
+        }
+
+        // Permissive admin login
         return {
           success: true,
           token: 'demo_token_12345',
-          user: { id: 1, email: 'admin@domation.net', role: 'admin', is_confirmed: 1 }
+          user: { id: 1, email: email || 'admin@domation.net', name: 'Admin Demo', role: 'admin', is_confirmed: 1 }
         };
       }
-      throw new Error('Email hoặc mật khẩu không đúng (Mock)');
 
     case 'get_dashboard_stats':
       return { success: true, data: MOCK_DB.dashboard };
@@ -537,6 +553,414 @@ export const processMockRequest = async (action: string, payload?: any): Promise
                 { reason: 'Bù chủ động do lỗi hệ thống', count: 1, admin_name: 'Admin Demo', admin_avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150', created_at: new Date(Date.now() - 172800000).toISOString() }
               ]
             }
+          }
+        };
+      }
+
+    case 'get_sale_portal_data':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const search = (params.get('search') || '').toLowerCase();
+        const roundIdFilter = params.get('round_id');
+        const saleIdFilter = params.get('sale_id');
+
+        const userStr = localStorage.getItem('domation_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        const currentSaleId = user?.role === 'sale' ? user?.consultant_id || user?.id : null;
+        const targetSaleId = saleIdFilter ? Number(saleIdFilter) : currentSaleId;
+
+        const consultant = MOCK_DB.consultants.find(c => c.id === targetSaleId) || MOCK_DB.consultants[0];
+        const consultantName = consultant.name;
+
+        // Filter logs
+        let filteredLogs = MOCK_DB.logs.filter(l => l.assigned_to_name === consultantName);
+
+        if (search) {
+          filteredLogs = filteredLogs.filter(l => 
+            l.lead_name.toLowerCase().includes(search) || 
+            l.phone.includes(search) || 
+            (l.email && l.email.toLowerCase().includes(search))
+          );
+        }
+
+        if (roundIdFilter) {
+          const rId = Number(roundIdFilter);
+          filteredLogs = filteredLogs.filter(l => {
+            const matchRound = MOCK_DB.rounds.find(r => r.id === rId);
+            return matchRound ? l.round_name === matchRound.round_name : true;
+          });
+        }
+
+        // Map logs to leads structure expected by SalePortal
+        const leads = filteredLogs.map(l => {
+          const ticket = MOCK_DB.tickets.find(t => t.lead_name === l.lead_name);
+          return {
+            log_id: l.id,
+            received_at: l.created_at,
+            status: l.status,
+            message: l.note,
+            round_id: l.round_name.includes('Facebook') ? 1 : l.round_name.includes('Zalo') ? 2 : 3,
+            assigned_to: consultant.id,
+            lead_id: l.id,
+            lead_name: l.lead_name,
+            phone: l.phone,
+            lead_email: l.email,
+            source: l.source,
+            type: l.type,
+            note: l.note,
+            is_accepted: l.status === 'assigned' ? 0 : 1,
+            accepted_at: l.status === 'assigned' ? null : l.created_at,
+            last_interaction_date: l.created_at,
+            round_name: l.round_name,
+            sale_name: l.assigned_to_name,
+            sale_email: `${l.assigned_to_name.toLowerCase().replace(/\s+/g, '')}@domation.net`,
+            sale_avatar: consultant.avatar,
+            report_status: ticket ? ticket.status : null,
+            report_id: ticket ? ticket.id : null,
+            report_reason: ticket ? ticket.reason : null,
+            report_reject_reason: ticket ? ticket.admin_note : null,
+            report_created_at: ticket ? ticket.created_at : null,
+            lead_recall_minutes: 15,
+            connection_name: l.source === 'Facebook Ads' ? 'Form Đăng Ký Tư Vấn Facebook' : 'Landing Page Ưu Đãi Tháng 5'
+          };
+        });
+
+        // 2. Query distinct rounds consultant is in
+        const consultantRounds = MOCK_DB.rounds.filter(r => r.consultant_ids.split(',').includes(String(consultant.id)));
+
+        // 3. Ticket stats under active date filter
+        const consultantTickets = MOCK_DB.tickets.filter(t => t.consultant_id === consultant.id);
+        const ticketsTotal = consultantTickets.length;
+        const ticketsApproved = consultantTickets.filter(t => t.status === 'approved').length;
+        const ticketsRejected = consultantTickets.filter(t => t.status === 'rejected').length;
+        const ticketsPending = consultantTickets.filter(t => t.status === 'pending').length;
+
+        // 4. Query distribution by round
+        const validLeads = leads.filter(l => l.status !== 'reminder');
+        const byRoundMap: Record<string, number> = {};
+        validLeads.forEach(l => {
+          byRoundMap[l.round_name] = (byRoundMap[l.round_name] || 0) + 1;
+        });
+        const byRound = Object.entries(byRoundMap).map(([round_name, count]) => ({ round_name, count }));
+
+        // 5. Query distribution by hour
+        const byHour = Array(24).fill(0);
+        validLeads.forEach(l => {
+          if (l.received_at) {
+            const hr = new Date(l.received_at).getHours();
+            byHour[hr] = (byHour[hr] || 0) + 1;
+          }
+        });
+
+        // Active consultants if user is admin
+        const consultantsList = user?.role === 'admin' ? MOCK_DB.consultants.filter(c => c.status === 'active') : [];
+
+        return {
+          success: true,
+          leads,
+          rounds: consultantRounds,
+          consultants: consultantsList,
+          consultant_profile: consultant,
+          vacation_mode: consultant.vacation_mode,
+          lead_recall_minutes: 15,
+          below_standard_fallback_round_id: 3,
+          below_standard_fallback_round_ids: [3],
+          duplicate_check_months: 6,
+          report_error_reasons: [
+            'Số điện thoại không đúng / Thuê bao',
+            'Trùng khách đang chăm sóc / Khách cũ',
+            'Sai thông tin khóa học / Điền nhầm',
+            'Spam / Junk Lead'
+          ],
+          is_allowed_to_report: true,
+          stats: {
+            total_received: validLeads.length,
+            tickets_total: ticketsTotal,
+            tickets_approved: ticketsApproved,
+            tickets_rejected: ticketsRejected,
+            tickets_pending: ticketsPending
+          },
+          by_round: byRound,
+          by_hour: byHour
+        };
+      }
+
+    case 'get_sale_lead_timeline':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const leadId = Number(params.get('lead_id') || '0');
+        const log = MOCK_DB.logs.find(l => l.id === leadId);
+        const heldLead = MOCK_DB.heldLeads.find(l => l.id === leadId);
+        const name = log?.lead_name || heldLead?.name || 'Khách hàng Demo';
+        const phone = log?.phone || heldLead?.phone || '';
+        const source = log?.source || heldLead?.source || 'Facebook Ads';
+        const roundName = log?.round_name || heldLead?.round_name || 'Vòng Phân Bổ: Facebook & TikTok Ads';
+        const assignedName = log?.assigned_to_name || heldLead?.consultant_name || 'Hải Đăng';
+        const status = log?.status || heldLead?.status || 'assigned';
+        const receivedAt = log?.created_at || heldLead?.created_at || new Date().toISOString();
+        const note = log?.note || heldLead?.note || 'Đăng ký tư vấn khóa học';
+
+        const timeline = [];
+
+        timeline.push({
+          status: 'Đã nhận từ Webhook',
+          round_name: '',
+          received_at: new Date(new Date(receivedAt).getTime() - 1000 * 6).toISOString(),
+          consultant_name: 'Hệ thống',
+          consultant_avatar: 'https://crm-domation.vercel.app/LOGO.jpg',
+          message: `Lead mới từ nguồn ${source} - Tên: ${name}, SĐT: ${phone}`,
+          is_ticket: 0
+        });
+
+        if (MOCK_DB.dashboard.ai_screener_enabled) {
+          timeline.push({
+            status: 'AI Pre-screener đánh giá',
+            round_name: '',
+            received_at: new Date(new Date(receivedAt).getTime() - 1000 * 4).toISOString(),
+            consultant_name: 'AI Screener',
+            consultant_avatar: 'https://crm-domation.vercel.app/LOGO.jpg',
+            message: status === 'rejected' || status === 'blacklisted' 
+              ? `[Từ chối tự động]: Số điện thoại không đạt chuẩn | Lý do: ${heldLead?.ai_evaluation || 'Không liên lạc được'}`
+              : `[Đạt chuẩn]: Số điện thoại hợp lệ và không trùng lặp`,
+            is_ticket: 0
+          });
+        }
+
+        let distStatus = 'Đã bàn giao';
+        if (status === 'compensation') {
+          distStatus = 'Bù lượt';
+        } else if (status === 'reminder') {
+          distStatus = 'Nhắc trùng';
+        } else if (status === 'rejected' || status === 'blacklisted') {
+          distStatus = 'Không phân bổ';
+        }
+        
+        timeline.push({
+          status: distStatus,
+          round_name: roundName,
+          received_at: receivedAt,
+          consultant_name: assignedName,
+          consultant_avatar: null,
+          message: `Phân bổ cho ${assignedName} qua ${roundName}. Ghi chú: ${note}`,
+          is_ticket: 0
+        });
+
+        const ticket = MOCK_DB.tickets.find(t => t.lead_name === name);
+        if (ticket) {
+          timeline.push({
+            is_ticket: 1,
+            ticket_status: ticket.status,
+            ticket_reason: ticket.reason,
+            ticket_reject_reason: ticket.admin_note || null,
+            received_at: ticket.created_at
+          });
+        }
+
+        return {
+          success: true,
+          timeline: timeline.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())
+        };
+      }
+
+    case 'accept_lead':
+      {
+        const leadId = Number(payload?.lead_id);
+        const log = MOCK_DB.logs.find(l => l.id === leadId);
+        if (log) {
+          log.status = 'accepted';
+        }
+        const held = MOCK_DB.heldLeads.find(l => l.id === leadId);
+        if (held) {
+          held.status = 'active';
+        }
+        return { success: true, message: 'Tiếp nhận lead thành công (Demo)' };
+      }
+
+    case 'submit_report':
+      {
+        const leadId = payload?.lead_id;
+        const saleId = payload?.sale_id;
+        const reason = payload?.reason || '';
+        
+        const log = MOCK_DB.logs.find(l => l.id === leadId);
+        const name = log ? log.lead_name : 'Khách hàng Demo';
+        const consultant = MOCK_DB.consultants.find(c => c.id === saleId) || MOCK_DB.consultants[0];
+
+        const newTicket = {
+          id: Math.floor(Math.random() * 1000) + 200,
+          lead_name: name,
+          consultant_id: consultant.id,
+          consultant_name: consultant.name,
+          reason: reason,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          note: 'Báo cáo từ cổng tư vấn viên (Demo)'
+        };
+        MOCK_DB.tickets.unshift(newTicket);
+
+        MOCK_DB.dashboard.ticket_errors += 1;
+
+        return { 
+          success: true, 
+          message: 'Gửi báo lỗi thành công (Demo)',
+          auto_approved: false 
+        };
+      }
+
+    case 'toggle_consultant_vacation':
+      {
+        const id = Number(payload?.id);
+        const consultant = MOCK_DB.consultants.find(c => c.id === id);
+        let currentVacation = false;
+        if (consultant) {
+          (consultant as any).vacation_mode = (consultant as any).vacation_mode === 1 ? 0 : 1;
+          currentVacation = (consultant as any).vacation_mode === 1;
+        }
+        return { 
+          success: true, 
+          message: 'Thay đổi trạng thái Tạm ngưng thành công (Demo)', 
+          vacation_mode: currentVacation ? 1 : 0 
+        };
+      }
+
+    case 'update_consultant_self_profile':
+      {
+        const userStr = localStorage.getItem('domation_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        const currentSaleId = user?.role === 'sale' ? user?.consultant_id || user?.id : null;
+        if (currentSaleId) {
+          const consultant = MOCK_DB.consultants.find(c => c.id === currentSaleId);
+          if (consultant) {
+            consultant.name = payload?.name || consultant.name;
+            (consultant as any).avatar = payload?.avatar || (consultant as any).avatar;
+            (consultant as any).work_start_time = payload?.work_start_time || '08:00';
+            (consultant as any).work_end_time = payload?.work_end_time || '17:30';
+            (consultant as any).work_schedule = payload?.work_schedule ? JSON.parse(payload.work_schedule) : (consultant as any).work_schedule;
+            
+            user.name = consultant.name;
+            localStorage.setItem('domation_user', JSON.stringify(user));
+          }
+        }
+        return { success: true, message: 'Cập nhật thông tin cá nhân thành công (Demo)' };
+      }
+
+    case 'get_calendar_stats':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const year = params.get('year') || String(new Date().getFullYear());
+        const month = params.get('month') || String(new Date().getMonth() + 1);
+        const consultantParam = params.get('consultant') || 'all';
+
+        const stats: Record<string, any> = {};
+
+        MOCK_DB.logs.forEach(l => {
+          const date = new Date(l.created_at);
+          if (date.getFullYear() === Number(year) && (date.getMonth() + 1) === Number(month)) {
+            const dateStr = date.toISOString().split('T')[0];
+            
+            if (consultantParam !== 'all' && l.assigned_to_name !== consultantParam) {
+              return;
+            }
+
+            if (!stats[dateStr]) {
+              stats[dateStr] = { distributed: 0, blacklist: 0, reminder: 0, error: 0, total: 0, ticket_total: 0, ticket_approved: 0 };
+            }
+
+            stats[dateStr].total += 1;
+            if (l.status === 'assigned' || l.status === 'compensation') {
+              stats[dateStr].distributed += 1;
+            } else if (l.status === 'reminder') {
+              stats[dateStr].reminder += 1;
+            } else if (l.status === 'error') {
+              stats[dateStr].error += 1;
+            }
+          }
+        });
+
+        MOCK_DB.tickets.forEach(t => {
+          const date = new Date(t.created_at);
+          if (date.getFullYear() === Number(year) && (date.getMonth() + 1) === Number(month)) {
+            const dateStr = date.toISOString().split('T')[0];
+
+            if (consultantParam !== 'all' && t.consultant_name !== consultantParam) {
+              return;
+            }
+
+            if (!stats[dateStr]) {
+              stats[dateStr] = { distributed: 0, blacklist: 0, reminder: 0, error: 0, total: 0, ticket_total: 0, ticket_approved: 0 };
+            }
+
+            stats[dateStr].ticket_total += 1;
+            if (t.status === 'approved') {
+              stats[dateStr].ticket_approved += 1;
+            }
+          }
+        });
+
+        return { success: true, data: stats };
+      }
+
+    case 'get_calendar_day_details':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const dateStr = params.get('date') || '';
+        const consultantParam = params.get('consultant') || 'all';
+
+        const dayLogs = MOCK_DB.logs.filter(l => l.created_at.split('T')[0] === dateStr);
+        const dayTickets = MOCK_DB.tickets.filter(t => t.created_at.split('T')[0] === dateStr);
+
+        const salesSummary: Record<string, { sale_name: string, sale_avatar: string | null, round_name: string, status: string, count: number }> = {};
+        dayLogs.forEach(l => {
+          if (consultantParam !== 'all' && l.assigned_to_name !== consultantParam) return;
+          if (l.status === 'silent' || l.status === 'error' || l.status === 'blacklisted') return;
+
+          const key = `${l.assigned_to_name}_${l.round_name}_${l.status}`;
+          if (!salesSummary[key]) {
+            salesSummary[key] = {
+              sale_name: l.assigned_to_name,
+              sale_avatar: null,
+              round_name: l.round_name,
+              status: l.status,
+              count: 0
+            };
+          }
+          salesSummary[key].count += 1;
+        });
+
+        const tickets = dayTickets
+          .filter(t => consultantParam === 'all' || t.consultant_name === consultantParam)
+          .map(t => ({
+            id: t.id,
+            lead_name: t.lead_name,
+            phone: '09*******',
+            sale_name: t.consultant_name,
+            sale_avatar: null,
+            reason: t.reason,
+            status: t.status,
+            created_at: t.created_at,
+            ai_screener_status: 'passed'
+          }));
+
+        const blacklistLogs = dayLogs
+          .filter(l => ['blacklisted', 'error', 'no_consultant', 'reminder', 'duplicate'].includes(l.status))
+          .filter(l => consultantParam === 'all' || l.assigned_to_name === consultantParam)
+          .map(l => ({
+            id: l.id,
+            lead_name: l.lead_name,
+            phone: l.phone,
+            email: l.email,
+            status: l.status,
+            message: l.note,
+            received_at: l.created_at,
+            ai_screener_status: l.status === 'blacklisted' ? 'failed' : 'passed'
+          }));
+
+        return {
+          success: true,
+          data: {
+            sales: Object.values(salesSummary),
+            tickets,
+            blacklist_logs: blacklistLogs
           }
         };
       }

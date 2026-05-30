@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import {
-  LogOut, Search, Filter, AlertCircle, CheckCircle2,
+  LogOut, LogIn, Search, Filter, AlertCircle, CheckCircle2,
   XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
@@ -141,8 +141,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           clipPath: clipPath,
         },
         {
-          duration: 50000,
-          easing: 'linear',
+          duration: 600,
+          easing: 'ease-in-out',
           pseudoElement: '::view-transition-new(root)',
         }
       );
@@ -337,6 +337,22 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     setGoogleLoading(true);
     setGoogleError('');
     setIsAdminMsg('');
+
+    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      login('demo_token_sale_1', {
+        username: 'haidang',
+        email: 'haidang@domation.net',
+        name: 'Hải Đăng',
+        role: 'sale',
+        consultant_id: 1,
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+      });
+      toast.success(t('Chào mừng Hải Đăng quay trở lại!'));
+      setGoogleLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('https://open.domation.net/sale_data/api.php?action=login_google_sale', {
         method: 'POST',
@@ -906,6 +922,47 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
                 <div ref={googleBtnRef} style={{ minHeight: 44 }}></div>
  
+                {localStorage.getItem('DOMATION_DEMO_MODE') === 'true' && (
+                  <button
+                    onClick={() => {
+                      setGoogleLoading(true);
+                      setTimeout(() => {
+                        login('demo_token_sale_1', {
+                          username: 'haidang',
+                          email: 'haidang@domation.net',
+                          name: 'Hải Đăng',
+                          role: 'sale',
+                          consultant_id: 1,
+                          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+                        });
+                        toast.success(t('Chào mừng Hải Đăng quay trở lại!'));
+                        setGoogleLoading(false);
+                      }, 500);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 24px',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                      transition: 'all 0.2s',
+                      width: 300,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
+                    onMouseOut={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                  >
+                    <LogIn size={16} /> {t('Đăng nhập Demo (Tư vấn viên)')}
+                  </button>
+                )}
+
                 {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>{t('Đang kết nối Google API...')}</div>}
  
                 {googleError && (
@@ -2588,7 +2645,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     {t('TRẠNG THÁI NHẬN DATA')}
                   </h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
-                    {t('Khi kích hoạt, hệ thống sẽ tự động phân bổ khách hàng mới cho bạn theo vòng chia.')}
+                    {t('Khi kích hoạt: Nhận khách hàng mới theo vòng chia. Khi tắt (Nghỉ/Tạm ngưng): Dừng nhận khách hàng mới, nhưng khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc.')}
                   </p>
                 </div>
 
@@ -3412,7 +3469,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               <div>
                 <h4 style={{ fontWeight: 800, margin: 0, fontSize: '0.95rem' }}>{t('Bạn có chắc chắn muốn TẠM NGƯNG nhận data mới?')}</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
-                  {t('Hệ thống sẽ dừng phân bổ khách hàng mới cho bạn. Thông báo tạm ngưng này sẽ được gửi trực tiếp đến Zalo của Ban quản trị (Admin).')}
+                  {t('Hệ thống sẽ tạm ngưng phân bổ khách hàng mới cho bạn. Khách hàng cũ của bạn đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc bình thường. Thông báo tạm ngưng này sẽ được gửi trực tiếp đến Zalo của Ban quản trị (Admin).')}
                 </p>
               </div>
             </div>
