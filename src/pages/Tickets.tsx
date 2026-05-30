@@ -780,7 +780,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   ] as const;
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+    <div>
       {/* ── Header ── */}
       <div className="page-header">
         <div>
@@ -1637,9 +1637,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       >
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'transparent' }}>
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
-              <div>
+              <div style={{ position: 'sticky', top: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} />
@@ -2529,7 +2529,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               </div>
 
               {/* Cột Phải: Phân bổ */}
-              <div>
+              <div style={{ position: 'sticky', top: 0 }}>
                 {/* AI Screener Evaluation Details */}
                 {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && selectedLead.ai_screener_status !== 'passed' && (
                   <div style={{

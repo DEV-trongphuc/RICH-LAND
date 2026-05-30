@@ -1011,7 +1011,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   }
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease-out', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', minHeight: 0 }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: '1.25rem', flexShrink: 0 }}>
         <div>
@@ -1757,9 +1757,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       >
         {selectedLead && (
           <div style={{ padding: '1.5rem', background: 'transparent' }}>
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
-              <div>
+              <div style={{ position: 'sticky', top: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} />
@@ -2633,7 +2633,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               </div>
 
               {/* Cột Phải: Phân bổ */}
-              <div>
+              <div style={{ position: 'sticky', top: 0 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t('Thông tin Phân bổ')}</h3>
 
                 {/* Đánh giá AI - Nằm bên trên người tiếp nhận */}
@@ -4143,11 +4143,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           transform: translateY(-2px);
         }
         .fade-in-view {
-          animation: fadeInView 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        @keyframes fadeInView {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
+          opacity: 1;
         }
         .calendar-day-cell div > div {
           transition: all 0.15s ease-in-out;
