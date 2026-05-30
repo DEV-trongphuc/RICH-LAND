@@ -1225,6 +1225,84 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     </div>
                   )}
 
+                  {/* Visual Breakdown explanation */}
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: 12,
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Tổng data hệ thống tiếp nhận cho TVV này:')} <strong style={{ fontSize: '1.05rem', color: 'var(--color-text)' }}>{statsData.summary.total}</strong> lead
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                        * {t('Các nhóm độc lập hoàn toàn, không cộng dồn/chồng chéo')}
+                      </span>
+                    </div>
+
+                    {/* Stacked Percentage Bar */}
+                    <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
+                      {statsData.summary.successful > 0 && (
+                        <div 
+                          style={{ 
+                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`, 
+                            background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
+                            transition: 'width 0.3s ease'
+                          }} 
+                          title={`${t('Thành công')}: ${statsData.summary.successful}`} 
+                        />
+                      )}
+                      {(statsData.summary.reminder || 0) > 0 && (
+                        <div 
+                          style={{ 
+                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                            background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
+                            transition: 'width 0.3s ease'
+                          }} 
+                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`} 
+                        />
+                      )}
+                      {(statsData.summary.error || 0) > 0 && (
+                        <div 
+                          style={{ 
+                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                            background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
+                            transition: 'width 0.3s ease'
+                          }} 
+                          title={`${t('Lỗi')}: ${statsData.summary.error}`} 
+                        />
+                      )}
+                    </div>
+
+                    {/* Legend explaining the numbers */}
+                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
+                        <span style={{ color: 'var(--color-text-muted)' }}>
+                          {t('Thành công (Bàn giao thực tế)')}: <strong style={{ color: 'var(--color-primary)' }}>{statsData.summary.successful}</strong> ({statsData.summary.total > 0 ? Math.round((statsData.summary.successful / statsData.summary.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--color-warning)' }} />
+                        <span style={{ color: 'var(--color-text-muted)' }}>
+                          {t('Nhắc lại (Khách cũ gọi lại)')}: <strong style={{ color: 'var(--color-warning)' }}>{statsData.summary.reminder || 0}</strong> ({statsData.summary.total > 0 ? Math.round(((statsData.summary.reminder || 0) / statsData.summary.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--color-danger)' }} />
+                        <span style={{ color: 'var(--color-text-muted)' }}>
+                          {t('Lỗi / Trùng (Đã lọc bỏ)')}: <strong style={{ color: 'var(--color-danger)' }}>{statsData.summary.error || 0}</strong> ({statsData.summary.total > 0 ? Math.round(((statsData.summary.error || 0) / statsData.summary.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
@@ -1232,7 +1310,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
                         {statsData.summary.successful}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Data đã bàn giao')}</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Data gán mới thành công')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>{t('(Không bao gồm Nhắc lại & Lỗi)')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
@@ -1241,6 +1320,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         {statsData.summary.reminder || 0}
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Yêu cầu gọi lại')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-warning)', fontWeight: 600, marginTop: 2 }}>{t('(Tính riêng biệt, không cộng dồn)')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
@@ -1249,6 +1329,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         {statsData.summary.error || 0}
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Trùng lặp / Lỗi chia')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>{t('(Đã loại bỏ khỏi Thành công)')}</div>
                     </div>
 
                     <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>

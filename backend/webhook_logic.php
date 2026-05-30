@@ -1912,6 +1912,71 @@ function triggerTwoWaySync($conn, $leadId)
     return false;
 }
 
+if (!function_exists('cleanLeadNoteForAI')) {
+    function cleanLeadNoteForAI($note) {
+        if (empty($note)) {
+            return '';
+        }
+
+        // List of noisy and technical fields to discard
+        $blacklist = [
+            'ip', 'ipaddress', 'ip_address', 'useragent', 'user_agent', 'browser', 'device', 'platform', 'os', 
+            'fbclid', 'gclid', 'dclid', 'msclkid', 'clickid', 'click_id', 'affiliateid', 'affiliate_id', 'affid',
+            'utmsource', 'utmmedium', 'utmcampaign', 'utmcontent', 'utmterm', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 
+            'createdat', 'created_at', 'updatedat', 'updated_at', 'id', 'connectionid', 'connection_id', 'leadid', 'lead_id', 'spreadsheetid', 'spreadsheet_id',
+            'token', 'webhooktoken', 'webhook_token', 'sec', 'key', 'apikey', 'api_key', 'apikeysecret', 'api_key_secret', 'secret',
+            'phone', 'sdt', 'sodienthoai', 'email', 'mail', 'name', 'hoten', 'ten', 'tenkhachhang'
+        ];
+
+        $lines = explode("\n", $note);
+        $cleanedLines = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            if (strpos($line, ':') !== false) {
+                list($key, $val) = explode(':', $line, 2);
+                
+                // Normalize key (strip spaces, strip accents, lowercase)
+                $keyClean = str_replace(' ', '', strtolower(trim($key)));
+                $keyClean = preg_replace('/[àáạảãâầấậẩẫăằắặẳẵ]/u', 'a', $keyClean);
+                $keyClean = preg_replace('/[èéẹẻẽêềếệểễ]/u', 'e', $keyClean);
+                $keyClean = preg_replace('/[ìíịỉĩ]/u', 'i', $keyClean);
+                $keyClean = preg_replace('/[òóọỏõôồốộổỗơờớợởỡ]/u', 'o', $keyClean);
+                $keyClean = preg_replace('/[ùúụủũưừứựửữ]/u', 'u', $keyClean);
+                $keyClean = preg_replace('/[ỳýỵỷỹ]/u', 'y', $keyClean);
+                $keyClean = preg_replace('/[đ]/u', 'd', $keyClean);
+                
+                // Skip if key is on the blacklist
+                if (in_array($keyClean, $blacklist)) {
+                    continue;
+                }
+
+                $valClean = trim($val);
+                if ($valClean === '') {
+                    continue;
+                }
+
+                // Mask any accidental sensitive data in the value
+                $valClean = preg_replace('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', '[ĐÃ ẨN EMAIL]', $valClean);
+                $valClean = preg_replace('/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', '[ĐÃ ẨN SĐT]', $valClean);
+
+                $cleanedLines[] = trim($key) . ': ' . $valClean;
+            } else {
+                // Free text - mask email & phone
+                $lineCleaned = preg_replace('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', '[ĐÃ ẨN EMAIL]', $line);
+                $lineCleaned = preg_replace('/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', '[ĐÃ ẨN SĐT]', $lineCleaned);
+                $cleanedLines[] = $lineCleaned;
+            }
+        }
+
+        return implode("\n", $cleanedLines);
+    }
+}
+
 function runAIScreener($conn, $leadData, $customRules = null)
 {
     // 1. Check if AI screener is enabled
@@ -1929,12 +1994,15 @@ function runAIScreener($conn, $leadData, $customRules = null)
 
     $aiRules = $customRules !== null ? $customRules : get_system_setting($conn, 'ai_screener_rules');
 
+    // Clean and sanitize note data to send only relevant fields to the AI model
+    $cleanedNote = cleanLeadNoteForAI($leadData['note'] ?? '');
+
     // 2. Format details and prompt
     $prompt = "Bạn là Trợ lý AI có nhiệm vụ đánh giá dữ liệu khách hàng (lead) dựa trên các thông tin quy tắc.\n\n"
         . "THÔNG TIN KHÁCH HÀNG:\n"
         . "Nguồn: " . ($leadData['source'] ?? '') . "\n"
         . "Loại data: " . ($leadData['type'] ?? '') . "\n"
-        . "Ghi chú: " . ($leadData['note'] ?? '') . "\n\n"
+        . "Ghi chú:\n" . $cleanedNote . "\n\n"
         . "QUY TẮC ĐÁNH GIÁ DUY NHẤT PASSED HOẶC FAILED BÁM SÁT THEO:\n" . $aiRules . "\n\n"
         . "Nếu dữ liệu nghi ngờ spam, rác, phá hoặc không có thông tin đủ đánh giá hoặc không rõ ràng thì cứ trả về failed.\n\n"
         . "Trả về định dạng JSON duy nhất gồm 2 trường:\n"
