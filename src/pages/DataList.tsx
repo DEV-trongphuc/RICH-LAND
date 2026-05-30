@@ -216,7 +216,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
     return {
       avatar: "https://crm-domation.vercel.app/LOGO.jpg",
       title: "Domation AI",
-      badgeText: t("Đạt tiêu chuẩn"),
+      badgeText: t("Đạt chuẩn"),
       badgeBg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       badgeColor: '#ffffff',
       content: selectedLead.ai_evaluation,
