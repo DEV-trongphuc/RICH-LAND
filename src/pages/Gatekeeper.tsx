@@ -1726,18 +1726,17 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <Filter size={16} />
           </button>
 
-          {/* Reload Button */}
+          {/* AI Token Stats Button */}
           <button
-            onClick={fetchHeldLeads}
-            disabled={heldLeadsLoading}
-            title={t("Làm mới")}
+            onClick={() => setIsTokenStatsModalOpen(true)}
+            title={t("Thống kê token AI")}
             style={{
               padding: 0,
               borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text-muted)',
-              cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
+              border: '1px solid var(--color-primary)',
+              background: 'rgba(168, 85, 247, 0.08)',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1746,7 +1745,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               flexShrink: 0
             }}
           >
-            <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
+            <Sparkles size={16} />
           </button>
 
           {/* Stats Button */}
@@ -1970,28 +1969,6 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             </div>
 
             {/* Desktop filter buttons */}
-            <button
-              onClick={fetchHeldLeads}
-              disabled={heldLeadsLoading}
-              title={t("Làm mới")}
-              className="btn outline hide-on-mobile"
-              style={{
-                padding: 0,
-                borderRadius: 'var(--radius-lg)',
-                borderColor: 'var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text-muted)',
-                cursor: heldLeadsLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 44,
-                height: 44,
-                flexShrink: 0
-              }}
-            >
-              <RefreshCw size={15} style={{ animation: heldLeadsLoading ? 'spin 1s linear infinite' : 'none' }} />
-            </button>
 
             <button
               onClick={() => setIsTokenStatsModalOpen(true)}
@@ -4005,7 +3982,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Filter size={16} color="var(--color-primary)" />
               <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
-                {t('Đang áp dụng bộ lọc thời gian:')}
+                {t('Thời gian:')}
               </span>
               <span style={{
                 background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
@@ -4054,31 +4031,31 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 return (
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '16px'
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
                   }}>
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lead đã gọi AI')}</div>
-                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '8px' }}>{stats.total_leads.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Số khách hàng được AI đánh giá')}</div>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lead đã gọi AI')}</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>{stats.total_leads.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Số khách hàng được AI đánh giá')}</div>
                     </div>
 
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Prompt Tokens')}</div>
-                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#3b82f6', marginTop: '8px' }}>{stats.prompt_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Token đầu vào gửi tới AI')}</div>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Prompt Tokens')}</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#3b82f6', marginTop: '4px' }}>{stats.prompt_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token đầu vào gửi tới AI')}</div>
                     </div>
 
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Completion Tokens')}</div>
-                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{stats.completion_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Token phản hồi của AI')}</div>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Completion Tokens')}</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>{stats.completion_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token phản hồi của AI')}</div>
                     </div>
 
-                    <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
-                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '8px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '6px', background: 'rgba(168, 85, 247, 0.1)', padding: '4px 8px', borderRadius: '6px' }}>
+                    <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px', background: 'rgba(168, 85, 247, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
                         <span>~${costUsd.toFixed(4)}</span>
                         <span>~{Math.round(costVnd).toLocaleString('vi-VN')}đ</span>
                       </div>
