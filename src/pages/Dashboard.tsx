@@ -37,6 +37,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiScreenerEnabled, setAiScreenerEnabled] = useState<boolean>(() => {
+    const cached = localStorage.getItem('ai_screener_enabled');
+    return cached === null ? true : cached === '1';
+  });
   const [dateFilter, setDateFilter] = useState('Tháng này');
   const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
@@ -134,8 +138,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
       if (signal?.aborted) return;
 
-      if (statsJson.success) setStats(statsJson.data);
-      else console.error('Lỗi tải thống kê:', statsJson.message);
+      if (statsJson.success) {
+        setStats(statsJson.data);
+        const isEnabled = statsJson.data.ai_screener_enabled === 1 || statsJson.data.ai_screener_enabled === '1' || statsJson.data.ai_screener_enabled === true;
+        setAiScreenerEnabled(isEnabled);
+        localStorage.setItem('ai_screener_enabled', isEnabled ? '1' : '0');
+      } else {
+        console.error('Lỗi tải thống kê:', statsJson.message);
+      }
 
       if (logsJson.success) {
         const nonSilentLogs = logsJson.data.filter((log: any) => log.status !== 'silent');
@@ -349,14 +359,38 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const aiFailedPercent = aiTotal > 0 ? 100 - aiPassedPercent : 0;
 
   return (
-    <div style={{ animation: 'slideUp 0.3s ease-out', position: 'relative' }}>
+    <div style={{ position: 'relative' }}>
       {/* Background loading bar indicator */}
       {loading && stats && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 9999, overflow: 'hidden' }}>
+        <div className="page-loading-bar">
           <div style={{ width: '30%', height: '100%', background: 'var(--color-primary)', borderRadius: 'inherit', animation: 'loadingBar 1.5s infinite ease-in-out' }} />
         </div>
       )}
       <style>{`
+        .page-loading-bar {
+          position: absolute;
+          top: -2rem;
+          left: -3rem;
+          right: -3rem;
+          height: 3px;
+          background: var(--color-primary-light);
+          z-index: 9999;
+          overflow: hidden;
+        }
+        @media (max-width: 1024px) {
+          .page-loading-bar {
+            top: -1.5rem;
+            left: -1.5rem;
+            right: -1.5rem;
+          }
+        }
+        @media (max-width: 768px) {
+          .page-loading-bar {
+            top: -1rem;
+            left: -1rem;
+            right: -1rem;
+          }
+        }
         @keyframes loadingBar {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(330%); }
@@ -385,7 +419,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       `}</style>
 
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>{t("Tổng quan Phân bổ Data")}</h1>
           <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
@@ -432,102 +466,160 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       </div>
       {/* AI Pre-screener evaluation strip */}
-      {!loading && stats && (stats.ai_screener_enabled === 1 || stats.ai_screener_enabled === '1' || stats.ai_screener_enabled === true) && (
-        <div
-          className="card hover-lift"
-          onClick={() => navigate('/gatekeeper')}
-          style={{
-            padding: '1rem 1.5rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-            animation: 'fadeIn 0.3s ease-out',
-            background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
-            border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
-            cursor: 'pointer'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img
-                src="https://crm-domation.vercel.app/LOGO.jpg"
-                alt="DOMATION AI Logo"
-                style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
-              />
-              <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {t('Đánh giá chất lượng từ AI Pre-screener')}
-              </span>
+      {aiScreenerEnabled && (
+        loading && !stats ? (
+          <div
+            className="card"
+            style={{
+              padding: '1rem 1.5rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
+              border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
+              height: '94px',
+              boxSizing: 'border-box',
+              animation: 'slideUp 0.4s ease-out both',
+              animationDelay: '120ms'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Skeleton width="20px" height="20px" borderRadius="4px" />
+                <Skeleton width="220px" height="16px" borderRadius="4px" />
+              </div>
+              <Skeleton width="120px" height="14px" borderRadius="4px" />
             </div>
-            {aiTotal > 0 && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                {t('Tổng số đánh giá:')} <strong style={{ color: 'var(--color-text)' }}>{aiTotal}</strong>
-              </span>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+              <Skeleton width="100%" height="10px" borderRadius="999px" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Skeleton width="160px" height="12px" borderRadius="4px" />
+                <Skeleton width="140px" height="12px" borderRadius="4px" />
+              </div>
+            </div>
           </div>
-
-          {aiTotal > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {/* Progress bar */}
-              <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
-                <div
-                  style={{
-                    width: `${aiPassedPercent}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
-                />
-                <div
-                  style={{
-                    width: `${aiFailedPercent}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
-                />
-              </div>
-
-              {/* Labels/Stats detail */}
-              <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
-                  <span>
-                    {t('Đạt chuẩn (Passed):')} <strong>{aiPassedPercent}%</strong> ({aiPassed} lead)
+        ) : (
+          stats && (stats.ai_screener_enabled === 1 || stats.ai_screener_enabled === '1' || stats.ai_screener_enabled === true) && (
+            <div
+              className="card hover-lift"
+              onClick={() => navigate('/gatekeeper')}
+              style={{
+                padding: '1rem 1.5rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                animation: 'slideUp 0.4s ease-out both',
+                animationDelay: '120ms',
+                background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
+                border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
+                cursor: 'pointer',
+                height: '94px',
+                boxSizing: 'border-box',
+                opacity: loading ? 0.7 : 1,
+                transition: 'opacity 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img
+                    src="https://crm-domation.vercel.app/LOGO.jpg"
+                    alt="DOMATION AI Logo"
+                    style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {t('Đánh giá chất lượng từ AI Pre-screener')}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                  <span>
-                    {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                {aiTotal > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    {t('Tổng số đánh giá:')} <strong style={{ color: 'var(--color-text)' }}>{aiTotal}</strong>
+                  </span>
+                )}
+              </div>
+
+              {aiTotal > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {/* Progress bar */}
+                  <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
+                    <div
+                      style={{
+                        width: `${aiPassedPercent}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
+                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                      title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
+                    />
+                    <div
+                      style={{
+                        width: `${aiFailedPercent}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
+                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                      title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
+                    />
+                  </div>
+
+                  {/* Labels/Stats detail */}
+                  <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
+                      <span>
+                        {t('Đạt chuẩn (Passed):')} <strong>{aiPassedPercent}%</strong> ({aiPassed} lead)
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                      <span>
+                        {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-text-muted)', opacity: 0.5 }} />
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                    {t('Không có dữ liệu đánh giá từ AI Pre-screener trong khoảng thời gian này.')}
                   </span>
                 </div>
-              </div>
+              )}
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-text-muted)', opacity: 0.5 }} />
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                {t('Không có dữ liệu đánh giá từ AI Pre-screener trong khoảng thời gian này.')}
-              </span>
-            </div>
-          )}
-        </div>
+          )
+        )
       )}
 
       {/* KPI Cards */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {loading && !stats ? (
-          Array.from({ length: 4 }).map((_, i) => <KpiCardSkeleton key={i} />)
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                animation: 'slideUp 0.4s ease-out both',
+                animationDelay: `${180 + i * 50}ms`
+              }}
+            >
+              <KpiCardSkeleton />
+            </div>
+          ))
         ) : kpiCards.map((card, i) => {
           const Icon = card.icon;
           return (
             <div
               key={i}
               className="stat-card hover-lift"
-              style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+              style={{
+                minHeight: '140px',
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                animation: 'slideUp 0.4s ease-out both',
+                animationDelay: `${180 + i * 50}ms`
+              }}
               onClick={() => navigate(`/data?status=${card.statusValue}&date=${encodeURIComponent(dateFilter)}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -620,12 +712,12 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       {/* Chart + List row */}
       {loading && !stats ? (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem' }}>
+          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '400ms' }}>
             <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
             <Skeleton width={300} height={11} style={{ marginBottom: 24 }} />
             <Skeleton width="100%" height={260} borderRadius={12} />
           </div>
-          <div className="card" style={{ padding: '1.25rem' }}>
+          <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '450ms' }}>
             <Skeleton width={180} height={16} style={{ marginBottom: 20 }} />
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
@@ -641,7 +733,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       ) : (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '400ms' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px' }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
@@ -721,7 +813,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             )}
           </div>
 
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '450ms' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('Lịch sử giao Data gần đây')}</h3>
               <span

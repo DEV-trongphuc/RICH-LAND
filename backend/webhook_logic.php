@@ -334,7 +334,7 @@ function findConsultantByEmailOrName($conn, $value)
     return null;
 }
 
-function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInactive = false)
+function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInactive = false, $excludeLeadId = null)
 {
     if (empty($phone) && empty($email)) {
         return [
@@ -393,49 +393,96 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     static $stmtPhone = null;
     static $stmtEmail = null;
     static $stmtBoth = null;
+    static $stmtPhoneEx = null;
+    static $stmtEmailEx = null;
+    static $stmtBothEx = null;
     if ($lastConn !== $conn) {
         $stmtPhone = null;
         $stmtEmail = null;
         $stmtBoth = null;
+        $stmtPhoneEx = null;
+        $stmtEmailEx = null;
+        $stmtBothEx = null;
         $lastConn = $conn;
     }
 
     $isDynamic = true;
+    $excludeLeadId = ($excludeLeadId && $excludeLeadId > 0) ? (int)$excludeLeadId : null;
+
     if (count($phones) === 1 && count($emails) === 0) {
-        if ($stmtPhone === null) {
-            $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
-                                         FROM leads l 
-                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
-                                         WHERE l.phone = ? 
-                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        if ($excludeLeadId) {
+            if ($stmtPhoneEx === null) {
+                $stmtPhoneEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE l.phone = ? AND l.id != ?
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtPhoneEx;
+            $types = 'si';
+            $params = [$phones[0], $excludeLeadId];
+        } else {
+            if ($stmtPhone === null) {
+                $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE l.phone = ? 
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtPhone;
+            $types = 's';
+            $params = [$phones[0]];
         }
-        $stmt = $stmtPhone;
-        $types = 's';
-        $params = [$phones[0]];
         $isDynamic = false;
     } else if (count($phones) === 0 && count($emails) === 1) {
-        if ($stmtEmail === null) {
-            $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
-                                         FROM leads l 
-                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
-                                         WHERE l.email = ? 
-                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        if ($excludeLeadId) {
+            if ($stmtEmailEx === null) {
+                $stmtEmailEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE l.email = ? AND l.id != ?
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtEmailEx;
+            $types = 'si';
+            $params = [$emails[0], $excludeLeadId];
+        } else {
+            if ($stmtEmail === null) {
+                $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE l.email = ? 
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtEmail;
+            $types = 's';
+            $params = [$emails[0]];
         }
-        $stmt = $stmtEmail;
-        $types = 's';
-        $params = [$emails[0]];
         $isDynamic = false;
     } else if (count($phones) === 1 && count($emails) === 1) {
-        if ($stmtBoth === null) {
-            $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
-                                         FROM leads l 
-                                         LEFT JOIN consultants c ON l.assigned_to = c.id 
-                                         WHERE l.phone = ? OR l.email = ? 
-                                         ORDER BY l.last_interaction_date DESC LIMIT 1");
+        if ($excludeLeadId) {
+            if ($stmtBothEx === null) {
+                $stmtBothEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE (l.phone = ? OR l.email = ?) AND l.id != ?
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtBothEx;
+            $types = 'ssi';
+            $params = [$phones[0], $emails[0], $excludeLeadId];
+        } else {
+            if ($stmtBoth === null) {
+                $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                             FROM leads l 
+                                             LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                             WHERE l.phone = ? OR l.email = ? 
+                                             ORDER BY l.last_interaction_date DESC LIMIT 1");
+            }
+            $stmt = $stmtBoth;
+            $types = 'ss';
+            $params = [$phones[0], $emails[0]];
         }
-        $stmt = $stmtBoth;
-        $types = 'ss';
-        $params = [$phones[0], $emails[0]];
         $isDynamic = false;
     } else {
         foreach ($phones as $p) {
@@ -449,11 +496,21 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $types .= 's';
         }
         $whereClause = implode(" OR ", $where);
-        $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
-                                FROM leads l 
-                                LEFT JOIN consultants c ON l.assigned_to = c.id 
-                                WHERE $whereClause 
-                                ORDER BY l.last_interaction_date DESC LIMIT 1");
+        if ($excludeLeadId) {
+            $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                    FROM leads l 
+                                    LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                    WHERE ($whereClause) AND l.id != ?
+                                    ORDER BY l.last_interaction_date DESC LIMIT 1");
+            $params[] = $excludeLeadId;
+            $types .= 'i';
+        } else {
+            $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                                    FROM leads l 
+                                    LEFT JOIN consultants c ON l.assigned_to = c.id 
+                                    WHERE $whereClause 
+                                    ORDER BY l.last_interaction_date DESC LIMIT 1");
+        }
         $isDynamic = true;
     }
 

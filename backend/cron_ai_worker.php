@@ -244,7 +244,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
     // --- Check CRM (Duplication & dynamic threshold rule) ---
     $phone = $leadData['phone'] ?? '';
     $email = $leadData['email'] ?? '';
-    $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+    $crmCheckResult = checkCRMInteraction($conn, $phone, $email, false, $leadId);
 
     // Load dynamic duplicate check threshold
     $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');

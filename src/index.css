@@ -1116,6 +1116,8 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 50;
 }
 
 .page-title {
@@ -1291,16 +1293,22 @@ select:focus {
 }
 
 @keyframes slideUp {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(20px);
   }
-
-  to {
+  60% {
+    transform: translateY(-4px);
+  }
+  85% {
+    transform: translateY(1px);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 
 @keyframes pulse {
 
@@ -1320,6 +1328,32 @@ select:focus {
 
 .animate-slide {
   animation: slideUp 0.3s ease;
+}
+
+/* Staggered entry for all table rows globally */
+tbody tr {
+  animation: slideUp 0.45s ease-out both;
+}
+tbody tr:nth-child(1) { animation-delay: 30ms; }
+tbody tr:nth-child(2) { animation-delay: 60ms; }
+tbody tr:nth-child(3) { animation-delay: 90ms; }
+tbody tr:nth-child(4) { animation-delay: 120ms; }
+tbody tr:nth-child(5) { animation-delay: 150ms; }
+tbody tr:nth-child(6) { animation-delay: 180ms; }
+tbody tr:nth-child(7) { animation-delay: 210ms; }
+tbody tr:nth-child(8) { animation-delay: 240ms; }
+tbody tr:nth-child(9) { animation-delay: 270ms; }
+tbody tr:nth-child(10) { animation-delay: 300ms; }
+tbody tr:nth-child(n+11) { animation-delay: 330ms; }
+
+/* Entry animation for all responsive grid items globally (simultaneous appearance) */
+.responsive-grid-4 > div,
+.responsive-grid-6-4 > div,
+.responsive-grid-2 > div,
+.responsive-grid-1-1 > div,
+.responsive-grid-auto-400 > div,
+.responsive-grid-5 > div {
+  animation: slideUp 0.45s ease-out both;
 }
 
 /* Skeleton */
@@ -2569,5 +2603,16 @@ th.col-check {
 }
 ::view-transition-new(root) {
   opacity: 1;
+}
+
+/* Hide scrollbars globally for all scrollable elements except main html/body */
+:not(html):not(body)::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+:not(html):not(body) {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE/Edge */
 }
 

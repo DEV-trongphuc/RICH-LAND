@@ -1017,8 +1017,20 @@ const ConsultantsInner = () => {
       {/* Inline style for modal animation */}
       <style>{`
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          0% {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          60% {
+            transform: translateY(-6px);
+          }
+          85% {
+            transform: translateY(2px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
 

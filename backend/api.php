@@ -6083,7 +6083,7 @@ switch ($action) {
             require_once __DIR__ . '/webhook_logic.php';
             $phone = $lead['phone'] ?? '';
             $email = $lead['email'] ?? '';
-            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+            $crmCheckResult = checkCRMInteraction($conn, $phone, $email, false, $lead_id);
 
             // Load dynamic duplicate check threshold
             $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');

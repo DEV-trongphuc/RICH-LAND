@@ -871,7 +871,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   };
 
   return (
-    <div style={{ animation: 'slideUp 0.3s ease-out', position: 'relative' }} className="fade-in-view">
+    <div style={{ position: 'relative' }} className="fade-in-view">
       {/* Background loading bar */}
       {loading && activeData && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--color-primary-light)', zIndex: 9999, overflow: 'hidden' }}>

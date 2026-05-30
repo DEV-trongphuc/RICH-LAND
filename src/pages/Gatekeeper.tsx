@@ -16,7 +16,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
-import { TableSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 type Lead = {
   id: number;
@@ -1601,87 +1601,121 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       </div>
 
       {/* AI Pre-screener evaluation strip */}
-      {dashboardStats && (
-        <div className="card" style={{
-          padding: '1rem 1.5rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          animation: 'fadeIn 0.3s ease-out',
-          background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
-          border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
-          opacity: dashboardStatsLoading ? 0.6 : 1,
-          transition: 'opacity 0.2s ease',
-          pointerEvents: dashboardStatsLoading ? 'none' : 'auto'
-        }}>
+      {dashboardStatsLoading && !dashboardStats ? (
+        <div
+          className="card"
+          style={{
+            padding: '1rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
+            border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
+            height: '94px',
+            boxSizing: 'border-box'
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img
-                src="https://crm-domation.vercel.app/LOGO.jpg"
-                alt="DOMATION AI Logo"
-                style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
-              />
-              <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {t('Đánh giá chất lượng từ AI Pre-screener')}
-              </span>
+              <Skeleton width="20px" height="20px" borderRadius="4px" />
+              <Skeleton width="220px" height="16px" borderRadius="4px" />
             </div>
-            {aiTotal > 0 && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                {t('Tổng số đánh giá:')} <strong style={{ color: 'var(--color-text)' }}>{aiTotal}</strong>
-              </span>
+            <Skeleton width="120px" height="14px" borderRadius="4px" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            <Skeleton width="100%" height="10px" borderRadius="999px" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Skeleton width="160px" height="12px" borderRadius="4px" />
+              <Skeleton width="140px" height="12px" borderRadius="4px" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        dashboardStats && (
+          <div className="card" style={{
+            padding: '1rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            animation: 'fadeIn 0.3s ease-out',
+            background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
+            border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
+            height: '94px',
+            boxSizing: 'border-box',
+            opacity: dashboardStatsLoading ? 0.6 : 1,
+            transition: 'opacity 0.2s ease',
+            pointerEvents: dashboardStatsLoading ? 'none' : 'auto'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img
+                  src="https://crm-domation.vercel.app/LOGO.jpg"
+                  alt="DOMATION AI Logo"
+                  style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {t('Đánh giá chất lượng từ AI Pre-screener')}
+                </span>
+              </div>
+              {aiTotal > 0 && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {t('Tổng số đánh giá:')} <strong style={{ color: 'var(--color-text)' }}>{aiTotal}</strong>
+                </span>
+              )}
+            </div>
+
+            {aiTotal > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {/* Progress bar */}
+                <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
+                  <div
+                    style={{
+                      width: `${aiPassedPercent}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
+                      transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}
+                    title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
+                  />
+                  <div
+                    style={{
+                      width: `${aiFailedPercent}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
+                      transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}
+                    title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
+                  />
+                </div>
+
+                {/* Labels/Stats detail */}
+                <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
+                    <span>
+                      {t('Đạt chuẩn (Passed):')} <strong>{aiPassedPercent}%</strong> ({aiPassed} lead)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                    <span>
+                      {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-text-muted)', opacity: 0.5 }} />
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                  {t('Không có dữ liệu đánh giá từ AI Pre-screener trong khoảng thời gian này.')}
+                </span>
+              </div>
             )}
           </div>
-
-          {aiTotal > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {/* Progress bar */}
-              <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '999px', display: 'flex', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}>
-                <div
-                  style={{
-                    width: `${aiPassedPercent}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
-                />
-                <div
-                  style={{
-                    width: `${aiFailedPercent}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, var(--color-warning) 100%)',
-                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                  title={`${t('Dưới chuẩn')}: ${aiFailedPercent}%`}
-                />
-              </div>
-
-              {/* Labels/Stats detail */}
-              <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
-                  <span>
-                    {t('Đạt chuẩn (Passed):')} <strong>{aiPassedPercent}%</strong> ({aiPassed} lead)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                  <span>
-                    {t('Dưới chuẩn:')} <strong>{aiFailedPercent}%</strong> ({aiFailed} lead)
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-text-muted)', opacity: 0.5 }} />
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                {t('Không có dữ liệu đánh giá từ AI Pre-screener trong khoảng thời gian này.')}
-              </span>
-            </div>
-          )}
-        </div>
+        )
       )}
 
       {/* Mobile control bar */}
