@@ -5,9 +5,14 @@ require_once __DIR__ . '/webhook_logic.php';
 
 function processSyncQueue($conn) {
     // Prevent duplicate execution using a file lock
-    $lockFile = __DIR__ . '/cron_queue_worker.lock';
+    $lockFile = sys_get_temp_dir() . '/cron_queue_worker_' . md5(__DIR__) . '.lock';
     $fp = @fopen($lockFile, 'c+');
-    if (!$fp || !@flock($fp, LOCK_EX | LOCK_NB)) {
+    if (!$fp) {
+        echo "[" . date('Y-m-d H:i:s') . "] LOCK ERROR: Lock file is not writable at: $lockFile. Please check folder permissions. Exiting.\n";
+        return;
+    }
+    if (!@flock($fp, LOCK_EX | LOCK_NB)) {
+        fclose($fp);
         return;
     }
 

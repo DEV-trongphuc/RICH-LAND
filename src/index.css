@@ -50,6 +50,16 @@
   -webkit-overflow-scrolling: touch !important; /* Premium momentum touch scrolling on mobile/tablet */
 }
 
+.sticky-column {
+  position: sticky;
+  top: 0;
+}
+
+.gatekeeper-detail-right {
+  border-left: 1px solid var(--color-border);
+  padding-left: 2rem;
+}
+
 @media (max-width: 768px) {
   .responsive-grid-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
   .stat-card { padding: 0.875rem !important; min-height: 100px !important; }
@@ -61,6 +71,16 @@
   .btn { padding: 0.4rem 0.75rem !important; font-size: 0.8125rem !important; height: 36px !important; }
   .btn svg { width: 14px !important; height: 14px !important; }
   .responsive-grid-1-1 { grid-template-columns: 1fr !important; }
+  .sticky-column {
+    position: relative !important;
+  }
+  .gatekeeper-detail-right {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px dashed var(--color-border) !important;
+    padding-top: 1.5rem !important;
+    margin-top: 1rem !important;
+  }
   .responsive-filter-row {
     flex-direction: column !important;
     align-items: stretch !important;

@@ -14,10 +14,15 @@ use PHPMailer\PHPMailer\Exception;
 set_time_limit(0);
 
 // --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
-$lockFile = __DIR__ . '/cron_mailer.lock';
+$lockFile = sys_get_temp_dir() . '/cron_mailer_' . md5(__DIR__) . '.lock';
 $lockFp = @fopen($lockFile, 'w');
-if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
-    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_mailer.php is already running or lock file is not writable. Exiting.\n";
+if (!$lockFp) {
+    echo "[" . date('Y-m-d H:i:s') . "] LOCK ERROR: Lock file is not writable at: $lockFile. Please check folder permissions. Exiting.\n";
+    exit(1);
+}
+if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+    echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_mailer.php is already running. Exiting.\n";
+    fclose($lockFp);
     exit(0);
 }
 // --- END PREVENT CONCURRENT EXECUTION ---

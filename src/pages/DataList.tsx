@@ -1759,7 +1759,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           <div style={{ padding: '1.5rem', background: 'transparent' }}>
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
-              <div style={{ position: 'sticky', top: 0 }}>
+              <div className="sticky-column">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} />
@@ -2633,7 +2633,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               </div>
 
               {/* Cột Phải: Phân bổ */}
-              <div style={{ position: 'sticky', top: 0 }}>
+              <div className="sticky-column">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t('Thông tin Phân bổ')}</h3>
 
                 {/* Đánh giá AI - Nằm bên trên người tiếp nhận */}

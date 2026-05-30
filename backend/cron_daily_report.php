@@ -8,11 +8,14 @@ set_time_limit(0);
 function runDailyReportCron($conn)
 {
     // --- PREVENT CONCURRENT EXECUTION ---
-    $lockFile = __DIR__ . '/cron_daily_report.lock';
+    $lockFile = sys_get_temp_dir() . '/cron_daily_report_' . md5(__DIR__) . '.lock';
     $lockFp = @fopen($lockFile, 'w');
-    if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
-        if ($lockFp)
-            fclose($lockFp);
+    if (!$lockFp) {
+        echo "[" . date('Y-m-d H:i:s') . "] LOCK ERROR: Lock file is not writable at: $lockFile. Please check folder permissions. Exiting.\n";
+        return;
+    }
+    if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+        fclose($lockFp);
         return; // Already running
     }
 

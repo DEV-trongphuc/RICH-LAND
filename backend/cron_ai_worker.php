@@ -7,10 +7,15 @@ require_once __DIR__ . '/webhook_logic.php';
 
 function runAIScreenerWorker($conn) {
     // Ngăn chặn chạy trùng lặp tiến trình bằng file lock
-    $lockFile = __DIR__ . '/cron_ai_worker.lock';
+    $lockFile = sys_get_temp_dir() . '/cron_ai_worker_' . md5(__DIR__) . '.lock';
     $fp = @fopen($lockFile, 'c+');
-    if (!$fp || !@flock($fp, LOCK_EX | LOCK_NB)) {
+    if (!$fp) {
+        echo "[" . date('Y-m-d H:i:s') . "] LOCK ERROR: Lock file is not writable at: $lockFile. Please check folder permissions. Exiting.\n";
+        return;
+    }
+    if (!@flock($fp, LOCK_EX | LOCK_NB)) {
         echo "[" . date('Y-m-d H:i:s') . "] Another instance of cron_ai_worker.php is already running. Exiting.\n";
+        fclose($fp);
         return;
     }
 

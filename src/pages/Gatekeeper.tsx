@@ -4705,7 +4705,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
 
               {/* Cột Trái: Chi Tiết */}
-              <div style={{ position: 'sticky', top: 0 }}>
+              <div className="sticky-column">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
@@ -5164,7 +5164,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               </div>
 
               {/* Cột Phải: Thao tác Duyệt nhanh hoặc Thông tin Phân bổ */}
-              <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2rem', position: 'sticky', top: 0 }}>
+              <div className="sticky-column gatekeeper-detail-right">
                 {activeTab === 'ai_pending' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px dashed var(--color-primary)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
                     <RefreshCw className="spin" size={32} style={{ color: 'var(--color-primary)' }} />

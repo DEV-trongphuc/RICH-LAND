@@ -8,15 +8,25 @@ require_once __DIR__ . '/db_connect.php';
 set_time_limit(0);
 
 // --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
-$lockFile = __DIR__ . '/cron_sync.lock';
+$lockFile = sys_get_temp_dir() . '/cron_sync_' . md5(__DIR__) . '.lock';
 $lockFp = @fopen($lockFile, 'w');
-if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
-    $lockMsg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running or lock file is not writable. Exiting.\n";
+if (!$lockFp) {
+    $lockMsg = "[" . date('Y-m-d H:i:s') . "] LOCK ERROR: Lock file is not writable at: $lockFile. Please check folder permissions. Exiting.\n";
+    if (php_sapi_name() === 'cli') {
+        echo $lockMsg;
+        exit(1);
+    } else {
+        throw new Exception("Lỗi hệ thống: Không thể ghi file khóa tại $lockFile. Vui lòng kiểm tra quyền thư mục tạm.");
+    }
+}
+if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+    $lockMsg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_sync.php is already running. Exiting.\n";
+    fclose($lockFp);
     if (php_sapi_name() === 'cli') {
         echo $lockMsg;
         exit(0);
     } else {
-        throw new Exception("Hệ thống đồng bộ đang bận (hoặc đang chạy ngầm hoặc file khóa không ghi được). Vui lòng thử lại sau.");
+        throw new Exception("Hệ thống đồng bộ đang bận (hoặc đang chạy ngầm). Vui lòng thử lại sau.");
     }
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
