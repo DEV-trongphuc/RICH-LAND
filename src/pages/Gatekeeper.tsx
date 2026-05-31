@@ -22,6 +22,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton, Skeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { detectCountryFromPhone } from '../utils/phoneHelper';
+import { NotificationPreviewModal } from '../components/ui/NotificationPreviewModal';
 
 type Lead = {
   id: number;
@@ -586,6 +587,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewType, setPreviewType] = useState<'email' | 'zalo'>('email');
+  const [previewSentAt, setPreviewSentAt] = useState<string>('');
 
   const fetchNotificationStatus = async (leadId: number) => {
     setNotifLoading(true);
@@ -5610,7 +5614,34 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           ) : notificationStatus ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                               {/* Email Status */}
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                              <div
+                                onClick={() => {
+                                  if (notificationStatus.email.status === 'sent') {
+                                    setPreviewType('email');
+                                    setPreviewSentAt(notificationStatus.email.sent_at || '');
+                                    setPreviewOpen(true);
+                                  }
+                                }}
+                                title={notificationStatus.email.status === 'sent' ? t('Bấm để xem mẫu email đã gửi') : undefined}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  fontSize: '0.78rem',
+                                  cursor: notificationStatus.email.status === 'sent' ? 'pointer' : 'default',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => {
+                                  if (notificationStatus.email.status === 'sent') {
+                                    e.currentTarget.style.backgroundColor = 'var(--color-border-light)';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
                                   <img
                                     src="/imgs/gmail-icon-free-png.webp"
@@ -5649,7 +5680,34 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               </div>
 
                               {/* Zalo Status */}
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                              <div
+                                onClick={() => {
+                                  if (notificationStatus.zalo.status === 'sent') {
+                                    setPreviewType('zalo');
+                                    setPreviewSentAt(notificationStatus.zalo.sent_at || '');
+                                    setPreviewOpen(true);
+                                  }
+                                }}
+                                title={notificationStatus.zalo.status === 'sent' ? t('Bấm để xem mẫu Zalo đã gửi') : undefined}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  fontSize: '0.78rem',
+                                  cursor: notificationStatus.zalo.status === 'sent' ? 'pointer' : 'default',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => {
+                                  if (notificationStatus.zalo.status === 'sent') {
+                                    e.currentTarget.style.backgroundColor = 'var(--color-border-light)';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
                                   <img
                                     src="https://stc-zpl.zdn.vn/favicon.ico"
@@ -6261,6 +6319,29 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           </div>
         )}
       </CustomModal>
+
+      {selectedLead && (
+        <NotificationPreviewModal
+          isOpen={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          type={previewType}
+          leadName={selectedLead.name}
+          leadPhone={user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+          leadEmail={user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+          leadSource={selectedLead.source || ''}
+          leadType={selectedLead.type || ''}
+          leadNote={selectedLead.note || ''}
+          assignedToName={selectedLead.assigned_to_name || ''}
+          sentAt={previewSentAt}
+          isReminder={selectedLead.status === 'reminder'}
+          leadId={selectedLead.lead_id || selectedLead.id}
+          assignedToId={consultants.find(c => c.name === selectedLead.assigned_to_name)?.id}
+          roundId={rounds.find(r => r.round_name === selectedLead.round_name)?.id}
+          roundName={selectedLead.round_name}
+          aiEvaluation={selectedLead.ai_evaluation}
+          aiStatus={selectedLead.ai_screener_status}
+        />
+      )}
 
       {statsModalOpen && statsConsultant && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)}>

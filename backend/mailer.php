@@ -697,21 +697,30 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
 
         ' . $aiBlock . '
 
-        <div style="text-align: center; margin-bottom: 20px;">
-        </div>
-
-        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1; padding-bottom: 24px; border-bottom: 1px dashed #cbd5e1;">
-            <p style="color: #64748b; font-size: 14px; margin-bottom: 12px;">Xem danh sách dữ liệu và báo cáo hiệu suất của bạn tại Trang Tư vấn viên:</p>
-            <a href="' . $portalUrl . '" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; padding: 9px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); margin-bottom: 8px;">
-                TRANG XEM DATA CỦA BẠN
-            </a>
-        </div>
-
-        <div style="text-align: center; margin-top: 24px;">
-            <p style="color: #64748b; font-size: 14px; margin: 0 0 12px;">Nếu Data này bị sai SĐT, Spam hoặc trùng lặp, vui lòng nhấn nút bên dưới để báo cáo và nhận Data bù.</p>
-            <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: white; text-decoration: none; padding: 7px 22px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
-                BÁO CÁO DATA
-            </a>
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1; padding-bottom: 8px;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 16px; line-height: 1.5;">Xem danh sách dữ liệu tại Trang Tư vấn viên hoặc báo cáo lỗi (sai SĐT, trùng lặp...) để nhận data bù:</p>
+            <div style="text-align: center; margin-top: 12px;">
+                <!--[if mso]>
+                <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+                <tr>
+                <td style="padding-right: 12px;">
+                <![endif]-->
+                <a href="' . $portalUrl . '" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); margin-right: 8px; margin-bottom: 8px; vertical-align: middle;">
+                    DATA CỦA BẠN
+                </a>
+                <!--[if mso]>
+                </td>
+                <td>
+                <![endif]-->
+                <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2); margin-left: 8px; margin-bottom: 8px; vertical-align: middle;">
+                    BÁO CÁO DATA
+                </a>
+                <!--[if mso]>
+                </td>
+                </tr>
+                </table>
+                <![endif]-->
+            </div>
         </div>
     ';
 
@@ -1410,4 +1419,4 @@ function sendMonthlyReportEmailToSale(
     ';
 
     return sendEmailNotification($saleEmail, $subject, '[ BÁO CÁO TỔNG KẾT THÁNG ]', $content, '', false);
-}
+}
