@@ -842,7 +842,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
     if (status === 'assigned' && reportStatus === 'pending') {
-      return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
+      return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
     if (status === 'error' && reportStatus === 'approved') {
       return <span className="badge warning">{t('Ticket')}</span>;
@@ -852,7 +852,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       const created = createdAt ? parseServerDate(createdAt) : now;
       const diffMins = (now.getTime() - created.getTime()) / 60000;
       if (diffMins >= -2 && diffMins < 5) {
-        return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Chờ AI đánh giá')}</span>;
+        return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Chờ AI đánh giá')}</span>;
       }
     }
     switch (status) {
@@ -868,7 +868,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
-      case 'fallback': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>{t('Fallback')}</span>;
+      case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
       default: return null;
     }
   };

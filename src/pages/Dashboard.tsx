@@ -33,6 +33,24 @@ const parseServerDate = (dateStr: string) => {
 
 const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const { t, language } = useLanguage();
+  const daysOfWeek = [
+    t('Thứ 2'),
+    t('Thứ 3'),
+    t('Thứ 4'),
+    t('Thứ 5'),
+    t('Thứ 6'),
+    t('Thứ 7'),
+    t('Chủ Nhật')
+  ];
+  const daysOfWeekShort = [
+    t('T2'),
+    t('T3'),
+    t('T4'),
+    t('T5'),
+    t('T6'),
+    t('T7'),
+    t('CN')
+  ];
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
@@ -51,7 +69,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
 
-  const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
+  const [chartMode, setChartMode] = useState<'day' | 'hour' | 'heatmap'>('day');
+  const [hoveredCell, setHoveredCell] = useState<{
+    wday: number;
+    hour: number;
+    volume: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [settings, setSettings] = useState<any>(null);
   const [connections, setConnections] = useState<any[]>([]);
@@ -764,10 +789,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       ) : (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-          <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px' }}>
               <div>
-                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hiệu suất xử lý Data theo')} {displayChartMode === 'hour' ? t('giờ') : t('ngày')}</h3>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {displayChartMode === 'heatmap'
+                    ? t('Bản đồ mật độ Lead theo ngày và giờ')
+                    : `${t('Hiệu suất xử lý Data theo')} ${displayChartMode === 'hour' ? t('giờ') : t('ngày')}`}
+                </h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>{t('Biểu đồ thể hiện lưu lượng Data đổ về')} {dateFilter === 'Tùy chỉnh' ? t('trong khoảng thời gian đã chọn') : `${t('trong')} ${getDisplayDateFilterText(dateFilter).toLowerCase()}`}.</p>
               </div>
               {!isSingleDay && (
@@ -806,41 +835,172 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   >
                     {t('Theo giờ')}
                   </button>
+                  <button
+                    onClick={() => setChartMode('heatmap')}
+                    style={{
+                      padding: isMobile ? '4px 8px' : '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: isMobile ? '0.7rem' : '0.8125rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: displayChartMode === 'heatmap' ? 'var(--color-surface)' : 'transparent',
+                      color: displayChartMode === 'heatmap' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: displayChartMode === 'heatmap' ? '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    {t('Heatmap')}
+                  </button>
                 </div>
               )}
             </div>
-            {stats?.chartData && stats.chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={stats.chartData} margin={{ left: -10, right: 5, top: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis
-                    dataKey="time"
-                    tick={{ fontSize: isMobile ? 8 : 11, fill: 'var(--color-text-light)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={isMobile ? 'preserveStartEnd' : 'preserveEnd'}
-                  />
-                  <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
-                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>{t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+            {displayChartMode === 'heatmap' ? (
+              <div style={{ position: 'relative', width: '100%', height: 260, overflowY: 'hidden', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ minWidth: '640px', padding: '10px 5px 10px 0' }}>
+                  {/* Header Row: Hours */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', marginBottom: '6px' }}>
+                    <div />
+                    {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                      <div key={h} style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>
+                        {h % 2 === 0 ? `${String(h).padStart(2, '0')}h` : ''}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 7 Days Rows */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {(() => {
+                      const heatmapGrid = Array.from({ length: 7 }, () => Array(24).fill(0));
+                      let maxVal = 0;
+                      if (Array.isArray(stats?.chartData)) {
+                        stats.chartData.forEach((item: any) => {
+                          if (item && typeof item.wday === 'number' && typeof item.hour === 'number') {
+                            const w = item.wday;
+                            const h = item.hour;
+                            const vol = item.volume || 0;
+                            if (w >= 0 && w < 7 && h >= 0 && h < 24) {
+                              heatmapGrid[w][h] = vol;
+                              if (vol > maxVal) maxVal = vol;
+                            }
+                          }
+                        });
+                      }
+                      if (maxVal === 0) maxVal = 1;
+
+                      return daysOfWeekShort.map((dayName, dIdx) => (
+                        <div key={dIdx} style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', alignItems: 'center' }}>
+                          {/* Y-axis label */}
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', userSelect: 'none' }}>
+                            {dayName}
+                          </div>
+                          {/* 24 Cells */}
+                          {Array.from({ length: 24 }, (_, h) => {
+                            const val = heatmapGrid[dIdx][h];
+                            const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
+                            const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
+
+                            return (
+                              <div
+                                key={h}
+                                onMouseEnter={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const cardEl = e.currentTarget.closest('.card');
+                                  const cardRect = cardEl?.getBoundingClientRect();
+                                  if (cardRect) {
+                                    setHoveredCell({
+                                      wday: dIdx,
+                                      hour: h,
+                                      volume: val,
+                                      x: rect.left - cardRect.left + rect.width / 2,
+                                      y: rect.top - cardRect.top - 60
+                                    });
+                                  }
+                                }}
+                                onMouseLeave={() => setHoveredCell(null)}
+                                style={{
+                                  aspectRatio: '1',
+                                  background: val === 0 ? 'var(--color-border-light)' : 'var(--color-primary)',
+                                  opacity: isHovered ? 1 : opacity,
+                                  transform: isHovered ? 'scale(1.2)' : 'scale(1)',
+                                  boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  zIndex: isHovered ? 10 : 1,
+                                  border: '1px solid rgba(0, 0, 0, 0.03)'
+                                }}
+                              />
+                            );
+                          })}
                         </div>
-                      );
-                    }
-                    return null;
-                  }} />
-                  <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20}>
-                    <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
-                  </Bar>
-                </ComposedChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
-                {t('Chưa có dữ liệu thống kê')}
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Floating Tooltip inside relative card parent */}
+                {hoveredCell && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${hoveredCell.x}px`,
+                      top: `${hoveredCell.y}px`,
+                      transform: 'translateX(-50%)',
+                      background: 'var(--color-surface)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.1)',
+                      border: '1px solid var(--color-border)',
+                      pointerEvents: 'none',
+                      zIndex: 100,
+                      whiteSpace: 'nowrap',
+                      animation: 'fadeIn 0.12s ease-out'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {daysOfWeek[hoveredCell.wday]} • {String(hoveredCell.hour).padStart(2, '0')}:00
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: 2 }}>
+                      {t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{hoveredCell.volume}</span>
+                    </div>
+                  </div>
+                )}
               </div>
+            ) : (
+              stats?.chartData && stats.chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <ComposedChart data={stats.chartData} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis
+                      dataKey="time"
+                      tick={{ fontSize: isMobile ? 8 : 11, fill: 'var(--color-text-light)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={isMobile ? 'preserveStartEnd' : 'preserveEnd'}
+                    />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>{t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20}>
+                      <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                  {t('Chưa có dữ liệu thống kê')}
+                </div>
+              )
             )}
           </div>
 
@@ -1352,7 +1512,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                   {/* Visual Breakdown explanation */}
                   <div style={{
-                    background: 'rgba(255, 255, 255, 0.6)',
+                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.6)',
                     backdropFilter: 'blur(8px)',
                     border: '1px solid var(--color-border-light)',
                     borderRadius: 12,

@@ -1836,8 +1836,8 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                         key={preset.id}
                         onClick={() => setSyncPreset(preset.id as any)}
                         style={{
-                          border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                          background: syncPreset === preset.id ? 'var(--color-primary-light)' : '#ffffff',
+                          border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          background: syncPreset === preset.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
                           borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                           transition: 'all 0.2s', opacity: syncPreset === preset.id ? 1 : 0.6
@@ -2028,7 +2028,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       </div>
                       <div style={{ color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 700 }}>{t(SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field)}</div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: 'var(--color-danger)', background: 'var(--color-danger-light)', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -2245,7 +2245,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>{t('Chế độ đồng bộ')}</label>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div
                       onClick={() => setEditSyncMode('all')}
                       style={{

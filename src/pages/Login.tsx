@@ -61,9 +61,10 @@ export const Login = () => {
           client_id: '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com',
           callback: handleGoogleLoginResponse
         });
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('domation_theme') === 'dark';
         (window as any).google.accounts.id.renderButton(
           googleBtnRef.current,
-          { theme: 'outline', size: 'large', width: 320, text: 'signin_with', shape: 'rectangular' }
+          { theme: isDark ? 'filled_blue' : 'outline', size: 'large', width: 320, text: 'signin_with', shape: 'rectangular' }
         );
         renderedRef.current = true;
         clearInterval(intervalId);
@@ -335,9 +336,9 @@ export const Login = () => {
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
           <span style={{ padding: '0 0.75rem', fontWeight: 500 }}>{t("Hoặc đăng nhập bằng")}</span>
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -380,6 +381,21 @@ export const Login = () => {
           background: #fff;
           border-color: #6366f1;
           box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+        }
+        [data-theme="dark"] .login-form-container {
+          background: rgba(15, 20, 34, 0.85) !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+        }
+        [data-theme="dark"] .login-input {
+          background: rgba(6, 9, 19, 0.8) !important;
+          border-color: rgba(99, 102, 241, 0.25) !important;
+          color: #f8fafc !important;
+        }
+        [data-theme="dark"] .login-input:focus {
+          background: rgba(6, 9, 19, 0.95) !important;
+          border-color: #a78bfa !important;
+          box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
         }
         .login-btn {
           background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);

@@ -959,7 +959,7 @@ const AccountsInner = () => {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="btn outline sm"
-                  style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white', borderRadius: '6px' }}
+                  style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'var(--color-surface)', borderRadius: '6px' }}
                   disabled={isUploadingAvatar}
                 >
                   <Camera size={12} style={{ marginRight: 4 }} /> {t('Chọn ảnh')}
@@ -975,7 +975,7 @@ const AccountsInner = () => {
                       height: 'auto', 
                       color: 'var(--color-danger)', 
                       borderColor: 'rgba(239, 68, 68, 0.2)', 
-                      background: 'white',
+                      background: 'var(--color-surface)',
                       borderRadius: '6px'
                     }}
                   >
@@ -1117,7 +1117,7 @@ const AccountsInner = () => {
                   color: 'var(--color-warning)', 
                   borderColor: 'rgba(245, 158, 11, 0.3)',
                   alignSelf: 'flex-start',
-                  background: 'white',
+                  background: 'var(--color-surface)',
                   borderRadius: '6px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1156,7 +1156,7 @@ const AccountsInner = () => {
                 style={{
                   color: 'var(--color-danger)',
                   borderColor: 'rgba(239, 68, 68, 0.3)',
-                  background: 'white',
+                  background: 'var(--color-surface)',
                   fontSize: '0.75rem',
                   padding: '6px 12px',
                   borderRadius: '6px',

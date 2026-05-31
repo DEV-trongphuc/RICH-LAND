@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomModal } from './ui/CustomModal';
@@ -8,7 +8,7 @@ import { Avatar } from './ui/Avatar';
 import toast from 'react-hot-toast';
 
 export const ProfileModal = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { user, login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,6 +27,22 @@ export const ProfileModal = () => {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
+  const [expandedLogs, setExpandedLogs] = useState<Record<number, boolean>>({});
+  
+  const toggleExpand = (logId: number) => {
+    setExpandedLogs(prev => ({ ...prev, [logId]: !prev[logId] }));
+  };
+
+  const formatLogDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const dd = pad(d.getDate());
+    const mMonth = pad(d.getMonth() + 1);
+    return `${hh}:${mm}:${ss} ${dd}-${mMonth}`;
+  };
   
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -237,7 +253,7 @@ export const ProfileModal = () => {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="btn outline sm"
-                    style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'white' }}
+                    style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'var(--color-surface)' }}
                     disabled={isUploadingAvatar}
                   >
                     {t('Tải ảnh lên')}
@@ -247,7 +263,7 @@ export const ProfileModal = () => {
                       type="button"
                       onClick={() => setProfileData({ ...profileData, avatar: '' })}
                       className="btn outline sm"
-                      style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'white' }}
+                      style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'var(--color-surface)' }}
                     >
                       {t('Xóa ảnh')}
                     </button>
@@ -306,11 +322,11 @@ export const ProfileModal = () => {
 
         {activeTab === 'password' && (
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', padding: '12px 16px', borderRadius: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <ShieldAlert size={20} color="#ef4444" style={{ marginTop: 2, flexShrink: 0 }} />
+            <div style={{ background: 'var(--color-danger-light)', borderLeft: '4px solid var(--color-danger)', padding: '12px 16px', borderRadius: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <ShieldAlert size={20} color="var(--color-danger)" style={{ marginTop: 2, flexShrink: 0 }} />
               <div>
-                <h4 style={{ color: '#991b1b', fontSize: '0.875rem', fontWeight: 700, margin: '0 0 4px 0' }}>{t('Bảo mật tài khoản')}</h4>
-                <p style={{ color: '#b91c1c', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
+                <h4 style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: 700, margin: '0 0 4px 0' }}>{t('Bảo mật tài khoản')}</h4>
+                <p style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
                   {t('Nếu bạn quên mật khẩu, vui lòng Đăng xuất và sử dụng chức năng')} <strong>{t('Quên mật khẩu')}</strong> tại màn hình Đăng nhập để khôi phục qua Email.
                 </p>
               </div>
@@ -386,93 +402,169 @@ export const ProfileModal = () => {
                     .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
                     .map((log: any) => {
                       const action = (log.action || '').toUpperCase();
-                      let statusColor = '#7c3aed'; // default purple
-                      let bgColor = 'rgba(124, 58, 237, 0.02)';
-                      if (action.includes('ADD') || action.includes('CREATE') || action.includes('INSERT')) {
-                        statusColor = '#10b981'; // green
-                        bgColor = 'rgba(16, 185, 129, 0.02)';
-                      } else if (action.includes('EDIT') || action.includes('UPDATE')) {
-                        statusColor = '#3b82f6'; // blue
-                        bgColor = 'rgba(59, 130, 246, 0.02)';
-                      } else if (action.includes('DELETE') || action.includes('REMOVE')) {
-                        statusColor = '#ef4444'; // red
-                        bgColor = 'rgba(239, 68, 68, 0.02)';
+                      let logTitle = t('Thao tác quản trị');
+                      if (action.includes('PASSWORD')) {
+                        logTitle = t('Thay đổi mật khẩu');
+                      } else if (action.includes('PROFILE') || action.includes('AVATAR')) {
+                        logTitle = t('Cập nhật thông tin cá nhân');
+                      } else if (action.includes('LEAD_BLACKLIST') || action.includes('BLOCK_LEAD')) {
+                        logTitle = t('Quản lý danh sách đen');
+                      } else if (action.includes('HELD_LEAD') || action.includes('REJECT_HELD_LEAD')) {
+                        logTitle = t('Kiểm soát dữ liệu trùng');
                       }
 
                       return (
                         <div 
                           key={log.id} 
+                          className="hover-lift"
                           style={{ 
-                            padding: '12px 16px', 
-                            background: bgColor, 
+                            padding: '16px', 
+                            background: 'var(--color-surface)', 
                             border: '1px solid var(--color-border-light)', 
-                            borderLeft: `4px solid ${statusColor}`,
                             borderRadius: 12,
-                            fontSize: '0.8125rem',
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: 4,
-                            transition: 'all 0.15s'
+                            gap: '12px',
+                            transition: 'all 0.2s'
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ 
-                              background: `${statusColor}1A`, // 10% opacity
-                              color: statusColor, 
-                              padding: '3px 8px', 
-                              borderRadius: 6, 
-                              fontSize: '0.7rem', 
-                              fontWeight: 700, 
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.02em'
+                          {/* Left avatar with overlay icon */}
+                          <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
+                            <Avatar src={profileData.avatar} name={profileData.name || 'User'} size={40} />
+                            <div style={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              background: 'var(--color-primary)',
+                              color: 'white',
+                              borderRadius: '50%',
+                              width: 16,
+                              height: 16,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '2px solid var(--color-surface)',
+                              boxShadow: 'var(--shadow-sm)'
                             }}>
-                              {log.action}
-                            </span>
-                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Clock size={12} /> {new Date(log.created_at).toLocaleString(language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : 'en-US')}
-                            </span>
+                              {(() => {
+                                const act = action.toLowerCase();
+                                if (act.includes('password')) return <Key size={10} />;
+                                if (act.includes('profile') || act.includes('avatar')) return <User size={10} />;
+                                return <Settings size={10} />;
+                              })()}
+                            </div>
                           </div>
 
-                          {(() => {
-                            try {
-                              const parsed = JSON.parse(log.details);
-                              if (parsed && typeof parsed === 'object') {
-                                return (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: '0.5rem', marginBottom: '0.25rem' }}>
-                                    {Object.entries(parsed).map(([k, v]) => {
-                                      const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                          {/* Right Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* Title & Time */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                              <div>
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                                  {logTitle}
+                                </h4>
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                                  {t('Thành viên')} <strong style={{ fontWeight: 700, color: 'var(--color-text)' }}>{profileData.name || user?.username}</strong> {t('thực hiện hành động:')} <code style={{ padding: '2px 4px', background: 'var(--color-bg)', borderRadius: 4, fontFamily: 'monospace', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)' }}>{log.action}</code>.
+                                </p>
+                              </div>
+                              <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Clock size={12} /> {formatLogDate(log.created_at)}
+                              </span>
+                            </div>
+
+                            {/* Badge and Details Trigger */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                              <span style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary)',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.6875rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em'
+                              }}>
+                                {log.action}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(log.id)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--color-text-light)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '4px 0'
+                                }}
+                              >
+                                {expandedLogs[log.id] ? (
+                                  <>{t('Thu gọn')} <ChevronUp size={14} /></>
+                                ) : (
+                                  <>{t('Chi tiết')} <ChevronDown size={14} /></>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Collapsible Details */}
+                            {expandedLogs[log.id] && (
+                              <div style={{
+                                marginTop: '0.75rem',
+                                background: 'var(--color-bg)',
+                                borderRadius: 8,
+                                border: '1px solid var(--color-border-light)',
+                                padding: '10px 12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                                animation: 'slideDown 0.2s ease-out'
+                              }}>
+                                {(() => {
+                                  try {
+                                    const parsed = JSON.parse(log.details);
+                                    if (parsed && typeof parsed === 'object') {
                                       return (
-                                        <div key={k} style={{ 
-                                          display: 'inline-flex', 
-                                          alignItems: 'center', 
-                                          background: 'white', 
-                                          border: '1px solid var(--color-border-light)', 
-                                          padding: '3px 8px', 
-                                          borderRadius: 6, 
-                                          fontSize: '0.7rem' 
-                                        }}>
-                                          <span style={{ color: 'var(--color-text-muted)', marginRight: 4, fontWeight: 500 }}>{k}:</span>
-                                          <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{valStr}</span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px' }}>
+                                          {Object.entries(parsed).map(([k, v]) => {
+                                            const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                                            return (
+                                              <div key={k} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                background: 'var(--color-bg)',
+                                                border: '1px solid var(--color-border-light)',
+                                                padding: '4px 8px',
+                                                borderRadius: 6,
+                                                fontSize: '0.7rem'
+                                              }}>
+                                                <span style={{ color: 'var(--color-text-muted)', marginRight: 6, fontWeight: 500 }}>{k}:</span>
+                                                <span style={{ color: 'var(--color-text)', fontWeight: 700, wordBreak: 'break-all' }}>{valStr}</span>
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       );
-                                    })}
-                                  </div>
-                                );
-                              }
-                            } catch {
-                              if (log.details) {
-                                return (
-                                  <div style={{ color: 'var(--color-text-light)', marginTop: '0.5rem', marginBottom: '0.25rem', fontSize: '0.75rem', background: '#f8fafc', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-light)' }}>
-                                    {log.details}
-                                  </div>
-                                );
-                              }
-                            }
-                            return null;
-                          })()}
-
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} /> IP: {log.ip_address}
+                                    }
+                                  } catch {
+                                    if (log.details) {
+                                      return (
+                                        <div style={{ color: 'var(--color-text-light)', fontSize: '0.75rem', wordBreak: 'break-all' }}>
+                                          {log.details}
+                                        </div>
+                                      );
+                                    }
+                                  }
+                                  return null;
+                                })()}
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} /> IP: {log.ip_address}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

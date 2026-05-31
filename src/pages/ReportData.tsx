@@ -290,7 +290,7 @@ export const ReportData = () => {
               <div className="form-card">
                 {/* Test banner */}
                 {params.isTest && (
-                  <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', color: '#b45309', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.08)' }}>
+                  <div style={{ background: 'var(--color-warning-light)', border: '1px solid var(--color-border-light)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 12, marginBottom: 16, fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(245,158,11,0.08)' }}>
                     <AlertCircle size={16} color="#d97706" />
                     <span>{t("Trang xem thử — Dữ liệu mock, không gửi được.")}</span>
                   </div>
@@ -321,7 +321,7 @@ export const ReportData = () => {
                 {!context?.existing_report && (
                   <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                     {submitStatus === 'error' && (
-                      <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '10px 12px', borderRadius: 10, fontSize: '0.82rem', display: 'flex', alignItems: 'flex-start', gap: 7, flexShrink: 0 }}>
+                      <div style={{ background: 'var(--color-danger-light)', border: '1px solid var(--color-border-light)', color: 'var(--color-danger)', padding: '10px 12px', borderRadius: 10, fontSize: '0.82rem', display: 'flex', alignItems: 'flex-start', gap: 7, flexShrink: 0 }}>
                         <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} /><span>{submitError}</span>
                       </div>
                     )}

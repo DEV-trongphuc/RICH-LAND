@@ -377,6 +377,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   };
 
   useEffect(() => {
+    renderedRef.current = false;
+  }, [theme, user]);
+
+  useEffect(() => {
     let intervalId: any;
     const initGoogle = () => {
       if (renderedRef.current) {
@@ -390,7 +394,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         });
         (window as any).google.accounts.id.renderButton(
           googleBtnRef.current,
-          { theme: 'outline', size: 'large', width: 300, text: 'signin_with', shape: 'rectangular' }
+          { theme: theme === 'dark' ? 'filled_blue' : 'outline', size: 'large', width: 300, text: 'signin_with', shape: 'rectangular' }
         );
         renderedRef.current = true;
         clearInterval(intervalId);
@@ -400,7 +404,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     initGoogle();
     intervalId = setInterval(initGoogle, 500);
     return () => clearInterval(intervalId);
-  }, [user]);
+  }, [user, theme]);
 
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
@@ -755,7 +759,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
     if (status === 'assigned' && reportStatus === 'pending') {
-      return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
+      return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
     if (status === 'error' && reportStatus === 'approved') {
       return <span className="badge warning">{t('Ticket')}</span>;
@@ -765,7 +769,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       const created = createdAt ? parseServerDate(createdAt) : nowTime;
       const diffMins = (nowTime.getTime() - created.getTime()) / 60000;
       if (diffMins >= -2 && diffMins < 5) {
-        return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Chờ AI đánh giá')}</span>;
+        return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Chờ AI đánh giá')}</span>;
       }
     }
     switch (status) {
@@ -781,7 +785,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
-      case 'fallback': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>{t('Fallback')}</span>;
+      case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
       default: return null;
     }
   };
@@ -841,12 +845,13 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           zIndex: 10,
           width: '100%',
           maxWidth: 450,
-          background: 'rgba(255, 255, 255, 0.98)',
+          background: theme === 'dark' ? 'var(--color-surface)' : 'rgba(255, 255, 255, 0.98)',
           backdropFilter: 'blur(20px)',
           borderRadius: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1) inset',
+          boxShadow: theme === 'dark' ? '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05) inset' : '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1) inset',
           padding: '3rem 2rem',
-          textAlign: 'center'
+          textAlign: 'center',
+          border: theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : 'none'
         }}>
           {/* Header/Logo */}
           <div style={{
@@ -864,7 +869,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             />
           </div>
 
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: theme === 'dark' ? '#f8fafc' : '#0f172a', letterSpacing: '-0.5px' }}>
             {t('CỔNG TƯ VẤN VIÊN')}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.925rem', marginTop: 6, lineHeight: 1.5 }}>
@@ -2917,9 +2922,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           className="responsive-hide-mobile"
           style={{
             position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: 'white', color: 'var(--sidebar-bg, #161d31)',
+            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-surface)', color: 'var(--color-text)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 200, border: '1px solid rgba(0,0,0,0.1)',
+            cursor: 'pointer', zIndex: 200, border: '1px solid var(--color-border)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
           }}
         >

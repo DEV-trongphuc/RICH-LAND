@@ -1180,7 +1180,7 @@ const ConsultantsInner = () => {
 
                   {/* Visual Breakdown explanation */}
                   <div style={{
-                    background: 'rgba(255, 255, 255, 0.6)',
+                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.6)',
                     backdropFilter: 'blur(8px)',
                     border: '1px solid var(--color-border-light)',
                     borderRadius: 12,

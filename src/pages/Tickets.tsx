@@ -1088,7 +1088,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
           <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
 
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
             {t('Tổng cộng:')} {totalCount} {t('tickets')}
           </span>
         </div>

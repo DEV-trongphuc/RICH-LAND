@@ -307,9 +307,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#f3e8ff',
-            color: '#7e22ce',
-            border: '1px solid #e9d5ff',
+            background: 'var(--color-primary-light)',
+            color: 'var(--color-primary)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -323,9 +323,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#fffbeb',
-            color: '#b45309',
-            border: '1px solid #fde68a',
+            background: 'var(--color-warning-light)',
+            color: 'var(--color-warning)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -339,9 +339,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#fef2f2',
-            color: '#b91c1c',
-            border: '1px solid #fecaca',
+            background: 'var(--color-danger-light)',
+            color: 'var(--color-danger)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -355,9 +355,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#fffbeb',
-            color: '#d97706',
-            border: '1px solid #fcd34d',
+            background: 'var(--color-warning-light)',
+            color: 'var(--color-warning)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -387,9 +387,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#fef2f2',
-            color: '#b91c1c',
-            border: '1px solid #fecaca',
+            background: 'var(--color-danger-light)',
+            color: 'var(--color-danger)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -403,9 +403,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#f0f9ff',
-            color: '#0369a1',
-            border: '1px solid #bae6fd',
+            background: 'var(--color-info-light)',
+            color: 'var(--color-info)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>
@@ -419,9 +419,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             borderRadius: '20px',
             fontSize: '0.72rem',
             fontWeight: 600,
-            background: '#f0f9ff',
-            color: '#0369a1',
-            border: '1px solid #bae6fd',
+            background: 'var(--color-info-light)',
+            color: 'var(--color-info)',
+            border: '1px solid var(--color-border-light)',
             display: 'inline-flex',
             alignItems: 'center'
           }}>

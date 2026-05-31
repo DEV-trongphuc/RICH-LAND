@@ -1086,7 +1086,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
           </div>
 
           {/* Quick Start Guide Section */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed rgba(99, 102, 241, 0.2)' }}>
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed rgba(99, 102, 241, 0.2)' }}>
             <div>
               <h5 style={{ fontWeight: 800, fontSize: '0.8125rem', color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-flex', width: 18, height: 18, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>1</span>

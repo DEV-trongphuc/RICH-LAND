@@ -365,6 +365,10 @@
   /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Skeleton loaders */
+  --skeleton-base: #e2e8f0;
+  --skeleton-shine: #f1f5f9;
 }
 
 [data-theme="dark"] {
@@ -412,6 +416,10 @@
   --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.65), 0 4px 12px -4px rgba(0, 0, 0, 0.45);
   --shadow-xl: 0 20px 32px -4px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
   --shadow-primary: 0 8px 24px -4px rgba(139, 92, 246, 0.3);
+
+  /* Skeleton loaders */
+  --skeleton-base: #1c2438;
+  --skeleton-shine: #29344f;
 }
 
 [data-theme="dark"] th {
@@ -2650,4 +2658,29 @@ th.col-check {
   color: #060913 !important; /* Dark text on bright amber button for accessibility */
   font-weight: 800;
 }
+
+/* Responsive Sortable Rule Cards (Rule Settings) */
+@media (max-width: 768px) {
+  .sortable-rule-card {
+    flex-direction: column !important;
+  }
+  .sortable-rule-drag-handle {
+    border-right: none !important;
+    border-bottom: 1px solid var(--color-border-light) !important;
+    flex-direction: row !important;
+    height: auto !important;
+    width: 100% !important;
+    padding: 0.5rem 1.25rem !important;
+    justify-content: space-between !important;
+    min-width: 0 !important;
+  }
+  .sortable-rule-actions {
+    border-left: none !important;
+    border-top: 1px dashed var(--color-border-light) !important;
+    padding: 0.75rem 1.25rem !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+}
+
 

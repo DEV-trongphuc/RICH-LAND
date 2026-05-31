@@ -193,9 +193,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           className="responsive-hide-mobile"
           style={{
             position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: 'white', color: 'var(--sidebar-bg)',
+            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-surface)', color: 'var(--color-text)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 200, border: '1px solid rgba(0,0,0,0.1)',
+            cursor: 'pointer', zIndex: 200, border: '1px solid var(--color-border)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
             opacity: isHovered || isCollapsed ? 1 : 0,
             visibility: isHovered || isCollapsed ? 'visible' : 'hidden',

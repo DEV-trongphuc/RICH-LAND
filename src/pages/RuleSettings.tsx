@@ -48,13 +48,13 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
 
   return (
     <div ref={setNodeRef} style={style} className={`group hover-lift ${isDragging ? 'is-dragging' : ''}`}>
-      <div style={{
+      <div className="sortable-rule-card" style={{
         display: 'flex', alignItems: 'stretch', margin: '0.5rem', border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-lg)', background: 'var(--color-surface)', boxShadow: isDragging ? 'var(--shadow-lg)' : 'var(--shadow-xs)',
         transition: 'box-shadow 0.2s', overflow: 'hidden'
       }}>
         {/* Drag Handle & Priority */}
-        <div style={{
+        <div className="sortable-rule-drag-handle" style={{
           background: 'var(--color-bg)', borderRight: '1px solid var(--color-border-light)',
           padding: '1rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           minWidth: '60px'
@@ -225,7 +225,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
         </div>
 
         {/* Actions */}
-        <div style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderLeft: '1px dashed var(--color-border-light)' }}>
+        <div className="sortable-rule-actions" style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderLeft: '1px dashed var(--color-border-light)' }}>
           <button
             onClick={() => onEdit(rule)}
             className="btn ghost"
@@ -684,7 +684,7 @@ const RuleSettingsInner = () => {
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem'
       }}>
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           width: 40, height: 40, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
@@ -775,7 +775,7 @@ const RuleSettingsInner = () => {
             <div style={{ padding: '0 1rem', marginTop: '1rem' }}>
               <button
                 onClick={openAddModal}
-                style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed #e2e8f0', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
               >
                 <Filter size={18} /> {t("Thêm Quy tắc mới")}
               </button>
@@ -812,10 +812,10 @@ const RuleSettingsInner = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {branches.map((branch, bIndex) => (
-              <div key={bIndex} style={{ border: '1px solid #e2e8f0', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: '#8b5cf6', borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)' }} />
+              <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#4c1d95', textTransform: 'uppercase', margin: 0 }}>{t("Nhánh {num}").replace('{num}', String(bIndex + 1))}</h4>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', margin: 0 }}>{t("Nhánh {num}").replace('{num}', String(bIndex + 1))}</h4>
                   {branches.length > 1 && (
                     <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: 4 }} onClick={() => setBranches(branches.filter((_, idx) => idx !== bIndex))}>
                       <Trash2 size={16} />
@@ -831,7 +831,7 @@ const RuleSettingsInner = () => {
                       <div key={i} className="condition-row-responsive" style={{ background: 'transparent', padding: '0', position: 'relative' }}>
                         <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                           {i === 0 ? (
-                            <div style={{ background: '#f3e8ff', color: '#7c3aed', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
+                            <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
                           ) : (
                             <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
                           )}
@@ -926,7 +926,7 @@ const RuleSettingsInner = () => {
                     );
                   })}
                   <div style={{ paddingLeft: 44, marginTop: '0.75rem', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: -12, left: 15, width: 2, height: 24, background: '#e2e8f0', zIndex: 1 }} />
+                    <div style={{ position: 'absolute', top: -12, left: 15, width: 2, height: 24, background: 'var(--color-border)', zIndex: 1 }} />
                     <button
                       type="button"
                       onClick={() => {
@@ -934,14 +934,14 @@ const RuleSettingsInner = () => {
                         newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
                         setBranches(newB);
                       }}
-                      style={{ background: '#f3e8ff', color: '#7c3aed', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Plus size={14} /> {t("Thêm điều kiện")}
                     </button>
                   </div>
 
                   {/* INJECT DATA FIELDS TOGGLE */}
-                  <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed #e2e8f0', paddingTop: '1rem' }}>
+                  <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: branch.inject?.enabled ? '1rem' : 0 }}>
                       <div
                         onClick={() => {

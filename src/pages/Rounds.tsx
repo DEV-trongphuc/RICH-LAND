@@ -504,7 +504,7 @@ const RoundsInner = () => {
       </div>
 
       {loading ? (
-        <div className="responsive-grid-auto-400" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.25rem' }}>
+        <div className="responsive-grid-auto-400" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {[1, 2, 3].map(i => <RoundCardSkeleton key={i} />)}
         </div>
       ) : (
@@ -513,7 +513,7 @@ const RoundsInner = () => {
           style={{
             display: viewMode === 'grid' ? 'grid' : 'flex',
             flexDirection: viewMode === 'list' ? 'column' : 'row',
-            gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(400px, 1fr))' : 'none',
+            gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(320px, 1fr))' : 'none',
             gap: '1.25rem'
           }}>
           {rounds.length === 0 ? (
@@ -865,7 +865,7 @@ const RoundsInner = () => {
                             name={c}
                             size={32}
                             style={{
-                              border: '2px solid white',
+                              border: '2px solid var(--color-surface)',
                               boxShadow: 'var(--shadow-sm)',
                               filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
                               opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
@@ -878,7 +878,7 @@ const RoundsInner = () => {
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700,
-                        border: '2px solid white', marginLeft: -12, boxShadow: 'var(--shadow-sm)'
+                        border: '2px solid var(--color-surface)', marginLeft: -12, boxShadow: 'var(--shadow-sm)'
                       }}>
                         +{consList.length - 4}
                       </div>

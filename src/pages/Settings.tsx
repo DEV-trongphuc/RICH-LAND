@@ -1439,8 +1439,8 @@ const SettingsInner = () => {
                           fontWeight: 700,
                           gap: 8,
                           borderRadius: 8,
-                          background: checking || importing || localRows.length === 0 ? '#e2e8f0' : 'linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%)',
-                          color: checking || importing || localRows.length === 0 ? '#94a3b8' : 'white',
+                          background: checking || importing || localRows.length === 0 ? 'var(--color-border-light)' : 'linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%)',
+                          color: checking || importing || localRows.length === 0 ? 'var(--color-text-muted)' : 'white',
                           border: 'none',
                           cursor: checking || importing || localRows.length === 0 ? 'not-allowed' : 'pointer',
                           display: 'inline-flex',
@@ -1464,15 +1464,15 @@ const SettingsInner = () => {
 
                     {/* Guidelines */}
                     <div style={{
-                      background: '#e0f2fe',
-                      color: '#0369a1',
+                      background: 'var(--color-info-light)',
+                      color: 'var(--color-info)',
                       fontSize: '0.75rem',
                       padding: '10px 14px',
                       borderRadius: 8,
                       width: '100%',
                       textAlign: 'left',
                       lineHeight: 1.5,
-                      border: '1px solid #bae6fd',
+                      border: '1px solid var(--color-border-light)',
                       display: 'flex',
                       gap: 8,
                       alignItems: 'flex-start'
