@@ -11,6 +11,10 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const viOverrides: Record<string, string> = {
+  "Hoạt động (Nhật ký)": "Hoạt động"
+};
+
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('domation_lang') as Language) || 'vi';
@@ -65,7 +69,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [language]);
 
   const t = useCallback((key: string): string => {
-    if (language === 'vi' || !loadedTranslations) return key;
+    if (language === 'vi') {
+      return viOverrides[key] || key;
+    }
+    if (!loadedTranslations) return key;
     const dict = loadedTranslations[language];
     return (dict && dict[key]) || key;
   }, [language, loadedTranslations]);

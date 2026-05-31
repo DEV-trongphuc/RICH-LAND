@@ -635,7 +635,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       <Activity size={14} />
-                      {t('Nhật ký hoạt động')}
+                      {t('Hoạt động (Nhật ký)')}
                     </button>
                   </>
                 )}

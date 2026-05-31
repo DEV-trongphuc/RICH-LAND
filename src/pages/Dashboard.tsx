@@ -1554,7 +1554,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   </ResponsiveContainer>
                   {/* Inside Text for Donut Chart */}
                   <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {stats?.out_of_hours_ratio ?? '0%'}
                     </span>
                     <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
