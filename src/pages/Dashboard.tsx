@@ -83,6 +83,34 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [healthModalTab, setHealthModalTab] = useState<'stats' | 'connections'>('stats');
   const [healthChartMetric, setHealthChartMetric] = useState<'zalo' | 'email' | 'token'>('zalo');
+  const [modalChartLoading, setModalChartLoading] = useState(false);
+
+  const fetchStatsOnly = async (metricVal: string, modeVal: string, signal?: AbortSignal) => {
+    if (loading) return; // Skip if main dashboard loading is in progress
+    setModalChartLoading(true);
+    try {
+      const statsJson = await fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${modeVal}&chart_metric=${metricVal}`, { signal });
+      if (signal?.aborted) return;
+      if (statsJson.success) {
+        setStats(statsJson.data);
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        console.error('Error fetching stats only:', e);
+      }
+    }
+    setModalChartLoading(false);
+  };
+
+  const formatNumberCompact = (val: number) => {
+    if (val >= 1000000) {
+      return (val / 1000000).toFixed(2).replace(/\.00$/, '') + 'M';
+    }
+    if (val >= 10000) {
+      return (val / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return val.toLocaleString();
+  };
 
   const getMetricLabel = (metric: string) => {
     switch (metric) {
@@ -103,6 +131,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
   const displayChartMode = isSingleDay ? 'hour' : chartMode;
+  const modalChartMode = displayChartMode === 'heatmap' ? 'day' : displayChartMode;
 
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -224,7 +253,17 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       fetchDashboard(abortController.signal);
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
-  }, [dateFilter, chartMode, healthChartMetric, showHealthModal, isActive]);
+  }, [dateFilter, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      const abortController = new AbortController();
+      const metric = showHealthModal ? healthChartMetric : 'lead';
+      const mode = showHealthModal ? modalChartMode : displayChartMode;
+      fetchStatsOnly(metric, mode, abortController.signal);
+      return () => abortController.abort();
+    }
+  }, [chartMode, healthChartMetric, showHealthModal, isActive]);
 
   useEffect(() => {
     if (isActive) {
@@ -1982,8 +2021,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)' }}>
-                        {(stats?.total_zalo_sent ?? 0).toLocaleString()}
+                      <span 
+                        title={(stats?.total_zalo_sent ?? 0).toLocaleString()}
+                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-success)', whiteSpace: 'nowrap' }}
+                      >
+                        {formatNumberCompact(stats?.total_zalo_sent ?? 0)}
                       </span>
                     </div>
                     <div style={{
@@ -2025,8 +2067,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Báo cáo & bàn giao Lead")}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)' }}>
-                        {(stats?.total_emails_sent ?? 0).toLocaleString()}
+                      <span 
+                        title={(stats?.total_emails_sent ?? 0).toLocaleString()}
+                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-info)', whiteSpace: 'nowrap' }}
+                      >
+                        {formatNumberCompact(stats?.total_emails_sent ?? 0)}
                       </span>
                     </div>
                     <div style={{
@@ -2073,8 +2118,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gemini model screening")}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                        {(stats?.total_tokens_used ?? 0).toLocaleString()}
+                      <span 
+                        title={(stats?.total_tokens_used ?? 0).toLocaleString()}
+                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}
+                      >
+                        {formatNumberCompact(stats?.total_tokens_used ?? 0)}
                       </span>
                     </div>
                     <div>
@@ -2153,7 +2201,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '10px',
-                      position: 'relative'
+                      position: 'relative',
+                      opacity: modalChartLoading ? 0.55 : 1,
+                      transition: 'opacity 0.15s ease',
+                      pointerEvents: modalChartLoading ? 'none' : 'auto'
                     }}
                   >
                     <div style={{
@@ -2162,11 +2213,56 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       alignItems: 'center',
                       marginBottom: '2px',
                       flexWrap: 'wrap',
-                      gap: '8px'
+                      gap: '12px'
                     }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {t("Lưu lượng Lead & Hiệu suất theo thời gian")}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {t("Hiệu suất hoạt động hệ thống")}
+                        </span>
+                        
+                        {/* Metric Switcher Pills with Icons */}
+                        <div style={{
+                          display: 'flex',
+                          gap: '6px',
+                          flexWrap: 'wrap'
+                        }}>
+                          {[
+                            { id: 'zalo', label: t('Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, borderRadius: '50%' }} alt="Zalo" /> },
+                            { id: 'email', label: t('Email gửi'), icon: <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 13, height: 13 }} alt="Gmail" /> },
+                            { id: 'token', label: t('Token AI'), icon: <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 13, height: 13 }} alt="Gemini" /> }
+                          ].map((item) => {
+                            const isSelected = healthChartMetric === item.id;
+                            const activeColor = getMetricColor(item.id);
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => setHealthChartMetric(item.id as any)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  border: isSelected ? `1px solid ${activeColor}` : '1px solid var(--color-border)',
+                                  background: isSelected ? `${activeColor}10` : 'var(--color-surface)',
+                                  color: isSelected ? activeColor : 'var(--color-text-muted)',
+                                  boxShadow: isSelected ? `0 1px 3px ${activeColor}15` : 'none'
+                                }}
+                              >
+                                <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? activeColor : 'var(--color-text-light)' }}>
+                                  {item.icon}
+                                </span>
+                                <span>{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       {!isSingleDay && (
                         <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '2px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
                           <button
@@ -2179,9 +2275,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               border: 'none',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              background: displayChartMode === 'day' ? 'var(--color-bg)' : 'transparent',
-                              color: displayChartMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                              boxShadow: displayChartMode === 'day' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                              background: modalChartMode === 'day' ? 'var(--color-bg)' : 'transparent',
+                              color: modalChartMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: modalChartMode === 'day' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
                             }}
                           >
                             {t('Theo ngày')}
@@ -2196,246 +2292,59 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               border: 'none',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              background: displayChartMode === 'hour' ? 'var(--color-bg)' : 'transparent',
-                              color: displayChartMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                              boxShadow: displayChartMode === 'hour' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                              background: modalChartMode === 'hour' ? 'var(--color-bg)' : 'transparent',
+                              color: modalChartMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: modalChartMode === 'hour' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
                             }}
                           >
                             {t('Theo giờ')}
-                          </button>
-                          <button
-                            onClick={() => setChartMode('heatmap')}
-                            style={{
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              border: 'none',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              background: displayChartMode === 'heatmap' ? 'var(--color-bg)' : 'transparent',
-                              color: displayChartMode === 'heatmap' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                              boxShadow: displayChartMode === 'heatmap' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                            }}
-                          >
-                            {t('Heatmap')}
                           </button>
                         </div>
                       )}
                     </div>
 
-                    {/* Metric Switcher Pills with Icons */}
-                    <div style={{
-                      display: 'flex',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                      marginBottom: '6px'
-                    }}>
-                      {[
-                        { id: 'zalo', label: t('Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, borderRadius: '50%' }} alt="Zalo" /> },
-                        { id: 'email', label: t('Email gửi'), icon: <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 13, height: 13 }} alt="Gmail" /> },
-                        { id: 'token', label: t('Token AI'), icon: <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 13, height: 13 }} alt="Gemini" /> }
-                      ].map((item) => {
-                        const isSelected = healthChartMetric === item.id;
-                        const activeColor = getMetricColor(item.id);
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => setHealthChartMetric(item.id as any)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '5px 12px',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              border: isSelected ? `1px solid ${activeColor}` : '1px solid var(--color-border)',
-                              background: isSelected ? `${activeColor}10` : 'var(--color-surface)',
-                              color: isSelected ? activeColor : 'var(--color-text-muted)',
-                              boxShadow: isSelected ? `0 1px 3px ${activeColor}15` : 'none'
-                            }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? activeColor : 'var(--color-text-light)' }}>
-                              {item.icon}
-                            </span>
-                            <span>{item.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {displayChartMode === 'heatmap' ? (
-                      <>
-                        <div style={{ position: 'relative', width: '100%', height: 160, overflowY: 'hidden', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                          <div style={{ minWidth: '640px', padding: '5px 5px 5px 0' }}>
-                            {/* Header Row: Hours */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', marginBottom: '4px' }}>
-                              <div />
-                              {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                                <div key={h} style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>
-                                  {h % 2 === 0 ? `${String(h).padStart(2, '0')}h` : ''}
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* 7 Days Rows */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                              {(() => {
-                                const heatmapGrid = Array.from({ length: 7 }, () => Array(24).fill(0));
-                                let maxVal = 0;
-                                if (Array.isArray(stats?.chartData)) {
-                                  stats.chartData.forEach((item: any) => {
-                                    if (item && typeof item.wday === 'number' && typeof item.hour === 'number') {
-                                      const w = item.wday;
-                                      const h = item.hour;
-                                      const vol = item.volume || 0;
-                                      if (w >= 0 && w < 7 && h >= 0 && h < 24) {
-                                        heatmapGrid[w][h] = vol;
-                                        if (vol > maxVal) maxVal = vol;
-                                      }
-                                    }
-                                  });
-                                }
-                                if (maxVal === 0) maxVal = 1;
-
-                                return daysOfWeekShort.map((dayName, dIdx) => (
-                                  <div key={dIdx} style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', alignItems: 'center' }}>
-                                    {/* Y-axis label */}
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)', userSelect: 'none' }}>
-                                      {dayName}
+                    {stats.chartData && stats.chartData.length > 0 ? (
+                      <div style={{ height: 240, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={stats.chartData} margin={{ left: -15, right: 10, top: 15, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                            <XAxis
+                              dataKey="time"
+                              tick={{ fontSize: 9, fill: 'var(--color-text-light)' }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} 
+                              tick={{ fontSize: 8, fill: 'var(--color-text-light)' }} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              width={healthChartMetric === 'token' ? 45 : 30}
+                              tickFormatter={(v) => typeof v === 'number' ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toString())) : v}
+                            />
+                            <Tooltip content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.75rem' }}>
+                                    <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>{label}</div>
+                                    <div style={{ color: getMetricColor(healthChartMetric) }}>
+                                      {getMetricLabel(healthChartMetric)}: <span style={{ fontWeight: 800 }}>{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}</span>
                                     </div>
-                                    {/* 24 Cells */}
-                                    {Array.from({ length: 24 }, (_, h) => {
-                                      const val = heatmapGrid[dIdx][h];
-                                      const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
-                                      const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
-
-                                      return (
-                                        <div
-                                          key={h}
-                                          onMouseEnter={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            const cardEl = e.currentTarget.closest('.modal-heatmap-container');
-                                            const cardRect = cardEl?.getBoundingClientRect();
-                                            if (cardRect) {
-                                              setHoveredCell({
-                                                wday: dIdx,
-                                                hour: h,
-                                                volume: val,
-                                                x: rect.left - cardRect.left + rect.width / 2,
-                                                y: rect.top - cardRect.top - 60
-                                              });
-                                            }
-                                          }}
-                                          onMouseLeave={() => setHoveredCell(null)}
-                                          style={{
-                                            aspectRatio: '1',
-                                            background: val === 0 ? 'var(--color-border-light)' : getMetricColor(healthChartMetric),
-                                            opacity: isHovered ? 1 : opacity,
-                                            transform: isHovered ? 'scale(1.2)' : 'scale(1)',
-                                            boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
-                                            borderRadius: '2px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            zIndex: isHovered ? 10 : 1,
-                                            border: '1px solid rgba(0, 0, 0, 0.03)'
-                                          }}
-                                        />
-                                      );
-                                    })}
                                   </div>
-                                ));
-                              })()}
-                            </div>
-                          </div>
-
-                          {/* Floating Tooltip inside relative card parent */}
-                          {hoveredCell && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: `${hoveredCell.x}px`,
-                                top: `${hoveredCell.y}px`,
-                                transform: 'translateX(-50%)',
-                                background: 'var(--color-surface)',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.1)',
-                                border: '1px solid var(--color-border)',
-                                pointerEvents: 'none',
-                                zIndex: 100,
-                                whiteSpace: 'nowrap',
-                                animation: 'fadeIn 0.12s ease-out'
-                              }}
-                            >
-                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                {daysOfWeek[hoveredCell.wday]} • {String(hoveredCell.hour).padStart(2, '0')}:00
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: getMetricColor(healthChartMetric), marginTop: 2 }}>
-                                {getMetricLabel(healthChartMetric)}: <span style={{ fontWeight: 800 }}>{hoveredCell.volume.toLocaleString()}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {/* Heatmap Legend */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '6px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingRight: '4px', flexWrap: 'wrap' }}>
-                          <span>{t('Ít')}</span>
-                          <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: 'var(--color-border-light)', opacity: 0.08, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
-                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.3, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
-                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.6, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
-                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.9, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
-                          </div>
-                          <span>{t('Nhiều')}</span>
-                        </div>
-                      </>
+                                );
+                              }
+                              return null;
+                            }} />
+                            <Bar dataKey="volume" fill={getMetricColor(healthChartMetric)} fillOpacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={24}>
+                              <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 9, fontWeight: 700 }} offset={4} formatter={(v: any) => typeof v === 'number' ? v.toLocaleString() : (v ? String(v) : '')} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     ) : (
-                      stats.chartData && stats.chartData.length > 0 ? (
-                        <div style={{ height: 180, width: '100%' }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.chartData} margin={{ left: -15, right: 10, top: 15, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                              <XAxis
-                                dataKey="time"
-                                tick={{ fontSize: 9, fill: 'var(--color-text-light)' }}
-                                axisLine={false}
-                                tickLine={false}
-                              />
-                              <YAxis 
-                                domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} 
-                                tick={{ fontSize: 8, fill: 'var(--color-text-light)' }} 
-                                axisLine={false} 
-                                tickLine={false} 
-                                width={healthChartMetric === 'token' ? 45 : 30}
-                                tickFormatter={(v) => typeof v === 'number' ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toString())) : v}
-                              />
-                              <Tooltip content={({ active, payload, label }) => {
-                                if (active && payload && payload.length) {
-                                  return (
-                                    <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.75rem' }}>
-                                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>{label}</div>
-                                      <div style={{ color: getMetricColor(healthChartMetric) }}>
-                                        {getMetricLabel(healthChartMetric)}: <span style={{ fontWeight: 800 }}>{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }} />
-                              <Bar dataKey="volume" fill={getMetricColor(healthChartMetric)} fillOpacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={24}>
-                                <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 9, fontWeight: 700 }} offset={4} formatter={(v: any) => typeof v === 'number' ? v.toLocaleString() : (v ? String(v) : '')} />
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      ) : (
-                        <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                          {t('Chưa có dữ liệu thống kê')}
-                        </div>
-                      )
+                      <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                        {t('Chưa có dữ liệu thống kê')}
+                      </div>
                     )}
                   </div>
                 )}
