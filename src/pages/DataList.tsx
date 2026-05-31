@@ -2374,7 +2374,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t('Ghi chú & Phân loại')}</span>
                         </div>
 
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           {isAdminEditingLead ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', width: '80px', flexShrink: 0 }}>{t('Loại Data:')}</span>
@@ -3068,11 +3068,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             const cObj = consultants.find(c => c.name === selectedLead.assigned_to_name);
                             if (cObj) {
                               return (
-                                <div 
-                                  style={{ 
-                                    fontSize: '1rem', 
-                                    fontWeight: 700, 
-                                    color: 'var(--color-text)', 
+                                <div
+                                  style={{
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text)',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -3336,58 +3336,58 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       >
         {confirmReassignOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
-              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
-                {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
-              </p>
-              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                  {t('Tư vấn viên hiện tại:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Chọn hình thức giao lại:')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
+                color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                  {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
                 </p>
+                {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
+                    {t('Tư vấn viên hiện tại:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Chọn hình thức giao lại:')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t('Hủy')}</button>
+
+              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
+                <>
+                  <button
+                    className="btn secondary"
+                    onClick={() => handleReassign(false)}
+                    style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
+                    disabled={isReassigning}
+                  >
+                    {t('Giao lại luôn')}
+                  </button>
+                  <button
+                    className="btn success"
+                    onClick={() => handleReassign(true)}
+                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                    disabled={isReassigning}
+                  >
+                    {t('Giao lại và bù vòng cho TVV')}
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="btn primary"
+                  onClick={() => handleReassign(false)}
+                  disabled={isReassigning}
+                >
+                  {t('Xác nhận chuyển')}
+                </button>
               )}
             </div>
           </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t('Hủy')}</button>
-
-            {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
-              <>
-                <button
-                  className="btn secondary"
-                  onClick={() => handleReassign(false)}
-                  style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
-                  disabled={isReassigning}
-                >
-                  {t('Giao lại luôn')}
-                </button>
-                <button
-                  className="btn success"
-                  onClick={() => handleReassign(true)}
-                  style={{ background: '#10b981', color: '#fff', border: 'none' }}
-                  disabled={isReassigning}
-                >
-                  {t('Giao lại và bù vòng cho TVV')}
-                </button>
-              </>
-            ) : (
-              <button
-                className="btn primary"
-                onClick={() => handleReassign(false)}
-                disabled={isReassigning}
-              >
-                {t('Xác nhận chuyển')}
-              </button>
-            )}
-          </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3403,140 +3403,140 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       >
         {confirmBlockOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%', background: '#fee2e2',
-              color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
-                {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name}"?
-              </p>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
-                {t('Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.')}
-              </p>
-            </div>
-          </div>
-
-          {isTicketLead && (
-            <div style={{
-              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: '12px',
-              padding: '1rem',
-              color: 'var(--color-danger)',
-              fontSize: '0.875rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-              lineHeight: 1.5,
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
-            }}>
-              <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                {t("Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.")}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', background: '#fee2e2',
+                color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
               </div>
-            </div>
-          )}
-
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hình thức chặn:')}</div>
-
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="blockType"
-                checked={!compensateBlock}
-                onChange={() => setCompensateBlock(false)}
-                style={{ marginTop: '3px' }}
-              />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chỉ đưa vào danh sách đen (Blacklist)')}</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t('Không thực hiện đền bù data cho Sale.')}</p>
-              </div>
-            </label>
-
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '8px',
-              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
-              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
-            }}>
-              <input
-                type="radio"
-                name="blockType"
-                checked={compensateBlock}
-                onChange={() => setCompensateBlock(true)}
-                disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
-                style={{ marginTop: '3px' }}
-              />
-              <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chặn và Bù vòng cho Sale')}</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                  {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                  {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name}"?
+                </p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
+                  {t('Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.')}
                 </p>
               </div>
-            </label>
-
-            {selectedLead?.assigned_to_name === '-' && (
-              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> {t('Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.')}
-              </div>
-            )}
+            </div>
 
             {isTicketLead && (
-              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> {t('Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.')}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '12px',
+                padding: '1rem',
+                color: 'var(--color-danger)',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                lineHeight: 1.5,
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
+              }}>
+                <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  {t("Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.")}
+                </div>
               </div>
             )}
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Lý do chặn')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <textarea
-              value={blockReason}
-              onChange={(e) => setBlockReason(e.target.value)}
-              placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
-              style={{
-                width: '100%',
-                height: '80px',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid var(--color-border)',
-                fontSize: '0.875rem',
-                outline: 'none',
-                resize: 'none'
-              }}
-            />
-          </div>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hình thức chặn:')}</div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button
-              className="btn outline"
-              onClick={() => {
-                setConfirmBlockOpen(false);
-                setBlockReason('');
-                setCompensateBlock(false);
-              }}
-              disabled={isBlocking}
-            >
-              {t('Hủy')}
-            </button>
-            <button
-              className="btn danger"
-              onClick={handleBlockLead}
-              disabled={isBlocking || !blockReason.trim()}
-              style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
-              {t('Xác nhận chặn')}
-            </button>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="blockType"
+                  checked={!compensateBlock}
+                  onChange={() => setCompensateBlock(false)}
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chỉ đưa vào danh sách đen (Blacklist)')}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t('Không thực hiện đền bù data cho Sale.')}</p>
+                </div>
+              </label>
+
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
+                opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
+              }}>
+                <input
+                  type="radio"
+                  name="blockType"
+                  checked={compensateBlock}
+                  onChange={() => setCompensateBlock(true)}
+                  disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Chặn và Bù vòng cho Sale')}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                    {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                  </p>
+                </div>
+              </label>
+
+              {selectedLead?.assigned_to_name === '-' && (
+                <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <AlertTriangle size={12} /> {t('Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.')}
+                </div>
+              )}
+
+              {isTicketLead && (
+                <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <AlertTriangle size={12} /> {t('Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.')}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Lý do chặn')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
+                style={{
+                  width: '100%',
+                  height: '80px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  resize: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => {
+                  setConfirmBlockOpen(false);
+                  setBlockReason('');
+                  setCompensateBlock(false);
+                }}
+                disabled={isBlocking}
+              >
+                {t('Hủy')}
+              </button>
+              <button
+                className="btn danger"
+                onClick={handleBlockLead}
+                disabled={isBlocking || !blockReason.trim()}
+                style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
+                {t('Xác nhận chặn')}
+              </button>
+            </div>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3554,470 +3554,470 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         {selectedDate !== null && (
           <>
             {dayDetailsLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-            <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
-          </div>
-        ) : dayDetails ? (
-          <div style={{ display: 'flex', flexDirection: 'column', height: '580px', margin: '-1.5rem', overflow: 'hidden' }}>
-            {/* Modal Tabs */}
-            <div style={{
-              display: 'flex',
-              background: 'var(--color-bg)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '10px',
-              padding: '3px',
-              gap: '4px',
-              flexShrink: 0,
-              margin: '1.5rem 1.5rem 1rem 1.5rem',
-              height: '38px',
-              alignItems: 'center'
-            }}>
-              <button
-                type="button"
-                onClick={() => setActiveModalTab('sales')}
-                style={{
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
+                <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
+              </div>
+            ) : dayDetails ? (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '580px', margin: '-1.5rem', overflow: 'hidden' }}>
+                {/* Modal Tabs */}
+                <div style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: activeModalTab === 'sales' ? 'var(--color-primary)' : 'transparent',
-                  color: activeModalTab === 'sales' ? 'white' : 'var(--color-text-muted)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  height: '32px',
-                  flex: 1
-                }}
-                className="modal-tab-button"
-              >
-                <span>{t('Phân bổ cho Sale')}</span>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  background: activeModalTab === 'sales' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
-                  color: activeModalTab === 'sales' ? 'white' : 'var(--color-text-muted)',
-                  padding: '1px 6px',
-                  borderRadius: '5px',
-                  transition: 'all 0.2s'
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '10px',
+                  padding: '3px',
+                  gap: '4px',
+                  flexShrink: 0,
+                  margin: '1.5rem 1.5rem 1rem 1.5rem',
+                  height: '38px',
+                  alignItems: 'center'
                 }}>
-                  {dayDetails.sales?.length || 0}
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalTab('sales')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: activeModalTab === 'sales' ? 'var(--color-primary)' : 'transparent',
+                      color: activeModalTab === 'sales' ? 'white' : 'var(--color-text-muted)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      height: '32px',
+                      flex: 1
+                    }}
+                    className="modal-tab-button"
+                  >
+                    <span>{t('Phân bổ cho Sale')}</span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      background: activeModalTab === 'sales' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
+                      color: activeModalTab === 'sales' ? 'white' : 'var(--color-text-muted)',
+                      padding: '1px 6px',
+                      borderRadius: '5px',
+                      transition: 'all 0.2s'
+                    }}>
+                      {dayDetails.sales?.length || 0}
+                    </span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveModalTab('tickets')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: activeModalTab === 'tickets' ? 'var(--color-primary)' : 'transparent',
-                  color: activeModalTab === 'tickets' ? 'white' : 'var(--color-text-muted)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  height: '32px',
-                  flex: 1
-                }}
-                className="modal-tab-button"
-              >
-                <span>{t('Ticket Lỗi')}</span>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  background: activeModalTab === 'tickets' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
-                  color: activeModalTab === 'tickets' ? 'white' : 'var(--color-text-muted)',
-                  padding: '1px 6px',
-                  borderRadius: '5px',
-                  transition: 'all 0.2s'
-                }}>
-                  {dayDetails.tickets?.length || 0}
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalTab('tickets')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: activeModalTab === 'tickets' ? 'var(--color-primary)' : 'transparent',
+                      color: activeModalTab === 'tickets' ? 'white' : 'var(--color-text-muted)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      height: '32px',
+                      flex: 1
+                    }}
+                    className="modal-tab-button"
+                  >
+                    <span>{t('Ticket Lỗi')}</span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      background: activeModalTab === 'tickets' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
+                      color: activeModalTab === 'tickets' ? 'white' : 'var(--color-text-muted)',
+                      padding: '1px 6px',
+                      borderRadius: '5px',
+                      transition: 'all 0.2s'
+                    }}>
+                      {dayDetails.tickets?.length || 0}
+                    </span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveModalTab('blacklist')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: activeModalTab === 'blacklist' ? 'var(--color-primary)' : 'transparent',
-                  color: activeModalTab === 'blacklist' ? 'white' : 'var(--color-text-muted)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  height: '32px',
-                  flex: 1
-                }}
-                className="modal-tab-button"
-              >
-                <span>{t('Blacklist & Lỗi Hệ Thống')}</span>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  background: activeModalTab === 'blacklist' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
-                  color: activeModalTab === 'blacklist' ? 'white' : 'var(--color-text-muted)',
-                  padding: '1px 6px',
-                  borderRadius: '5px',
-                  transition: 'all 0.2s'
-                }}>
-                  {dayDetails.blacklist_logs?.length || 0}
-                </span>
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalTab('blacklist')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: activeModalTab === 'blacklist' ? 'var(--color-primary)' : 'transparent',
+                      color: activeModalTab === 'blacklist' ? 'white' : 'var(--color-text-muted)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      height: '32px',
+                      flex: 1
+                    }}
+                    className="modal-tab-button"
+                  >
+                    <span>{t('Blacklist & Lỗi Hệ Thống')}</span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      background: activeModalTab === 'blacklist' ? 'rgba(255, 255, 255, 0.25)' : 'var(--color-border-light)',
+                      color: activeModalTab === 'blacklist' ? 'white' : 'var(--color-text-muted)',
+                      padding: '1px 6px',
+                      borderRadius: '5px',
+                      transition: 'all 0.2s'
+                    }}>
+                      {dayDetails.blacklist_logs?.length || 0}
+                    </span>
+                  </button>
+                </div>
 
-            {/* Modal Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem 1.5rem 1.5rem' }} className="custom-scrollbar">
-              {activeModalTab === 'sales' && (
-                <div>
-                  {dayDetails.sales && dayDetails.sales.length > 0 ? (
-                    <div className="premium-table-container">
-                      <table className="premium-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '45%' }}>{t('Tư vấn viên')}</th>
-                            <th style={{ width: '25%' }}>{t('Vòng')}</th>
-                            <th style={{ width: '15%' }}>{t('Trạng thái')}</th>
-                            <th style={{ width: '15%', textAlign: 'right' }}>{t('Số lượng data')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            const groupedSales: Record<string, {
-                              sale_name: string;
-                              sale_avatar?: string;
-                              items: any[];
-                              totalCount: number;
-                            }> = {};
+                {/* Modal Content */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem 1.5rem 1.5rem' }} className="custom-scrollbar">
+                  {activeModalTab === 'sales' && (
+                    <div>
+                      {dayDetails.sales && dayDetails.sales.length > 0 ? (
+                        <div className="premium-table-container">
+                          <table className="premium-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '45%' }}>{t('Tư vấn viên')}</th>
+                                <th style={{ width: '25%' }}>{t('Vòng')}</th>
+                                <th style={{ width: '15%' }}>{t('Trạng thái')}</th>
+                                <th style={{ width: '15%', textAlign: 'right' }}>{t('Số lượng data')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const groupedSales: Record<string, {
+                                  sale_name: string;
+                                  sale_avatar?: string;
+                                  items: any[];
+                                  totalCount: number;
+                                }> = {};
 
-                            dayDetails.sales.forEach((item: any) => {
-                              const name = item.sale_name || t('Chưa phân bổ');
-                              if (!groupedSales[name]) {
-                                groupedSales[name] = {
-                                  sale_name: name,
-                                  sale_avatar: item.sale_avatar,
-                                  items: [],
-                                  totalCount: 0
-                                };
-                              }
-                              groupedSales[name].items.push(item);
-                              groupedSales[name].totalCount += Number(item.count) || 0;
-                            });
+                                dayDetails.sales.forEach((item: any) => {
+                                  const name = item.sale_name || t('Chưa phân bổ');
+                                  if (!groupedSales[name]) {
+                                    groupedSales[name] = {
+                                      sale_name: name,
+                                      sale_avatar: item.sale_avatar,
+                                      items: [],
+                                      totalCount: 0
+                                    };
+                                  }
+                                  groupedSales[name].items.push(item);
+                                  groupedSales[name].totalCount += Number(item.count) || 0;
+                                });
 
-                            const sortedGroupedNames = Object.keys(groupedSales).sort((a, b) => {
-                              const isUnassignedA = a === 'Chưa phân bổ' || a === 'Unassigned' || a === '';
-                              const isUnassignedB = b === 'Chưa phân bổ' || b === 'Unassigned' || b === '';
-                              if (isUnassignedA && !isUnassignedB) return 1;
-                              if (!isUnassignedA && isUnassignedB) return -1;
-                              return a.localeCompare(b, 'vi');
-                            });
+                                const sortedGroupedNames = Object.keys(groupedSales).sort((a, b) => {
+                                  const isUnassignedA = a === 'Chưa phân bổ' || a === 'Unassigned' || a === '';
+                                  const isUnassignedB = b === 'Chưa phân bổ' || b === 'Unassigned' || b === '';
+                                  if (isUnassignedA && !isUnassignedB) return 1;
+                                  if (!isUnassignedA && isUnassignedB) return -1;
+                                  return a.localeCompare(b, 'vi');
+                                });
 
-                            return sortedGroupedNames.map((name) => {
-                              const group = groupedSales[name];
-                              const isExpanded = !!expandedSales[name];
+                                return sortedGroupedNames.map((name) => {
+                                  const group = groupedSales[name];
+                                  const isExpanded = !!expandedSales[name];
 
-                              const sortedItems = [...group.items].sort((a, b) => {
-                                const roundA = a.status === 'reminder' ? 'REMINDER' : (a.round_name || '');
-                                const roundB = b.status === 'reminder' ? 'REMINDER' : (b.round_name || '');
-                                return roundA.localeCompare(roundB, 'vi');
-                              });
+                                  const sortedItems = [...group.items].sort((a, b) => {
+                                    const roundA = a.status === 'reminder' ? 'REMINDER' : (a.round_name || '');
+                                    const roundB = b.status === 'reminder' ? 'REMINDER' : (b.round_name || '');
+                                    return roundA.localeCompare(roundB, 'vi');
+                                  });
 
-                              return (
-                                <Fragment key={name}>
-                                  {/* Collapsible Header Row */}
-                                  <tr 
-                                    onClick={() => toggleExpandSale(name)} 
-                                    style={{ 
-                                      background: 'var(--color-bg-light)', 
-                                      cursor: 'pointer',
-                                      fontWeight: 600,
-                                      borderBottom: '1px solid var(--color-border)'
-                                    }}
-                                  >
-                                    <td>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', paddingLeft: '4px' }}>
-                                        <span style={{ 
-                                          display: 'inline-flex', 
-                                          alignItems: 'center', 
-                                          transition: 'transform 0.2s',
-                                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                          color: 'var(--color-text-muted)',
-                                          marginRight: '2px'
-                                        }}>
-                                          <ChevronRight size={16} />
-                                        </span>
-                                        <Avatar src={group.sale_avatar} name={group.sale_name} size={30} />
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                          {group.sale_name}
-                                        </span>
-                                        <span style={{ 
-                                          fontSize: '0.7rem', 
-                                          background: 'var(--color-border-light)', 
-                                          color: 'var(--color-text-light)', 
-                                          padding: '2px 6px', 
-                                          borderRadius: '10px',
-                                          marginLeft: '6px',
-                                          fontWeight: 600
-                                        }}>
-                                          {group.items.length} {t('nhóm')}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td style={{ color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 500 }}>
-                                      {isExpanded ? '' : t('Nhấp để xem chi tiết')}
-                                    </td>
-                                    <td></td>
-                                    <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                                      <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
-                                        {group.totalCount}
-                                      </span>
-                                    </td>
-                                  </tr>
-
-                                  {/* Detail Rows when expanded */}
-                                  {isExpanded && sortedItems.map((item: any, idx: number) => {
-                                    const isReminder = item.status === 'reminder';
-                                    const roundDisplay = isReminder ? 'REMINDER' : (item.round_name || '-');
-                                    
-                                    return (
-                                      <tr key={`${name}_${idx}`} style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)' }}>
-                                        <td style={{ paddingLeft: '2.5rem' }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.825rem' }}>
-                                            <span style={{ opacity: 0.5 }}>└─</span>
-                                            <span>{t('Phân bổ trong vòng')}</span>
+                                  return (
+                                    <Fragment key={name}>
+                                      {/* Collapsible Header Row */}
+                                      <tr
+                                        onClick={() => toggleExpandSale(name)}
+                                        style={{
+                                          background: 'var(--color-bg-light)',
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          borderBottom: '1px solid var(--color-border)'
+                                        }}
+                                      >
+                                        <td>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', paddingLeft: '4px' }}>
+                                            <span style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              transition: 'transform 0.2s',
+                                              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                              color: 'var(--color-text-muted)',
+                                              marginRight: '2px'
+                                            }}>
+                                              <ChevronRight size={16} />
+                                            </span>
+                                            <Avatar src={group.sale_avatar} name={group.sale_name} size={30} />
+                                            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                              {group.sale_name}
+                                            </span>
+                                            <span style={{
+                                              fontSize: '0.7rem',
+                                              background: 'var(--color-border-light)',
+                                              color: 'var(--color-text-light)',
+                                              padding: '2px 6px',
+                                              borderRadius: '10px',
+                                              marginLeft: '6px',
+                                              fontWeight: 600
+                                            }}>
+                                              {group.items.length} {t('nhóm')}
+                                            </span>
                                           </div>
                                         </td>
-                                        <td>
-                                          <span style={{
-                                            background: isReminder ? 'rgba(236, 72, 153, 0.12)' : 'var(--color-primary-light)',
-                                            color: isReminder ? '#ec4899' : 'var(--color-primary)',
-                                            padding: '3px 8px',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 600
-                                          }}>
-                                            {roundDisplay}
-                                          </span>
+                                        <td style={{ color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 500 }}>
+                                          {isExpanded ? '' : t('Nhấp để xem chi tiết')}
                                         </td>
-                                        <td>{getStatusBadge(item.status)}</td>
+                                        <td></td>
                                         <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
-                                          <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>
-                                            {item.count}
+                                          <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
+                                            {group.totalCount}
                                           </span>
                                         </td>
                                       </tr>
-                                    );
-                                  })}
-                                </Fragment>
-                              );
-                            });
-                          })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
-                      <User size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có lịch sử chia data cho tư vấn viên nào vào ngày này.')}</p>
+
+                                      {/* Detail Rows when expanded */}
+                                      {isExpanded && sortedItems.map((item: any, idx: number) => {
+                                        const isReminder = item.status === 'reminder';
+                                        const roundDisplay = isReminder ? 'REMINDER' : (item.round_name || '-');
+
+                                        return (
+                                          <tr key={`${name}_${idx}`} style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)' }}>
+                                            <td style={{ paddingLeft: '2.5rem' }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.825rem' }}>
+                                                <span style={{ opacity: 0.5 }}>└─</span>
+                                                <span>{t('Phân bổ trong vòng')}</span>
+                                              </div>
+                                            </td>
+                                            <td>
+                                              <span style={{
+                                                background: isReminder ? 'rgba(236, 72, 153, 0.12)' : 'var(--color-primary-light)',
+                                                color: isReminder ? '#ec4899' : 'var(--color-primary)',
+                                                padding: '3px 8px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 600
+                                              }}>
+                                                {roundDisplay}
+                                              </span>
+                                            </td>
+                                            <td>{getStatusBadge(item.status)}</td>
+                                            <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                                              <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>
+                                                {item.count}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </Fragment>
+                                  );
+                                });
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
+                          <User size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                          <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có lịch sử chia data cho tư vấn viên nào vào ngày này.')}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {activeModalTab === 'tickets' && (
-                <div>
-                  {dayDetails.tickets && dayDetails.tickets.length > 0 ? (
-                    <div className="premium-table-container">
-                      <table className="premium-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '25%' }}>{t('Khách hàng')}</th>
-                            <th style={{ width: '22%' }}>{t('Tư vấn viên báo cáo')}</th>
-                            <th style={{ width: '28%' }}>{t('Lý do lỗi')}</th>
-                            <th style={{ width: '13%' }}>{t('Trạng thái')}</th>
-                            <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian báo')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dayDetails.tickets.map((item: any, idx: number) => {
-                            const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
-                            return (
-                              <tr key={idx}>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <Avatar name={item.lead_name} size={32} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{item.lead_name}</span>
-                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
-                                        <Phone size={11} style={{ opacity: 0.6 }} />
-                                        {showPhone}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Avatar src={item.sale_avatar} name={item.sale_name} size={28} aiScreened={!!(item.ai_screener_status && item.ai_screener_status !== 'not_screened')} />
-                                    <span style={{ fontWeight: 500, color: 'var(--color-text)', fontSize: '0.85rem' }}>{item.sale_name}</span>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--color-text-light)',
-                                    lineHeight: 1.4,
-                                    maxWidth: '240px',
-                                    wordBreak: 'break-word',
-                                    whiteSpace: 'normal'
-                                  }}>
-                                    {item.reason}
-                                  </div>
-                                </td>
-                                <td>
-                                  {item.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Chờ duyệt')}</span>}
-                                  {item.status === 'approved' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã duyệt')}</span>}
-                                  {item.status === 'rejected' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{t('Từ chối')}</span>}
-                                </td>
-                                <td style={{ textAlign: 'right' }}>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                    <Clock size={11} style={{ opacity: 0.6 }} />
-                                    <span>{item.created_at ? item.created_at.split(' ')[1] || item.created_at : ''}</span>
-                                  </div>
-                                </td>
+                  {activeModalTab === 'tickets' && (
+                    <div>
+                      {dayDetails.tickets && dayDetails.tickets.length > 0 ? (
+                        <div className="premium-table-container">
+                          <table className="premium-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '25%' }}>{t('Khách hàng')}</th>
+                                <th style={{ width: '22%' }}>{t('Tư vấn viên báo cáo')}</th>
+                                <th style={{ width: '28%' }}>{t('Lý do lỗi')}</th>
+                                <th style={{ width: '13%' }}>{t('Trạng thái')}</th>
+                                <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian báo')}</th>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
-                      <AlertTriangle size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có báo cáo ticket lỗi dữ liệu nào trong ngày này.')}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeModalTab === 'blacklist' && (
-                <div>
-                  {dayDetails.blacklist_logs && dayDetails.blacklist_logs.length > 0 ? (
-                    <div className="premium-table-container">
-                      <table className="premium-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '32%' }}>{t('Khách hàng')}</th>
-                            <th style={{ width: '13%' }}>{t('Loại')}</th>
-                            <th style={{ width: '43%' }}>{t('Thông điệp hệ thống')}</th>
-                            <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dayDetails.blacklist_logs.map((item: any, idx: number) => {
-                            const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
-                            const showEmail = user?.role === 'admin' ? item.email : maskEmail(item.email);
-                            return (
-                              <tr key={idx}>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <Avatar name={item.lead_name} size={32} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{item.lead_name}</span>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        {showPhone && showPhone !== '-' && (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-light)' }}>
-                                            <Phone size={10} style={{ opacity: 0.6 }} />
+                            </thead>
+                            <tbody>
+                              {dayDetails.tickets.map((item: any, idx: number) => {
+                                const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
+                                return (
+                                  <tr key={idx}>
+                                    <td>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <Avatar name={item.lead_name} size={32} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{item.lead_name}</span>
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                            <Phone size={11} style={{ opacity: 0.6 }} />
                                             {showPhone}
                                           </span>
-                                        )}
-                                        {showEmail && showEmail !== '-' && (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-light)' }}>
-                                            <Mail size={10} style={{ opacity: 0.6 }} />
-                                            {showEmail}
-                                          </span>
-                                        )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>{getStatusBadge(item.status)}</td>
-                                <td>
-                                  <div style={{
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--color-text-light)',
-                                    lineHeight: 1.4,
-                                    maxWidth: '360px',
-                                    wordBreak: 'break-word',
-                                    whiteSpace: 'normal'
-                                  }}>
-                                    {item.message}
-                                  </div>
-                                </td>
-                                <td style={{ textAlign: 'right' }}>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                    <Clock size={11} style={{ opacity: 0.6 }} />
-                                    <span>{item.received_at ? item.received_at.split(' ')[1] || item.received_at : ''}</span>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                    </td>
+                                    <td>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Avatar src={item.sale_avatar} name={item.sale_name} size={28} aiScreened={!!(item.ai_screener_status && item.ai_screener_status !== 'not_screened')} />
+                                        <span style={{ fontWeight: 500, color: 'var(--color-text)', fontSize: '0.85rem' }}>{item.sale_name}</span>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <div style={{
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--color-text-light)',
+                                        lineHeight: 1.4,
+                                        maxWidth: '240px',
+                                        wordBreak: 'break-word',
+                                        whiteSpace: 'normal'
+                                      }}>
+                                        {item.reason}
+                                      </div>
+                                    </td>
+                                    <td>
+                                      {item.status === 'pending' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Chờ duyệt')}</span>}
+                                      {item.status === 'approved' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã duyệt')}</span>}
+                                      {item.status === 'rejected' && <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{t('Từ chối')}</span>}
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                        <Clock size={11} style={{ opacity: 0.6 }} />
+                                        <span>{item.created_at ? item.created_at.split(' ')[1] || item.created_at : ''}</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
+                          <AlertTriangle size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                          <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không có báo cáo ticket lỗi dữ liệu nào trong ngày này.')}</p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
-                      <ShieldAlert size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không phát hiện trường hợp Blacklist hay Lỗi hệ thống nào vào ngày này.')}</p>
+                  )}
+
+                  {activeModalTab === 'blacklist' && (
+                    <div>
+                      {dayDetails.blacklist_logs && dayDetails.blacklist_logs.length > 0 ? (
+                        <div className="premium-table-container">
+                          <table className="premium-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '32%' }}>{t('Khách hàng')}</th>
+                                <th style={{ width: '13%' }}>{t('Loại')}</th>
+                                <th style={{ width: '43%' }}>{t('Thông điệp hệ thống')}</th>
+                                <th style={{ width: '12%', textAlign: 'right' }}>{t('Thời gian')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dayDetails.blacklist_logs.map((item: any, idx: number) => {
+                                const showPhone = user?.role === 'admin' ? item.phone : maskPhone(item.phone);
+                                const showEmail = user?.role === 'admin' ? item.email : maskEmail(item.email);
+                                return (
+                                  <tr key={idx}>
+                                    <td>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <Avatar name={item.lead_name} size={32} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{item.lead_name}</span>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            {showPhone && showPhone !== '-' && (
+                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-light)' }}>
+                                                <Phone size={10} style={{ opacity: 0.6 }} />
+                                                {showPhone}
+                                              </span>
+                                            )}
+                                            {showEmail && showEmail !== '-' && (
+                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-light)' }}>
+                                                <Mail size={10} style={{ opacity: 0.6 }} />
+                                                {showEmail}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td>{getStatusBadge(item.status)}</td>
+                                    <td>
+                                      <div style={{
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--color-text-light)',
+                                        lineHeight: 1.4,
+                                        maxWidth: '360px',
+                                        wordBreak: 'break-word',
+                                        whiteSpace: 'normal'
+                                      }}>
+                                        {item.message}
+                                      </div>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                        <Clock size={11} style={{ opacity: 0.6 }} />
+                                        <span>{item.received_at ? item.received_at.split(' ')[1] || item.received_at : ''}</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
+                          <ShieldAlert size={40} style={{ marginBottom: 12, color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                          <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{t('Không phát hiện trường hợp Blacklist hay Lỗi hệ thống nào vào ngày này.')}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Modal Footer */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              padding: '1rem 1.5rem',
-              borderTop: '1px solid var(--color-border-light)',
-              background: 'var(--color-bg)',
-              flexShrink: 0
-            }}>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => {
-                  setSelectedDate(null);
-                  setDayDetails(null);
-                  setActiveModalTab('sales');
-                }}
-              >
-                {t('Đóng')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            {t('Có lỗi xảy ra khi hiển thị chi tiết.')}
-          </div>
-        )}
+                {/* Modal Footer */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  padding: '1rem 1.5rem',
+                  borderTop: '1px solid var(--color-border-light)',
+                  background: 'var(--color-bg)',
+                  flexShrink: 0
+                }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => {
+                      setSelectedDate(null);
+                      setDayDetails(null);
+                      setActiveModalTab('sales');
+                    }}
+                  >
+                    {t('Đóng')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                {t('Có lỗi xảy ra khi hiển thị chi tiết.')}
+              </div>
+            )}
           </>
         )}
       </CustomModal>
@@ -4035,231 +4035,231 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       >
         {showDupCheckModal && (
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
-            {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
-          </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
+            </p>
 
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                {t("Số điện thoại hoặc Email")}
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                value={dupCheckInput}
-                onChange={e => setDupCheckInput(e.target.value)}
-                placeholder={t("Ví dụ: 0945473306 hoặc test@gmail.com...")}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    handleRunDupCheck();
-                  }
-                }}
-                style={{ width: '100%', height: '40px', boxSizing: 'border-box' }}
-              />
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                  {t("Số điện thoại hoặc Email")}
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dupCheckInput}
+                  onChange={e => setDupCheckInput(e.target.value)}
+                  placeholder={t("Ví dụ: 0945473306 hoặc test@gmail.com...")}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      handleRunDupCheck();
+                    }
+                  }}
+                  style={{ width: '100%', height: '40px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button
+                onClick={handleRunDupCheck}
+                disabled={dupCheckLoading}
+                className="btn primary"
+                style={{ height: '40px', padding: '0 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {dupCheckLoading ? (
+                  <RefreshCw size={14} className="spin" />
+                ) : (
+                  <Search size={14} />
+                )}
+                <span>{t("Kiểm tra")}</span>
+              </button>
             </div>
-            <button
-              onClick={handleRunDupCheck}
-              disabled={dupCheckLoading}
-              className="btn primary"
-              style={{ height: '40px', padding: '0 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              {dupCheckLoading ? (
-                <RefreshCw size={14} className="spin" />
-              ) : (
-                <Search size={14} />
-              )}
-              <span>{t("Kiểm tra")}</span>
-            </button>
-          </div>
 
-          {dupCheckResult && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Conclusion Banner */}
-              {(() => {
-                const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
-                const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+            {dupCheckResult && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Conclusion Banner */}
+                {(() => {
+                  const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
+                  const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
 
-                if (history.length === 0) {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1.5px solid var(--color-success)',
-                      borderRadius: '12px',
-                      color: 'var(--color-success)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <CheckCircle2 size={16} />
-                        {t("Không tìm thấy dữ liệu trùng")}
+                  if (history.length === 0) {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1.5px solid var(--color-success)',
+                        borderRadius: '12px',
+                        color: 'var(--color-success)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <CheckCircle2 size={16} />
+                          {t("Không tìm thấy dữ liệu trùng")}
+                        </div>
+                        <div>
+                          {t("Số điện thoại/Email này hoàn toàn mới trong hệ thống. Có thể tiếp nhận phân bổ bình thường.")}
+                        </div>
                       </div>
-                      <div>
-                        {t("Số điện thoại/Email này hoàn toàn mới trong hệ thống. Có thể tiếp nhận phân bổ bình thường.")}
+                    );
+                  }
+
+                  // Calculate age of the latest matched lead
+                  const latest = history[0];
+                  const lastDateStr = latest.last_interaction_date || latest.created_at;
+                  const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                  const now = new Date();
+                  const diffMs = now.getTime() - lastInt.getTime();
+                  const diffMins = diffMs / 60000;
+                  const diffHours = diffMins / 60;
+                  const diffDays = diffHours / 24;
+                  const diffMonths = diffDays / 30;
+
+                  const isDupUnderN = diffMonths < dupCheckMonths;
+
+                  if (isDupUnderN) {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1.5px dashed var(--color-danger)',
+                        borderRadius: '12px',
+                        color: 'var(--color-danger)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <AlertTriangle size={16} />
+                          {t("Trùng lặp dưới")} {dupCheckMonths} {t("tháng")}
+                        </div>
+                        <div>
+                          {t("Lần tương tác gần nhất cách đây")}{' '}
+                          <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                          {t("lúc")}{' '}
+                          <code>{lastDateStr}</code>.
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
-
-                // Calculate age of the latest matched lead
-                const latest = history[0];
-                const lastDateStr = latest.last_interaction_date || latest.created_at;
-                const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                const now = new Date();
-                const diffMs = now.getTime() - lastInt.getTime();
-                const diffMins = diffMs / 60000;
-                const diffHours = diffMins / 60;
-                const diffDays = diffHours / 24;
-                const diffMonths = diffDays / 30;
-
-                const isDupUnderN = diffMonths < dupCheckMonths;
-
-                if (isDupUnderN) {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1.5px dashed var(--color-danger)',
-                      borderRadius: '12px',
-                      color: 'var(--color-danger)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <AlertTriangle size={16} />
-                        {t("Trùng lặp dưới")} {dupCheckMonths} {t("tháng")}
+                    );
+                  } else {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1.5px solid var(--color-success)',
+                        borderRadius: '12px',
+                        color: 'var(--color-success)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <CheckCircle2 size={16} />
+                          {t("Đủ điều kiện phân bổ mới")} ({t("Trùng")} &gt; {dupCheckMonths} {t("tháng")})
+                        </div>
+                        <div>
+                          {t("Lần tương tác gần nhất cách đây")}{' '}
+                          <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                          {t("lúc")}{' '}
+                          <code>{lastDateStr}</code>.<br />
+                          {t("Khoảng cách vượt quá hạn quy định")}{' '}
+                          <strong>{dupCheckMonths} {t("tháng")}</strong>. {t("Hệ thống sẽ phân bổ mới bình thường.")}
+                        </div>
                       </div>
-                      <div>
-                        {t("Lần tương tác gần nhất cách đây")}{' '}
-                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
-                        {t("lúc")}{' '}
-                        <code>{lastDateStr}</code>.
-                      </div>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1.5px solid var(--color-success)',
-                      borderRadius: '12px',
-                      color: 'var(--color-success)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <CheckCircle2 size={16} />
-                        {t("Đủ điều kiện phân bổ mới")} ({t("Trùng")} &gt; {dupCheckMonths} {t("tháng")})
-                      </div>
-                      <div>
-                        {t("Lần tương tác gần nhất cách đây")}{' '}
-                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
-                        {t("lúc")}{' '}
-                        <code>{lastDateStr}</code>.<br />
-                        {t("Khoảng cách vượt quá hạn quy định")}{' '}
-                        <strong>{dupCheckMonths} {t("tháng")}</strong>. {t("Hệ thống sẽ phân bổ mới bình thường.")}
-                      </div>
-                    </div>
-                  );
-                }
-              })()}
+                    );
+                  }
+                })()}
 
-              {/* History list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                  {t("Lịch sử lưu vết")} ({(() => {
-                    const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
-                    return history.length;
-                  })()})
-                </h4>
-                <div style={{
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '10px'
-                }} className="custom-scrollbar">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("ID / Họ tên")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Nguồn / Vòng")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Trạng thái")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Sale")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Thời gian")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
-                        return history && history.length > 0 ? (
-                          history.map((h: any) => {
-                            const lastDateStr = h.last_interaction_date || h.created_at;
-                            const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                            const now = new Date();
-                            const diffMs = now.getTime() - lastInt.getTime();
-                            const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+                {/* History list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Lịch sử lưu vết")} ({(() => {
+                      const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                      return history.length;
+                    })()})
+                  </h4>
+                  <div style={{
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '10px'
+                  }} className="custom-scrollbar">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("ID / Họ tên")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Nguồn / Vòng")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Trạng thái")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Sale")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Thời gian")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                          return history && history.length > 0 ? (
+                            history.map((h: any) => {
+                              const lastDateStr = h.last_interaction_date || h.created_at;
+                              const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                              const now = new Date();
+                              const diffMs = now.getTime() - lastInt.getTime();
+                              const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
 
-                            let statusClass = 'muted';
-                            let statusText = h.status;
-                            if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
-                            else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
-                            else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
-                            else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
+                              let statusClass = 'muted';
+                              let statusText = h.status;
+                              if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
+                              else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
+                              else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
+                              else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
 
-                            return (
-                              <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <Avatar name={h.name} size={32} />
-                                    <div>
-                                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                              return (
+                                <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <Avatar name={h.name} size={32} />
+                                      <div>
+                                        <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  {h.consultant_name ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
-                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    {h.consultant_name ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
+                                        <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    <div>{h.created_at}</div>
+                                    <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
+                                      {diffMonths} {t("tháng trước")}
                                     </div>
-                                  ) : (
-                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                  )}
-                                </td>
-                                <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                  <div>{h.created_at}</div>
-                                  <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
-                                    {diffMonths} {t("tháng trước")}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              {t("Không có dữ liệu lịch sử.")}
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </tbody>
-                  </table>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                {t("Không có dữ liệu lịch sử.")}
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         )}
       </CustomModal>
 
@@ -4297,7 +4297,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('Kênh nhận thông báo:')}
               </span>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <img
@@ -4503,33 +4503,33 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     {/* Stacked Percentage Bar */}
                     <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
                       {statsData.summary.successful > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Thành công')}: ${statsData.summary.successful}`} 
+                          }}
+                          title={`${t('Thành công')}: ${statsData.summary.successful}`}
                         />
                       )}
                       {(statsData.summary.reminder || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`} 
+                          }}
+                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`}
                         />
                       )}
                       {(statsData.summary.error || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Lỗi')}: ${statsData.summary.error}`} 
+                          }}
+                          title={`${t('Lỗi')}: ${statsData.summary.error}`}
                         />
                       )}
                     </div>
@@ -4567,7 +4567,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
                           {statsData.summary.successful
-                        }</div>
+                          }</div>
                         <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Data gán mới thành công')}</div>
                         <div style={{ fontSize: '0.625rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>{t('(Không bao gồm Nhắc lại & Lỗi)')}</div>
                       </div>

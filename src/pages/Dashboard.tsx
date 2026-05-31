@@ -1503,7 +1503,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
           {/* New Row: Out-of-Hours Lead Ratio & Rounds Fairness Audit Comparison */}
           <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-            
+
             {/* Out-of-Hours Lead Ratio Card */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -1564,15 +1564,15 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                 {/* Explanations & Details */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '8px 10px', 
-                    background: theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)', 
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 10px',
+                    background: theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)',
                     border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.12)' : '1px solid rgba(245, 158, 11, 0.08)',
                     borderRadius: 10,
-                    fontSize: '0.8125rem' 
+                    fontSize: '0.8125rem'
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-light)', fontWeight: 600 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
@@ -1582,15 +1582,15 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       {stats?.pending_work_hours_count || 0} lead ({stats?.out_of_hours_ratio ?? '0%'})
                     </strong>
                   </div>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '8px 10px', 
-                    background: theme === 'dark' ? 'rgba(124, 58, 237, 0.05)' : 'rgba(124, 58, 237, 0.03)', 
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 10px',
+                    background: theme === 'dark' ? 'rgba(124, 58, 237, 0.05)' : 'rgba(124, 58, 237, 0.03)',
                     border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.12)' : '1px solid rgba(124, 58, 237, 0.08)',
                     borderRadius: 10,
-                    fontSize: '0.8125rem' 
+                    fontSize: '0.8125rem'
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-light)', fontWeight: 600 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: theme === 'dark' ? '#a78bfa' : '#7c3aed' }} />
@@ -1603,7 +1603,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       })()})
                     </strong>
                   </div>
-                  
+
                   <div style={{
                     borderTop: '1px dashed var(--color-border-light)',
                     paddingTop: '0.625rem',
@@ -1674,8 +1674,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.85rem', justifyContent: 'center' }}>
                 {/* Overall metrics and evaluation in a single clean row */}
-                <div style={{ 
-                  display: 'flex', 
+                <div style={{
+                  display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'var(--color-bg)',
@@ -1712,16 +1712,16 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     padding: '2px 8px',
                     borderRadius: 10,
                     background: parseFloat(stats?.fair_share_sd || '0') <= 5 ? 'rgba(16, 185, 129, 0.1)' :
-                                parseFloat(stats?.fair_share_sd || '0') <= 15 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      parseFloat(stats?.fair_share_sd || '0') <= 15 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                     color: parseFloat(stats?.fair_share_sd || '0') <= 5 ? 'var(--color-success)' :
-                           parseFloat(stats?.fair_share_sd || '0') <= 15 ? '#d97706' : 'var(--color-danger)',
+                      parseFloat(stats?.fair_share_sd || '0') <= 15 ? '#d97706' : 'var(--color-danger)',
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
                   }}>
                     {parseFloat(stats?.fair_share_sd || '0') <= 5 ? t('Rất cân bằng') :
-                     parseFloat(stats?.fair_share_sd || '0') <= 15 ? t('Chấp nhận được') : t('Lệch cao - Cần bù')}
+                      parseFloat(stats?.fair_share_sd || '0') <= 15 ? t('Chấp nhận được') : t('Lệch cao - Cần bù')}
                   </span>
                 </div>
- 
+
                 {/* Round-by-round fairness horizontal progress bars */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {/* Miniature fairness bars for rounds if stats?.roundRatio exists */}
@@ -1730,11 +1730,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       stats.roundRatio.map((r: any, idx: number) => {
                         const isEven = idx % 2 === 0;
                         const individualFairness = Math.max(85, Math.min(100, parseFloat(stats?.fair_share_equity || '96.5') + (isEven ? 1.5 : -2.0) - (idx * 0.5)));
-                        
+
                         let trackColor = 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)'; // Purple gradient
                         let badgeBg = 'var(--color-primary-light)';
                         let badgeTextColor = 'var(--color-primary)';
-                        
+
                         if (individualFairness < 90) {
                           trackColor = 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)'; // Red gradient
                           badgeBg = 'rgba(239, 68, 68, 0.1)';
@@ -1746,9 +1746,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         }
 
                         return (
-                          <div 
-                            key={idx} 
-                            style={{ 
+                          <div
+                            key={idx}
+                            style={{
                               background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.015)',
                               border: '1px solid var(--color-border-light)',
                               borderRadius: 10,
@@ -1772,13 +1772,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t(r.round)}</span>
-                              <span style={{ 
-                                fontSize: '0.72rem', 
-                                background: badgeBg, 
-                                color: badgeTextColor, 
-                                padding: '2px 8px', 
-                                borderRadius: 12, 
-                                fontWeight: 700 
+                              <span style={{
+                                fontSize: '0.72rem',
+                                background: badgeBg,
+                                color: badgeTextColor,
+                                padding: '2px 8px',
+                                borderRadius: 12,
+                                fontWeight: 700
                               }}>
                                 {individualFairness.toFixed(1)}% {t('Công bằng')}
                               </span>
@@ -1804,7 +1804,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 </div>
               </div>
             </div>
-            
+
           </div>
         </>
       )}{/* end stats ternary */}
@@ -2371,7 +2371,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
                         </div>
                       </div>
-                      <span 
+                      <span
                         title={(stats?.total_zalo_sent ?? 0).toLocaleString()}
                         style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-success)', whiteSpace: 'nowrap' }}
                       >
@@ -2417,7 +2417,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Báo cáo & bàn giao Lead")}</span>
                         </div>
                       </div>
-                      <span 
+                      <span
                         title={(stats?.total_emails_sent ?? 0).toLocaleString()}
                         style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-info)', whiteSpace: 'nowrap' }}
                       >
@@ -2468,7 +2468,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gemini model screening")}</span>
                         </div>
                       </div>
-                      <span 
+                      <span
                         title={(stats?.total_tokens_used ?? 0).toLocaleString()}
                         style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}
                       >
@@ -2541,7 +2541,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                 {/* Full-width Trend Chart Block */}
                 {stats && (
-                  <div 
+                  <div
                     className="modal-heatmap-container"
                     style={{
                       padding: '12px 16px 12px 12px',
@@ -2569,7 +2569,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {t("Hiệu suất hoạt động hệ thống")}
                         </span>
-                        
+
                         {/* Metric Switcher Pills with Icons */}
                         <div style={{
                           display: 'flex',
@@ -2664,13 +2664,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               axisLine={false}
                               tickLine={false}
                             />
-                            <YAxis 
-                              domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} 
-                              tick={{ fontSize: 8, fill: 'var(--color-text-light)' }} 
-                              axisLine={false} 
-                              tickLine={false} 
+                            <YAxis
+                              domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]}
+                              tick={{ fontSize: 8, fill: 'var(--color-text-light)' }}
+                              axisLine={false}
+                              tickLine={false}
                               width={healthChartMetric === 'token' ? 45 : 30}
-                              tickFormatter={(v) => typeof v === 'number' ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toString())) : v}
+                              tickFormatter={(v) => typeof v === 'number' ? (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString())) : v}
                             />
                             <Tooltip content={({ active, payload, label }) => {
                               if (active && payload && payload.length) {

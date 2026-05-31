@@ -12,7 +12,7 @@ export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchP
   const leftPos = checked ? (small ? 16 : 22) : 2;
 
   return (
-    <div 
+    <div
       onClick={() => onChange(!checked)}
       style={{
         width,
@@ -26,7 +26,7 @@ export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchP
         userSelect: 'none'
       }}
     >
-      <div 
+      <div
         style={{
           width: knobSize,
           height: knobSize,

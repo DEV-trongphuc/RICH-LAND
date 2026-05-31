@@ -1653,29 +1653,29 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       >
         {showDateModal && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
-          <div>
-            <label className="form-label">{t("Từ ngày")}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-            />
+            <div>
+              <label className="form-label">{t("Từ ngày")}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">{t("Đến ngày")}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
+              <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
+            </div>
           </div>
-          <div>
-            <label className="form-label">{t("Đến ngày")}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDateModal(false)}>{t("Hủy")}</button>
-            <button className="btn primary" onClick={handleCustomDateSubmit}>{t("Áp dụng")}</button>
-          </div>
-        </div>
         )}
       </CustomModal>
 
@@ -1685,30 +1685,30 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       <CustomModal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title={t("Từ chối Báo cáo Lỗi")}>
         {rejectModalOpen && (
           <form onSubmit={submitReject}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-              {t("Vui lòng nhập lý do từ chối để Tư vấn viên biết lý do không được đền bù Data:")}
-            </p>
-            <div className="form-group">
-              <label className="form-label">{t("Lý do từ chối")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <textarea
-                className="form-input"
-                placeholder={t("Ví dụ: Khách bảo có nhu cầu nhưng Sale tư vấn chưa tốt...")}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                required
-                autoFocus
-                style={{ minHeight: 80, resize: 'vertical' }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                {t("Vui lòng nhập lý do từ chối để Tư vấn viên biết lý do không được đền bù Data:")}
+              </p>
+              <div className="form-group">
+                <label className="form-label">{t("Lý do từ chối")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <textarea
+                  className="form-input"
+                  placeholder={t("Ví dụ: Khách bảo có nhu cầu nhưng Sale tư vấn chưa tốt...")}
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  required
+                  autoFocus
+                  style={{ minHeight: 80, resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" className="btn ghost" onClick={() => setRejectModalOpen(false)}>{t("Hủy")}</button>
+                <button type="submit" className="btn primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} disabled={isActioning !== null}>
+                  {isActioning ? t("Đang xử lý...") : t("Xác nhận Từ chối")}
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setRejectModalOpen(false)}>{t("Hủy")}</button>
-              <button type="submit" className="btn primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} disabled={isActioning !== null}>
-                {isActioning ? t("Đang xử lý...") : t("Xác nhận Từ chối")}
-              </button>
-            </div>
-          </div>
-        </form>
+          </form>
         )}
       </CustomModal>
 
@@ -1716,28 +1716,28 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       <CustomModal isOpen={quickMessageOpen} onClose={() => setQuickMessageOpen(false)} title={`${t("Nhắn tin cho")} ${quickMessageTarget?.name || t("Sale")}`}>
         {quickMessageOpen && (
           <form onSubmit={handleSendQuickMessage}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>{t("Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]")}</p>
-            <div className="form-group">
-              <label className="form-label">{t("Nội dung tin nhắn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <textarea
-                className="form-input"
-                placeholder={t("Nhập nội dung cần thông báo cho Sale...")}
-                value={quickMessageText}
-                onChange={e => setQuickMessageText(e.target.value)}
-                required
-                autoFocus
-                style={{ minHeight: 100, resize: 'vertical' }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>{t("Tin nhắn sẽ được tự động gửi qua Zalo Bot (nếu có) và Email với tiêu đề [ TIN NHẮN TỪ QUẢN TRỊ VIÊN ]")}</p>
+              <div className="form-group">
+                <label className="form-label">{t("Nội dung tin nhắn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <textarea
+                  className="form-input"
+                  placeholder={t("Nhập nội dung cần thông báo cho Sale...")}
+                  value={quickMessageText}
+                  onChange={e => setQuickMessageText(e.target.value)}
+                  required
+                  autoFocus
+                  style={{ minHeight: 100, resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>{t("Hủy")}</button>
+                <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
+                  {isSendingMsg ? t("Đang gửi...") : t("Gửi tin nhắn")}
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setQuickMessageOpen(false)}>{t("Hủy")}</button>
-              <button type="submit" className="btn primary" disabled={isSendingMsg} style={{ background: '#0068ff', borderColor: '#0068ff' }}>
-                {isSendingMsg ? t("Đang gửi...") : t("Gửi tin nhắn")}
-              </button>
-            </div>
-          </div>
-        </form>
+          </form>
         )}
       </CustomModal>
 
@@ -1745,63 +1745,63 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title={t("Duyệt & Đền Bù Data")}>
         {approveModalOpen && (
           <form onSubmit={submitApprove}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-              {t("Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.")}
-            </p>
-            <div className="form-group">
-              <label className="form-label">{t("Lý do duyệt (không bắt buộc)")}</label>
-              <textarea
-                className="form-input"
-                placeholder={t("Ví dụ: Đã kiểm tra đúng là khách hàng trùng hoặc thuê bao...")}
-                value={approveReason}
-                onChange={(e) => setApproveReason(e.target.value)}
-                autoFocus
-                style={{ minHeight: 80, resize: 'vertical' }}
-              />
-            </div>
-            {reports.find(r => Number(r.id) === Number(approvingId))?.reason?.includes('Trùng của người khác') && (
-              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                  {t("Nhắc lại cho TVV khác (Tùy chọn)")}
-                </label>
-                <CustomSelect
-                  options={[
-                    { value: '', label: t('Không nhắc lại cho TVV khác'), icon: null },
-                    ...allConsultants
-                      .filter(c => {
-                        const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
-                        return Number(c.id) !== Number(currentReport?.consultant_id);
-                      })
-                      .map(c => ({
-                        value: String(c.id),
-                        label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
-                        sublabel: c.email,
-                        avatar: c.avatar,
-                        disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
-                        disabledType: 'sale' as const
-                      }))
-                  ]}
-                  value={reassignConsultantId}
-                  onChange={(val) => setReassignConsultantId(val ? String(val) : '')}
-                  showAvatars={true}
-                  searchable={true}
-                  placeholder={t("Chọn TVV khác...")}
-                  width="100%"
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                {t("Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.")}
+              </p>
+              <div className="form-group">
+                <label className="form-label">{t("Lý do duyệt (không bắt buộc)")}</label>
+                <textarea
+                  className="form-input"
+                  placeholder={t("Ví dụ: Đã kiểm tra đúng là khách hàng trùng hoặc thuê bao...")}
+                  value={approveReason}
+                  onChange={(e) => setApproveReason(e.target.value)}
+                  autoFocus
+                  style={{ minHeight: 80, resize: 'vertical' }}
                 />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  {t("Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).")}
-                </p>
               </div>
-            )}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>{t("Hủy")}</button>
-              <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
-                {isActioning ? t("Đang xử lý...") : t("Xác nhận duyệt")}
-              </button>
+              {reports.find(r => Number(r.id) === Number(approvingId))?.reason?.includes('Trùng của người khác') && (
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                    {t("Nhắc lại cho TVV khác (Tùy chọn)")}
+                  </label>
+                  <CustomSelect
+                    options={[
+                      { value: '', label: t('Không nhắc lại cho TVV khác'), icon: null },
+                      ...allConsultants
+                        .filter(c => {
+                          const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
+                          return Number(c.id) !== Number(currentReport?.consultant_id);
+                        })
+                        .map(c => ({
+                          value: String(c.id),
+                          label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
+                          sublabel: c.email,
+                          avatar: c.avatar,
+                          disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
+                          disabledType: 'sale' as const
+                        }))
+                    ]}
+                    value={reassignConsultantId}
+                    onChange={(val) => setReassignConsultantId(val ? String(val) : '')}
+                    showAvatars={true}
+                    searchable={true}
+                    placeholder={t("Chọn TVV khác...")}
+                    width="100%"
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    {t("Chọn TVV này nếu đây là lỗi trùng và muốn chuyển Lead sang cho họ (Không tính vòng chia số).")}
+                  </p>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>{t("Hủy")}</button>
+                <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
+                  {isActioning ? t("Đang xử lý...") : t("Xác nhận duyệt")}
+                </button>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
         )}
       </CustomModal>
 
@@ -2577,7 +2577,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t("Ghi chú & Phân loại")}</span>
                         </div>
 
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           {isAdminEditingLead ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', width: '80px', flexShrink: 0 }}>{t("Loại Data:")}</span>
@@ -2905,18 +2905,18 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
                       <strong>{selectedLead.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : t('Kết quả đánh giá AI:')}</strong> {
                         selectedLead.ai_evaluation || (
-                          selectedLead.ai_screener_status === 'error' 
-                            ? t('Mất kết nối với dịch vụ AI.') 
+                          selectedLead.ai_screener_status === 'error'
+                            ? t('Mất kết nối với dịch vụ AI.')
                             : (
-                                (selectedLead.ai_screener_status === 'pending' && (() => {
-                                  const now = new Date();
-                                  const created = selectedLead.created_at ? parseServerDate(selectedLead.created_at) : now;
-                                  const diffMins = (now.getTime() - created.getTime()) / 60000;
-                                  return diffMins >= -2 && diffMins < 5;
-                                })())
-                                  ? t('Đang chờ AI đánh giá...')
-                                  : t('Không đạt chuẩn phân chia.')
-                              )
+                              (selectedLead.ai_screener_status === 'pending' && (() => {
+                                const now = new Date();
+                                const created = selectedLead.created_at ? parseServerDate(selectedLead.created_at) : now;
+                                const diffMins = (now.getTime() - created.getTime()) / 60000;
+                                return diffMins >= -2 && diffMins < 5;
+                              })())
+                                ? t('Đang chờ AI đánh giá...')
+                                : t('Không đạt chuẩn phân chia.')
+                            )
                         )
                       }
                     </div>
@@ -2954,11 +2954,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             const cObj = allConsultants.find(c => c.name === selectedLead.assigned_to_name);
                             if (cObj) {
                               return (
-                                <div 
-                                  style={{ 
-                                    fontSize: '1rem', 
-                                    fontWeight: 700, 
-                                    color: 'var(--color-text)', 
+                                <div
+                                  style={{
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text)',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -3007,10 +3007,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     </div>
 
                     {/* Tình trạng thông báo Zalo & Email */}
-                    <div style={{ 
-                      marginTop: '1rem', 
-                      paddingTop: '1rem', 
-                      borderTop: '1px dashed var(--color-border-light)' 
+                    <div style={{
+                      marginTop: '1rem',
+                      paddingTop: '1rem',
+                      borderTop: '1px dashed var(--color-border-light)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem' }}>
                         <RefreshCw size={12} className={notifLoading ? "spin" : ""} style={{ color: 'var(--color-primary)' }} />
@@ -3026,15 +3026,15 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           {/* Email Status */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                              <img 
-                                src="/imgs/gmail-icon-free-png.webp" 
-                                alt="Gmail" 
-                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                              <img
+                                src="/imgs/gmail-icon-free-png.webp"
+                                alt="Gmail"
+                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                               />
                               <span style={{ flexShrink: 0 }}>Email:</span>
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.email.sent_at || notificationStatus.email.target}>
-                                {notificationStatus.email.status === 'sent' 
-                                  ? (notificationStatus.email.sent_at || '-') 
+                                {notificationStatus.email.status === 'sent'
+                                  ? (notificationStatus.email.sent_at || '-')
                                   : ((notificationStatus.email.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.email.status === 'missed')) ? t('Đang chờ gửi...') : '-')}
                               </span>
                             </div>
@@ -3065,15 +3065,15 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           {/* Zalo Status */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
-                              <img 
-                                src="https://stc-zpl.zdn.vn/favicon.ico" 
-                                alt="Zalo" 
-                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} 
+                              <img
+                                src="https://stc-zpl.zdn.vn/favicon.ico"
+                                alt="Zalo"
+                                style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
                               />
                               <span style={{ flexShrink: 0 }}>Zalo:</span>
                               <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.zalo.sent_at || notificationStatus.zalo.target}>
-                                {notificationStatus.zalo.status === 'sent' 
-                                  ? (notificationStatus.zalo.sent_at || '-') 
+                                {notificationStatus.zalo.status === 'sent'
+                                  ? (notificationStatus.zalo.sent_at || '-')
                                   : (notificationStatus.zalo.status === 'no_zalo_config' ? t('Chưa cấu hình ID') : ((notificationStatus.zalo.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.zalo.status === 'missed')) ? t('Đang chờ gửi...') : '-'))}
                               </span>
                             </div>
@@ -3223,58 +3223,58 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       >
         {confirmReassignOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
-              color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
-                {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{allConsultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
-              </p>
-              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                  {t('Lead này hiện đang thuộc về:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Bạn muốn bù data cho')} <strong>{selectedLead.assigned_to_name}</strong> {t('chứ?')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
+                color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                  {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{allConsultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
                 </p>
+                {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
+                    {t('Lead này hiện đang thuộc về:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Bạn muốn bù data cho')} <strong>{selectedLead.assigned_to_name}</strong> {t('chứ?')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t("Hủy")}</button>
+
+              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
+                <>
+                  <button
+                    className="btn secondary"
+                    onClick={() => handleReassign(false)}
+                    style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
+                    disabled={isReassigning}
+                  >
+                    {t("Chuyển luôn, Không bù")}
+                  </button>
+                  <button
+                    className="btn success"
+                    onClick={() => handleReassign(true)}
+                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                    disabled={isReassigning}
+                  >
+                    {t("Chuyển & Bù cho sale cũ")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="btn primary"
+                  onClick={() => handleReassign(false)}
+                  disabled={isReassigning}
+                >
+                  Xác nhận chuyển
+                </button>
               )}
             </div>
           </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t("Hủy")}</button>
-
-            {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
-              <>
-                <button
-                  className="btn secondary"
-                  onClick={() => handleReassign(false)}
-                  style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
-                  disabled={isReassigning}
-                >
-                  {t("Chuyển luôn, Không bù")}
-                </button>
-                <button
-                  className="btn success"
-                  onClick={() => handleReassign(true)}
-                  style={{ background: '#10b981', color: '#fff', border: 'none' }}
-                  disabled={isReassigning}
-                >
-                  {t("Chuyển & Bù cho sale cũ")}
-                </button>
-              </>
-            ) : (
-              <button
-                className="btn primary"
-                onClick={() => handleReassign(false)}
-                disabled={isReassigning}
-              >
-                Xác nhận chuyển
-              </button>
-            )}
-          </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3291,140 +3291,140 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       >
         {confirmBlockOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)',
-              color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
-                {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name || ''}"?
-              </p>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
-                {t("Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.")}
-              </p>
-            </div>
-          </div>
-
-          {isTicketLead && (
-            <div style={{
-              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: '12px',
-              padding: '1rem',
-              color: 'var(--color-danger)',
-              fontSize: '0.875rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-              lineHeight: 1.5,
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
-            }}>
-              <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                {t("Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.")}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', background: 'var(--color-danger-light)',
+                color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
               </div>
-            </div>
-          )}
-
-          <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Hình thức chặn:")}</div>
-
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="blockType"
-                checked={!compensateBlock}
-                onChange={() => setCompensateBlock(false)}
-                style={{ marginTop: '3px' }}
-              />
               <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chỉ đưa vào danh sách đen (Blacklist)")}</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t("Không thực hiện đền bù data cho Sale.")}</p>
-              </div>
-            </label>
-
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '8px',
-              cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
-              opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
-            }}>
-              <input
-                type="radio"
-                name="blockType"
-                checked={compensateBlock}
-                onChange={() => setCompensateBlock(true)}
-                disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
-                style={{ marginTop: '3px' }}
-              />
-              <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chặn và Bù vòng cho Sale")}</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                  {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                  {t('Bạn có chắc chắn muốn chặn khách hàng')} "{selectedLead?.name || ''}"?
+                </p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4, marginBottom: 0 }}>
+                  {t("Số điện thoại/Email của khách hàng sẽ được thêm vào Blacklist toàn cục để chặn nhận trùng trong tương lai.")}
                 </p>
               </div>
-            </label>
-
-            {selectedLead?.assigned_to_name === '-' && (
-              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> {t("Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.")}
-              </div>
-            )}
+            </div>
 
             {isTicketLead && (
-              <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <AlertTriangle size={12} /> {t("Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.")}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '12px',
+                padding: '1rem',
+                color: 'var(--color-danger)',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                lineHeight: 1.5,
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
+              }}>
+                <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  {t("Lead này đã có trạng thái Ticket và đã được bù rồi. Hệ thống sẽ chỉ đưa thông tin khách hàng này vào Blacklist và không thực hiện đền bù thêm lượt nào nữa.")}
+                </div>
               </div>
             )}
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Lý do chặn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <textarea
-              value={blockReason}
-              onChange={(e) => setBlockReason(e.target.value)}
-              placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
-              style={{
-                width: '100%',
-                height: '80px',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid var(--color-border)',
-                fontSize: '0.875rem',
-                outline: 'none',
-                resize: 'none'
-              }}
-            />
-          </div>
+            <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Hình thức chặn:")}</div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button
-              className="btn outline"
-              onClick={() => {
-                setConfirmBlockOpen(false);
-                setBlockReason('');
-                setCompensateBlock(false);
-              }}
-              disabled={isBlocking}
-            >
-              {t("Hủy")}
-            </button>
-            <button
-              className="btn danger"
-              onClick={handleBlockLead}
-              disabled={isBlocking || !blockReason.trim()}
-              style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
-              {t("Xác nhận chặn")}
-            </button>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="blockType"
+                  checked={!compensateBlock}
+                  onChange={() => setCompensateBlock(false)}
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chỉ đưa vào danh sách đen (Blacklist)")}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>{t("Không thực hiện đền bù data cho Sale.")}</p>
+                </div>
+              </label>
+
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                cursor: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 'not-allowed' : 'pointer',
+                opacity: (selectedLead?.assigned_to_name === '-' || isTicketLead) ? 0.5 : 1
+              }}>
+                <input
+                  type="radio"
+                  name="blockType"
+                  checked={compensateBlock}
+                  onChange={() => setCompensateBlock(true)}
+                  disabled={selectedLead?.assigned_to_name === '-' || isTicketLead}
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Chặn và Bù vòng cho Sale")}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                    {t('Đền bù 1 lượt data vòng')} <strong>"{selectedLead?.round_name}"</strong> {t('cho Sale')} <strong>"{selectedLead?.assigned_to_name}"</strong>.
+                  </p>
+                </div>
+              </label>
+
+              {selectedLead?.assigned_to_name === '-' && (
+                <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <AlertTriangle size={12} /> {t("Lead chưa phân bổ cho Sale nào, không thể chọn hình thức Bù vòng.")}
+                </div>
+              )}
+
+              {isTicketLead && (
+                <div style={{ color: '#ea580c', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <AlertTriangle size={12} /> {t("Lead đã có trạng thái Ticket (lỗi), không thể đền bù thêm khi chặn.")}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Lý do chặn")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder={t("Nhập lý do chặn (ví dụ: Số điện thoại ảo, khách không có nhu cầu, spam...)")}
+                style={{
+                  width: '100%',
+                  height: '80px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  resize: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => {
+                  setConfirmBlockOpen(false);
+                  setBlockReason('');
+                  setCompensateBlock(false);
+                }}
+                disabled={isBlocking}
+              >
+                {t("Hủy")}
+              </button>
+              <button
+                className="btn danger"
+                onClick={handleBlockLead}
+                disabled={isBlocking || !blockReason.trim()}
+                style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {isBlocking ? <RefreshCw size={14} className="spin" /> : null}
+                {t("Xác nhận chặn")}
+              </button>
+            </div>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3438,213 +3438,213 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         {showAutoApproveModal && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
 
-          {/* Main switch toggle */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '16px 20px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{t("Trạng thái tự động duyệt ticket")}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                {t("Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.")}
-              </span>
-            </div>
-            <div
-              onClick={() => setTicketAutoApprove(!ticketAutoApprove)}
-              style={{
-                width: 48, height: 26, borderRadius: 13,
-                background: ticketAutoApprove ? 'var(--color-success)' : 'var(--color-border)',
-                position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
-                boxShadow: ticketAutoApprove ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none',
-                flexShrink: 0
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, width: 20, height: 20, borderRadius: '50%',
-                background: 'white', left: ticketAutoApprove ? 25 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-              }} />
-            </div>
-          </div>
-
-          {/* Rules list section */}
-          {ticketAutoApprove && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                  {t("Danh sách luật duyệt tự động")}
+            {/* Main switch toggle */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{t("Trạng thái tự động duyệt ticket")}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Khi được kích hoạt, hệ thống sẽ tự động duyệt báo cáo lỗi của Sale nếu khớp với các luật bên dưới.")}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingRule(null);
-                    setRuleName('');
-                    setRuleActive(true);
-                    setRuleRounds(['all']);
-                    setRuleSales(['all']);
-                    setRuleConnections(['all']);
-                    setRuleKeywords('');
-                    setRuleModalOpen(true);
-                  }}
-                  className="btn primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
-                >
-                  <Plus size={16} /> {t("Thêm Luật Mới")}
-                </button>
               </div>
-
-              {ticketAutoApproveRules.length === 0 ? (
+              <div
+                onClick={() => setTicketAutoApprove(!ticketAutoApprove)}
+                style={{
+                  width: 48, height: 26, borderRadius: 13,
+                  background: ticketAutoApprove ? 'var(--color-success)' : 'var(--color-border)',
+                  position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
+                  boxShadow: ticketAutoApprove ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none',
+                  flexShrink: 0
+                }}
+              >
                 <div style={{
-                  textAlign: 'center', padding: '3rem 2rem', border: '2px dashed var(--color-border)',
-                  borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
-                }}>
-                  {t("Chưa có luật tự động duyệt nào. Nhấp \"Thêm Luật Mới\" để bắt đầu thiết lập.")}
+                  position: 'absolute', top: 3, width: 20, height: 20, borderRadius: '50%',
+                  background: 'white', left: ticketAutoApprove ? 25 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                }} />
+              </div>
+            </div>
+
+            {/* Rules list section */}
+            {ticketAutoApprove && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                    {t("Danh sách luật duyệt tự động")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRule(null);
+                      setRuleName('');
+                      setRuleActive(true);
+                      setRuleRounds(['all']);
+                      setRuleSales(['all']);
+                      setRuleConnections(['all']);
+                      setRuleKeywords('');
+                      setRuleModalOpen(true);
+                    }}
+                    className="btn primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.85rem' }}
+                  >
+                    <Plus size={16} /> {t("Thêm Luật Mới")}
+                  </button>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
-                  {ticketAutoApproveRules.map((rule) => {
-                    const targetRounds = rule.rounds.includes('all')
-                      ? t('Tất cả vòng')
-                      : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || t('Không xác định');
 
-                    const targetSales = rule.sales.includes('all')
-                      ? t('Tất cả Salepersons')
-                      : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || t('Không xác định');
+                {ticketAutoApproveRules.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center', padding: '3rem 2rem', border: '2px dashed var(--color-border)',
+                    borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontSize: '0.875rem'
+                  }}>
+                    {t("Chưa có luật tự động duyệt nào. Nhấp \"Thêm Luật Mới\" để bắt đầu thiết lập.")}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
+                    {ticketAutoApproveRules.map((rule) => {
+                      const targetRounds = rule.rounds.includes('all')
+                        ? t('Tất cả vòng')
+                        : rounds.filter(r => rule.rounds.map(String).includes(String(r.id))).map(r => r.round_name).join(', ') || t('Không xác định');
 
-                    const targetConns = (rule.connections || []).includes('all') || !rule.connections
-                      ? t('Tất cả nguồn')
-                      : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || t('Không xác định');
+                      const targetSales = rule.sales.includes('all')
+                        ? t('Tất cả Salepersons')
+                        : allConsultants.filter(c => rule.sales.map(String).includes(String(c.id))).map(c => c.name).join(', ') || t('Không xác định');
 
-                    const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
+                      const targetConns = (rule.connections || []).includes('all') || !rule.connections
+                        ? t('Tất cả nguồn')
+                        : connections.filter(conn => (rule.connections || []).map(String).includes(String(conn.id))).map(conn => conn.sheet_name).join(', ') || t('Không xác định');
 
-                    return (
-                      <div
-                        key={rule.id}
-                        style={{
-                          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                          background: rule.active ? 'var(--color-surface)' : 'rgba(0,0,0,0.02)',
-                          padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
-                          position: 'relative', transition: 'all 0.2s',
-                          opacity: rule.active ? 1 : 0.65
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                              {rule.name}
-                              {!rule.active && (
-                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
-                                  {t("Tắt")}
-                                </span>
-                              )}
-                            </h4>
-                          </div>
+                      const kwList = Array.isArray(rule.keywords) ? rule.keywords : (rule.keywords || '').split(',').map((k: string) => k.trim()).filter(Boolean);
 
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            {/* Quick toggle */}
-                            <div
-                              onClick={() => {
-                                setTicketAutoApproveRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
-                              }}
-                              style={{
-                                width: 32, height: 18, borderRadius: 9,
-                                background: rule.active ? 'var(--color-success)' : 'var(--color-border)',
-                                position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
-                                marginRight: '0.5rem',
-                                flexShrink: 0
-                              }}
-                            >
-                              <div style={{
-                                position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
-                                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                left: rule.active ? 16 : 2, transition: 'left 0.2s'
-                              }} />
+                      return (
+                        <div
+                          key={rule.id}
+                          style={{
+                            border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                            background: rule.active ? 'var(--color-surface)' : 'rgba(0,0,0,0.02)',
+                            padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                            position: 'relative', transition: 'all 0.2s',
+                            opacity: rule.active ? 1 : 0.65
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                                {rule.name}
+                                {!rule.active && (
+                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--color-border)', color: 'var(--color-text-muted)', borderRadius: 4 }}>
+                                    {t("Tắt")}
+                                  </span>
+                                )}
+                              </h4>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingRule(rule);
-                                setRuleName(rule.name);
-                                setRuleActive(rule.active);
-                                setRuleRounds(rule.rounds);
-                                setRuleSales(rule.sales);
-                                setRuleConnections(rule.connections || ['all']);
-                                setRuleKeywords(Array.isArray(rule.keywords) ? rule.keywords.join(', ') : rule.keywords);
-                                setRuleModalOpen(true);
-                              }}
-                              style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title={t("Chỉnh sửa")}
-                            >
-                              <Edit2 size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(t('Bạn có chắc chắn muốn xóa luật') + ` "${rule.name}"?`)) {
-                                  setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
-                                }
-                              }}
-                              style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title={t("Xóa")}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              {/* Quick toggle */}
+                              <div
+                                onClick={() => {
+                                  setTicketAutoApproveRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+                                }}
+                                style={{
+                                  width: 32, height: 18, borderRadius: 9,
+                                  background: rule.active ? 'var(--color-success)' : 'var(--color-border)',
+                                  position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+                                  marginRight: '0.5rem',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <div style={{
+                                  position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
+                                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                  left: rule.active ? 16 : 2, transition: 'left 0.2s'
+                                }} />
+                              </div>
 
-                        {/* Details/Tags */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
-                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Vòng:")}</span>
-                            <span style={{ fontWeight: 600 }}>{targetRounds}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingRule(rule);
+                                  setRuleName(rule.name);
+                                  setRuleActive(rule.active);
+                                  setRuleRounds(rule.rounds);
+                                  setRuleSales(rule.sales);
+                                  setRuleConnections(rule.connections || ['all']);
+                                  setRuleKeywords(Array.isArray(rule.keywords) ? rule.keywords.join(', ') : rule.keywords);
+                                  setRuleModalOpen(true);
+                                }}
+                                style={{ padding: 4, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                title={t("Chỉnh sửa")}
+                              >
+                                <Edit2 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(t('Bạn có chắc chắn muốn xóa luật') + ` "${rule.name}"?`)) {
+                                    setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
+                                  }
+                                }}
+                                style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                title={t("Xóa")}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Sales:")}</span>
-                            <span style={{ fontWeight: 600 }}>{targetSales}</span>
-                          </div>
-                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--color-text-muted)' }}>{t("Nguồn:")}</span>
-                            <span style={{ fontWeight: 600 }}>{targetConns}</span>
-                          </div>
-                        </div>
 
-                        {/* Keywords list */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>{t("Từ khóa")} ({kwList.length}):</span>
-                          {kwList.map((kw: string, i: number) => (
-                            <span
-                              key={i}
-                              style={{
-                                fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)',
-                                color: 'var(--color-success)', borderRadius: 4, fontWeight: 600
-                              }}
-                            >
-                              {kw}
-                            </span>
-                          ))}
+                          {/* Details/Tags */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.75rem' }}>
+                            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>{t("Vòng:")}</span>
+                              <span style={{ fontWeight: 600 }}>{targetRounds}</span>
+                            </div>
+                            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>{t("Sales:")}</span>
+                              <span style={{ fontWeight: 600 }}>{targetSales}</span>
+                            </div>
+                            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>{t("Nguồn:")}</span>
+                              <span style={{ fontWeight: 600 }}>{targetConns}</span>
+                            </div>
+                          </div>
+
+                          {/* Keywords list */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: 2 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginRight: 4 }}>{t("Từ khóa")} ({kwList.length}):</span>
+                            {kwList.map((kw: string, i: number) => (
+                              <span
+                                key={i}
+                                style={{
+                                  fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)',
+                                  color: 'var(--color-success)', borderRadius: 4, fontWeight: 600
+                                }}
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+              <button onClick={() => setShowAutoApproveModal(false)} className="btn ghost" type="button">{t("Hủy")}</button>
+              <button
+                onClick={handleSaveAutoApprove}
+                disabled={savingSettings}
+                className="btn primary"
+                type="button"
+              >
+                <Save size={16} /> {savingSettings ? t('Đang lưu...') : t('Lưu cấu hình')}
+              </button>
             </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-            <button onClick={() => setShowAutoApproveModal(false)} className="btn ghost" type="button">{t("Hủy")}</button>
-            <button
-              onClick={handleSaveAutoApprove}
-              disabled={savingSettings}
-              className="btn primary"
-              type="button"
-            >
-              <Save size={16} /> {savingSettings ? t('Đang lưu...') : t('Lưu cấu hình')}
-            </button>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3657,162 +3657,162 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       >
         {ruleModalOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0', textAlign: 'left' }}>
-          {/* Name */}
-          <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>{t("Tên luật duyệt tự động")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder={t("Ví dụ: Lỗi số điện thoại — Vòng A")}
-              value={ruleName}
-              onChange={e => setRuleName(e.target.value)}
-            />
-          </div>
-
-          {/* Scope: Rounds */}
-          <div>
-            <CustomSelect
-              label={t("Áp dụng cho Vòng phân bổ")}
-              options={roundOptions}
-              value={ruleRounds}
-              onChange={setRuleRounds}
-              multiple={true}
-              searchable={true}
-              placeholder={t("Chọn vòng phân bổ...")}
-            />
-          </div>
-
-          {/* Scope: Sales */}
-          <div>
-            <CustomSelect
-              label={t("Áp dụng cho Tư vấn viên (Sales)")}
-              options={saleOptions}
-              value={ruleSales}
-              onChange={setRuleSales}
-              multiple={true}
-              searchable={true}
-              placeholder={t("Chọn tư vấn viên...")}
-            />
-          </div>
-
-          {/* Scope: Sources (Sheet Connections) */}
-          <div>
-            <CustomSelect
-              label={t("Áp dụng cho Nguồn dữ liệu (Sources)")}
-              options={connectionOptions}
-              value={ruleConnections}
-              onChange={setRuleConnections}
-              multiple={true}
-              searchable={true}
-              placeholder={t("Chọn nguồn dữ liệu...")}
-            />
-          </div>
-
-          {/* Keywords / Reasons */}
-          <div>
-            <label className="form-label" style={{ fontWeight: 600 }}>{t("Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy)")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <textarea
-              className="form-input"
-              placeholder={t("Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được")}
-              value={ruleKeywords}
-              onChange={e => setRuleKeywords(e.target.value)}
-              style={{ minHeight: 80, resize: 'vertical' }}
-            />
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-              {t("Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.")}
-            </span>
-          </div>
-
-          {/* Active status */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 16px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)', marginTop: '0.25rem'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t("Trạng thái hoạt động")}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Kích hoạt hoặc tạm ngưng áp dụng luật này")}</span>
+            {/* Name */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t("Tên luật duyệt tự động")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t("Ví dụ: Lỗi số điện thoại — Vòng A")}
+                value={ruleName}
+                onChange={e => setRuleName(e.target.value)}
+              />
             </div>
-            <div
-              onClick={() => setRuleActive(!ruleActive)}
-              style={{
-                width: 44, height: 24, borderRadius: 12,
-                background: ruleActive ? 'var(--color-success)' : 'var(--color-border)',
-                position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
-                boxShadow: ruleActive ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
-                flexShrink: 0
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%',
-                background: 'white', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-              }} />
+
+            {/* Scope: Rounds */}
+            <div>
+              <CustomSelect
+                label={t("Áp dụng cho Vòng phân bổ")}
+                options={roundOptions}
+                value={ruleRounds}
+                onChange={setRuleRounds}
+                multiple={true}
+                searchable={true}
+                placeholder={t("Chọn vòng phân bổ...")}
+              />
+            </div>
+
+            {/* Scope: Sales */}
+            <div>
+              <CustomSelect
+                label={t("Áp dụng cho Tư vấn viên (Sales)")}
+                options={saleOptions}
+                value={ruleSales}
+                onChange={setRuleSales}
+                multiple={true}
+                searchable={true}
+                placeholder={t("Chọn tư vấn viên...")}
+              />
+            </div>
+
+            {/* Scope: Sources (Sheet Connections) */}
+            <div>
+              <CustomSelect
+                label={t("Áp dụng cho Nguồn dữ liệu (Sources)")}
+                options={connectionOptions}
+                value={ruleConnections}
+                onChange={setRuleConnections}
+                multiple={true}
+                searchable={true}
+                placeholder={t("Chọn nguồn dữ liệu...")}
+              />
+            </div>
+
+            {/* Keywords / Reasons */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t("Từ khóa / Lý do lỗi kích hoạt (Cách nhau bằng dấu phẩy)")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <textarea
+                className="form-input"
+                placeholder={t("Ví dụ: sai số, thuê bao, nhầm số, không liên lạc được")}
+                value={ruleKeywords}
+                onChange={e => setRuleKeywords(e.target.value)}
+                style={{ minHeight: 80, resize: 'vertical' }}
+              />
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                {t("Khi lý do báo lỗi của Sale chứa bất kỳ từ khóa nào trong danh sách trên, ticket sẽ được duyệt tự động.")}
+              </span>
+            </div>
+
+            {/* Active status */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px', background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)', marginTop: '0.25rem'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{t("Trạng thái hoạt động")}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Kích hoạt hoặc tạm ngưng áp dụng luật này")}</span>
+              </div>
+              <div
+                onClick={() => setRuleActive(!ruleActive)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12,
+                  background: ruleActive ? 'var(--color-success)' : 'var(--color-border)',
+                  position: 'relative', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
+                  boxShadow: ruleActive ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
+                  flexShrink: 0
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%',
+                  background: 'white', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                }} />
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn outline"
+                onClick={() => setRuleModalOpen(false)}
+              >
+                {t("Hủy")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  if (!ruleName.trim()) {
+                    toast.error(t("Vui lòng nhập tên luật!"));
+                    return;
+                  }
+                  if (!ruleKeywords.trim()) {
+                    toast.error(t("Vui lòng nhập từ khóa duyệt!"));
+                    return;
+                  }
+                  if (ruleRounds.length === 0) {
+                    toast.error(t("Vui lòng chọn ít nhất một vòng áp dụng!"));
+                    return;
+                  }
+                  if (ruleSales.length === 0) {
+                    toast.error(t("Vui lòng chọn ít nhất một Sale áp dụng!"));
+                    return;
+                  }
+                  if (ruleConnections.length === 0) {
+                    toast.error(t("Vui lòng chọn ít nhất một nguồn áp dụng!"));
+                    return;
+                  }
+
+                  const keywordsArray = ruleKeywords.split(',')
+                    .map(k => k.trim())
+                    .filter(k => k.length > 0);
+
+                  const newRule = {
+                    id: editingRule ? editingRule.id : Date.now(),
+                    name: ruleName.trim(),
+                    active: ruleActive,
+                    rounds: ruleRounds,
+                    sales: ruleSales,
+                    connections: ruleConnections,
+                    keywords: keywordsArray
+                  };
+
+                  if (editingRule) {
+                    setTicketAutoApproveRules(prev => prev.map(r => r.id === editingRule.id ? newRule : r));
+                    toast.success(t("Đã cập nhật luật thành công!"));
+                  } else {
+                    setTicketAutoApproveRules(prev => [...prev, newRule]);
+                    toast.success(t("Đã thêm luật mới thành công!"));
+                  }
+                  setRuleModalOpen(false);
+                }}
+              >
+                {t("Xác nhận")}
+              </button>
             </div>
           </div>
-
-          {/* Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <button
-              type="button"
-              className="btn outline"
-              onClick={() => setRuleModalOpen(false)}
-            >
-              {t("Hủy")}
-            </button>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => {
-                if (!ruleName.trim()) {
-                  toast.error(t("Vui lòng nhập tên luật!"));
-                  return;
-                }
-                if (!ruleKeywords.trim()) {
-                  toast.error(t("Vui lòng nhập từ khóa duyệt!"));
-                  return;
-                }
-                if (ruleRounds.length === 0) {
-                  toast.error(t("Vui lòng chọn ít nhất một vòng áp dụng!"));
-                  return;
-                }
-                if (ruleSales.length === 0) {
-                  toast.error(t("Vui lòng chọn ít nhất một Sale áp dụng!"));
-                  return;
-                }
-                if (ruleConnections.length === 0) {
-                  toast.error(t("Vui lòng chọn ít nhất một nguồn áp dụng!"));
-                  return;
-                }
-
-                const keywordsArray = ruleKeywords.split(',')
-                  .map(k => k.trim())
-                  .filter(k => k.length > 0);
-
-                const newRule = {
-                  id: editingRule ? editingRule.id : Date.now(),
-                  name: ruleName.trim(),
-                  active: ruleActive,
-                  rounds: ruleRounds,
-                  sales: ruleSales,
-                  connections: ruleConnections,
-                  keywords: keywordsArray
-                };
-
-                if (editingRule) {
-                  setTicketAutoApproveRules(prev => prev.map(r => r.id === editingRule.id ? newRule : r));
-                  toast.success(t("Đã cập nhật luật thành công!"));
-                } else {
-                  setTicketAutoApproveRules(prev => [...prev, newRule]);
-                  toast.success(t("Đã thêm luật mới thành công!"));
-                }
-                setRuleModalOpen(false);
-              }}
-            >
-              {t("Xác nhận")}
-            </button>
-          </div>
-        </div>
         )}
       </CustomModal>
 
@@ -3850,7 +3850,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('Kênh nhận thông báo:')}
               </span>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <img
@@ -4056,33 +4056,33 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     {/* Stacked Percentage Bar */}
                     <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
                       {statsData.summary.successful > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Thành công')}: ${statsData.summary.successful}`} 
+                          }}
+                          title={`${t('Thành công')}: ${statsData.summary.successful}`}
                         />
                       )}
                       {(statsData.summary.reminder || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`} 
+                          }}
+                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`}
                         />
                       )}
                       {(statsData.summary.error || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Lỗi')}: ${statsData.summary.error}`} 
+                          }}
+                          title={`${t('Lỗi')}: ${statsData.summary.error}`}
                         />
                       )}
                     </div>
@@ -4120,7 +4120,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
                           {statsData.summary.successful
-                        }</div>
+                          }</div>
                         <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Data gán mới thành công')}</div>
                         <div style={{ fontSize: '0.625rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>{t('(Không bao gồm Nhắc lại & Lỗi)')}</div>
                       </div>
@@ -4436,85 +4436,85 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
     <CustomModal isOpen={open} onClose={onClose} title={t("Cài đặt thông báo Ticket")}>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {loadingData ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t("Đang tải...")}</div>
-        ) : (
-          <>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
-              {t("Admin đầu tiên nhận email To: — Các admin còn lại nhận CC:. Admin phải có email mới có thể được chọn.")}
-            </p>
+          {loadingData ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t("Đang tải...")}</div>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
+                {t("Admin đầu tiên nhận email To: — Các admin còn lại nhận CC:. Admin phải có email mới có thể được chọn.")}
+              </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
-              {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').map((acc: any) => {
-                const isSelected = selectedIds.includes(Number(acc.id));
-                const noEmail = !acc.email;
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => !noEmail && toggle(Number(acc.id))}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                      borderRadius: 'var(--radius-lg)', border: '1px solid',
-                      borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
-                      background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                      cursor: noEmail ? 'not-allowed' : 'pointer',
-                      opacity: noEmail ? 0.6 : 1,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Avatar src={acc.avatar} name={acc.name} size={36} />
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>
-                      <div style={{ fontSize: '0.8rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2 }}>
-                        {noEmail
-                          ? <span style={{ color: 'var(--color-danger)' }}>{t("⚠ Chưa cài email — không nhận được")}</span>
-                          : acc.email
-                        }
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
+                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').map((acc: any) => {
+                  const isSelected = selectedIds.includes(Number(acc.id));
+                  const noEmail = !acc.email;
+                  return (
+                    <div
+                      key={acc.id}
+                      onClick={() => !noEmail && toggle(Number(acc.id))}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                        borderRadius: 'var(--radius-lg)', border: '1px solid',
+                        borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
+                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                        cursor: noEmail ? 'not-allowed' : 'pointer',
+                        opacity: noEmail ? 0.6 : 1,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Avatar src={acc.avatar} name={acc.name} size={36} />
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>
+                        <div style={{ fontSize: '0.8rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2 }}>
+                          {noEmail
+                            ? <span style={{ color: 'var(--color-danger)' }}>{t("⚠ Chưa cài email — không nhận được")}</span>
+                            : acc.email
+                          }
+                        </div>
+                      </div>
+                      {/* Role badge */}
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius-md)', flexShrink: 0,
+                        background: acc.role === 'admin' ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
+                        color: acc.role === 'admin' ? 'var(--color-primary)' : '#10b981'
+                      }}>
+                        {acc.role === 'admin' ? t('Admin') : t('Assistant')}
+                      </span>
+                      {/* Toggle switch */}
+                      <div style={{
+                        width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+                        background: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
+                        position: 'relative', transition: 'background 0.2s', marginLeft: 8
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
+                          background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          left: isSelected ? 21 : 3, transition: 'left 0.2s'
+                        }} />
                       </div>
                     </div>
-                    {/* Role badge */}
-                    <span style={{
-                      fontSize: '0.7rem', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius-md)', flexShrink: 0,
-                      background: acc.role === 'admin' ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
-                      color: acc.role === 'admin' ? 'var(--color-primary)' : '#10b981'
-                    }}>
-                      {acc.role === 'admin' ? t('Admin') : t('Assistant')}
-                    </span>
-                    {/* Toggle switch */}
-                    <div style={{
-                      width: 40, height: 22, borderRadius: 11, flexShrink: 0,
-                      background: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
-                      position: 'relative', transition: 'background 0.2s', marginLeft: 8
-                    }}>
-                      <div style={{
-                        position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
-                        background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        left: isSelected ? 21 : 3, transition: 'left 0.2s'
-                      }} />
-                    </div>
-                  </div>
-                );
-              })}
-              {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Chưa có admin nào trong hệ thống")}</div>
-              )}
-            </div>
-          </>
-        )}
+                  );
+                })}
+                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Chưa có admin nào trong hệ thống")}</div>
+                )}
+              </div>
+            </>
+          )}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-          <button onClick={onClose} className="btn ghost" type="button">{t("Hủy")}</button>
-          <button
-            onClick={handleSave}
-            disabled={saving || loadingData}
-            className="btn primary"
-            type="button"
-          >
-            <Save size={16} /> {saving ? t('Đang lưu...') : t('Lưu cài đặt')}
-          </button>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button onClick={onClose} className="btn ghost" type="button">{t("Hủy")}</button>
+            <button
+              onClick={handleSave}
+              disabled={saving || loadingData}
+              className="btn primary"
+              type="button"
+            >
+              <Save size={16} /> {saving ? t('Đang lưu...') : t('Lưu cài đặt')}
+            </button>
+          </div>
         </div>
-      </div>
       )}
     </CustomModal>
   );

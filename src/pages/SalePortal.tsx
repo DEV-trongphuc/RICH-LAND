@@ -105,7 +105,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   const toggleTheme = (event?: React.MouseEvent) => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
-    
+
     // Check if View Transition is supported and user does not prefer reduced motion
     if (!(document as any).startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setTheme(nextTheme);
@@ -118,7 +118,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     // Get click position or fallback to center of the viewport
     const x = event ? event.clientX : window.innerWidth / 2;
     const y = event ? event.clientY : window.innerHeight / 2;
-    
+
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
@@ -229,6 +229,27 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
 
+  // Sliding tab indicator
+  const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
+  const navContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (navContainerRef.current) {
+        const activeBtn = navContainerRef.current.querySelector('[data-active="true"]') as HTMLElement;
+        if (activeBtn) {
+          setSliderStyle({
+            top: activeBtn.offsetTop,
+            height: activeBtn.offsetHeight
+          });
+        } else {
+          setSliderStyle({ top: 0, height: 0 });
+        }
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [activeTab, isCollapsed]);
+
   // Calendar states
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<any>({});
@@ -294,7 +315,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       if (displayUser?.consultant_id) {
         queryParams.set('consultant_id', String(displayUser.consultant_id));
       }
-      
+
       const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
       if (res.success) {
         setTickets(res.data || []);
@@ -470,7 +491,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       setEditAvatar(data.consultant_profile.avatar || '');
       setEditWorkStartTime(data.consultant_profile.work_start_time || '08:00');
       setEditWorkEndTime(data.consultant_profile.work_end_time || '17:30');
-      
+
       const schedule = data.consultant_profile.work_schedule;
       if (schedule && Object.keys(schedule).length > 0) {
         setEditWorkSchedule(schedule);
@@ -493,7 +514,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
       const oldAvatar = editAvatar || '';
       const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;
-      
+
       const res = await fetchAPI(query, {
         method: 'POST',
         body: fd
@@ -693,8 +714,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     }
     setSubmittingReport(true);
     try {
-      const finalReason = isOtherReason 
-        ? `${reportReasonType}: ${reportDetails.trim()}` 
+      const finalReason = isOtherReason
+        ? `${reportReasonType}: ${reportDetails.trim()}`
         : (reportDetails.trim() ? `${reportReasonType} (Ghi chú: ${reportDetails.trim()})` : reportReasonType);
       const payload = {
         lead_id: selectedLead.lead_id,
@@ -875,7 +896,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           <p style={{ color: '#64748b', fontSize: '0.925rem', marginTop: 6, lineHeight: 1.5 }}>
             {t('Vui lòng đăng nhập bằng tài khoản Google nhận mail để tra cứu danh sách khách hàng và quản lý tickets.')}
           </p>
- 
+
           <div style={{ margin: '2rem 0' }}>
             {isAdminMsg ? (
               <div style={{
@@ -926,7 +947,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
                 <div ref={googleBtnRef} style={{ minHeight: 44 }}></div>
- 
+
                 {localStorage.getItem('DOMATION_DEMO_MODE') === 'true' && (
                   <button
                     onClick={() => {
@@ -969,7 +990,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 )}
 
                 {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>{t('Đang kết nối Google API...')}</div>}
- 
+
                 {googleError && (
                   <div style={{
                     padding: '0.75rem 1rem', background: 'var(--color-danger-light)', border: '1px solid var(--color-danger-light)',
@@ -983,7 +1004,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               </div>
             )}
           </div>
- 
+
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem', fontSize: '0.75rem', color: '#94a3b8' }}>
             {t('Hệ thống Quản lý Domation DATA')} &copy; 2026
           </div>
@@ -1049,7 +1070,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             {/* Button to open Connection Health Modal */}
             <button
               className="btn outline"
-              onClick={() => {}}
+              onClick={() => { }}
               title={t("Kiểm tra kết nối hệ thống")}
               style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
             >
@@ -1258,7 +1279,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 {t('Tỷ lệ theo Vòng Phân Bổ')}
               </h3>
             </div>
-            
+
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
               {data.by_round && data.by_round.length > 0 ? (
                 data.by_round.map((r: any, idx: number) => {
@@ -1332,7 +1353,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 </button>
               </div>
             </div>
-            
+
             <div style={{ flex: 1, minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               {(() => {
                 const getSourceStats = () => {
@@ -1667,71 +1688,71 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                         </div>
                       </div>
 
-                      {((effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0) || lead.report_status || (isAllowedToReport && 
-                        (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
+                      {((effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0) || lead.report_status || (isAllowedToReport &&
+                        (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                         (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)))) && (
-                        <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
-                          {effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              {(() => {
-                                const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
-                                const limitMs = leadRecallMins * 60 * 1000;
-                                const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
-                                const remainingMs = limitMs - elapsedMs;
+                          <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
+                            {effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {(() => {
+                                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+                                  const limitMs = leadRecallMins * 60 * 1000;
+                                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+                                  const remainingMs = limitMs - elapsedMs;
 
-                                if (leadRecallMins > 0 && remainingMs <= 0) {
-                                  return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('Quá hạn')}</span>;
-                                }
+                                  if (leadRecallMins > 0 && remainingMs <= 0) {
+                                    return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('Quá hạn')}</span>;
+                                  }
 
-                                const formatTime = (ms: number) => {
-                                  const totalSecs = Math.max(0, Math.floor(ms / 1000));
-                                  const mins = Math.floor(totalSecs / 60);
-                                  const secs = totalSecs % 60;
-                                  return `${mins}:${String(secs).padStart(2, '0')}`;
-                                };
+                                  const formatTime = (ms: number) => {
+                                    const totalSecs = Math.max(0, Math.floor(ms / 1000));
+                                    const mins = Math.floor(totalSecs / 60);
+                                    const secs = totalSecs % 60;
+                                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                                  };
 
-                                return (
-                                  <>
-                                    {leadRecallMins > 0 && (
-                                      <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <Clock size={12} /> {formatTime(remainingMs)}
-                                      </span>
-                                    )}
-                                    <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30, padding: '0 10px' }}>
-                                      {t('Tiếp nhận')}
-                                    </button>
-                                  </>
-                                );
-                              })()}
+                                  return (
+                                    <>
+                                      {leadRecallMins > 0 && (
+                                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                          <Clock size={12} /> {formatTime(remainingMs)}
+                                        </span>
+                                      )}
+                                      <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30, padding: '0 10px' }}>
+                                        {t('Tiếp nhận')}
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {lead.report_status === 'pending' && (
+                                <span className="badge warning" title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
+                                  {t('Chờ duyệt')}
+                                </span>
+                              )}
+                              {lead.report_status === 'approved' && (
+                                <span className="badge success" title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
+                                  {t('Đã bù')}
+                                </span>
+                              )}
+                              {lead.report_status === 'rejected' && (
+                                <span className="badge danger" title={t("Từ chối")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
+                                  {t('Từ chối')}
+                                </span>
+                              )}
+                              {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' &&
+                                (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
+                                (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
+                                  <button onClick={() => handleOpenReportModal(lead)} className="btn sm danger" style={{ height: 30, padding: '0 10px' }}>
+                                    <AlertCircle size={12} /> {t('Báo lỗi')}
+                                  </button>
+                                )}
                             </div>
-                          )}
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {lead.report_status === 'pending' && (
-                              <span className="badge warning" title={t("Ticket chờ duyệt (Bấm để xem chi tiết)")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
-                                {t('Chờ duyệt')}
-                              </span>
-                            )}
-                            {lead.report_status === 'approved' && (
-                              <span className="badge success" title={t("Ticket đã duyệt bù (Bấm để xem chi tiết)")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
-                                {t('Đã bù')}
-                              </span>
-                            )}
-                            {lead.report_status === 'rejected' && (
-                              <span className="badge danger" title={t("Từ chối")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
-                                {t('Từ chối')}
-                              </span>
-                            )}
-                            {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' &&
-                              (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
-                              (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
-                              <button onClick={() => handleOpenReportModal(lead)} className="btn sm danger" style={{ height: 30, padding: '0 10px' }}>
-                                <AlertCircle size={12} /> {t('Báo lỗi')}
-                              </button>
-                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   ))}
                 </div>
@@ -1879,17 +1900,17 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                                 <XCircle size={16} />
                               </div>
                             )}
-                            {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' && 
-                              (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) && 
+                            {!lead.report_status && isAllowedToReport && lead.status !== 'reminder' &&
+                              (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                               (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
-                              <button
-                                onClick={() => handleOpenReportModal(lead)}
-                                className="btn sm danger"
-                                style={{ borderRadius: '50%', width: 32, height: 32, padding: 0 }}
-                              >
-                                <AlertCircle size={16} />
-                              </button>
-                            )}
+                                <button
+                                  onClick={() => handleOpenReportModal(lead)}
+                                  className="btn sm danger"
+                                  style={{ borderRadius: '50%', width: 32, height: 32, padding: 0 }}
+                                >
+                                  <AlertCircle size={16} />
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -2486,10 +2507,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
         {/* 2-Column Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          
+
           {/* LEFT COLUMN: Profile Card & Action Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* Profile Detail Settings Card */}
             <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1.5rem 0', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2511,7 +2532,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 }}>
                   <Avatar src={editAvatar} name={editName} size={110} />
                 </div>
-                
+
                 {/* Upload Trigger Input */}
                 <label style={{
                   position: 'absolute', bottom: 4, right: 4,
@@ -2522,9 +2543,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   transition: 'all 0.2s', border: '2px solid var(--color-surface)'
                 }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
                 </label>
@@ -2540,7 +2561,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   </div>
                 )}
               </div>
-              
+
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', textAlign: 'center' }}>
                 {t('Chấp nhận ảnh JPG, PNG, GIF, WEBP. Tối đa 5MB.')}
               </span>
@@ -2590,9 +2611,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   ) : (
                     <>
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                        <polyline points="17 21 17 13 7 13 7 21"/>
-                        <polyline points="7 3 7 8 15 8"/>
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
                       </svg>
                       {t('Lưu thiết lập')}
                     </>
@@ -2640,7 +2661,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* Vacation Status Card */}
             <div className="card" style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
@@ -2660,7 +2681,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     color: !portalVacationMode && !onLeave ? 'var(--color-success)' : 'var(--color-warning)'
                   }}>
                     {!portalVacationMode && !onLeave ? t('Sẵn sàng') :
-                     onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
+                      onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
                   </span>
                   {effectiveRole === 'sale' && (
                     <div style={{ pointerEvents: onLeave ? 'none' : 'auto', opacity: onLeave ? 0.5 : 1 }}>
@@ -2843,7 +2864,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   // Active Sale Portal View
   return (
     <div style={{ height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', overflow: 'hidden' }}>
-      
+
       {/* Mobile Sidebar overlay */}
       {isMobileSidebarOpen && (
         <div
@@ -2933,7 +2954,25 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
         {/* Navigation list */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
-          <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div ref={navContainerRef} style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+            {/* Sliding Active Indicator */}
+            {sliderStyle.height > 0 && (
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: 4,
+                height: sliderStyle.height,
+                background: 'var(--color-primary)',
+                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateY(${sliderStyle.top}px)`,
+                borderRadius: '0 2px 2px 0',
+                pointerEvents: 'none',
+                zIndex: 10
+              }} />
+            )}
+
             {!isCollapsed && (
               <span style={{
                 fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
@@ -2957,6 +2996,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     setActiveTab(key as any);
                     setIsMobileSidebarOpen(false);
                   }}
+                  data-active={isActive ? "true" : "false"}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.875rem',
                     padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
@@ -2968,13 +3008,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     position: 'relative', textAlign: 'left', outline: 'none'
                   }}
                 >
-                  {isActive && (
-                    <span style={{
-                      position: 'absolute', left: 0, top: 0, bottom: 0,
-                      width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
-                    }} />
-                  )}
-
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
                     background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
@@ -3029,6 +3062,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     setActiveTab(key as any);
                     setIsMobileSidebarOpen(false);
                   }}
+                  data-active={isActive ? "true" : "false"}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.875rem',
                     padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
@@ -3040,13 +3074,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     position: 'relative', textAlign: 'left', outline: 'none'
                   }}
                 >
-                  {isActive && (
-                    <span style={{
-                      position: 'absolute', left: 0, top: 0, bottom: 0,
-                      width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
-                    }} />
-                  )}
-
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
                     background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
@@ -3070,7 +3097,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
       {/* Right Side Content Panel */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        
+
         {/* Top Header Navigation */}
         <header className="portal-header" style={{
           height: 66,
@@ -3211,25 +3238,25 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   e.currentTarget.style.borderColor = isLangOpen ? 'var(--color-primary)' : 'var(--color-border)';
                 }}
               >
-                <img 
-                  src={languagesList.find(l => l.code === language)?.flag || vnFlag} 
-                  style={{ 
-                    width: 24, 
-                    height: 16, 
-                    borderRadius: '1.5px', 
+                <img
+                  src={languagesList.find(l => l.code === language)?.flag || vnFlag}
+                  style={{
+                    width: 24,
+                    height: 16,
+                    borderRadius: '1.5px',
                     objectFit: 'cover',
                     border: '1px solid rgba(0, 0, 0, 0.08)',
-                    display: 'block' 
-                  }} 
-                  alt={t(languagesList.find(l => l.code === language)?.name || 'Tiếng Việt')} 
+                    display: 'block'
+                  }}
+                  alt={t(languagesList.find(l => l.code === language)?.name || 'Tiếng Việt')}
                 />
-                <ChevronDown 
-                  size={12} 
-                  style={{ 
+                <ChevronDown
+                  size={12}
+                  style={{
                     color: 'var(--color-text-muted)',
                     transform: isLangOpen ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.2s'
-                  }} 
+                  }}
                 />
               </button>
 
@@ -3279,10 +3306,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                         if (language !== lang.code) e.currentTarget.style.background = 'transparent';
                       }}
                     >
-                      <img 
-                        src={lang.flag} 
-                        style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
-                        alt={lang.name} 
+                      <img
+                        src={lang.flag}
+                        style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }}
+                        alt={lang.name}
                       />
                       {lang.name}
                     </button>
@@ -3297,7 +3324,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               onMouseLeave={() => setIsProfileMenuOpen(false)}
               style={{ position: 'relative' }}
             >
-              <div 
+              <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -3695,11 +3722,11 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.5 }}>
                   {activeDetailLead.note
                     ? activeDetailLead.note
-                        .replace(/\\n/g, '\n')
-                        .split('\n')
-                        .filter((line: string) => !/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(line.trim()))
-                        .join('\n')
-                        .trim() || t('Không có ghi chú.')
+                      .replace(/\\n/g, '\n')
+                      .split('\n')
+                      .filter((line: string) => !/^(?:Nhập dữ liệu cũ|Nhap du lieu cu)\s*(?:\(Silent\))?$/i.test(line.trim()))
+                      .join('\n')
+                      .trim() || t('Không có ghi chú.')
                     : t('Không có ghi chú.')}
                 </span>
               </div>
@@ -3710,12 +3737,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               {/* Đánh giá AI */}
               {activeDetailLead.ai_screener_status && activeDetailLead.ai_screener_status !== 'not_screened' && (
                 <div style={{
-                  background: activeDetailLead.ai_screener_status === 'passed' 
-                    ? 'var(--color-success-light)' 
+                  background: activeDetailLead.ai_screener_status === 'passed'
+                    ? 'var(--color-success-light)'
                     : (activeDetailLead.ai_screener_status === 'failed' ? 'var(--color-danger-light)' : 'var(--color-warning-light)'),
                   border: '1px solid',
-                  borderColor: activeDetailLead.ai_screener_status === 'passed' 
-                    ? 'rgba(16, 185, 129, 0.2)' 
+                  borderColor: activeDetailLead.ai_screener_status === 'passed'
+                    ? 'rgba(16, 185, 129, 0.2)'
                     : (activeDetailLead.ai_screener_status === 'failed' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'),
                   padding: '12px',
                   borderRadius: '12px',
@@ -3755,7 +3782,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               )}
 
               <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>{t('Lịch sử bàn giao & Nhắc lại:')}</span>
-              
+
               {loadingTimeline ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <StatRowSkeleton />
@@ -3777,10 +3804,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                       return (
                         <div key={idx} className="timeline-item" style={{ marginBottom: '1.25rem' }}>
                           <div className="timeline-icon" style={{ backgroundColor: dotColor, left: '-1.85rem', width: '1rem', height: '1rem', border: '3px solid var(--color-surface)', boxShadow: '0 0 0 1px var(--color-border)' }} />
-                          <div className="timeline-content" style={{ 
+                          <div className="timeline-content" style={{
                             background: item.ticket_status === 'approved' ? 'var(--color-success-light)' : item.ticket_status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
                             color: item.ticket_status === 'approved' ? 'var(--color-success)' : item.ticket_status === 'pending' ? 'var(--color-warning)' : 'var(--color-danger)',
-                            padding: '10px 14px', borderRadius: '12px', border: '1px solid currentColor' 
+                            padding: '10px 14px', borderRadius: '12px', border: '1px solid currentColor'
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
                               <span style={{ fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -3873,7 +3900,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           width="700px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.9rem' }}>
-            
+
             {/* Lead & Ticket Metadata Section */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -3917,7 +3944,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             </div>
 
             {/* Admin Resolution & Feedback details */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '12px', borderRadius: '12px', border: '1px solid',
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '12px', borderRadius: '12px', border: '1px solid',
               background: selectedDetailTicket.status === 'approved' ? 'var(--color-success-light)' : selectedDetailTicket.status === 'pending' ? '#fef3c7' : 'var(--color-danger-light)',
               borderColor: selectedDetailTicket.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' : selectedDetailTicket.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
               color: selectedDetailTicket.status === 'approved' ? 'var(--color-success)' : selectedDetailTicket.status === 'pending' ? '#d97706' : 'var(--color-danger)'
@@ -3941,7 +3969,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   </div>
                   <div style={{ fontSize: '0.825rem', color: 'var(--color-text-light)' }}>
                     <strong>{t('Ý kiến phản hồi:')}</strong>{' '}
-                    {selectedDetailTicket.status === 'approved' 
+                    {selectedDetailTicket.status === 'approved'
                       ? (selectedDetailTicket.approval_reason || t('Hợp lệ & Đã được đền bù lượt chia mới.'))
                       : (selectedDetailTicket.reject_reason || t('Không đủ điều kiện đền bù data lỗi.'))
                     }

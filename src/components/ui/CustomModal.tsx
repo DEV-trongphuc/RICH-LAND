@@ -14,12 +14,12 @@ interface CustomModalProps {
   disableAnimation?: boolean;
 }
 
-export const CustomModal: React.FC<CustomModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  width, 
-  children, 
+export const CustomModal: React.FC<CustomModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  width,
+  children,
   showCloseIcon = true,
   disableAnimation = false
 }) => {
@@ -38,12 +38,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       {isOpen && (
         disableAnimation ? (
           <div className={styles.overlay}>
-            <div 
+            <div
               className={styles.backdrop}
               onClick={onClose}
             />
-            
-            <div 
+
+            <div
               className={styles.modal}
               style={width ? { width, maxWidth: '95vw' } : {}}
             >
@@ -62,7 +62,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                   <X size={20} />
                 </button>
               )}
-              
+
               <div className={styles.content}>
                 {children}
               </div>
@@ -70,15 +70,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           </div>
         ) : (
           <div className={styles.overlay}>
-            <motion.div 
+            <motion.div
               className={styles.backdrop}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
             />
-            
-            <motion.div 
+
+            <motion.div
               className={styles.modal}
               style={width ? { width, maxWidth: '95vw' } : {}}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -101,7 +101,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                   <X size={20} />
                 </button>
               )}
-              
+
               <div className={styles.content}>
                 {children}
               </div>

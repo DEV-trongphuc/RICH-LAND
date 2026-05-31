@@ -2316,582 +2316,582 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         {/* Held Leads Queue Table */}
         <div key={activeTab} className="subtab-enter-active">
           {heldLeadsLoading && heldLeads.length === 0 ? (
-          <div style={{ padding: '2rem' }}><TableSkeleton rows={8} cols={4} /></div>
-        ) : heldLeads.length === 0 ? (
-          <div style={{ padding: '8rem 2rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
-              <CheckCircle size={40} color="#10b981" />
+            <div style={{ padding: '2rem' }}><TableSkeleton rows={8} cols={4} /></div>
+          ) : heldLeads.length === 0 ? (
+            <div style={{ padding: '8rem 2rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <CheckCircle size={40} color="#10b981" />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+                {heldLeadsSearch ? t('Không tìm thấy liên hệ nào') : t('Không có liên hệ nào đang tạm giữ')}
+              </h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0' }}>
+                {heldLeadsSearch ? t('Thử đổi từ khóa tìm kiếm.') : t('Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.')}
+              </p>
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-              {heldLeadsSearch ? t('Không tìm thấy liên hệ nào') : t('Không có liên hệ nào đang tạm giữ')}
-            </h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0' }}>
-              {heldLeadsSearch ? t('Thử đổi từ khóa tìm kiếm.') : t('Hệ thống AI chưa tạm giữ bất kỳ liên hệ dưới chuẩn nào.')}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop View Table */}
-            <div
-              className="table-wrap hide-on-mobile"
-              style={{
-                maxHeight: 'calc(100vh - 340px)',
-                overflowY: 'auto',
-                opacity: heldLeadsLoading ? 0.6 : 1,
-                pointerEvents: heldLeadsLoading ? 'none' : 'auto',
-                transition: 'opacity 0.15s ease'
-              }}
-            >
-              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-bg)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                      {activeTab === 'assigned' ? t('Vòng đã phân bổ') : t('Vòng phân bổ dự kiến')}
-                    </th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                      {activeTab === 'substandard' ? t('Lý do từ chối') : t('Lý do AI tạm giữ')}
-                    </th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {heldLeads.map((l: any) => (
-                    <tr
-                      key={l.id}
-                      onClick={() => {
-                        setSelectedLead({
-                          id: l.id,
-                          name: l.name,
-                          phone: l.phone,
-                          email: l.email || '-',
-                          source: l.source || '-',
-                          status: l.log_status || l.status,
-                          assigned_to_name: l.consultant_name || '-',
-                          assigned_to_avatar: l.consultant_avatar || undefined,
-                          round_name: l.round_name || '-',
-                          created_at: l.created_at,
-                          type: l.type || '-',
-                          note: l.note || '',
-                          ai_screener_status: l.ai_screener_status,
-                          ai_evaluation: l.ai_evaluation,
-                          target_round_id: l.target_round_id
-                        });
-                      }}
-                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
-                      className="lead-row"
-                    >
-                      <td style={{ padding: '1.25rem 1.5rem', width: 240, minWidth: 240, whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <Avatar name={l.name} size={36} />
-                          <div>
-                            <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{l.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskPhone(l.phone)}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
-                              {new Date(l.created_at).toLocaleString('vi-VN')}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
-                        {l.consultant_name ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar src={l.consultant_avatar} name={l.consultant_name} size={32} aiScreened={!!(l.ai_screener_status && l.ai_screener_status !== 'not_screened')} />
+          ) : (
+            <>
+              {/* Desktop View Table */}
+              <div
+                className="table-wrap hide-on-mobile"
+                style={{
+                  maxHeight: 'calc(100vh - 340px)',
+                  overflowY: 'auto',
+                  opacity: heldLeadsLoading ? 0.6 : 1,
+                  pointerEvents: heldLeadsLoading ? 'none' : 'auto',
+                  transition: 'opacity 0.15s ease'
+                }}
+              >
+                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg)' }}>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 240, minWidth: 240, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin Lead')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 220, minWidth: 220, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                        {activeTab === 'assigned' ? t('Vòng đã phân bổ') : t('Vòng phân bổ dự kiến')}
+                      </th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                        {activeTab === 'substandard' ? t('Lý do từ chối') : t('Lý do AI tạm giữ')}
+                      </th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: 280, minWidth: 280, position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>{t('Thao tác')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {heldLeads.map((l: any) => (
+                      <tr
+                        key={l.id}
+                        onClick={() => {
+                          setSelectedLead({
+                            id: l.id,
+                            name: l.name,
+                            phone: l.phone,
+                            email: l.email || '-',
+                            source: l.source || '-',
+                            status: l.log_status || l.status,
+                            assigned_to_name: l.consultant_name || '-',
+                            assigned_to_avatar: l.consultant_avatar || undefined,
+                            round_name: l.round_name || '-',
+                            created_at: l.created_at,
+                            type: l.type || '-',
+                            note: l.note || '',
+                            ai_screener_status: l.ai_screener_status,
+                            ai_evaluation: l.ai_evaluation,
+                            target_round_id: l.target_round_id
+                          });
+                        }}
+                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
+                        className="lead-row"
+                      >
+                        <td style={{ padding: '1.25rem 1.5rem', width: 240, minWidth: 240, whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar name={l.name} size={36} />
                             <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{l.consultant_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                {l.round_name || '-'}
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{l.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskPhone(l.phone)}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
+                                {new Date(l.created_at).toLocaleString('vi-VN')}
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
-                            <Zap size={12} /> {l.round_name || '-'}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '1.25rem 1.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {activeTab !== 'assigned' && (
-                            activeTab === 'ai_pending' ? (
-                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <RefreshCw size={12} className="spin" /> {t('Chờ AI đánh giá')}
-                              </span>
-                            ) : l.ai_screener_status === 'error' ? (
-                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
-                              </span>
-                            ) : l.ai_screener_status === 'pending' ? (
-                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <AlertTriangle size={12} /> {t('Lỗi Timeout AI Pre-screener')}
-                              </span>
-                            ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
-                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <ShieldAlert size={12} /> {t('Blacklist')}
-                              </span>
-                            ) : (
-                              <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <ShieldAlert size={12} /> {t('Dưới chuẩn')}
-                              </span>
-                            )
-                          )}
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
-                            {(() => {
-                              const adminReason = extractManualReason(l.note || '');
-                              if (adminReason) {
-                                return (
-                                  <>
-                                    <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
-                                  </>
-                                );
-                              }
-                              return (
-                                <>
-                                  <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {activeTab === 'ai_pending' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.825rem', fontWeight: 600 }}>
-                              <RefreshCw size={14} className="spin" />
-                              <span>{t('Đang chờ AI đánh giá...')}</span>
-                            </div>
-                          ) : activeTab === 'queue' ? (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setActioningHeldLead(l);
-                                  setHeldActionReason('');
-                                  setHeldActionModalOpen('blacklist');
-                                }}
-                                className="btn outline sm"
-                                style={{
-                                  color: 'var(--color-danger)',
-                                  borderColor: 'var(--color-danger)',
-                                  boxShadow: 'none',
-                                  padding: '0 8px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '32px',
-                                  height: '32px'
-                                }}
-                                title={t("Đưa khách hàng vào danh sách đen & Xác nhận dưới chuẩn (Blacklist)")}
-                              >
-                                <ShieldAlert size={14} />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setActioningHeldLead(l);
-                                  setHeldActionReason('');
-                                  setHeldActionModalOpen('reject');
-                                }}
-                                className="btn primary sm"
-                                style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none' }}
-                                title={t("Không duyệt và đánh dấu dưới chuẩn")}
-                              >
-                                {t('Xác nhận dưới chuẩn')}
-                              </button>
-                              <button
-                                onClick={() => handleOpenApproveHeldLead(l)}
-                                className="btn primary sm"
-                                style={{
-                                  background: '#10b981',
-                                  borderColor: '#10b981',
-                                  boxShadow: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4
-                                }}
-                                title={t("Xem thử AI sẽ giao cho ai và Phê duyệt")}
-                              >
-                                <Check size={14} />
-                                {t('Duyệt giao')}
-                              </button>
-                            </>
-                          ) : activeTab === 'substandard' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                              {l.status === 'blacklisted' ? (
-                                <span style={{
-                                  padding: '4px 12px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  background: 'rgba(239, 68, 68, 0.16)',
-                                  color: 'var(--color-danger)',
-                                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Blacklist')}
-                                </span>
-                              ) : (
-                                <span style={{
-                                  padding: '4px 12px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  background: 'var(--color-danger-light)',
-                                  color: 'var(--color-danger)',
-                                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}>
-                                  {t('Đã hủy')}
-                                </span>
-                              )}
-                              {(() => {
-                                const resDetail = getResolutionDetail(l.note || '');
-                                if (!resDetail) return null;
-                                return (
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                      <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
-                                      <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
-                                    </div>
-                                    {resDetail.time && (
-                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
-                                        {resDetail.time}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', width: 220, minWidth: 220, whiteSpace: 'nowrap' }}>
+                          {l.consultant_name ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src={l.consultant_avatar} name={l.consultant_name} size={32} aiScreened={!!(l.ai_screener_status && l.ai_screener_status !== 'not_screened')} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{l.consultant_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                  {l.round_name || '-'}
+                                </div>
+                              </div>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                              <span style={{
-                                padding: '4px 12px',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                background: 'var(--color-success-light)',
-                                color: 'var(--color-success)',
-                                border: '1px solid rgba(16, 185, 129, 0.25)',
-                                display: 'inline-flex',
-                                alignItems: 'center'
-                              }}>
-                                {t('Đã giao')}
-                              </span>
+                            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                              <Zap size={12} /> {l.round_name || '-'}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {activeTab !== 'assigned' && (
+                              activeTab === 'ai_pending' ? (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <RefreshCw size={12} className="spin" /> {t('Chờ AI đánh giá')}
+                                </span>
+                              ) : l.ai_screener_status === 'error' ? (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <AlertTriangle size={12} /> {t('Lỗi kết nối AI (AI Error)')}
+                                </span>
+                              ) : l.ai_screener_status === 'pending' ? (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <AlertTriangle size={12} /> {t('Lỗi Timeout AI Pre-screener')}
+                                </span>
+                              ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <ShieldAlert size={12} /> {t('Blacklist')}
+                                </span>
+                              ) : (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <ShieldAlert size={12} /> {t('Dưới chuẩn')}
+                                </span>
+                              )
+                            )}
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.4, marginTop: 4, whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 450 }}>
                               {(() => {
-                                const resDetail = getResolutionDetail(l.note || '');
-                                if (!resDetail) return null;
+                                const adminReason = extractManualReason(l.note || '');
+                                if (adminReason) {
+                                  return (
+                                    <>
+                                      <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                                    </>
+                                  );
+                                }
                                 return (
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                      <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
-                                      <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
-                                    </div>
-                                    {resDetail.time && (
-                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
-                                        {resDetail.time}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <>
+                                    <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong> {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                                  </>
                                 );
                               })()}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {activeTab === 'ai_pending' ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.825rem', fontWeight: 600 }}>
+                                <RefreshCw size={14} className="spin" />
+                                <span>{t('Đang chờ AI đánh giá...')}</span>
+                              </div>
+                            ) : activeTab === 'queue' ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setActioningHeldLead(l);
+                                    setHeldActionReason('');
+                                    setHeldActionModalOpen('blacklist');
+                                  }}
+                                  className="btn outline sm"
+                                  style={{
+                                    color: 'var(--color-danger)',
+                                    borderColor: 'var(--color-danger)',
+                                    boxShadow: 'none',
+                                    padding: '0 8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minWidth: '32px',
+                                    height: '32px'
+                                  }}
+                                  title={t("Đưa khách hàng vào danh sách đen & Xác nhận dưới chuẩn (Blacklist)")}
+                                >
+                                  <ShieldAlert size={14} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setActioningHeldLead(l);
+                                    setHeldActionReason('');
+                                    setHeldActionModalOpen('reject');
+                                  }}
+                                  className="btn primary sm"
+                                  style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none' }}
+                                  title={t("Không duyệt và đánh dấu dưới chuẩn")}
+                                >
+                                  {t('Xác nhận dưới chuẩn')}
+                                </button>
+                                <button
+                                  onClick={() => handleOpenApproveHeldLead(l)}
+                                  className="btn primary sm"
+                                  style={{
+                                    background: '#10b981',
+                                    borderColor: '#10b981',
+                                    boxShadow: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                  title={t("Xem thử AI sẽ giao cho ai và Phê duyệt")}
+                                >
+                                  <Check size={14} />
+                                  {t('Duyệt giao')}
+                                </button>
+                              </>
+                            ) : activeTab === 'substandard' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                                {l.status === 'blacklisted' ? (
+                                  <span style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    background: 'rgba(239, 68, 68, 0.16)',
+                                    color: 'var(--color-danger)',
+                                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center'
+                                  }}>
+                                    {t('Blacklist')}
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    background: 'var(--color-danger-light)',
+                                    color: 'var(--color-danger)',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center'
+                                  }}>
+                                    {t('Đã hủy')}
+                                  </span>
+                                )}
+                                {(() => {
+                                  const resDetail = getResolutionDetail(l.note || '');
+                                  if (!resDetail) return null;
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                        <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
+                                        <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
+                                      </div>
+                                      {resDetail.time && (
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
+                                          {resDetail.time}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                                <span style={{
+                                  padding: '4px 12px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: 'var(--color-success-light)',
+                                  color: 'var(--color-success)',
+                                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
+                                  {t('Đã giao')}
+                                </span>
+                                {(() => {
+                                  const resDetail = getResolutionDetail(l.note || '');
+                                  if (!resDetail) return null;
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                        <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={18} />
+                                        <span>{t('Bởi:')} <strong style={{ color: 'var(--color-text)' }}>{resDetail.admin}</strong></span>
+                                      </div>
+                                      {resDetail.time && (
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>
+                                          {resDetail.time}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Mobile Card List View */}
-            <div
-              className="mobile-only"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                padding: '0.5rem 0 5rem 0',
-                opacity: heldLeadsLoading ? 0.6 : 1,
-                pointerEvents: heldLeadsLoading ? 'none' : 'auto',
-                transition: 'opacity 0.15s ease'
-              }}
-            >
-              {heldLeads.map((l: any) => (
-                <div
-                  key={l.id}
-                  onClick={() => {
-                    setSelectedLead({
-                      id: l.id,
-                      name: l.name,
-                      phone: l.phone,
-                      email: l.email || '-',
-                      source: l.source || '-',
-                      status: l.log_status || l.status,
-                      assigned_to_name: l.consultant_name || '-',
-                      assigned_to_avatar: l.consultant_avatar || undefined,
-                      round_name: l.round_name || '-',
-                      created_at: l.created_at,
-                      type: l.type || '-',
-                      note: l.note || '',
-                      ai_screener_status: l.ai_screener_status,
-                      ai_evaluation: l.ai_evaluation,
-                      target_round_id: l.target_round_id
-                    });
-                  }}
-                  style={{
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border-light)',
-                    borderRadius: '12px',
-                    padding: '1.25rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'transform 0.2s, box-shadow 0.2s'
-                  }}
-                  className=""
-                >
-                  {/* Header: Lead Info */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Avatar name={l.name} size={32} />
-                      <div>
-                        <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{l.name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                          <Phone size={12} style={{ opacity: 0.6 }} />
-                          <span>{l.phone ? maskPhone(l.phone) : '-'}</span>
+              {/* Mobile Card List View */}
+              <div
+                className="mobile-only"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  padding: '0.5rem 0 5rem 0',
+                  opacity: heldLeadsLoading ? 0.6 : 1,
+                  pointerEvents: heldLeadsLoading ? 'none' : 'auto',
+                  transition: 'opacity 0.15s ease'
+                }}
+              >
+                {heldLeads.map((l: any) => (
+                  <div
+                    key={l.id}
+                    onClick={() => {
+                      setSelectedLead({
+                        id: l.id,
+                        name: l.name,
+                        phone: l.phone,
+                        email: l.email || '-',
+                        source: l.source || '-',
+                        status: l.log_status || l.status,
+                        assigned_to_name: l.consultant_name || '-',
+                        assigned_to_avatar: l.consultant_avatar || undefined,
+                        round_name: l.round_name || '-',
+                        created_at: l.created_at,
+                        type: l.type || '-',
+                        note: l.note || '',
+                        ai_screener_status: l.ai_screener_status,
+                        ai_evaluation: l.ai_evaluation,
+                        target_round_id: l.target_round_id
+                      });
+                    }}
+                    style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'transform 0.2s, box-shadow 0.2s'
+                    }}
+                    className=""
+                  >
+                    {/* Header: Lead Info */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Avatar name={l.name} size={32} />
+                        <div>
+                          <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.95rem' }}>{l.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                            <Phone size={12} style={{ opacity: 0.6 }} />
+                            <span>{l.phone ? maskPhone(l.phone) : '-'}</span>
+                          </div>
                         </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
+                          {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
+                          {new Date(l.created_at).toLocaleDateString('vi-VN')}
+                        </div>
+                        {l.round_name && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                            <Zap size={10} /> {l.round_name}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
-                        {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
-                        {new Date(l.created_at).toLocaleDateString('vi-VN')}
+                    {/* AI Evaluation details callout */}
+                    <div style={{
+                      background: activeTab === 'assigned'
+                        ? 'var(--color-bg-alt)'
+                        : activeTab === 'ai_pending'
+                          ? 'rgba(124, 58, 237, 0.04)'
+                          : (l.ai_screener_status === 'error' || l.ai_screener_status === 'pending')
+                            ? 'rgba(245, 158, 11, 0.04)'
+                            : 'rgba(239, 68, 68, 0.04)',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      {activeTab !== 'assigned' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {activeTab === 'ai_pending' ? (
+                            <>
+                              <RefreshCw size={12} className="spin" color="var(--color-primary)" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                {t('Chờ AI đánh giá')}
+                              </span>
+                            </>
+                          ) : l.ai_screener_status === 'error' ? (
+                            <>
+                              <AlertTriangle size={12} color="#d97706" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
+                                {t('Lỗi kết nối AI (AI Error)')}
+                              </span>
+                            </>
+                          ) : l.ai_screener_status === 'pending' ? (
+                            <>
+                              <AlertTriangle size={12} color="#d97706" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
+                                {t('Lỗi Timeout AI Pre-screener')}
+                              </span>
+                            </>
+                          ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
+                            <>
+                              <ShieldAlert size={12} color="var(--color-danger)" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
+                                {t('Blacklist')}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert size={12} color="var(--color-danger)" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
+                                {t('Dưới chuẩn')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                        {(() => {
+                          const adminReason = extractManualReason(l.note || '');
+                          if (adminReason) {
+                            return (
+                              <>
+                                <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
+                              {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                            </>
+                          );
+                        })()}
                       </div>
-                      {l.round_name && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                          <Zap size={10} /> {l.round_name}
+                    </div>
+
+                    {/* Actions footer */}
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
+                      {activeTab === 'ai_pending' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600 }}>
+                          <RefreshCw size={12} className="spin" />
+                          <span>{t('Đang chờ AI đánh giá...')}</span>
+                        </div>
+                      ) : activeTab === 'queue' ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setActioningHeldLead(l);
+                              setHeldActionReason('');
+                              setHeldActionModalOpen('blacklist');
+                            }}
+                            className="btn outline sm"
+                            style={{
+                              color: 'var(--color-danger)',
+                              borderColor: 'var(--color-danger)',
+                              boxShadow: 'none',
+                              width: 36,
+                              height: 36,
+                              padding: 0,
+                              borderRadius: 10,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                            title={t("Chặn & Blacklist")}
+                          >
+                            <ShieldAlert size={16} />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActioningHeldLead(l);
+                              setHeldActionReason('');
+                              setHeldActionModalOpen('reject');
+                            }}
+                            className="btn primary sm"
+                            style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            title={t('Dưới chuẩn')}
+                          >
+                            <XCircle size={14} />
+                            <span>{t('Dưới chuẩn')}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenApproveHeldLead(l)}
+                            className="btn primary sm"
+                            style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            title={t('Duyệt')}
+                          >
+                            <Check size={14} />
+                            <span>{t('Duyệt')}</span>
+                          </button>
+                        </>
+                      ) : activeTab === 'substandard' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          {l.status === 'blacklisted' ? (
+                            <span style={{
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: 'rgba(239, 68, 68, 0.16)',
+                              color: 'var(--color-danger)',
+                              border: '1px solid rgba(239, 68, 68, 0.35)',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}>
+                              {t('Blacklist')}
+                            </span>
+                          ) : (
+                            <span style={{
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: 'var(--color-danger-light)',
+                              color: 'var(--color-danger)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}>
+                              {t('Đã hủy')}
+                            </span>
+                          )}
+                          {(() => {
+                            const resDetail = getResolutionDetail(l.note || '');
+                            if (!resDetail) return null;
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
+                                <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
+                                {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: 'var(--color-success-light)',
+                            color: 'var(--color-success)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}>
+                            {t('Đã giao')}
+                          </span>
+                          {(() => {
+                            const resDetail = getResolutionDetail(l.note || '');
+                            if (!resDetail) return null;
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
+                                <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
+                                {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {/* AI Evaluation details callout */}
-                  <div style={{
-                    background: activeTab === 'assigned'
-                      ? 'var(--color-bg-alt)'
-                      : activeTab === 'ai_pending'
-                        ? 'rgba(124, 58, 237, 0.04)'
-                        : (l.ai_screener_status === 'error' || l.ai_screener_status === 'pending')
-                          ? 'rgba(245, 158, 11, 0.04)'
-                          : 'rgba(239, 68, 68, 0.04)',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px'
-                  }}>
-                    {activeTab !== 'assigned' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {activeTab === 'ai_pending' ? (
-                          <>
-                            <RefreshCw size={12} className="spin" color="var(--color-primary)" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                              {t('Chờ AI đánh giá')}
-                            </span>
-                          </>
-                        ) : l.ai_screener_status === 'error' ? (
-                          <>
-                            <AlertTriangle size={12} color="#d97706" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
-                              {t('Lỗi kết nối AI (AI Error)')}
-                            </span>
-                          </>
-                        ) : l.ai_screener_status === 'pending' ? (
-                          <>
-                            <AlertTriangle size={12} color="#d97706" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706' }}>
-                              {t('Lỗi Timeout AI Pre-screener')}
-                            </span>
-                          </>
-                        ) : (l.status === 'blacklisted' || l.log_status === 'blacklisted') ? (
-                          <>
-                            <ShieldAlert size={12} color="var(--color-danger)" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
-                              {t('Blacklist')}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldAlert size={12} color="var(--color-danger)" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-danger)' }}>
-                              {t('Dưới chuẩn')}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                      {(() => {
-                        const adminReason = extractManualReason(l.note || '');
-                        if (adminReason) {
-                          return (
-                            <>
-                              <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
-                            </>
-                          );
-                        }
-                        return (
-                          <>
-                            <strong>{l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang đánh giá:') : t('Lỗi AI Pre-screener:')) : l.ai_screener_status === 'error' ? t('Chi tiết lỗi:') : (l.ai_evaluation?.includes('bộ lọc thủ công') || l.ai_evaluation?.includes('khớp luật thủ công') || l.ai_evaluation?.includes('Bỏ qua gọi AI') || l.ai_evaluation?.includes('Không đạt vì') || l.ai_evaluation?.includes('Đạt vì')) ? t('Match logic:') : t('AI Đánh giá:')}</strong>{' '}
-                            {l.ai_screener_status === 'pending' ? (activeTab === 'ai_pending' ? t('Đang chờ AI phản hồi...') : t('Quá thời gian 5 phút AI chưa có đánh giá.')) : l.ai_evaluation || (l.ai_screener_status === 'error' ? t('Mất kết nối với dịch vụ AI.') : t('Không đáp ứng yêu cầu bộ lọc.'))}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Actions footer */}
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
-                    {activeTab === 'ai_pending' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600 }}>
-                        <RefreshCw size={12} className="spin" />
-                        <span>{t('Đang chờ AI đánh giá...')}</span>
-                      </div>
-                    ) : activeTab === 'queue' ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setActioningHeldLead(l);
-                            setHeldActionReason('');
-                            setHeldActionModalOpen('blacklist');
-                          }}
-                          className="btn outline sm"
-                          style={{
-                            color: 'var(--color-danger)',
-                            borderColor: 'var(--color-danger)',
-                            boxShadow: 'none',
-                            width: 36,
-                            height: 36,
-                            padding: 0,
-                            borderRadius: 10,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
-                          title={t("Chặn & Blacklist")}
-                        >
-                          <ShieldAlert size={16} />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setActioningHeldLead(l);
-                            setHeldActionReason('');
-                            setHeldActionModalOpen('reject');
-                          }}
-                          className="btn primary sm"
-                          style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                          title={t('Dưới chuẩn')}
-                        >
-                          <XCircle size={14} />
-                          <span>{t('Dưới chuẩn')}</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleOpenApproveHeldLead(l)}
-                          className="btn primary sm"
-                          style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                          title={t('Duyệt')}
-                        >
-                          <Check size={14} />
-                          <span>{t('Duyệt')}</span>
-                        </button>
-                      </>
-                    ) : activeTab === 'substandard' ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        {l.status === 'blacklisted' ? (
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            background: 'rgba(239, 68, 68, 0.16)',
-                            color: 'var(--color-danger)',
-                            border: '1px solid rgba(239, 68, 68, 0.35)',
-                            display: 'inline-flex',
-                            alignItems: 'center'
-                          }}>
-                            {t('Blacklist')}
-                          </span>
-                        ) : (
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            background: 'var(--color-danger-light)',
-                            color: 'var(--color-danger)',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            display: 'inline-flex',
-                            alignItems: 'center'
-                          }}>
-                            {t('Đã hủy')}
-                          </span>
-                        )}
-                        {(() => {
-                          const resDetail = getResolutionDetail(l.note || '');
-                          if (!resDetail) return null;
-                          return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                              <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
-                              <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
-                              {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        <span style={{
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          background: 'var(--color-success-light)',
-                          color: 'var(--color-success)',
-                          border: '1px solid rgba(16, 185, 129, 0.25)',
-                          display: 'inline-flex',
-                          alignItems: 'center'
-                        }}>
-                          {t('Đã giao')}
-                        </span>
-                        {(() => {
-                          const resDetail = getResolutionDetail(l.note || '');
-                          if (!resDetail) return null;
-                          return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                              <Avatar src={adminAvatars[resDetail.admin]} name={resDetail.admin} size={16} />
-                              <span>{t('Bởi:')} <strong>{resDetail.admin}</strong></span>
-                              {resDetail.time && <span style={{ opacity: 0.7 }}>({resDetail.time.split(' ')[0]})</span>}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Pagination */}
@@ -2966,731 +2966,731 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               }
             `}</style>
             <div className="settings-modal-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(80vh - 100px)', padding: '1.5rem', overflowX: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {settingsLoading ? (
-                <TableSkeleton rows={4} cols={2} />
-              ) : (
-                <>
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1.25rem',
-                    background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px dashed var(--color-border)'
-                  }}>
-                    <ToggleSwitch
-                      checked={aiScreenerEnabled}
-                      onChange={setAiScreenerEnabled}
-                    />
-                    <div>
-                      <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                        {t('Kích hoạt AI Pre-screener (Pre-screener Gatekeeper)')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {settingsLoading ? (
+                    <TableSkeleton rows={4} cols={2} />
+                  ) : (
+                    <>
+                      <div style={{
+                        display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1.25rem',
+                        background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px dashed var(--color-border)'
+                      }}>
+                        <ToggleSwitch
+                          checked={aiScreenerEnabled}
+                          onChange={setAiScreenerEnabled}
+                        />
+                        <div>
+                          <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {t('Kích hoạt AI Pre-screener (Pre-screener Gatekeeper)')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động.')}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                        {t('Khi bật, mọi data mới thuộc các vòng được chọn sẽ đi qua bộ lọc AI đánh giá trước khi phân bổ tự động.')}
-                      </div>
-                    </div>
-                  </div>
 
 
 
-                  {aiScreenerEnabled && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                      {aiScreenerEnabled && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
 
-                      {/* Configuration Cards List */}
-                      {aiScreenerConfigs.map((config: AIScreenerConfig, index: number) => {
-                        return (
-                          <div
-                            key={config.id}
-                            style={{
-                              border: '1px solid var(--color-border)',
-                              borderRadius: '12px',
-                              padding: '1.25rem',
-                              position: 'relative',
-                              background: 'var(--color-surface)',
-                              boxShadow: 'var(--shadow-sm)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '1rem'
-                            }}
-                          >
-                            {/* Card Decorative Left border */}
-                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: '12px 0 0 12px' }} />
-
-                            {/* Card Header: Title input and Delete button */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, marginRight: '1.5rem' }}>
-                                <span style={{
-                                  background: 'rgba(124, 58, 237, 0.1)',
-                                  color: 'var(--color-primary)',
-                                  fontWeight: 800,
-                                  width: 24, height: 24,
-                                  borderRadius: '50%',
+                          {/* Configuration Cards List */}
+                          {aiScreenerConfigs.map((config: AIScreenerConfig, index: number) => {
+                            return (
+                              <div
+                                key={config.id}
+                                style={{
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: '12px',
+                                  padding: '1.25rem',
+                                  position: 'relative',
+                                  background: 'var(--color-surface)',
+                                  boxShadow: 'var(--shadow-sm)',
                                   display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '0.8rem',
-                                  flexShrink: 0
-                                }}>{index + 1}</span>
-                                <input
-                                  type="text"
-                                  value={config.name}
-                                  onChange={e => {
-                                    const updated = [...aiScreenerConfigs];
-                                    updated[index].name = e.target.value;
-                                    setAiScreenerConfigs(updated);
-                                  }}
-                                  placeholder={t("Tên nhóm cấu hình (Ví dụ: Nhóm Vòng tiếng Anh)")}
-                                  className="form-input"
-                                  style={{ height: 36, fontSize: '0.875rem', fontWeight: 700, width: '100%', maxWidth: 350, border: 'none', background: 'transparent', padding: '0 4px', borderBottom: '1px dashed var(--color-border)' }}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                className="btn ghost"
-                                style={{ color: 'var(--color-danger)', padding: 4 }}
-                                onClick={() => {
-                                  setAiScreenerConfigs(aiScreenerConfigs.filter((cfg: AIScreenerConfig) => cfg.id !== config.id));
+                                  flexDirection: 'column',
+                                  gap: '1rem'
                                 }}
-                                title={t("Xóa nhóm cấu hình lọc này")}
                               >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                            {/* Section 1: Choose Rounds (Tags Select with Dropdown) */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
-                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                {t('Chọn các vòng áp dụng cho nhóm này')}
-                              </label>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                                {/* Display already selected rounds */}
-                                {config.rounds.map((roundId: number) => {
-                                  const r = rounds.find((x: any) => Number(x.id) === roundId);
-                                  if (!r) return null;
-                                  return (
-                                    <span
-                                      key={roundId}
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '5px 12px',
-                                        borderRadius: '9999px',
-                                        fontSize: '0.8125rem',
-                                        fontWeight: 600,
-                                        border: '1px solid var(--color-primary)',
-                                        background: 'var(--color-primary)',
-                                        color: '#ffffff',
-                                        boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
-                                        transition: 'all 0.2s ease'
-                                      }}
-                                    >
-                                      <Tag size={12} style={{ opacity: 0.9 }} />
-                                      {r.round_name}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const updated = [...aiScreenerConfigs];
-                                          updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
-                                          setAiScreenerConfigs(updated);
-                                        }}
-                                        style={{
-                                          border: 'none',
-                                          background: 'rgba(255, 255, 255, 0.15)',
-                                          color: '#ffffff',
-                                          cursor: 'pointer',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          padding: '2px',
-                                          borderRadius: '50%',
-                                          marginLeft: '4px',
-                                          outline: 'none',
-                                          transition: 'all 0.15s ease'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.9)';
-                                          e.currentTarget.style.color = '#ffffff';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                          e.currentTarget.style.color = '#ffffff';
-                                        }}
-                                      >
-                                        <X size={10} />
-                                      </button>
-                                    </span>
-                                  );
-                                })}
+                                {/* Card Decorative Left border */}
+                                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: '12px 0 0 12px' }} />
 
-                                {/* Plus Button to add more rounds */}
-                                <div style={{ position: 'relative' }}>
+                                {/* Card Header: Title input and Delete button */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, marginRight: '1.5rem' }}>
+                                    <span style={{
+                                      background: 'rgba(124, 58, 237, 0.1)',
+                                      color: 'var(--color-primary)',
+                                      fontWeight: 800,
+                                      width: 24, height: 24,
+                                      borderRadius: '50%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '0.8rem',
+                                      flexShrink: 0
+                                    }}>{index + 1}</span>
+                                    <input
+                                      type="text"
+                                      value={config.name}
+                                      onChange={e => {
+                                        const updated = [...aiScreenerConfigs];
+                                        updated[index].name = e.target.value;
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                      placeholder={t("Tên nhóm cấu hình (Ví dụ: Nhóm Vòng tiếng Anh)")}
+                                      className="form-input"
+                                      style={{ height: 36, fontSize: '0.875rem', fontWeight: 700, width: '100%', maxWidth: 350, border: 'none', background: 'transparent', padding: '0 4px', borderBottom: '1px dashed var(--color-border)' }}
+                                    />
+                                  </div>
                                   <button
                                     type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveRoundsDropdown(activeRoundsDropdown === config.id ? null : config.id);
+                                    className="btn ghost"
+                                    style={{ color: 'var(--color-danger)', padding: 4 }}
+                                    onClick={() => {
+                                      setAiScreenerConfigs(aiScreenerConfigs.filter((cfg: AIScreenerConfig) => cfg.id !== config.id));
                                     }}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                      padding: '5px 12px',
-                                      borderRadius: '9999px',
-                                      fontSize: '0.8125rem',
-                                      fontWeight: 600,
-                                      border: '1px dashed var(--color-primary-light)',
-                                      background: 'rgba(124, 58, 237, 0.02)',
-                                      color: 'var(--color-primary)',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease',
-                                      outline: 'none',
-                                      boxShadow: 'var(--shadow-sm)'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
-                                      e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                      e.currentTarget.style.transform = 'translateY(-0.5px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
-                                      e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                                      e.currentTarget.style.transform = 'none';
-                                    }}
+                                    title={t("Xóa nhóm cấu hình lọc này")}
                                   >
-                                    <Plus size={12} />
-                                    <span>{t('Thêm vòng')}</span>
+                                    <Trash2 size={16} />
                                   </button>
-
-                                  {/* Dropdown Menu */}
-                                  {activeRoundsDropdown === config.id && (
-                                    <div
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{
-                                        position: 'absolute',
-                                        top: 'calc(100% + 6px)',
-                                        left: 0,
-                                        zIndex: 55,
-                                        minWidth: '220px',
-                                        background: 'var(--color-surface)',
-                                        border: '1px solid rgba(124, 58, 237, 0.15)',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
-                                        maxHeight: '220px',
-                                        overflowY: 'auto',
-                                        padding: '6px'
-                                      }}
-                                    >
-                                      {(() => {
-                                        // Filter rounds that are NOT selected in this config
-                                        const availableRounds = rounds.filter((r: any) => !config.rounds.includes(Number(r.id)));
-
-                                        if (availableRounds.length === 0) {
-                                          return (
-                                            <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                                              {t('Không còn vòng nào khả dụng')}
-                                            </div>
-                                          );
-                                        }
-
-                                        return availableRounds.map((r: any) => {
-                                          const roundId = Number(r.id);
-                                          const isInactive = Number(r.is_active) !== 1;
-                                          // Check if selected in another config
-                                          const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
-
-                                          return (
-                                            <button
-                                              key={roundId}
-                                              type="button"
-                                              disabled={selectedElsewhere || isInactive}
-                                              onClick={() => {
-                                                const updated = [...aiScreenerConfigs];
-                                                updated[index].rounds = [...config.rounds, roundId];
-                                                setAiScreenerConfigs(updated);
-                                                setActiveRoundsDropdown(null);
-                                              }}
-                                              style={{
-                                                width: '100%',
-                                                padding: '10px 14px',
-                                                fontSize: '0.8125rem',
-                                                fontWeight: 550,
-                                                textAlign: 'left',
-                                                border: 'none',
-                                                background: 'transparent',
-                                                color: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-text)',
-                                                opacity: (selectedElsewhere || isInactive) ? 0.45 : 1,
-                                                cursor: (selectedElsewhere || isInactive) ? 'not-allowed' : 'pointer',
-                                                borderRadius: '8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                gap: '10px',
-                                                transition: 'all 0.15s ease',
-                                                outline: 'none'
-                                              }}
-                                              onMouseEnter={(e) => {
-                                                if (!selectedElsewhere && !isInactive) {
-                                                  e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
-                                                  e.currentTarget.style.color = 'var(--color-primary)';
-                                                }
-                                              }}
-                                              onMouseLeave={(e) => {
-                                                if (!selectedElsewhere && !isInactive) {
-                                                  e.currentTarget.style.background = 'transparent';
-                                                  e.currentTarget.style.color = 'var(--color-text)';
-                                                }
-                                              }}
-                                            >
-                                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
-                                                {r.round_name}
-                                              </span>
-                                              {isInactive ? (
-                                                <span style={{
-                                                  fontSize: '0.6875rem',
-                                                  color: 'var(--color-text-muted)',
-                                                  background: 'rgba(0, 0, 0, 0.05)',
-                                                  padding: '2px 6px',
-                                                  borderRadius: '4px',
-                                                  fontWeight: 600,
-                                                  flexShrink: 0
-                                                }}>
-                                                  {t('Không hoạt động')}
-                                                </span>
-                                              ) : selectedElsewhere && (
-                                                <span style={{
-                                                  fontSize: '0.6875rem',
-                                                  color: 'var(--color-danger)',
-                                                  background: 'rgba(239, 68, 68, 0.08)',
-                                                  padding: '2px 6px',
-                                                  borderRadius: '4px',
-                                                  fontWeight: 600,
-                                                  flexShrink: 0,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: '4px'
-                                                }}>
-                                                  <Shield size={10} />
-                                                  {t('Nhóm khác')}
-                                                </span>
-                                              )}
-                                            </button>
-                                          );
-                                        });
-                                      })()}
-                                    </div>
-                                  )}
                                 </div>
-                              </div>
-                            </div>
-
-
-                            {/* Section 2: Choose Mode */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                {t('Chế độ Lọc Pre-screener')}
-                              </label>
-                              <CustomSelect
-                                options={[
-                                  { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') },
-                                  { value: 'hybrid', label: t('Kết hợp: Lọc Thủ công + AI (Ưu tiên thủ công trước)') },
-                                  { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') }
-                                ]}
-                                value={config.mode}
-                                onChange={val => {
-                                  const updated = [...aiScreenerConfigs];
-                                  updated[index].mode = val as any;
-                                  setAiScreenerConfigs(updated);
-                                }}
-                                width="100%"
-                              />
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: '1.4' }}>
-                                {config.mode === 'hybrid' && (
-                                  <span style={{ color: '#059669', fontWeight: 500 }}>
-                                    {t('Chế độ Kết hợp: Hệ thống chạy bộ lọc thủ công trước. Nếu khớp, thực hiện ngay hành động và BỎ QUA gọi AI để tiết kiệm tối đa chi phí. Nếu không khớp, mới gọi AI đánh giá.')}
-                                  </span>
-                                )}
-                                {config.mode === 'manual' && (
-                                  <span>
-                                    {t('Chế độ Thủ công: Chỉ áp dụng quy tắc khớp cột dữ liệu đã cấu hình.')}
-                                  </span>
-                                )}
-                                {config.mode === 'ai' && (
-                                  <span>
-                                    {t('Chế độ AI: DOMATION AI để đánh giá theo yêu cầu cấu hình dưới.')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Conditional Prompt Area */}
-                            {(config.mode === 'ai' || config.mode === 'hybrid') && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                  {t('Quy tắc đạt chuẩn duy nhất')}
-                                </label>
-                                <textarea
-                                  value={config.ai_rules}
-                                  onChange={e => {
-                                    const updated = [...aiScreenerConfigs];
-                                    updated[index].ai_rules = e.target.value;
-                                    setAiScreenerConfigs(updated);
-                                  }}
-                                  rows={4}
-                                  className="form-input"
-                                  style={{ resize: 'vertical' }}
-                                  placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã đi làm hoặc có IELTS), Không đạt chuẩn (học sinh cấp 1, 2)...")}
-                                />
-                              </div>
-                            )}
-
-                            {/* Conditional Manual Rules Area */}
-                            {(config.mode === 'manual' || config.mode === 'hybrid') && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                {/* Section 1: Choose Rounds (Tags Select with Dropdown) */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
                                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                    {t('Danh sách Quy tắc Lọc Thủ công')}
+                                    {t('Chọn các vòng áp dụng cho nhóm này')}
                                   </label>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Hành động khi khớp:')}</span>
-                                    <div style={{ width: 140 }}>
-                                      <CustomSelect
-                                        options={[
-                                          { value: 'hold', label: t('Tạm giữ (Hành động)') },
-                                          { value: 'skip', label: t('Bỏ qua/Duyệt') }
-                                        ]}
-                                        value={config.manual_action}
-                                        onChange={val => {
-                                          const updated = [...aiScreenerConfigs];
-                                          updated[index].manual_action = val as any;
-                                          setAiScreenerConfigs(updated);
-                                        }}
-                                        width="100%"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                  {(config.manual_rules || []).map((branch: any, bIndex: number) => (
-                                    <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem 1rem', position: 'relative', background: 'var(--color-bg-alt)', boxShadow: 'var(--shadow-sm)' }}>
-                                      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 3, background: '#10b981', borderRadius: '10px 0 0 10px' }} />
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
-                                          {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
-                                        </h4>
-                                        <button
-                                          type="button"
-                                          className="btn ghost"
-                                          style={{ color: 'var(--color-danger)', padding: 4 }}
-                                          onClick={() => {
-                                            const updated = [...aiScreenerConfigs];
-                                            updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
-                                            setAiScreenerConfigs(updated);
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                    {/* Display already selected rounds */}
+                                    {config.rounds.map((roundId: number) => {
+                                      const r = rounds.find((x: any) => Number(x.id) === roundId);
+                                      if (!r) return null;
+                                      return (
+                                        <span
+                                          key={roundId}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            padding: '5px 12px',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.8125rem',
+                                            fontWeight: 600,
+                                            border: '1px solid var(--color-primary)',
+                                            background: 'var(--color-primary)',
+                                            color: '#ffffff',
+                                            boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
+                                            transition: 'all 0.2s ease'
                                           }}
                                         >
-                                          <Trash2 size={16} />
-                                        </button>
-                                      </div>
-
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        {(branch.conditions || []).map((c: any, i: number) => {
-                                          const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
-                                          const isLast = i === branch.conditions.length - 1;
-                                          return (
-                                            <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                              <div style={{ position: 'relative', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                                {i === 0 ? (
-                                                  <div style={{ background: '#d1fae5', color: '#047857', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
-                                                ) : (
-                                                  <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
-                                                )}
-                                                {!isLast && (
-                                                  <div style={{ position: 'absolute', top: 18, bottom: -18, width: 1.5, borderLeft: '1.5px dashed var(--color-border)', zIndex: 1 }} />
-                                                )}
-                                              </div>
-
-                                              <div style={{ width: 130 }}>
-                                                <CustomSelect
-                                                  options={[
-                                                    { value: 'source', label: t('Nguồn (Source)') },
-                                                    { value: 'name', label: t('Tên KH (Name)') },
-                                                    { value: 'phone', label: t('Số ĐT (Phone)') },
-                                                    { value: 'email', label: t('Email') },
-                                                    { value: 'note', label: t('Ghi chú (Note)') }
-                                                  ]}
-                                                  value={c.col || 'source'}
-                                                  onChange={val => {
-                                                    const updated = [...aiScreenerConfigs];
-                                                    updated[index].manual_rules[bIndex].conditions[i].col = String(val);
-                                                    setAiScreenerConfigs(updated);
-                                                  }}
-                                                  width="100%"
-                                                  size="sm"
-                                                />
-                                              </div>
-
-                                              <div style={{ width: 140 }}>
-                                                <CustomSelect
-                                                  options={[
-                                                    { value: 'contains', label: t('Có chứa') },
-                                                    { value: 'not_contains', label: t('Không chứa') },
-                                                    { value: 'equals', label: t('Bằng') },
-                                                    { value: 'starts_with', label: t('Bắt đầu bằng') },
-                                                    { value: 'ends_with', label: t('Kết thúc bằng') },
-                                                    { value: 'is_empty', label: t('Rỗng') },
-                                                    { value: 'is_not_empty', label: t('Không rỗng') }
-                                                  ]}
-                                                  value={c.op || 'contains'}
-                                                  onChange={val => {
-                                                    const updated = [...aiScreenerConfigs];
-                                                    updated[index].manual_rules[bIndex].conditions[i].op = String(val);
-                                                    if (val === 'is_empty' || val === 'is_not_empty') {
-                                                      updated[index].manual_rules[bIndex].conditions[i].val = '';
-                                                    }
-                                                    setAiScreenerConfigs(updated);
-                                                  }}
-                                                  width="100%"
-                                                  size="sm"
-                                                />
-                                              </div>
-
-                                              {!isNoValueOp && (
-                                                <div style={{ flex: 1, minWidth: 150 }}>
-                                                  <input
-                                                    type="text"
-                                                    value={c.val || ''}
-                                                    onChange={e => {
-                                                      const updated = [...aiScreenerConfigs];
-                                                      updated[index].manual_rules[bIndex].conditions[i].val = e.target.value;
-                                                      setAiScreenerConfigs(updated);
-                                                    }}
-                                                    placeholder={t("Giá trị so khớp...")}
-                                                    className="form-input"
-                                                    style={{ height: 32, fontSize: '0.8rem', width: '100%', borderRadius: 'var(--radius-md)' }}
-                                                  />
-                                                </div>
-                                              )}
-
-                                              <button
-                                                type="button"
-                                                className="btn ghost"
-                                                style={{ color: 'var(--color-text-muted)', padding: 4 }}
-                                                onClick={() => {
-                                                  const updated = [...aiScreenerConfigs];
-                                                  const remaining = config.manual_rules[bIndex].conditions.filter((_: any, idx: number) => idx !== i);
-                                                  if (remaining.length === 0) {
-                                                    updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
-                                                  } else {
-                                                    updated[index].manual_rules[bIndex].conditions = remaining;
-                                                  }
-                                                  setAiScreenerConfigs(updated);
-                                                }}
-                                              >
-                                                <XCircle size={15} />
-                                              </button>
-                                            </div>
-                                          );
-                                        })}
-
-                                        <div style={{ paddingLeft: 44, marginTop: 4 }}>
+                                          <Tag size={12} style={{ opacity: 0.9 }} />
+                                          {r.round_name}
                                           <button
                                             type="button"
                                             onClick={() => {
                                               const updated = [...aiScreenerConfigs];
-                                              updated[index].manual_rules[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
+                                              updated[index].rounds = config.rounds.filter((id: number) => id !== roundId);
                                               setAiScreenerConfigs(updated);
                                             }}
-                                            className="btn ghost"
-                                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+                                            style={{
+                                              border: 'none',
+                                              background: 'rgba(255, 255, 255, 0.15)',
+                                              color: '#ffffff',
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              padding: '2px',
+                                              borderRadius: '50%',
+                                              marginLeft: '4px',
+                                              outline: 'none',
+                                              transition: 'all 0.15s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.9)';
+                                              e.currentTarget.style.color = '#ffffff';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                              e.currentTarget.style.color = '#ffffff';
+                                            }}
                                           >
-                                            <Plus size={12} /> {t("Thêm điều kiện (AND)")}
+                                            <X size={10} />
                                           </button>
+                                        </span>
+                                      );
+                                    })}
+
+                                    {/* Plus Button to add more rounds */}
+                                    <div style={{ position: 'relative' }}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveRoundsDropdown(activeRoundsDropdown === config.id ? null : config.id);
+                                        }}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          padding: '5px 12px',
+                                          borderRadius: '9999px',
+                                          fontSize: '0.8125rem',
+                                          fontWeight: 600,
+                                          border: '1px dashed var(--color-primary-light)',
+                                          background: 'rgba(124, 58, 237, 0.02)',
+                                          color: 'var(--color-primary)',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s ease',
+                                          outline: 'none',
+                                          boxShadow: 'var(--shadow-sm)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                          e.currentTarget.style.transform = 'translateY(-0.5px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                                          e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                          e.currentTarget.style.transform = 'none';
+                                        }}
+                                      >
+                                        <Plus size={12} />
+                                        <span>{t('Thêm vòng')}</span>
+                                      </button>
+
+                                      {/* Dropdown Menu */}
+                                      {activeRoundsDropdown === config.id && (
+                                        <div
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{
+                                            position: 'absolute',
+                                            top: 'calc(100% + 6px)',
+                                            left: 0,
+                                            zIndex: 55,
+                                            minWidth: '220px',
+                                            background: 'var(--color-surface)',
+                                            border: '1px solid rgba(124, 58, 237, 0.15)',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
+                                            maxHeight: '220px',
+                                            overflowY: 'auto',
+                                            padding: '6px'
+                                          }}
+                                        >
+                                          {(() => {
+                                            // Filter rounds that are NOT selected in this config
+                                            const availableRounds = rounds.filter((r: any) => !config.rounds.includes(Number(r.id)));
+
+                                            if (availableRounds.length === 0) {
+                                              return (
+                                                <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                                                  {t('Không còn vòng nào khả dụng')}
+                                                </div>
+                                              );
+                                            }
+
+                                            return availableRounds.map((r: any) => {
+                                              const roundId = Number(r.id);
+                                              const isInactive = Number(r.is_active) !== 1;
+                                              // Check if selected in another config
+                                              const selectedElsewhere = aiScreenerConfigs.some((cfg: AIScreenerConfig, idx: number) => idx !== index && cfg.rounds.includes(roundId)) || aiScreenerConfigs.some(cfg => cfg.below_standard_fallback_enabled && Number(roundId) === Number(cfg.below_standard_fallback_round_id));
+
+                                              return (
+                                                <button
+                                                  key={roundId}
+                                                  type="button"
+                                                  disabled={selectedElsewhere || isInactive}
+                                                  onClick={() => {
+                                                    const updated = [...aiScreenerConfigs];
+                                                    updated[index].rounds = [...config.rounds, roundId];
+                                                    setAiScreenerConfigs(updated);
+                                                    setActiveRoundsDropdown(null);
+                                                  }}
+                                                  style={{
+                                                    width: '100%',
+                                                    padding: '10px 14px',
+                                                    fontSize: '0.8125rem',
+                                                    fontWeight: 550,
+                                                    textAlign: 'left',
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    color: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                                    opacity: (selectedElsewhere || isInactive) ? 0.45 : 1,
+                                                    cursor: (selectedElsewhere || isInactive) ? 'not-allowed' : 'pointer',
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: '10px',
+                                                    transition: 'all 0.15s ease',
+                                                    outline: 'none'
+                                                  }}
+                                                  onMouseEnter={(e) => {
+                                                    if (!selectedElsewhere && !isInactive) {
+                                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                                      e.currentTarget.style.color = 'var(--color-primary)';
+                                                    }
+                                                  }}
+                                                  onMouseLeave={(e) => {
+                                                    if (!selectedElsewhere && !isInactive) {
+                                                      e.currentTarget.style.background = 'transparent';
+                                                      e.currentTarget.style.color = 'var(--color-text)';
+                                                    }
+                                                  }}
+                                                >
+                                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: (selectedElsewhere || isInactive) ? 'var(--color-text-muted)' : 'var(--color-primary)' }} />
+                                                    {r.round_name}
+                                                  </span>
+                                                  {isInactive ? (
+                                                    <span style={{
+                                                      fontSize: '0.6875rem',
+                                                      color: 'var(--color-text-muted)',
+                                                      background: 'rgba(0, 0, 0, 0.05)',
+                                                      padding: '2px 6px',
+                                                      borderRadius: '4px',
+                                                      fontWeight: 600,
+                                                      flexShrink: 0
+                                                    }}>
+                                                      {t('Không hoạt động')}
+                                                    </span>
+                                                  ) : selectedElsewhere && (
+                                                    <span style={{
+                                                      fontSize: '0.6875rem',
+                                                      color: 'var(--color-danger)',
+                                                      background: 'rgba(239, 68, 68, 0.08)',
+                                                      padding: '2px 6px',
+                                                      borderRadius: '4px',
+                                                      fontWeight: 600,
+                                                      flexShrink: 0,
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      gap: '4px'
+                                                    }}>
+                                                      <Shield size={10} />
+                                                      {t('Nhóm khác')}
+                                                    </span>
+                                                  )}
+                                                </button>
+                                              );
+                                            });
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+
+                                {/* Section 2: Choose Mode */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                    {t('Chế độ Lọc Pre-screener')}
+                                  </label>
+                                  <CustomSelect
+                                    options={[
+                                      { value: 'manual', label: t('Sử dụng Quy tắc Thủ công (Manual Rules)') },
+                                      { value: 'hybrid', label: t('Kết hợp: Lọc Thủ công + AI (Ưu tiên thủ công trước)') },
+                                      { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') }
+                                    ]}
+                                    value={config.mode}
+                                    onChange={val => {
+                                      const updated = [...aiScreenerConfigs];
+                                      updated[index].mode = val as any;
+                                      setAiScreenerConfigs(updated);
+                                    }}
+                                    width="100%"
+                                  />
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: '1.4' }}>
+                                    {config.mode === 'hybrid' && (
+                                      <span style={{ color: '#059669', fontWeight: 500 }}>
+                                        {t('Chế độ Kết hợp: Hệ thống chạy bộ lọc thủ công trước. Nếu khớp, thực hiện ngay hành động và BỎ QUA gọi AI để tiết kiệm tối đa chi phí. Nếu không khớp, mới gọi AI đánh giá.')}
+                                      </span>
+                                    )}
+                                    {config.mode === 'manual' && (
+                                      <span>
+                                        {t('Chế độ Thủ công: Chỉ áp dụng quy tắc khớp cột dữ liệu đã cấu hình.')}
+                                      </span>
+                                    )}
+                                    {config.mode === 'ai' && (
+                                      <span>
+                                        {t('Chế độ AI: DOMATION AI để đánh giá theo yêu cầu cấu hình dưới.')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Conditional Prompt Area */}
+                                {(config.mode === 'ai' || config.mode === 'hybrid') && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                      {t('Quy tắc đạt chuẩn duy nhất')}
+                                    </label>
+                                    <textarea
+                                      value={config.ai_rules}
+                                      onChange={e => {
+                                        const updated = [...aiScreenerConfigs];
+                                        updated[index].ai_rules = e.target.value;
+                                        setAiScreenerConfigs(updated);
+                                      }}
+                                      rows={4}
+                                      className="form-input"
+                                      style={{ resize: 'vertical' }}
+                                      placeholder={t("Ví dụ: Tiếng Anh: Đạt chuẩn (đã đi làm hoặc có IELTS), Không đạt chuẩn (học sinh cấp 1, 2)...")}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Conditional Manual Rules Area */}
+                                {(config.mode === 'manual' || config.mode === 'hybrid') && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                        {t('Danh sách Quy tắc Lọc Thủ công')}
+                                      </label>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Hành động khi khớp:')}</span>
+                                        <div style={{ width: 140 }}>
+                                          <CustomSelect
+                                            options={[
+                                              { value: 'hold', label: t('Tạm giữ (Hành động)') },
+                                              { value: 'skip', label: t('Bỏ qua/Duyệt') }
+                                            ]}
+                                            value={config.manual_action}
+                                            onChange={val => {
+                                              const updated = [...aiScreenerConfigs];
+                                              updated[index].manual_action = val as any;
+                                              setAiScreenerConfigs(updated);
+                                            }}
+                                            width="100%"
+                                          />
                                         </div>
                                       </div>
                                     </div>
-                                  ))}
 
-                                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updated = [...aiScreenerConfigs];
-                                        updated[index].manual_rules = [...(config.manual_rules || []), { conditions: [{ col: 'source', op: 'contains', val: '' }] }];
-                                        setAiScreenerConfigs(updated);
-                                      }}
-                                      className="btn outline"
-                                      style={{ gap: 6, fontWeight: 700, borderRadius: 20, borderColor: 'var(--color-primary)', color: 'var(--color-primary)', padding: '6px 14px', fontSize: '0.8125rem' }}
-                                    >
-                                      <Plus size={14} /> {t("Thêm nhánh quy tắc")}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                      {(config.manual_rules || []).map((branch: any, bIndex: number) => (
+                                        <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.75rem 1rem', position: 'relative', background: 'var(--color-bg-alt)', boxShadow: 'var(--shadow-sm)' }}>
+                                          <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 3, background: '#10b981', borderRadius: '10px 0 0 10px' }} />
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h4 style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                                              {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
+                                            </h4>
+                                            <button
+                                              type="button"
+                                              className="btn ghost"
+                                              style={{ color: 'var(--color-danger)', padding: 4 }}
+                                              onClick={() => {
+                                                const updated = [...aiScreenerConfigs];
+                                                updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
+                                                setAiScreenerConfigs(updated);
+                                              }}
+                                            >
+                                              <Trash2 size={16} />
+                                            </button>
+                                          </div>
 
-                            {/* Section: Substandard Lead Fallback Settings (per branch) */}
-                            <div style={{
-                              borderTop: '1px dashed var(--color-border)',
-                              paddingTop: '1.25rem',
-                              marginTop: '0.5rem',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '1rem'
-                            }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <ToggleSwitch
-                                  checked={!!config.below_standard_fallback_enabled}
-                                  onChange={checked => {
-                                    const updated = [...aiScreenerConfigs];
-                                    updated[index].below_standard_fallback_enabled = checked;
-                                    setAiScreenerConfigs(updated);
-                                  }}
-                                />
-                                <div>
-                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                    {t('Fallback lead dưới chuẩn vào vòng khác')}
-                                  </div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                    {t('Nếu bật, lead dưới chuẩn thuộc nhóm này sẽ được chuyển vào một vòng chỉ định thay vì hủy bỏ.')}
-                                  </div>
-                                </div>
-                              </div>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {(branch.conditions || []).map((c: any, i: number) => {
+                                              const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
+                                              const isLast = i === branch.conditions.length - 1;
+                                              return (
+                                                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                  <div style={{ position: 'relative', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {i === 0 ? (
+                                                      <div style={{ background: '#d1fae5', color: '#047857', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>IF</div>
+                                                    ) : (
+                                                      <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, zIndex: 2 }}>AND</div>
+                                                    )}
+                                                    {!isLast && (
+                                                      <div style={{ position: 'absolute', top: 18, bottom: -18, width: 1.5, borderLeft: '1.5px dashed var(--color-border)', zIndex: 1 }} />
+                                                    )}
+                                                  </div>
 
-                              {config.below_standard_fallback_enabled && (
+                                                  <div style={{ width: 130 }}>
+                                                    <CustomSelect
+                                                      options={[
+                                                        { value: 'source', label: t('Nguồn (Source)') },
+                                                        { value: 'name', label: t('Tên KH (Name)') },
+                                                        { value: 'phone', label: t('Số ĐT (Phone)') },
+                                                        { value: 'email', label: t('Email') },
+                                                        { value: 'note', label: t('Ghi chú (Note)') }
+                                                      ]}
+                                                      value={c.col || 'source'}
+                                                      onChange={val => {
+                                                        const updated = [...aiScreenerConfigs];
+                                                        updated[index].manual_rules[bIndex].conditions[i].col = String(val);
+                                                        setAiScreenerConfigs(updated);
+                                                      }}
+                                                      width="100%"
+                                                      size="sm"
+                                                    />
+                                                  </div>
+
+                                                  <div style={{ width: 140 }}>
+                                                    <CustomSelect
+                                                      options={[
+                                                        { value: 'contains', label: t('Có chứa') },
+                                                        { value: 'not_contains', label: t('Không chứa') },
+                                                        { value: 'equals', label: t('Bằng') },
+                                                        { value: 'starts_with', label: t('Bắt đầu bằng') },
+                                                        { value: 'ends_with', label: t('Kết thúc bằng') },
+                                                        { value: 'is_empty', label: t('Rỗng') },
+                                                        { value: 'is_not_empty', label: t('Không rỗng') }
+                                                      ]}
+                                                      value={c.op || 'contains'}
+                                                      onChange={val => {
+                                                        const updated = [...aiScreenerConfigs];
+                                                        updated[index].manual_rules[bIndex].conditions[i].op = String(val);
+                                                        if (val === 'is_empty' || val === 'is_not_empty') {
+                                                          updated[index].manual_rules[bIndex].conditions[i].val = '';
+                                                        }
+                                                        setAiScreenerConfigs(updated);
+                                                      }}
+                                                      width="100%"
+                                                      size="sm"
+                                                    />
+                                                  </div>
+
+                                                  {!isNoValueOp && (
+                                                    <div style={{ flex: 1, minWidth: 150 }}>
+                                                      <input
+                                                        type="text"
+                                                        value={c.val || ''}
+                                                        onChange={e => {
+                                                          const updated = [...aiScreenerConfigs];
+                                                          updated[index].manual_rules[bIndex].conditions[i].val = e.target.value;
+                                                          setAiScreenerConfigs(updated);
+                                                        }}
+                                                        placeholder={t("Giá trị so khớp...")}
+                                                        className="form-input"
+                                                        style={{ height: 32, fontSize: '0.8rem', width: '100%', borderRadius: 'var(--radius-md)' }}
+                                                      />
+                                                    </div>
+                                                  )}
+
+                                                  <button
+                                                    type="button"
+                                                    className="btn ghost"
+                                                    style={{ color: 'var(--color-text-muted)', padding: 4 }}
+                                                    onClick={() => {
+                                                      const updated = [...aiScreenerConfigs];
+                                                      const remaining = config.manual_rules[bIndex].conditions.filter((_: any, idx: number) => idx !== i);
+                                                      if (remaining.length === 0) {
+                                                        updated[index].manual_rules = config.manual_rules.filter((_: any, idx: number) => idx !== bIndex);
+                                                      } else {
+                                                        updated[index].manual_rules[bIndex].conditions = remaining;
+                                                      }
+                                                      setAiScreenerConfigs(updated);
+                                                    }}
+                                                  >
+                                                    <XCircle size={15} />
+                                                  </button>
+                                                </div>
+                                              );
+                                            })}
+
+                                            <div style={{ paddingLeft: 44, marginTop: 4 }}>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const updated = [...aiScreenerConfigs];
+                                                  updated[index].manual_rules[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
+                                                  setAiScreenerConfigs(updated);
+                                                }}
+                                                className="btn ghost"
+                                                style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+                                              >
+                                                <Plus size={12} /> {t("Thêm điều kiện (AND)")}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+
+                                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const updated = [...aiScreenerConfigs];
+                                            updated[index].manual_rules = [...(config.manual_rules || []), { conditions: [{ col: 'source', op: 'contains', val: '' }] }];
+                                            setAiScreenerConfigs(updated);
+                                          }}
+                                          className="btn outline"
+                                          style={{ gap: 6, fontWeight: 700, borderRadius: 20, borderColor: 'var(--color-primary)', color: 'var(--color-primary)', padding: '6px 14px', fontSize: '0.8125rem' }}
+                                        >
+                                          <Plus size={14} /> {t("Thêm nhánh quy tắc")}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Section: Substandard Lead Fallback Settings (per branch) */}
                                 <div style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                                  gap: '1.5rem',
-                                  paddingLeft: '3.25rem',
-                                  alignItems: 'start',
-                                  animation: 'fadeIn 0.15s ease-out'
+                                  borderTop: '1px dashed var(--color-border)',
+                                  paddingTop: '1.25rem',
+                                  marginTop: '0.5rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '1rem'
                                 }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                                      {t('Vòng nhận lead dưới chuẩn (Fallback Round)')}
-                                    </label>
-                                    <CustomSelect
-                                      options={[
-                                        { value: '', label: `-- ${t('Chọn Vòng phân bổ fallback')} --` },
-                                        ...rounds.map((r: any) => ({
-                                          value: String(r.id),
-                                          label: r.round_name,
-                                          disabled: Number(r.is_active) !== 1,
-                                          disabledType: 'round' as const
-                                        }))
-                                      ]}
-                                      value={config.below_standard_fallback_round_id ? String(config.below_standard_fallback_round_id) : ''}
-                                      onChange={val => {
-                                        const updated = [...aiScreenerConfigs];
-                                        updated[index].below_standard_fallback_round_id = val ? Number(val) : '';
-                                        setAiScreenerConfigs(updated);
-                                      }}
-                                      width="100%"
-                                    />
-                                  </div>
-
-                                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: '22px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <ToggleSwitch
-                                      checked={!!config.below_standard_auto_approve}
+                                      checked={!!config.below_standard_fallback_enabled}
                                       onChange={checked => {
                                         const updated = [...aiScreenerConfigs];
-                                        updated[index].below_standard_auto_approve = checked;
+                                        updated[index].below_standard_fallback_enabled = checked;
                                         setAiScreenerConfigs(updated);
                                       }}
                                     />
                                     <div>
-                                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                        {t('Tự động duyệt lead dưới chuẩn (Không tạm giữ)')}
+                                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        {t('Fallback lead dưới chuẩn vào vòng khác')}
                                       </div>
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
-                                        {t('Nếu bật, data dưới chuẩn sẽ được chuyển thẳng đến vòng fallback mà không đưa vào hàng chờ.')}
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                        {t('Nếu bật, lead dưới chuẩn thuộc nhóm này sẽ được chuyển vào một vòng chỉ định thay vì hủy bỏ.')}
                                       </div>
                                     </div>
                                   </div>
+
+                                  {config.below_standard_fallback_enabled && (
+                                    <div style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                                      gap: '1.5rem',
+                                      paddingLeft: '3.25rem',
+                                      alignItems: 'start',
+                                      animation: 'fadeIn 0.15s ease-out'
+                                    }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                                          {t('Vòng nhận lead dưới chuẩn (Fallback Round)')}
+                                        </label>
+                                        <CustomSelect
+                                          options={[
+                                            { value: '', label: `-- ${t('Chọn Vòng phân bổ fallback')} --` },
+                                            ...rounds.map((r: any) => ({
+                                              value: String(r.id),
+                                              label: r.round_name,
+                                              disabled: Number(r.is_active) !== 1,
+                                              disabledType: 'round' as const
+                                            }))
+                                          ]}
+                                          value={config.below_standard_fallback_round_id ? String(config.below_standard_fallback_round_id) : ''}
+                                          onChange={val => {
+                                            const updated = [...aiScreenerConfigs];
+                                            updated[index].below_standard_fallback_round_id = val ? Number(val) : '';
+                                            setAiScreenerConfigs(updated);
+                                          }}
+                                          width="100%"
+                                        />
+                                      </div>
+
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: '22px' }}>
+                                        <ToggleSwitch
+                                          checked={!!config.below_standard_auto_approve}
+                                          onChange={checked => {
+                                            const updated = [...aiScreenerConfigs];
+                                            updated[index].below_standard_auto_approve = checked;
+                                            setAiScreenerConfigs(updated);
+                                          }}
+                                        />
+                                        <div>
+                                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                            {t('Tự động duyệt lead dưới chuẩn (Không tạm giữ)')}
+                                          </div>
+                                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
+                                            {t('Nếu bật, data dưới chuẩn sẽ được chuyển thẳng đến vòng fallback mà không đưa vào hàng chờ.')}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
 
-                          </div>
-                        );
-                      })}
+                              </div>
+                            );
+                          })}
 
-                      {/* Add Group Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAiScreenerConfigs([...aiScreenerConfigs, {
-                            id: 'config_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                            name: '',
-                            rounds: [],
-                            mode: 'ai',
-                            ai_rules: '',
-                            manual_action: 'hold',
-                            manual_rules: []
-                          }]);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          padding: '1.25rem',
-                          borderRadius: '12px',
-                          border: '2px dashed var(--color-primary-light)',
-                          background: 'rgba(124, 58, 237, 0.02)',
-                          color: 'var(--color-primary)',
-                          fontWeight: 700,
-                          fontSize: '0.875rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          width: '100%'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)';
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
-                          e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        }}
-                      >
-                        <Plus size={16} /> {t("Thêm nhóm cấu hình lọc mới")}
-                      </button>
+                          {/* Add Group Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAiScreenerConfigs([...aiScreenerConfigs, {
+                                id: 'config_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                                name: '',
+                                rounds: [],
+                                mode: 'ai',
+                                ai_rules: '',
+                                manual_action: 'hold',
+                                manual_rules: []
+                              }]);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              padding: '1.25rem',
+                              borderRadius: '12px',
+                              border: '2px dashed var(--color-primary-light)',
+                              background: 'rgba(124, 58, 237, 0.02)',
+                              color: 'var(--color-primary)',
+                              fontWeight: 700,
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              width: '100%'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)';
+                              e.currentTarget.style.borderColor = 'var(--color-primary)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                            }}
+                          >
+                            <Plus size={16} /> {t("Thêm nhóm cấu hình lọc mới")}
+                          </button>
 
-                    </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
+                </div>
+
+              </div>
+
+              {/* Sticky Bottom Actions Bar */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                borderTop: '1px solid var(--color-border)',
+                paddingTop: '1rem',
+                marginTop: '0.75rem',
+                flexShrink: 0
+              }}>
+                <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>
+                  {t("Đóng")}
+                </button>
+                <button
+                  onClick={handleSaveConfig}
+                  disabled={savingSettings}
+                  className="btn primary"
+                  style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
+                >
+                  {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+                  {t("Lưu cấu hình bộ lọc")}
+                </button>
+              </div>
             </div>
-
-          </div>
-
-          {/* Sticky Bottom Actions Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: '1rem',
-            marginTop: '0.75rem',
-            flexShrink: 0
-          }}>
-            <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>
-              {t("Đóng")}
-            </button>
-            <button
-              onClick={handleSaveConfig}
-              disabled={savingSettings}
-              className="btn primary"
-              style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
-            >
-              {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
-              {t("Lưu cấu hình bộ lọc")}
-            </button>
-          </div>
-        </div>
           </>
         )}
       </CustomModal>
@@ -3711,62 +3711,62 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               }
             `}</style>
             <div className="guide-modal-container" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', overflowX: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Zap size={18} color="#eab308" />
-                  {t('Mẹo cấu hình Gemini AI')}
-                </h4>
-                <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  <li>
-                    <strong>{t('Đặt tiêu chuẩn rõ ràng:')}</strong> {t('AI hoạt động tốt nhất khi được cung cấp quy tắc dạng logic như "Tiếng Anh: Đạt chuẩn (đã đi làm hoặc sinh viên muốn IELTS), Không đạt (học sinh cấp 1, cấp 2 hoặc không nghe điện thoại)".')}
-                  </li>
-                  <li>
-                    <strong>{t('Không cần viết code:')}</strong> {t('Hãy dùng ngôn ngữ tự nhiên bình thường. AI có khả năng đọc ghi chú, thông tin học vấn hay nguồn để suy luận rất tốt.')}
-                  </li>
-                  <li>
-                    <strong>{t('Luôn chỉ rõ trường hợp loại trừ:')}</strong> {t('Ví dụ: "Số điện thoại bị thiếu số hoặc ghi chú ghi là test thì luôn đánh giá không đạt chuẩn".')}
-                  </li>
-                </ul>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid-1-1">
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Zap size={18} color="#eab308" />
+                      {t('Mẹo cấu hình Gemini AI')}
+                    </h4>
+                    <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                      <li>
+                        <strong>{t('Đặt tiêu chuẩn rõ ràng:')}</strong> {t('AI hoạt động tốt nhất khi được cung cấp quy tắc dạng logic như "Tiếng Anh: Đạt chuẩn (đã đi làm hoặc sinh viên muốn IELTS), Không đạt (học sinh cấp 1, cấp 2 hoặc không nghe điện thoại)".')}
+                      </li>
+                      <li>
+                        <strong>{t('Không cần viết code:')}</strong> {t('Hãy dùng ngôn ngữ tự nhiên bình thường. AI có khả năng đọc ghi chú, thông tin học vấn hay nguồn để suy luận rất tốt.')}
+                      </li>
+                      <li>
+                        <strong>{t('Luôn chỉ rõ trường hợp loại trừ:')}</strong> {t('Ví dụ: "Số điện thoại bị thiếu số hoặc ghi chú ghi là test thì luôn đánh giá không đạt chuẩn".')}
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <ShieldAlert size={18} color="#3b82f6" />
+                      {t('Hướng dẫn xử lý duyệt')}
+                    </h4>
+                    <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                      <li>
+                        <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
+                      </li>
+                      <li>
+                        <strong>{t('Xác nhận dưới chuẩn:')}</strong> {t('Hệ thống đánh dấu lead này dưới chuẩn và loại bỏ khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
+                      </li>
+                      <li>
+                        <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
               </div>
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <ShieldAlert size={18} color="#3b82f6" />
-                  {t('Hướng dẫn xử lý duyệt')}
-                </h4>
-                <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  <li>
-                    <strong>{t('Duyệt giao:')}</strong> {t('Lead sẽ được giao tự động cho Sale tiếp theo trong vòng chia số hiện tại. Bạn có thể xem trước Sale nhận ở popup trước khi ấn duyệt.')}
-                  </li>
-                  <li>
-                    <strong>{t('Xác nhận dưới chuẩn:')}</strong> {t('Hệ thống đánh dấu lead này dưới chuẩn và loại bỏ khỏi hàng chờ. Nó sẽ không được chia số và không làm tốn lượt của tư vấn viên.')}
-                  </li>
-                  <li>
-                    <strong>{t('Chặn & Blacklist:')}</strong> {t('Đưa số điện thoại này vào Global Blacklist để tự động từ chối tuyệt đối tất cả các lead có số điện thoại này ở các lần đổ sau.')}
-                  </li>
-                </ul>
+
+              {/* Sticky Bottom Actions Bar */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                borderTop: '1px solid var(--color-border)',
+                paddingTop: '1rem',
+                marginTop: '0.75rem',
+                flexShrink: 0
+              }}>
+                <button className="btn outline" onClick={() => setIsGuideModalOpen(false)}>
+                  {t("Đóng")}
+                </button>
               </div>
             </div>
-
-          </div>
-
-          {/* Sticky Bottom Actions Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: '1rem',
-            marginTop: '0.75rem',
-            flexShrink: 0
-          }}>
-            <button className="btn outline" onClick={() => setIsGuideModalOpen(false)}>
-              {t("Đóng")}
-            </button>
-          </div>
-        </div>
           </>
         )}
       </CustomModal>
@@ -3814,410 +3814,410 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         {isStatsModalOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
 
-          {/* Header/Subtitle containing selected Date Filter */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 14px',
-            background: 'rgba(124, 58, 237, 0.06)',
-            border: '1px solid rgba(124, 58, 237, 0.15)',
-            borderRadius: '10px',
-            marginBottom: '4px',
-            flexWrap: 'wrap',
-            gap: '8px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Filter size={16} color="var(--color-primary)" />
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="hide-on-mobile">
-                {t('Đang áp dụng bộ lọc thời gian:')}
-              </span>
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="mobile-only">
-                {t('Bộ lọc:')}
-              </span>
-              <span style={{
-                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                color: '#fff',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '3px 10px',
-                borderRadius: '20px',
-                boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
-              }}>
-                {getDisplayDateFilterText(dateFilter)}
-              </span>
-            </div>
-            {statsLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>{t('Đang tải dữ liệu mới...')}</span>
+            {/* Header/Subtitle containing selected Date Filter */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 14px',
+              background: 'rgba(124, 58, 237, 0.06)',
+              border: '1px solid rgba(124, 58, 237, 0.15)',
+              borderRadius: '10px',
+              marginBottom: '4px',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <Filter size={16} color="var(--color-primary)" />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="hide-on-mobile">
+                  {t('Đang áp dụng bộ lọc thời gian:')}
+                </span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }} className="mobile-only">
+                  {t('Bộ lọc:')}
+                </span>
+                <span style={{
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                  color: '#fff',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
+                }}>
+                  {getDisplayDateFilterText(dateFilter)}
+                </span>
               </div>
-            )}
-          </div>
-
-          {statsLoading && !statsData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '3rem 0', alignItems: 'center', justifyContent: 'center' }}>
-              <RefreshCw size={32} color="var(--color-primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê...')}</span>
+              {statsLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>{t('Đang tải dữ liệu mới...')}</span>
+                </div>
+              )}
             </div>
-          ) : !statsData ? (
-            <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              {t('Không có dữ liệu thống kê.')}
-            </div>
-          ) : (
-            <>
-              {/* Breakdowns columns grid (Rounds, Sources, Reasons) */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '20px',
-                marginTop: '10px'
-              }}>
-                {/* 1. Breakdown by Rounds */}
-                <div className="card" style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <GitBranch size={18} color="#7c3aed" />
-                      {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
-                    </h4>
-                  </div>
-                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
-                    {statsData.rounds_breakdown?.length === 0 ? (
-                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        {t('Không có dữ liệu phân bố vòng')}
-                      </div>
-                    ) : (
-                      statsData.rounds_breakdown?.map((item: any, idx: number) => {
-                        const totalBS = statsData.stats?.total_below_standard || 1;
-                        const pct = Math.round((item.count / totalBS) * 100);
-                        const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-                        const color = colors[idx % colors.length];
-                        return (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
 
-                {/* 2. Breakdown by Sources */}
-                <div className="card" style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <BarChart2 size={18} color="#3b82f6" />
-                      {t('Nguồn kết nối dưới chuẩn nhiều nhất')}
-                    </h4>
-                  </div>
-                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
-                    {statsData.sources_breakdown?.length === 0 ? (
-                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        {t('Không có dữ liệu phân bố nguồn')}
-                      </div>
-                    ) : (
-                      statsData.sources_breakdown?.map((item: any, idx: number) => {
-                        const totalBS = statsData.stats?.total_below_standard || 1;
-                        const pct = Math.round((item.count / totalBS) * 100);
-                        const colors = ['#3b82f6', '#10b981', '#7c3aed', '#f59e0b', '#ef4444'];
-                        const color = colors[idx % colors.length];
-                        return (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* 3. Tỷ lệ Duyệt & Dưới chuẩn */}
-                <div className="card" style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Scale size={18} color="#10b981" />
-                      {t('Tỷ lệ Duyệt & Dưới chuẩn')}
-                    </h4>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {(() => {
-                      const stats = statsData.stats || {
-                        total_leads: 0,
-                        count_duyet: 0,
-                        count_ai_giu: 0,
-                        count_duoi_chuan: 0,
-                        count_giao_lead: 0
-                      };
-                      const totalLeads = stats.total_leads || 0;
-                      const countDuyet = stats.count_duyet || 0;
-                      const countAiGiu = stats.count_ai_giu || 0;
-                      const countDuoiChuan = stats.count_duoi_chuan || 0;
-                      const countGiaoLead = stats.count_giao_lead || 0;
-
-                      const duyetPct = totalLeads > 0 ? Math.round((countDuyet / totalLeads) * 100) : 0;
-                      const aiGiuPct = totalLeads > 0 ? Math.round((countAiGiu / totalLeads) * 100) : 0;
-                      const duoiChuanPct = totalLeads > 0 ? Math.round((countDuoiChuan / totalLeads) * 100) : 0;
-                      const giaoLeadPct = totalLeads > 0 ? 100 - duyetPct - aiGiuPct - duoiChuanPct : 0;
-                      const giaoLeadPctClamped = Math.max(0, giaoLeadPct);
-
-                      return (
-                        <>
-                          {/* Passed Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Duyệt')}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duyetPct}% ${t('tổng data')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuyet}</div>
-                          </div>
-
-                          {/* AI giữ Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('AI giữ')}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${aiGiuPct}% ${t('tổng data')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countAiGiu}</div>
-                          </div>
-
-                          {/* Dưới chuẩn Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Dưới chuẩn')}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duoiChuanPct}% ${t('tổng data')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuoiChuan}</div>
-                          </div>
-
-                          {/* Giao lead Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Giao lead')}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${giaoLeadPctClamped}% ${t('tổng data')}`}</div>
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countGiaoLead}</div>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
+            {statsLoading && !statsData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '3rem 0', alignItems: 'center', justifyContent: 'center' }}>
+                <RefreshCw size={32} color="var(--color-primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê...')}</span>
               </div>
-
-              {/* Table of below-standard leads with pagination */}
-              <div style={{ marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <ShieldAlert size={16} color="var(--color-danger)" />
-                  {t('Danh sách lead dưới chuẩn')}
-                </h4>
+            ) : !statsData ? (
+              <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                {t('Không có dữ liệu thống kê.')}
+              </div>
+            ) : (
+              <>
+                {/* Breakdowns columns grid (Rounds, Sources, Reasons) */}
                 <div style={{
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  background: 'rgba(255, 255, 255, 0.01)'
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '20px',
+                  marginTop: '10px'
                 }}>
-                  <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
-                        <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', minWidth: '200px' }}>{t('Họ tên / SĐT')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%', minWidth: '220px' }}>{t('Đánh giá của AI')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '110px' }}>{t('Trạng thái')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', textAlign: 'right' }}>{t('Thời gian')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedRecentLeads.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              {t('Không có lead nào dưới chuẩn')}
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedRecentLeads.map((l: any, idx: number) => {
-                            const statusBadge = getStatusBadge(l.status);
+                  {/* 1. Breakdown by Rounds */}
+                  <div className="card" style={{
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <GitBranch size={18} color="#7c3aed" />
+                        {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
+                      </h4>
+                    </div>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
+                      {statsData.rounds_breakdown?.length === 0 ? (
+                        <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          {t('Không có dữ liệu phân bố vòng')}
+                        </div>
+                      ) : (
+                        statsData.rounds_breakdown?.map((item: any, idx: number) => {
+                          const totalBS = statsData.stats?.total_below_standard || 1;
+                          const pct = Math.round((item.count / totalBS) * 100);
+                          const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+                          const color = colors[idx % colors.length];
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
 
-                            return (
-                              <tr key={idx} style={{ borderBottom: idx < paginatedRecentLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
-                                <td style={{ padding: '10px 14px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <Avatar name={l.name} size="sm" />
-                                    <div>
-                                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
-                                      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
-                                        {maskPhone(l.phone)}
+                  {/* 2. Breakdown by Sources */}
+                  <div className="card" style={{
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <BarChart2 size={18} color="#3b82f6" />
+                        {t('Nguồn kết nối dưới chuẩn nhiều nhất')}
+                      </h4>
+                    </div>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '220px', overflowY: 'auto', paddingRight: 4 }}>
+                      {statsData.sources_breakdown?.length === 0 ? (
+                        <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          {t('Không có dữ liệu phân bố nguồn')}
+                        </div>
+                      ) : (
+                        statsData.sources_breakdown?.map((item: any, idx: number) => {
+                          const totalBS = statsData.stats?.total_below_standard || 1;
+                          const pct = Math.round((item.count / totalBS) * 100);
+                          const colors = ['#3b82f6', '#10b981', '#7c3aed', '#f59e0b', '#ef4444'];
+                          const color = colors[idx % colors.length];
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${pct}% ${t('tổng dưới chuẩn')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{item.count}</div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Tỷ lệ Duyệt & Dưới chuẩn */}
+                  <div className="card" style={{
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Scale size={18} color="#10b981" />
+                        {t('Tỷ lệ Duyệt & Dưới chuẩn')}
+                      </h4>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {(() => {
+                        const stats = statsData.stats || {
+                          total_leads: 0,
+                          count_duyet: 0,
+                          count_ai_giu: 0,
+                          count_duoi_chuan: 0,
+                          count_giao_lead: 0
+                        };
+                        const totalLeads = stats.total_leads || 0;
+                        const countDuyet = stats.count_duyet || 0;
+                        const countAiGiu = stats.count_ai_giu || 0;
+                        const countDuoiChuan = stats.count_duoi_chuan || 0;
+                        const countGiaoLead = stats.count_giao_lead || 0;
+
+                        const duyetPct = totalLeads > 0 ? Math.round((countDuyet / totalLeads) * 100) : 0;
+                        const aiGiuPct = totalLeads > 0 ? Math.round((countAiGiu / totalLeads) * 100) : 0;
+                        const duoiChuanPct = totalLeads > 0 ? Math.round((countDuoiChuan / totalLeads) * 100) : 0;
+                        const giaoLeadPct = totalLeads > 0 ? 100 - duyetPct - aiGiuPct - duoiChuanPct : 0;
+                        const giaoLeadPctClamped = Math.max(0, giaoLeadPct);
+
+                        return (
+                          <>
+                            {/* Passed Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Duyệt')}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duyetPct}% ${t('tổng data')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuyet}</div>
+                            </div>
+
+                            {/* AI giữ Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('AI giữ')}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${aiGiuPct}% ${t('tổng data')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countAiGiu}</div>
+                            </div>
+
+                            {/* Dưới chuẩn Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Dưới chuẩn')}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${duoiChuanPct}% ${t('tổng data')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countDuoiChuan}</div>
+                            </div>
+
+                            {/* Giao lead Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Giao lead')}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${giaoLeadPctClamped}% ${t('tổng data')}`}</div>
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{countGiaoLead}</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table of below-standard leads with pagination */}
+                <div style={{ marginTop: '10px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ShieldAlert size={16} color="var(--color-danger)" />
+                    {t('Danh sách lead dưới chuẩn')}
+                  </h4>
+                  <div style={{
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    background: 'rgba(255, 255, 255, 0.01)'
+                  }}>
+                    <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                          <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', minWidth: '200px' }}>{t('Họ tên / SĐT')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%', minWidth: '220px' }}>{t('Đánh giá của AI')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '110px' }}>{t('Trạng thái')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', textAlign: 'right' }}>{t('Thời gian')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedRecentLeads.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                {t('Không có lead nào dưới chuẩn')}
+                              </td>
+                            </tr>
+                          ) : (
+                            paginatedRecentLeads.map((l: any, idx: number) => {
+                              const statusBadge = getStatusBadge(l.status);
+
+                              return (
+                                <tr key={idx} style={{ borderBottom: idx < paginatedRecentLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
+                                  <td style={{ padding: '10px 14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <Avatar name={l.name} size="sm" />
+                                      <div>
+                                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
+                                        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1px' }}>
+                                          {maskPhone(l.phone)}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '10px 14px', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
-                                  {l.ai_evaluation || l.note || t('Không có đánh giá')}
-                                </td>
-                                <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
-                                  {statusBadge}
-                                </td>
-                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                                  {new Date(l.created_at).toLocaleString('vi-VN')}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                  </td>
+                                  <td style={{ padding: '10px 14px', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
+                                    {l.ai_evaluation || l.note || t('Không có đánh giá')}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                                    {statusBadge}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                                    {new Date(l.created_at).toLocaleString('vi-VN')}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  {/* Pagination Footer */}
-                  {statsData.recent_below_standard && statsData.recent_below_standard.length > 0 && (
-                    <div className="responsive-pagination" style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderTop: '1px solid var(--color-border)',
-                      background: 'rgba(255,255,255,0.01)',
-                      fontSize: '0.8rem'
-                    }}>
-                      <div style={{ color: 'var(--color-text-muted)' }}>
-                        {t('Hiển thị')}{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {(statsPage - 1) * STATS_ITEMS_PER_PAGE + 1}
-                        </span>{' '}
-                        -{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {Math.min(statsPage * STATS_ITEMS_PER_PAGE, statsData.recent_below_standard.length)}
-                        </span>{' '}
-                        {t('trên')}{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {statsData.recent_below_standard.length}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => setStatsPage(p => Math.max(p - 1, 1))}
-                          disabled={statsPage === 1}
-                          style={{
-                            padding: '6px',
-                            borderRadius: 6,
-                            border: '1px solid var(--color-border)',
-                            background: statsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
-                            color: statsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
-                            cursor: statsPage === 1 ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
+                    {/* Pagination Footer */}
+                    {statsData.recent_below_standard && statsData.recent_below_standard.length > 0 && (
+                      <div className="responsive-pagination" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderTop: '1px solid var(--color-border)',
+                        background: 'rgba(255,255,255,0.01)',
+                        fontSize: '0.8rem'
+                      }}>
+                        <div style={{ color: 'var(--color-text-muted)' }}>
+                          {t('Hiển thị')}{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {(statsPage - 1) * STATS_ITEMS_PER_PAGE + 1}
+                          </span>{' '}
+                          -{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {Math.min(statsPage * STATS_ITEMS_PER_PAGE, statsData.recent_below_standard.length)}
+                          </span>{' '}
+                          {t('trên')}{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {statsData.recent_below_standard.length}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => setStatsPage(p => Math.max(p - 1, 1))}
+                            disabled={statsPage === 1}
+                            style={{
+                              padding: '6px',
+                              borderRadius: 6,
+                              border: '1px solid var(--color-border)',
+                              background: statsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
+                              color: statsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+                              cursor: statsPage === 1 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
 
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {(() => {
-                            const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
-                            const maxVisible = 5;
-                            let startPage = 1;
-                            if (totalPages > maxVisible) {
-                              if (statsPage > 3) {
-                                startPage = statsPage - 2;
-                                if (startPage + maxVisible - 1 > totalPages) {
-                                  startPage = totalPages - maxVisible + 1;
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {(() => {
+                              const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
+                              const maxVisible = 5;
+                              let startPage = 1;
+                              if (totalPages > maxVisible) {
+                                if (statsPage > 3) {
+                                  startPage = statsPage - 2;
+                                  if (startPage + maxVisible - 1 > totalPages) {
+                                    startPage = totalPages - maxVisible + 1;
+                                  }
                                 }
                               }
-                            }
-                            const pageNumbers = Array.from(
-                              { length: Math.min(maxVisible, totalPages) },
-                              (_, i) => startPage + i
-                            );
-                            return pageNumbers.map(pageNum => (
-                              <button
-                                key={pageNum}
-                                onClick={() => setStatsPage(pageNum)}
-                                style={{
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: 6,
-                                  fontSize: '0.8125rem',
-                                  fontWeight: 600,
-                                  border: statsPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                                  background: statsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                                  color: statsPage === pageNum ? 'white' : 'var(--color-text)',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {pageNum}
-                              </button>
-                            ));
-                          })()}
+                              const pageNumbers = Array.from(
+                                { length: Math.min(maxVisible, totalPages) },
+                                (_, i) => startPage + i
+                              );
+                              return pageNumbers.map(pageNum => (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setStatsPage(pageNum)}
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 6,
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 600,
+                                    border: statsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                                    background: statsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                    color: statsPage === pageNum ? 'white' : 'var(--color-text)',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {pageNum}
+                                </button>
+                              ));
+                            })()}
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
+                              setStatsPage(p => Math.min(p + 1, totalPages));
+                            }}
+                            disabled={statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
+                            style={{
+                              padding: '6px',
+                              borderRadius: 6,
+                              border: '1px solid var(--color-border)',
+                              background: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)',
+                              color: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                              cursor: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <ChevronRight size={16} />
+                          </button>
                         </div>
-
-                        <button
-                          onClick={() => {
-                            const totalPages = Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE);
-                            setStatsPage(p => Math.min(p + 1, totalPages));
-                          }}
-                          disabled={statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE)}
-                          style={{
-                            padding: '6px',
-                            borderRadius: 6,
-                            border: '1px solid var(--color-border)',
-                            background: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-bg)' : 'var(--color-surface)',
-                            color: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'var(--color-text-muted)' : 'var(--color-text)',
-                            cursor: statsPage === Math.ceil(statsData.recent_below_standard.length / STATS_ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <ChevronRight size={16} />
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
 
-        </div>
+          </div>
         )}
       </CustomModal>
 
@@ -4230,411 +4230,411 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       >
         {isTokenStatsModalOpen && (
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Header Filter Context */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--color-bg)',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            border: '1px solid var(--color-border)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Filter size={16} color="var(--color-primary)" />
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
-                {t('Thời gian:')}
-              </span>
-              <span style={{
-                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-                color: '#fff',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '3px 10px',
-                borderRadius: '20px',
-                boxShadow: '0 2px 4px rgba(168, 85, 247, 0.2)'
-              }}>
-                {getDisplayDateFilterText(dateFilter)}
-              </span>
-            </div>
-            {tokenStatsLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                <RefreshCw size={12} className="spin" />
-                <span>{t('Đang tải dữ liệu...')}</span>
+            {/* Header Filter Context */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--color-bg)',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid var(--color-border)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Filter size={16} color="var(--color-primary)" />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                  {t('Thời gian:')}
+                </span>
+                <span style={{
+                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  color: '#fff',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  boxShadow: '0 2px 4px rgba(168, 85, 247, 0.2)'
+                }}>
+                  {getDisplayDateFilterText(dateFilter)}
+                </span>
               </div>
-            )}
-          </div>
-
-          {tokenStatsLoading && !tokenStatsData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '4rem 0', alignItems: 'center', justifyContent: 'center' }}>
-              <RefreshCw size={32} color="var(--color-primary)" className="spin" />
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê Token...')}</span>
+              {tokenStatsLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  <RefreshCw size={12} className="spin" />
+                  <span>{t('Đang tải dữ liệu...')}</span>
+                </div>
+              )}
             </div>
-          ) : !tokenStatsData ? (
-            <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              {t('Không có dữ liệu thống kê Token.')}
-            </div>
-          ) : (
-            <>
-              {/* Premium Stat Cards */}
-              {(() => {
-                const stats = tokenStatsData.stats || { total_leads: 0, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-                const promptT = stats.prompt_tokens ?? 0;
-                const compT = stats.completion_tokens ?? 0;
-                let costUsd = 0;
-                if (promptT > 0 || compT > 0) {
-                  costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
-                } else {
-                  costUsd = (stats.total_tokens ?? 0) * 0.0000001336;
-                }
-                const costVnd = costUsd * 25400;
 
-                return (
+            {tokenStatsLoading && !tokenStatsData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '4rem 0', alignItems: 'center', justifyContent: 'center' }}>
+                <RefreshCw size={32} color="var(--color-primary)" className="spin" />
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê Token...')}</span>
+              </div>
+            ) : !tokenStatsData ? (
+              <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                {t('Không có dữ liệu thống kê Token.')}
+              </div>
+            ) : (
+              <>
+                {/* Premium Stat Cards */}
+                {(() => {
+                  const stats = tokenStatsData.stats || { total_leads: 0, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+                  const promptT = stats.prompt_tokens ?? 0;
+                  const compT = stats.completion_tokens ?? 0;
+                  let costUsd = 0;
+                  if (promptT > 0 || compT > 0) {
+                    costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
+                  } else {
+                    costUsd = (stats.total_tokens ?? 0) * 0.0000001336;
+                  }
+                  const costVnd = costUsd * 25400;
+
+                  return (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '12px'
+                    }}>
+                      <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lead đã gọi AI')}</div>
+                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>{stats.total_leads.toLocaleString('vi-VN')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Số khách hàng được AI đánh giá')}</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Prompt Tokens')}</div>
+                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#3b82f6', marginTop: '4px' }}>{stats.prompt_tokens.toLocaleString('vi-VN')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token đầu vào gửi tới AI')}</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Completion Tokens')}</div>
+                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>{stats.completion_tokens.toLocaleString('vi-VN')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token phản hồi của AI')}</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
+                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px', background: 'rgba(168, 85, 247, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span>~${costUsd.toFixed(4)}</span>
+                          <span>~{Math.round(costVnd).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Token prompt vs completion breakdown progress bar */}
+                {(() => {
+                  const stats = tokenStatsData.stats || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 1 };
+                  const total = stats.total_tokens || 1;
+                  const promptPct = Math.round((stats.prompt_tokens / total) * 100);
+                  const compPct = 100 - promptPct;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                        <span>{t('Prompt (Đầu vào):')} {promptPct}%</span>
+                        <span>{t('Completion (Đầu ra):')} {compPct}%</span>
+                      </div>
+                      <div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden', display: 'flex' }}>
+                        <div style={{ width: `${promptPct}%`, background: '#3b82f6' }} title={`Prompt: ${promptPct}%`} />
+                        <div style={{ width: `${compPct}%`, background: '#10b981' }} title={`Completion: ${compPct}%`} />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Side-by-side Breakdowns */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gap: '20px',
+                  marginTop: '10px'
+                }}>
+                  {/* 1. Breakdown by Rounds */}
                   <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    background: 'rgba(255, 255, 255, 0.01)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
                     gap: '12px'
                   }}>
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Lead đã gọi AI')}</div>
-                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>{stats.total_leads.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Số khách hàng được AI đánh giá')}</div>
-                    </div>
-
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Prompt Tokens')}</div>
-                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#3b82f6', marginTop: '4px' }}>{stats.prompt_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token đầu vào gửi tới AI')}</div>
-                    </div>
-
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Completion Tokens')}</div>
-                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>{stats.completion_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token phản hồi của AI')}</div>
-                    </div>
-
-                    <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
-                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px', background: 'rgba(168, 85, 247, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                        <span>~${costUsd.toFixed(4)}</span>
-                        <span>~{Math.round(costVnd).toLocaleString('vi-VN')}đ</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Token prompt vs completion breakdown progress bar */}
-              {(() => {
-                const stats = tokenStatsData.stats || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 1 };
-                const total = stats.total_tokens || 1;
-                const promptPct = Math.round((stats.prompt_tokens / total) * 100);
-                const compPct = 100 - promptPct;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                      <span>{t('Prompt (Đầu vào):')} {promptPct}%</span>
-                      <span>{t('Completion (Đầu ra):')} {compPct}%</span>
-                    </div>
-                    <div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden', display: 'flex' }}>
-                      <div style={{ width: `${promptPct}%`, background: '#3b82f6' }} title={`Prompt: ${promptPct}%`} />
-                      <div style={{ width: `${compPct}%`, background: '#10b981' }} title={`Completion: ${compPct}%`} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Side-by-side Breakdowns */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '20px',
-                marginTop: '10px'
-              }}>
-                {/* 1. Breakdown by Rounds */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.01)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }}></span>
-                    {t('Tiêu thụ Token theo Vòng phân phối')}
-                  </h4>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-                          <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Vòng xoay')}</th>
-                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
-                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tokenStatsData.rounds_breakdown?.length === 0 ? (
-                          <tr>
-                            <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
+                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }}></span>
+                      {t('Tiêu thụ Token theo Vòng phân phối')}
+                    </h4>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                            <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Vòng xoay')}</th>
+                            <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
+                            <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
                           </tr>
-                        ) : (
-                          tokenStatsData.rounds_breakdown?.map((item: any, idx: number) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                              <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                        </thead>
+                        <tbody>
+                          {tokenStatsData.rounds_breakdown?.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                          ) : (
+                            tokenStatsData.rounds_breakdown?.map((item: any, idx: number) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.round_name}</td>
+                                <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
+                                <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 2. Breakdown by Connection */}
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.01)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }}></span>
+                      {t('Tiêu thụ Token theo Trang tính (Sheet)')}
+                    </h4>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                            <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Nguồn / Sheet')}</th>
+                            <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
+                            <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tokenStatsData.sources_breakdown?.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
+                            </tr>
+                          ) : (
+                            tokenStatsData.sources_breakdown?.map((item: any, idx: number) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</td>
+                                <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
+                                <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
-                {/* 2. Breakdown by Connection */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.01)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }}></span>
-                    {t('Tiêu thụ Token theo Trang tính (Sheet)')}
+                {/* Detailed lead list with token counts */}
+                <div style={{ marginTop: '10px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={16} color="var(--color-primary)" />
+                    {t('Chi tiết sử dụng Token trên từng Lead')}
                   </h4>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-                          <th style={{ padding: '6px 4px', fontWeight: 600 }}>{t('Nguồn / Sheet')}</th>
-                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'center' }}>{t('Số Lead')}</th>
-                          <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>{t('Tổng Token')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tokenStatsData.sources_breakdown?.length === 0 ? (
-                          <tr>
-                            <td colSpan={3} style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Không có dữ liệu')}</td>
+                  <div style={{
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    background: 'rgba(255, 255, 255, 0.01)'
+                  }}>
+                    <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                          <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%' }}>{t('Họ tên / SĐT')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Kết quả AI')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('PROMPT')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('COMPLETION')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('TOTAL')}</th>
+                            <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
                           </tr>
-                        ) : (
-                          tokenStatsData.sources_breakdown?.map((item: any, idx: number) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                              <td style={{ padding: '8px 4px', fontWeight: 600, color: 'var(--color-text)' }}>{item.source_name}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.lead_count}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>{item.total_tokens.toLocaleString('vi-VN')}</td>
+                        </thead>
+                        <tbody>
+                          {paginatedRecentAiLeads.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                {t('Không có dữ liệu')}
+                              </td>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                          ) : (
+                            paginatedRecentAiLeads.map((l: any, idx: number) => {
+                              let statusBadge = null;
+                              if (l.ai_screener_status === 'passed') {
+                                statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16,185,129,0.2)' }}>PASSED</span>;
+                              } else if (l.ai_screener_status === 'failed') {
+                                statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.2)' }}>FAILED</span>;
+                              } else {
+                                statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.2)' }}>{l.ai_screener_status?.toUpperCase() || 'ERROR'}</span>;
+                              }
 
-              {/* Detailed lead list with token counts */}
-              <div style={{ marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Sparkles size={16} color="var(--color-primary)" />
-                  {t('Chi tiết sử dụng Token trên từng Lead')}
-                </h4>
-                <div style={{
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  background: 'rgba(255, 255, 255, 0.01)'
-                }}>
-                  <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                      <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
-                        <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', position: 'sticky', top: 0, background: 'var(--color-bg)', width: '100%' }}>{t('Họ tên / SĐT')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Kết quả AI')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('PROMPT')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('COMPLETION')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('TOTAL')}</th>
-                          <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'right', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedRecentAiLeads.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              {t('Không có dữ liệu')}
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedRecentAiLeads.map((l: any, idx: number) => {
-                            let statusBadge = null;
-                            if (l.ai_screener_status === 'passed') {
-                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)', border: '1px solid rgba(16,185,129,0.2)' }}>PASSED</span>;
-                            } else if (l.ai_screener_status === 'failed') {
-                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.2)' }}>FAILED</span>;
-                            } else {
-                              statusBadge = <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.2)' }}>{l.ai_screener_status?.toUpperCase() || 'ERROR'}</span>;
-                            }
-
-                            return (
-                              <tr key={idx} style={{ borderBottom: idx < paginatedRecentAiLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
-                                <td style={{ padding: '10px 14px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <Avatar name={l.name} size={32} />
-                                    <div>
-                                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
-                                      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.72rem', marginTop: '1px' }}>
-                                        {maskPhone(l.phone)}
+                              return (
+                                <tr key={idx} style={{ borderBottom: idx < paginatedRecentAiLeads.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'transparent' }}>
+                                  <td style={{ padding: '10px 14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                      <Avatar name={l.name} size={32} />
+                                      <div>
+                                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{l.name}</div>
+                                        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.72rem', marginTop: '1px' }}>
+                                          {maskPhone(l.phone)}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                                  {statusBadge}
-                                </td>
-                                <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
-                                  {Number(l.ai_prompt_tokens).toLocaleString('vi-VN')}
-                                </td>
-                                <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
-                                  {Number(l.ai_completion_tokens).toLocaleString('vi-VN')}
-                                </td>
-                                <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {Number(l.ai_total_tokens).toLocaleString('vi-VN')}
-                                </td>
-                                <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                                  {new Date(l.created_at).toLocaleString('vi-VN')}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                  </td>
+                                  <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                    {statusBadge}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
+                                    {Number(l.ai_prompt_tokens).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--color-text)', fontWeight: 500 }}>
+                                    {Number(l.ai_completion_tokens).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {Number(l.ai_total_tokens).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td style={{ padding: '10px 14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                                    {new Date(l.created_at).toLocaleString('vi-VN')}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  {/* Pagination Footer */}
-                  {tokenStatsData && tokenStatsData.total_recent_leads > 20 && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderTop: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                      fontSize: '0.8rem'
-                    }}>
-                      <div style={{ color: 'var(--color-text-muted)' }}>
-                        {t('Hiển thị')}{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {(tokenStatsPage - 1) * 20 + 1}
-                        </span>{' '}
-                        -{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {Math.min(tokenStatsPage * 20, tokenStatsData.total_recent_leads)}
-                        </span>{' '}
-                        {t('trên')}{' '}
-                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                          {tokenStatsData.total_recent_leads}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => {
-                            const newPage = Math.max(tokenStatsPage - 1, 1);
-                            setTokenStatsPage(newPage);
-                            fetchTokenStats(newPage);
-                          }}
-                          disabled={tokenStatsPage === 1}
-                          style={{
-                            padding: '6px',
-                            borderRadius: 6,
-                            border: '1px solid var(--color-border)',
-                            background: tokenStatsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
-                            color: tokenStatsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
-                            cursor: tokenStatsPage === 1 ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
+                    {/* Pagination Footer */}
+                    {tokenStatsData && tokenStatsData.total_recent_leads > 20 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderTop: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        fontSize: '0.8rem'
+                      }}>
+                        <div style={{ color: 'var(--color-text-muted)' }}>
+                          {t('Hiển thị')}{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {(tokenStatsPage - 1) * 20 + 1}
+                          </span>{' '}
+                          -{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {Math.min(tokenStatsPage * 20, tokenStatsData.total_recent_leads)}
+                          </span>{' '}
+                          {t('trên')}{' '}
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                            {tokenStatsData.total_recent_leads}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => {
+                              const newPage = Math.max(tokenStatsPage - 1, 1);
+                              setTokenStatsPage(newPage);
+                              fetchTokenStats(newPage);
+                            }}
+                            disabled={tokenStatsPage === 1}
+                            style={{
+                              padding: '6px',
+                              borderRadius: 6,
+                              border: '1px solid var(--color-border)',
+                              background: tokenStatsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)',
+                              color: tokenStatsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+                              cursor: tokenStatsPage === 1 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
 
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {(() => {
-                            const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
-                            const maxVisible = 5;
-                            let startPage = 1;
-                            if (totalPages > maxVisible) {
-                              if (tokenStatsPage > 3) {
-                                startPage = tokenStatsPage - 2;
-                                if (startPage + maxVisible - 1 > totalPages) {
-                                  startPage = totalPages - maxVisible + 1;
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {(() => {
+                              const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
+                              const maxVisible = 5;
+                              let startPage = 1;
+                              if (totalPages > maxVisible) {
+                                if (tokenStatsPage > 3) {
+                                  startPage = tokenStatsPage - 2;
+                                  if (startPage + maxVisible - 1 > totalPages) {
+                                    startPage = totalPages - maxVisible + 1;
+                                  }
                                 }
                               }
-                            }
-                            const pageNumbers = Array.from(
-                              { length: Math.min(maxVisible, totalPages) },
-                              (_, i) => startPage + i
-                            );
-                            return pageNumbers.map(pageNum => (
-                              <button
-                                key={pageNum}
-                                onClick={() => {
-                                  setTokenStatsPage(pageNum);
-                                  fetchTokenStats(pageNum);
-                                }}
-                                style={{
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: 6,
-                                  fontSize: '0.8125rem',
-                                  fontWeight: 600,
-                                  border: tokenStatsPage === pageNum ? 'none' : '1px solid var(--color-border)',
-                                  background: tokenStatsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                                  color: tokenStatsPage === pageNum ? 'white' : 'var(--color-text)',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {pageNum}
-                              </button>
-                            ));
-                          })()}
-                        </div>
+                              const pageNumbers = Array.from(
+                                { length: Math.min(maxVisible, totalPages) },
+                                (_, i) => startPage + i
+                              );
+                              return pageNumbers.map(pageNum => (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => {
+                                    setTokenStatsPage(pageNum);
+                                    fetchTokenStats(pageNum);
+                                  }}
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 6,
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 600,
+                                    border: tokenStatsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                                    background: tokenStatsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                    color: tokenStatsPage === pageNum ? 'white' : 'var(--color-text)',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {pageNum}
+                                </button>
+                              ));
+                            })()}
+                          </div>
 
-                        <button
-                          onClick={() => {
-                            const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
-                            const newPage = Math.min(tokenStatsPage + 1, totalPages);
-                            setTokenStatsPage(newPage);
-                            fetchTokenStats(newPage);
-                          }}
-                          disabled={tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20)}
-                          style={{
-                            padding: '6px',
-                            borderRadius: 6,
-                            border: '1px solid var(--color-border)',
-                            background: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-bg)' : 'var(--color-surface)',
-                            color: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-text-muted)' : 'var(--color-text)',
-                            cursor: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <ChevronRight size={16} />
-                        </button>
+                          <button
+                            onClick={() => {
+                              const totalPages = Math.ceil(tokenStatsData.total_recent_leads / 20);
+                              const newPage = Math.min(tokenStatsPage + 1, totalPages);
+                              setTokenStatsPage(newPage);
+                              fetchTokenStats(newPage);
+                            }}
+                            disabled={tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20)}
+                            style={{
+                              padding: '6px',
+                              borderRadius: 6,
+                              border: '1px solid var(--color-border)',
+                              background: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-bg)' : 'var(--color-surface)',
+                              color: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'var(--color-text-muted)' : 'var(--color-text)',
+                              cursor: tokenStatsPage === Math.ceil(tokenStatsData.total_recent_leads / 20) ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
         )}
       </CustomModal>
 
@@ -4647,92 +4647,92 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       >
         {heldActionModalOpen === 'approve' && (
           <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
-          </p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {t("Hệ thống sẽ thực hiện phân bổ lead này cho Sale tiếp theo trong vòng phân phối tương ứng. Thông tin người tiếp nhận:")}
+            </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-              {t('Vòng phân phối:')}
-            </label>
-            <CustomSelect
-              options={rounds.map((r: any) => ({
-                value: String(r.id),
-                label: r.round_name,
-                disabled: Number(r.is_active) !== 1,
-                disabledType: 'round' as const
-              }))}
-              value={selectedApproveRoundId ? String(selectedApproveRoundId) : ''}
-              onChange={val => {
-                if (val) {
-                  handleApproveRoundChange(Number(val));
-                }
-              }}
-              width="100%"
-            />
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                {t('Vòng phân phối:')}
+              </label>
+              <CustomSelect
+                options={rounds.map((r: any) => ({
+                  value: String(r.id),
+                  label: r.round_name,
+                  disabled: Number(r.is_active) !== 1,
+                  disabledType: 'round' as const
+                }))}
+                value={selectedApproveRoundId ? String(selectedApproveRoundId) : ''}
+                onChange={val => {
+                  if (val) {
+                    handleApproveRoundChange(Number(val));
+                  }
+                }}
+                width="100%"
+              />
+            </div>
 
-          <div style={{
-            padding: '1.25rem',
-            background: 'linear-gradient(to bottom right, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02))',
-            border: '1px solid rgba(16, 185, 129, 0.15)',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem'
-          }}>
-            {previewLoadingId !== null ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>{t("Đang tính toán Sale tiếp theo...")}</span>
-              </div>
-            ) : previewedConsultant ? (
-              <>
-                <Avatar src={previewedConsultant.avatar} name={previewedConsultant.name} size={40} />
-                <div>
-                  <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                    {previewedConsultant.name}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                    {t("Nhận từ vòng:")} <strong>{rounds.find(r => Number(r.id) === selectedApproveRoundId)?.round_name || actioningHeldLead?.round_name}</strong>
-                  </div>
+            <div style={{
+              padding: '1.25rem',
+              background: 'linear-gradient(to bottom right, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02))',
+              border: '1px solid rgba(16, 185, 129, 0.15)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              {previewLoadingId !== null ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>{t("Đang tính toán Sale tiếp theo...")}</span>
                 </div>
-              </>
-            ) : (
-              <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: 600 }}>
-                {t("Không tìm thấy Sale hợp lệ trong vòng để nhận lead này.")}
-              </div>
-            )}
-          </div>
+              ) : previewedConsultant ? (
+                <>
+                  <Avatar src={previewedConsultant.avatar} name={previewedConsultant.name} size={40} />
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                      {previewedConsultant.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                      {t("Nhận từ vòng:")} <strong>{rounds.find(r => Number(r.id) === selectedApproveRoundId)?.round_name || actioningHeldLead?.round_name}</strong>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: 600 }}>
+                  {t("Không tìm thấy Sale hợp lệ trong vòng để nhận lead này.")}
+                </div>
+              )}
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-              {t("Lý do phê duyệt (Tùy chọn)")}
-            </label>
-            <textarea
-              className="form-input"
-              rows={2}
-              value={heldActionReason}
-              onChange={e => setHeldActionReason(e.target.value)}
-              placeholder={t("Ví dụ: Khách hàng tiềm năng, đã liên hệ trực tiếp...")}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                {t("Lý do phê duyệt (Tùy chọn)")}
+              </label>
+              <textarea
+                className="form-input"
+                rows={2}
+                value={heldActionReason}
+                onChange={e => setHeldActionReason(e.target.value)}
+                placeholder={t("Ví dụ: Khách hàng tiềm năng, đã liên hệ trực tiếp...")}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
-              {t("Hủy bỏ")}
-            </button>
-            <button
-              className="btn primary"
-              onClick={handleApproveHeldLeadSubmit}
-              disabled={previewLoadingId !== null || actionLoading}
-              style={{ background: '#10b981', borderColor: '#10b981' }}
-            >
-              {actionLoading ? t("Đang duyệt...") : t("Xác nhận duyệt")}
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+                {t("Hủy bỏ")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleApproveHeldLeadSubmit}
+                disabled={previewLoadingId !== null || actionLoading}
+                style={{ background: '#10b981', borderColor: '#10b981' }}
+              >
+                {actionLoading ? t("Đang duyệt...") : t("Xác nhận duyệt")}
+              </button>
+            </div>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -4745,36 +4745,36 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       >
         {heldActionModalOpen === 'reject' && (
           <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            {t("Vui lòng nhập lý do xác nhận dưới chuẩn cho lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
-          </p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {t("Vui lòng nhập lý do xác nhận dưới chuẩn cho lead này. Liên hệ sẽ bị đánh dấu là Không duyệt và không phân bổ.")}
+            </p>
 
-          <div>
-            <label className="form-label">{t("Lý do từ chối")}</label>
-            <textarea
-              className="form-input"
-              rows={3}
-              value={heldActionReason}
-              onChange={e => setHeldActionReason(e.target.value)}
-              placeholder={t("Ví dụ: Khách hàng không có nhu cầu thật, sai số...")}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
+            <div>
+              <label className="form-label">{t("Lý do từ chối")}</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={heldActionReason}
+                onChange={e => setHeldActionReason(e.target.value)}
+                placeholder={t("Ví dụ: Khách hàng không có nhu cầu thật, sai số...")}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
-              {t("Hủy bỏ")}
-            </button>
-            <button
-              className="btn primary"
-              onClick={handleRejectHeldLeadSubmit}
-              disabled={!heldActionReason.trim() || actionLoading}
-              style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)' }}
-            >
-              {actionLoading ? t("Đang xử lý...") : t("Xác nhận dưới chuẩn")}
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+                {t("Hủy bỏ")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleRejectHeldLeadSubmit}
+                disabled={!heldActionReason.trim() || actionLoading}
+                style={{ background: 'var(--color-warning)', borderColor: 'var(--color-warning)' }}
+              >
+                {actionLoading ? t("Đang xử lý...") : t("Xác nhận dưới chuẩn")}
+              </button>
+            </div>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -4787,36 +4787,36 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       >
         {heldActionModalOpen === 'blacklist' && (
           <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            {t("Xác nhận chặn số điện thoại này. Số điện thoại sẽ bị lưu vào danh sách đen (Global Exclusion Contacts) để tự động từ chối trong tương lai.")}
-          </p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {t("Xác nhận chặn số điện thoại này. Số điện thoại sẽ bị lưu vào danh sách đen (Global Exclusion Contacts) để tự động từ chối trong tương lai.")}
+            </p>
 
-          <div>
-            <label className="form-label">{t("Lý do chặn blacklist")}</label>
-            <textarea
-              className="form-input"
-              rows={3}
-              value={heldActionReason}
-              onChange={e => setHeldActionReason(e.target.value)}
-              placeholder={t("Ví dụ: Số ảo phá hoại, spam, đối thủ cạnh tranh...")}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
+            <div>
+              <label className="form-label">{t("Lý do chặn blacklist")}</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={heldActionReason}
+                onChange={e => setHeldActionReason(e.target.value)}
+                placeholder={t("Ví dụ: Số ảo phá hoại, spam, đối thủ cạnh tranh...")}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
-              {t("Hủy bỏ")}
-            </button>
-            <button
-              className="btn primary"
-              onClick={handleBlacklistHeldLeadSubmit}
-              disabled={!heldActionReason.trim() || actionLoading}
-              style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
-            >
-              {actionLoading ? t("Đang chặn...") : t("Xác nhận chặn")}
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setHeldActionModalOpen(null)}>
+                {t("Hủy bỏ")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleBlacklistHeldLeadSubmit}
+                disabled={!heldActionReason.trim() || actionLoading}
+                style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+              >
+                {actionLoading ? t("Đang chặn...") : t("Xác nhận chặn")}
+              </button>
+            </div>
           </div>
-        </div>
         )}
       </CustomModal>
 
@@ -5509,11 +5509,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                 const cObj = consultants.find(c => c.name === selectedLead.assigned_to_name);
                                 if (cObj) {
                                   return (
-                                    <div 
-                                      style={{ 
-                                        fontSize: '0.95rem', 
-                                        fontWeight: 700, 
-                                        color: 'var(--color-text)', 
+                                    <div
+                                      style={{
+                                        fontSize: '0.95rem',
+                                        fontWeight: 700,
+                                        color: 'var(--color-text)',
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -5903,7 +5903,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('Kênh nhận thông báo:')}
               </span>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <img
@@ -5999,231 +5999,231 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       >
         {showDupCheckModal && (
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
-            {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
-          </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Nhập số điện thoại hoặc email để kiểm tra thông tin trùng lặp của khách hàng trong hệ thống.")}
+            </p>
 
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                {t("Số điện thoại hoặc Email")}
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                value={dupCheckInput}
-                onChange={e => setDupCheckInput(e.target.value)}
-                placeholder={t("Ví dụ: 0945473306 hoặc test@gmail.com...")}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    handleRunDupCheck();
-                  }
-                }}
-                style={{ width: '100%', height: '40px', boxSizing: 'border-box' }}
-              />
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                  {t("Số điện thoại hoặc Email")}
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dupCheckInput}
+                  onChange={e => setDupCheckInput(e.target.value)}
+                  placeholder={t("Ví dụ: 0945473306 hoặc test@gmail.com...")}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      handleRunDupCheck();
+                    }
+                  }}
+                  style={{ width: '100%', height: '40px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button
+                onClick={() => handleRunDupCheck()}
+                disabled={dupCheckLoading}
+                className="btn primary"
+                style={{ height: '40px', padding: '0 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {dupCheckLoading ? (
+                  <RefreshCw size={14} className="spin" />
+                ) : (
+                  <Search size={14} />
+                )}
+                <span>{t("Kiểm tra")}</span>
+              </button>
             </div>
-            <button
-              onClick={() => handleRunDupCheck()}
-              disabled={dupCheckLoading}
-              className="btn primary"
-              style={{ height: '40px', padding: '0 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              {dupCheckLoading ? (
-                <RefreshCw size={14} className="spin" />
-              ) : (
-                <Search size={14} />
-              )}
-              <span>{t("Kiểm tra")}</span>
-            </button>
-          </div>
 
-          {dupCheckResult && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Conclusion Banner */}
-              {(() => {
-                const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
-                const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+            {dupCheckResult && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Conclusion Banner */}
+                {(() => {
+                  const dupCheckMonths = dupCheckResult.duplicate_check_months || 6;
+                  const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
 
-                if (history.length === 0) {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1.5px solid var(--color-success)',
-                      borderRadius: '12px',
-                      color: 'var(--color-success)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <CheckCircle2 size={16} />
-                        {t("Không tìm thấy dữ liệu trùng")}
+                  if (history.length === 0) {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1.5px solid var(--color-success)',
+                        borderRadius: '12px',
+                        color: 'var(--color-success)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <CheckCircle2 size={16} />
+                          {t("Không tìm thấy dữ liệu trùng")}
+                        </div>
+                        <div>
+                          {t("Số điện thoại/Email này hoàn toàn mới trong hệ thống. Có thể tiếp nhận phân bổ bình thường.")}
+                        </div>
                       </div>
-                      <div>
-                        {t("Số điện thoại/Email này hoàn toàn mới trong hệ thống. Có thể tiếp nhận phân bổ bình thường.")}
+                    );
+                  }
+
+                  // Calculate age of the latest matched lead
+                  const latest = history[0];
+                  const lastDateStr = latest.last_interaction_date || latest.created_at;
+                  const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                  const now = new Date();
+                  const diffMs = now.getTime() - lastInt.getTime();
+                  const diffMins = diffMs / 60000;
+                  const diffHours = diffMins / 60;
+                  const diffDays = diffHours / 24;
+                  const diffMonths = diffDays / 30;
+
+                  const isDupUnderN = diffMonths < dupCheckMonths;
+
+                  if (isDupUnderN) {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1.5px dashed var(--color-danger)',
+                        borderRadius: '12px',
+                        color: 'var(--color-danger)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <AlertTriangle size={16} />
+                          {t("Trùng lặp dưới")} {dupCheckMonths} {t("tháng")}
+                        </div>
+                        <div>
+                          {t("Lần tương tác gần nhất cách đây")}{' '}
+                          <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                          {t("lúc")}{' '}
+                          <code>{lastDateStr}</code>.
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
-
-                // Calculate age of the latest matched lead
-                const latest = history[0];
-                const lastDateStr = latest.last_interaction_date || latest.created_at;
-                const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                const now = new Date();
-                const diffMs = now.getTime() - lastInt.getTime();
-                const diffMins = diffMs / 60000;
-                const diffHours = diffMins / 60;
-                const diffDays = diffHours / 24;
-                const diffMonths = diffDays / 30;
-
-                const isDupUnderN = diffMonths < dupCheckMonths;
-
-                if (isDupUnderN) {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1.5px dashed var(--color-danger)',
-                      borderRadius: '12px',
-                      color: 'var(--color-danger)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <AlertTriangle size={16} />
-                        {t("Trùng lặp dưới")} {dupCheckMonths} {t("tháng")}
+                    );
+                  } else {
+                    return (
+                      <div style={{
+                        padding: '1rem 1.25rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1.5px solid var(--color-success)',
+                        borderRadius: '12px',
+                        color: 'var(--color-success)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <CheckCircle2 size={16} />
+                          {t("Đủ điều kiện phân bổ mới")} ({t("Trùng")} &gt; {dupCheckMonths} {t("tháng")})
+                        </div>
+                        <div>
+                          {t("Lần tương tác gần nhất cách đây")}{' '}
+                          <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
+                          {t("lúc")}{' '}
+                          <code>{lastDateStr}</code>.<br />
+                          {t("Khoảng cách vượt quá hạn quy định")}{' '}
+                          <strong>{dupCheckMonths} {t("tháng")}</strong>. {t("Hệ thống sẽ phân bổ mới bình thường.")}
+                        </div>
                       </div>
-                      <div>
-                        {t("Lần tương tác gần nhất cách đây")}{' '}
-                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
-                        {t("lúc")}{' '}
-                        <code>{lastDateStr}</code>.
-                      </div>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div style={{
-                      padding: '1rem 1.25rem',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1.5px solid var(--color-success)',
-                      borderRadius: '12px',
-                      color: 'var(--color-success)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5
-                    }}>
-                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <CheckCircle2 size={16} />
-                        {t("Đủ điều kiện phân bổ mới")} ({t("Trùng")} &gt; {dupCheckMonths} {t("tháng")})
-                      </div>
-                      <div>
-                        {t("Lần tương tác gần nhất cách đây")}{' '}
-                        <strong>{Math.floor(diffMonths)} {t("tháng")} ({Math.floor(diffDays)} {t("ngày")})</strong>{' '}
-                        {t("lúc")}{' '}
-                        <code>{lastDateStr}</code>.<br />
-                        {t("Khoảng cách vượt quá hạn quy định")}{' '}
-                        <strong>{dupCheckMonths} {t("tháng")}</strong>. {t("Hệ thống sẽ phân bổ mới bình thường.")}
-                      </div>
-                    </div>
-                  );
-                }
-              })()}
+                    );
+                  }
+                })()}
 
-              {/* History list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                  {t("Lịch sử lưu vết")} ({(() => {
-                    const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
-                    return history.length;
-                  })()})
-                </h4>
-                <div style={{
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '10px'
-                }} className="custom-scrollbar">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("ID / Họ tên")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Nguồn / Vòng")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Trạng thái")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Sale")}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Thời gian")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
-                        return history && history.length > 0 ? (
-                          history.map((h: any) => {
-                            const lastDateStr = h.last_interaction_date || h.created_at;
-                            const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
-                            const now = new Date();
-                            const diffMs = now.getTime() - lastInt.getTime();
-                            const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+                {/* History list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Lịch sử lưu vết")} ({(() => {
+                      const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                      return history.length;
+                    })()})
+                  </h4>
+                  <div style={{
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '10px'
+                  }} className="custom-scrollbar">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("ID / Họ tên")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Nguồn / Vòng")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Trạng thái")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Sale")}</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>{t("Thời gian")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const history = (dupCheckResult.history || []).filter((h: any) => !selectedLead || Number(h.id) !== Number(selectedLead.id));
+                          return history && history.length > 0 ? (
+                            history.map((h: any) => {
+                              const lastDateStr = h.last_interaction_date || h.created_at;
+                              const lastInt = new Date(lastDateStr.replace(/-/g, '/'));
+                              const now = new Date();
+                              const diffMs = now.getTime() - lastInt.getTime();
+                              const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
 
-                            let statusClass = 'muted';
-                            let statusText = h.status;
-                            if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
-                            else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
-                            else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
-                            else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
+                              let statusClass = 'muted';
+                              let statusText = h.status;
+                              if (h.status === 'active') { statusClass = 'success'; statusText = t('Hoạt động'); }
+                              else if (h.status === 'pending_approval') { statusClass = 'warning'; statusText = t('Tạm giữ'); }
+                              else if (h.status === 'rejected') { statusClass = 'danger'; statusText = t('Dưới chuẩn'); }
+                              else if (h.status === 'blacklisted') { statusClass = 'danger'; statusText = t('Blacklist'); }
 
-                            return (
-                              <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <Avatar name={h.name} size={32} />
-                                    <div>
-                                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                              return (
+                                <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <Avatar name={h.name} size={32} />
+                                      <div>
+                                        <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{h.name}</span>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>#{h.id}</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
-                                </td>
-                                <td style={{ padding: '10px 12px' }}>
-                                  {h.consultant_name ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
-                                      <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.source}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{h.round_name || '-'}</div>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{statusText}</span>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    {h.consultant_name ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Avatar src={h.consultant_avatar} name={h.consultant_name} size={28} />
+                                        <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{h.consultant_name}</span>
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    <div>{h.created_at}</div>
+                                    <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
+                                      {diffMonths} {t("tháng trước")}
                                     </div>
-                                  ) : (
-                                    <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                                  )}
-                                </td>
-                                <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                  <div>{h.created_at}</div>
-                                  <div style={{ color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px' }}>
-                                    {diffMonths} {t("tháng trước")}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                              {t("Không có dữ liệu lịch sử.")}
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </tbody>
-                  </table>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                {t("Không có dữ liệu lịch sử.")}
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         )}
       </CustomModal>
 
@@ -6354,33 +6354,33 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     {/* Stacked Percentage Bar */}
                     <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
                       {statsConsultantData.summary.successful > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${(statsConsultantData.summary.successful / Math.max(1, statsConsultantData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${(statsConsultantData.summary.successful / Math.max(1, statsConsultantData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Thành công')}: ${statsConsultantData.summary.successful}`} 
+                          }}
+                          title={`${t('Thành công')}: ${statsConsultantData.summary.successful}`}
                         />
                       )}
                       {(statsConsultantData.summary.reminder || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsConsultantData.summary.reminder || 0) / Math.max(1, statsConsultantData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsConsultantData.summary.reminder || 0) / Math.max(1, statsConsultantData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Nhắc lại')}: ${statsConsultantData.summary.reminder}`} 
+                          }}
+                          title={`${t('Nhắc lại')}: ${statsConsultantData.summary.reminder}`}
                         />
                       )}
                       {(statsConsultantData.summary.error || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsConsultantData.summary.error || 0) / Math.max(1, statsConsultantData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsConsultantData.summary.error || 0) / Math.max(1, statsConsultantData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Lỗi')}: ${statsConsultantData.summary.error}`} 
+                          }}
+                          title={`${t('Lỗi')}: ${statsConsultantData.summary.error}`}
                         />
                       )}
                     </div>
@@ -6570,7 +6570,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2rem 0' }}>
-                           {t('Không có dữ liệu chia số theo vòng')}
+                          {t('Không có dữ liệu chia số theo vòng')}
                         </div>
                       )}
                     </div>

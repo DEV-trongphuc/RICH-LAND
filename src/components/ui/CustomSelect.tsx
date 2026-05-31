@@ -32,11 +32,11 @@ interface CustomSelectProps {
   size?: 'sm' | 'md';
 }
 
-export const CustomSelect: React.FC<CustomSelectProps> = ({ 
-  options, 
-  value, 
-  onChange, 
-  placeholder = 'Chọn...', 
+export const CustomSelect: React.FC<CustomSelectProps> = ({
+  options,
+  value,
+  onChange,
+  placeholder = 'Chọn...',
   label,
   searchable = false,
   showAvatars = false,
@@ -62,8 +62,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   }, []);
 
   const selectedOption = multiple ? null : options.find(opt => opt.value == value);
-  const filtered = searchable ? options.filter(o => 
-    t(o.label).toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = searchable ? options.filter(o =>
+    t(o.label).toLowerCase().includes(search.toLowerCase()) ||
     (o.sublabel && t(o.sublabel).toLowerCase().includes(search.toLowerCase()))
   ) : options;
 
@@ -77,10 +77,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const handleSelect = (option: SelectOption, e: React.MouseEvent) => {
     e.stopPropagation();
     if (option.disabled) {
-      const reason = option.disabledReason || 
-        (option.disabledType === 'round' ? t('Vòng không hoạt động') : 
-         option.disabledType === 'sale' ? t('Sale không hoạt động') : 
-         t('Lựa chọn này không hoạt động'));
+      const reason = option.disabledReason ||
+        (option.disabledType === 'round' ? t('Vòng không hoạt động') :
+          option.disabledType === 'sale' ? t('Sale không hoạt động') :
+            t('Lựa chọn này không hoạt động'));
       toast.error(reason);
       return;
     }
@@ -91,8 +91,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         onChange(['all']);
       } else {
         const hasVal = arr.some(v => String(v) === String(val));
-        const newArr = hasVal 
-          ? arr.filter(v => String(v) !== String(val)) 
+        const newArr = hasVal
+          ? arr.filter(v => String(v) !== String(val))
           : [...arr.filter(v => String(v) !== 'all'), val];
         if (newArr.length === 0) onChange(['all']);
         else onChange(newArr);
@@ -148,18 +148,18 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   return (
     <div className={styles.wrapper} ref={containerRef} style={{ width }}>
       {label && <label className={styles.label}>{t(label)}</label>}
-      <div 
+      <div
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          ...(size === 'sm' ? { 
-            minHeight: '32px', 
-            padding: '4px 10px', 
-            fontSize: '0.8rem', 
-            borderRadius: 'var(--radius-md)' 
+          ...(size === 'sm' ? {
+            minHeight: '32px',
+            padding: '4px 10px',
+            fontSize: '0.8rem',
+            borderRadius: 'var(--radius-md)'
           } : {}),
-          ...((size === 'sm' && isOpen) ? { 
-            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.1)' 
+          ...((size === 'sm' && isOpen) ? {
+            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.1)'
           } : {})
         }}
       >
@@ -171,13 +171,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
             transition={{ duration: 0.15 }}
             className={styles.dropdown}
-            style={{ 
+            style={{
               top: direction === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
               bottom: direction === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
               left: align === 'right' ? 'auto' : 0,
@@ -188,12 +188,12 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             {searchable && (
               <div className={styles.searchBox}>
                 <Search size={14} className={styles.searchIcon} />
-                <input 
-                  type="text" 
-                  autoFocus 
-                  placeholder={t("Tìm kiếm...")} 
-                  value={search} 
-                  onChange={e => setSearch(e.target.value)} 
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder={t("Tìm kiếm...")}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                   onClick={e => e.stopPropagation()}
                   className={styles.searchInput}
                 />
@@ -201,7 +201,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             )}
             <div className={styles.list}>
               {filtered.length > 0 ? filtered.map((option) => (
-                <div 
+                <div
                   key={option.value}
                   className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''} ${option.disabled ? styles.optionDisabled : ''}`}
                   onClick={(e) => handleSelect(option, e)}

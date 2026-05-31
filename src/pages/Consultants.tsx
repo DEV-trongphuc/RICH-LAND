@@ -961,27 +961,27 @@ const ConsultantsInner = () => {
                       </p>
                     </div>
 
-                  {editingUser && formData.status === 'active' && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
-                      <div style={{ flex: 1, paddingRight: '0.5rem' }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
-                          {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
+                    {editingUser && formData.status === 'active' && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
+                        <div style={{ flex: 1, paddingRight: '0.5rem' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
+                            {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                          <ToggleSwitch
+                            checked={!Boolean(Number(editingUser.vacation_mode))}
+                            onChange={async () => {
+                              await handleToggleVacation(editingUser.id);
+                              setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
+                            }}
+                          />
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        <ToggleSwitch
-                          checked={!Boolean(Number(editingUser.vacation_mode))}
-                          onChange={async () => {
-                            await handleToggleVacation(editingUser.id);
-                            setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
                         <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Zalo Chat ID (Tự động cấp)')} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{t('(chỉ có thể hủy liên kết)')}</span>
                       </label>
@@ -1202,33 +1202,33 @@ const ConsultantsInner = () => {
                     {/* Stacked Percentage Bar */}
                     <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
                       {statsData.summary.successful > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Thành công')}: ${statsData.summary.successful}`} 
+                          }}
+                          title={`${t('Thành công')}: ${statsData.summary.successful}`}
                         />
                       )}
                       {(statsData.summary.reminder || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`} 
+                          }}
+                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`}
                         />
                       )}
                       {(statsData.summary.error || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Lỗi')}: ${statsData.summary.error}`} 
+                          }}
+                          title={`${t('Lỗi')}: ${statsData.summary.error}`}
                         />
                       )}
                     </div>

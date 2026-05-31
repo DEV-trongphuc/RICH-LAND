@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { fetchAPI } from '../../utils/api';
 
 const ALL_NAV_ITEMS = [
@@ -26,6 +26,26 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [pendingTickets, setPendingTickets] = useState(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+
+  const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
+  const navContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (navContainerRef.current) {
+        const activeElement = navContainerRef.current.querySelector('.active') as HTMLElement;
+        if (activeElement) {
+          setSliderStyle({
+            top: activeElement.offsetTop,
+            height: activeElement.offsetHeight
+          });
+        } else {
+          setSliderStyle({ top: 0, height: 0 });
+        }
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [location.pathname, isCollapsed]);
 
   // Poll pending ticket count every 60s
   useEffect(() => {
@@ -207,7 +227,25 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         {/* Nav */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
-          <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
+          <div ref={navContainerRef} style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Sliding Active Indicator */}
+            {sliderStyle.height > 0 && (
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: 4,
+                height: sliderStyle.height,
+                background: 'var(--color-primary)',
+                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateY(${sliderStyle.top}px)`,
+                borderRadius: '0 2px 2px 0',
+                pointerEvents: 'none',
+                zIndex: 10
+              }} />
+            )}
+
             {!isCollapsed && (
               <span style={{
                 fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
@@ -232,6 +270,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   <NavLink
                     to={href}
                     end={end}
+                    className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                     title={isCollapsed ? t(name) : undefined}
                     onClick={(e) => {
                       if (location.pathname === href) {
@@ -254,14 +293,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   >
                     {({ isActive }) => (
                       <>
-                        {/* Active indicator */}
-                        {isActive && (
-                          <span style={{
-                            position: 'absolute', left: 0, top: 0, bottom: 0,
-                            width: 4, background: 'var(--color-primary)', borderRadius: '0 2px 2px 0'
-                          }} />
-                        )}
-
                         {/* Icon Box — with badge dot when collapsed */}
                         <div style={{
                           width: 36, height: 36, borderRadius: 10,
@@ -270,42 +301,27 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                           flexShrink: 0, transition: 'all 0.2s', position: 'relative'
                         }}>
                           <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
-                          {/* Collapsed badge dot */}
                           {isCollapsed && badgeCount > 0 && (
-                            <span style={{
-                              position: 'absolute', top: 4, right: 4,
-                              width: 8, height: 8, borderRadius: '50%',
-                              background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
-                              boxShadow: '0 0 0 2px var(--sidebar-bg)'
+                            <div style={{
+                              position: 'absolute', top: 4, right: 4, width: 8, height: 8,
+                              borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444'
                             }} />
                           )}
                         </div>
 
-                        {/* Label + badge count when expanded */}
                         {!isCollapsed && (
-                          <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            {t(name)}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                            <span>{t(name)}</span>
                             {badgeCount > 0 && (
                               <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
+                                fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px',
                                 background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
-                                color: 'white',
-                                fontSize: '0.65rem',
-                                fontWeight: 800,
-                                height: 20,
-                                minWidth: 20,
-                                padding: '0 6px',
-                                borderRadius: '9999px',
-                                textAlign: 'center',
-                                boxShadow: badgeKey === 'gatekeeper' ? '0 2px 4px rgba(245,158,11,0.4)' : '0 2px 4px rgba(239,68,68,0.4)',
-                                animation: 'pulse 2s infinite'
+                                color: 'white', fontWeight: 700
                               }}>
                                 {badgeCount}
                               </span>
                             )}
-                          </span>
+                          </div>
                         )}
                       </>
                     )}
