@@ -1093,20 +1093,20 @@ const IntegrationsInner = () => {
               {/* Instructions & Code Block */}
               <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1.25rem', borderRadius: 12, fontSize: '0.85rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>
                 <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, color: 'var(--color-primary)' }}>
-                  <Info size={16} /> Hướng dẫn cài đặt Google Apps Script cho Sheet Tổng:
+                  <Info size={16} /> {t('Hướng dẫn cài đặt Google Apps Script cho Sheet Tổng:')}
                 </div>
                 <ol style={{ paddingLeft: '1.25rem', margin: '0 0 1rem 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <li>Tạo 1 bảng tính Google Sheet mới để chứa toàn bộ dữ liệu tổng.</li>
-                  <li>Chọn <strong>Tiện ích mở rộng (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
-                  <li>Xóa mã mặc định và dán đoạn mã bên dưới vào.</li>
-                  <li>Nhấp vào <strong>Triển khai (Deploy)</strong> &gt; <strong>Triển khai mới (New deployment)</strong>.</li>
-                  <li>Chọn loại cấu hình là <strong>Ứng dụng web (Web app)</strong>.</li>
-                  <li>Cấu hình: Người thực thi: <em>"Tôi" (Me)</em>, Ai có quyền truy cập: <em>"Bất kỳ ai" (Anyone)</em>.</li>
-                  <li>Nhấp Triển khai, phê duyệt quyền truy cập của Google, sau đó sao chép <strong>URL ứng dụng web (Web app URL)</strong> và dán vào cấu hình phía trên.</li>
+                  <li>{t('Tạo 1 bảng tính Google Sheet mới để chứa toàn bộ dữ liệu tổng.')}</li>
+                  <li>{t('Chọn')} <strong>{t('Tiện ích mở rộng (Extensions)')}</strong> &gt; <strong>{t('Apps Script')}</strong>.</li>
+                  <li>{t('Xóa mã mặc định và dán đoạn mã bên dưới vào.')}</li>
+                  <li>{t('Nhấp vào')} <strong>{t('Triển khai (Deploy)')}</strong> &gt; <strong>{t('Triển khai mới (New deployment)')}</strong>.</li>
+                  <li>{t('Chọn loại cấu hình là')} <strong>{t('Ứng dụng web (Web app)')}</strong>.</li>
+                  <li>{t('Cấu hình: Người thực thi:')} <em>{t('"Tôi" (Me)')}</em>{t(', Ai có quyền truy cập:')} <em>{t('"Bất kỳ ai" (Anyone)')}</em>.</li>
+                  <li>{t('Nhấp Triển khai, phê duyệt quyền truy cập của Google, sau đó sao chép')} <strong>{t('URL ứng dụng web (Web app URL)')}</strong> {t('và dán vào cấu hình phía trên.')}</li>
                 </ol>
 
                 <div style={{ fontWeight: 700, marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Mã nguồn Google Apps Script:</span>
+                  <span>{t('Mã nguồn Google Apps Script:')}</span>
                   <button
                     className="btn outline"
                     style={{ height: 26, padding: '0 8px', fontSize: '0.75rem', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
@@ -2317,16 +2317,16 @@ fetch("${webhookUrl(selected.webhook_token)}", {
 
                     <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1rem', borderRadius: 12, fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.5 }}>
                       <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--color-primary)' }}>
-                        <Info size={14} /> Hướng dẫn cài đặt Google Apps Script:
+                        <Info size={14} /> {t('Hướng dẫn cài đặt Google Apps Script:')}
                       </div>
                       <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <li>Mở bảng tính Google Sheets của bạn.</li>
-                        <li>Chọn <strong>Tiện ích mở rộng (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
-                        <li>Sao chép toàn bộ code từ file <code>two_way_sync.gs</code> trong thư mục backend của hệ thống và dán vào.</li>
-                        <li>Nhấp vào <strong>Triển khai (Deploy)</strong> &gt; <strong>Triển khai mới (New deployment)</strong>.</li>
-                        <li>Chọn loại cấu hình là <strong>Ứng dụng web (Web app)</strong>.</li>
-                        <li>Cấu hình: Người thực thi: <em>"Tôi" (Me)</em>, Ai có quyền truy cập: <em>"Bất kỳ ai" (Anyone)</em>.</li>
-                        <li>Nhấp Triển khai và cấp quyền, sau đó sao chép <strong>URL ứng dụng web</strong> dán vào trường trên.</li>
+                        <li>{t('Mở bảng tính Google Sheets của bạn.')}</li>
+                        <li>{t('Chọn')} <strong>{t('Tiện ích mở rộng (Extensions)')}</strong> &gt; <strong>{t('Apps Script')}</strong>.</li>
+                        <li>{t('Sao chép toàn bộ code từ file')} <code>two_way_sync.gs</code> {t('trong thư mục backend của hệ thống và dán vào.')}</li>
+                        <li>{t('Nhấp vào')} <strong>{t('Triển khai (Deploy)')}</strong> &gt; <strong>{t('Triển khai mới (New deployment)')}</strong>.</li>
+                        <li>{t('Chọn loại cấu hình là')} <strong>{t('Ứng dụng web (Web app)')}</strong>.</li>
+                        <li>{t('Cấu hình: Người thực thi:')} <em>{t('"Tôi" (Me)')}</em>{t(', Ai có quyền truy cập:')} <em>{t('"Bất kỳ ai" (Anyone)')}</em>.</li>
+                        <li>{t('Nhấp Triển khai và cấp quyền, sau đó sao chép')} <strong>{t('URL ứng dụng web')}</strong> {t('dán vào trường trên.')}</li>
                       </ol>
                     </div>
                   </div>

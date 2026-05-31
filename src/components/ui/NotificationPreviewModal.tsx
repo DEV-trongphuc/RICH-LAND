@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface NotificationPreviewModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
   aiEvaluation = '',
   aiStatus = ''
 }) => {
+  const { t } = useLanguage();
   const isEmail = type === 'email';
   const modalTitle = isEmail 
     ? "Xem chi tiết Mẫu Email đã gửi cho Sale"
@@ -429,7 +431,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title={modalTitle}
+      title={t(modalTitle)}
       width={isEmail ? 680 : 520}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '75vh', overflow: 'hidden' }}>
@@ -449,7 +451,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
         }}>
           {isEmail ? <Mail size={14} style={{ color: '#7c3aed' }} /> : <MessageCircle size={14} style={{ color: '#0068ff' }} />}
           <span>
-            Thông báo này được gửi tự động lúc <strong>{sentAt}</strong> đến Sale <strong>{assignedToName}</strong>
+            {t("Thông báo này được gửi tự động lúc")} <strong>{sentAt}</strong> {t("đến Sale")} <strong>{assignedToName}</strong>
           </span>
         </div>
 
@@ -478,17 +480,17 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                 fontSize: '0.8rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>Tiêu đề:</span>
+                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>{t("Tiêu đề:")}</span>
                   <span style={{ color: '#0f172a', fontWeight: 700 }}>{getEmailSubject()}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>Từ:</span>
+                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>{t("Từ:")}</span>
                   <span style={{ color: '#0f172a' }}>
                     {settings?.ses_sender_name || 'DOMATION TEAM'} &lt;{settings?.ses_sender_email || 'noreply@domation.net'}&gt;
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>Tới:</span>
+                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>{t("Tới:")}</span>
                   <span style={{ color: '#0f172a', fontWeight: 500 }}>
                     {assignedToName} &lt;{consultant?.email || 'sale@domation.net'}&gt;
                   </span>
@@ -500,7 +502,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>Thời gian:</span>
+                  <span style={{ color: '#64748b', width: '70px', fontWeight: 600 }}>{t("Thời gian:")}</span>
                   <span style={{ color: '#64748b' }}>{sentAt}</span>
                 </div>
               </div>
@@ -714,7 +716,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                   fontSize: '0.75rem',
                   color: '#94a3b8'
                 }}>
-                  Nhập tin nhắn...
+                  {t("Nhập tin nhắn...")}
                 </div>
                 <Send size={14} style={{ color: '#0068ff', cursor: 'pointer' }} />
               </div>
@@ -745,7 +747,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
               color: 'var(--color-text)'
             }}
           >
-            Đóng
+            {t("Đóng")}
           </button>
         </div>
 
