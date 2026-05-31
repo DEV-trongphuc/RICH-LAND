@@ -9125,72 +9125,178 @@ switch ($action) {
 
         // Query hourly/daily chart data
         $chartMode = $_GET['chart_mode'] ?? '';
+        $chartMetric = $_GET['chart_metric'] ?? 'lead';
         $chartData = [];
 
-        if ($chartMode === 'heatmap') {
-            $heatmapSql = "SELECT WEEKDAY(dl.received_at) as wday, HOUR(dl.received_at) as h, COUNT(*) as vol 
-                           FROM distribution_logs dl 
-                           INNER JOIN (
-                               SELECT lead_id, MAX(id) as max_id 
-                               FROM distribution_logs 
-                               WHERE status != 'silent' AND $dateCondition
-                               GROUP BY lead_id
-                           ) dl_max ON dl.id = dl_max.max_id
-                           WHERE $dateConditionDl 
-                           GROUP BY WEEKDAY(dl.received_at), HOUR(dl.received_at) 
-                           ORDER BY wday ASC, h ASC";
-            $res = $conn->query($heatmapSql);
-            if ($res) {
-                while ($row = $res->fetch_assoc()) {
-                    $chartData[] = [
-                        'wday' => (int) $row['wday'],
-                        'hour' => (int) $row['h'],
-                        'volume' => (int) $row['vol']
-                    ];
+        if ($chartMetric === 'zalo' || $chartMetric === 'email') {
+            $type = $chartMetric;
+            $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
+            if ($chartMode === 'heatmap') {
+                $heatmapSql = "SELECT WEEKDAY(sent_at) as wday, HOUR(sent_at) as h, COUNT(*) as vol 
+                               FROM communication_logs 
+                               WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
+                               GROUP BY WEEKDAY(sent_at), HOUR(sent_at) 
+                               ORDER BY wday ASC, h ASC";
+                $res = $conn->query($heatmapSql);
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $chartData[] = [
+                            'wday' => (int) $row['wday'],
+                            'hour' => (int) $row['h'],
+                            'volume' => (int) $row['vol']
+                        ];
+                    }
+                }
+            } else {
+                $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
+                if ($useHourly) {
+                    $hourlySql = "SELECT HOUR(sent_at) as h, COUNT(*) as vol 
+                                  FROM communication_logs 
+                                  WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
+                                  GROUP BY HOUR(sent_at) 
+                                  ORDER BY h ASC";
+                    $res = $conn->query($hourlySql);
+                    $hourlyMap = [];
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $hourlyMap[(int) $row['h']] = (int) $row['vol'];
+                        }
+                    }
+                    for ($i = 0; $i <= 23; $i++) {
+                        $vol = $hourlyMap[$i] ?? 0;
+                        $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
+                    }
+                } else {
+                    $dailySql = "SELECT DATE(sent_at) as d, COUNT(*) as vol 
+                                 FROM communication_logs 
+                                 WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
+                                 GROUP BY DATE(sent_at) 
+                                 ORDER BY d ASC";
+                    $res = $conn->query($dailySql);
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => (int) $row['vol']];
+                        }
+                    }
+                }
+            }
+        } else if ($chartMetric === 'token') {
+            $timeCol = ($dbVer >= 140) ? "COALESCE(ai_screening_started_at, created_at)" : "created_at";
+            if ($chartMode === 'heatmap') {
+                $heatmapSql = "SELECT WEEKDAY($timeCol) as wday, HOUR($timeCol) as h, SUM(ai_total_tokens) as vol 
+                               FROM leads 
+                               WHERE $dateConditionAI
+                               GROUP BY WEEKDAY($timeCol), HOUR($timeCol) 
+                               ORDER BY wday ASC, h ASC";
+                $res = $conn->query($heatmapSql);
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $chartData[] = [
+                            'wday' => (int) $row['wday'],
+                            'hour' => (int) $row['h'],
+                            'volume' => (int) $row['vol']
+                        ];
+                    }
+                }
+            } else {
+                $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
+                if ($useHourly) {
+                    $hourlySql = "SELECT HOUR($timeCol) as h, SUM(ai_total_tokens) as vol 
+                                  FROM leads 
+                                  WHERE $dateConditionAI
+                                  GROUP BY HOUR($timeCol) 
+                                  ORDER BY h ASC";
+                    $res = $conn->query($hourlySql);
+                    $hourlyMap = [];
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $hourlyMap[(int) $row['h']] = (int) $row['vol'];
+                        }
+                    }
+                    for ($i = 0; $i <= 23; $i++) {
+                        $vol = $hourlyMap[$i] ?? 0;
+                        $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
+                    }
+                } else {
+                    $dailySql = "SELECT DATE($timeCol) as d, SUM(ai_total_tokens) as vol 
+                                 FROM leads 
+                                 WHERE $dateConditionAI
+                                 GROUP BY DATE($timeCol) 
+                                 ORDER BY d ASC";
+                    $res = $conn->query($dailySql);
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => (int) $row['vol']];
+                        }
+                    }
                 }
             }
         } else {
-            $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
-            if ($useHourly) {
-                $hourlySql = "SELECT HOUR(dl.received_at) as h, COUNT(*) as vol 
-                              FROM distribution_logs dl 
-                              INNER JOIN (
-                                  SELECT lead_id, MAX(id) as max_id 
-                                  FROM distribution_logs 
-                                  WHERE status != 'silent' AND $dateCondition
-                                  GROUP BY lead_id
-                              ) dl_max ON dl.id = dl_max.max_id
-                              WHERE $dateConditionDl 
-                              GROUP BY HOUR(dl.received_at) 
-                              ORDER BY h ASC";
-                $res = $conn->query($hourlySql);
-                $hourlyMap = [];
+            if ($chartMode === 'heatmap') {
+                $heatmapSql = "SELECT WEEKDAY(dl.received_at) as wday, HOUR(dl.received_at) as h, COUNT(*) as vol 
+                               FROM distribution_logs dl 
+                               INNER JOIN (
+                                   SELECT lead_id, MAX(id) as max_id 
+                                   FROM distribution_logs 
+                                   WHERE status != 'silent' AND $dateCondition
+                                   GROUP BY lead_id
+                               ) dl_max ON dl.id = dl_max.max_id
+                               WHERE $dateConditionDl 
+                               GROUP BY WEEKDAY(dl.received_at), HOUR(dl.received_at) 
+                               ORDER BY wday ASC, h ASC";
+                $res = $conn->query($heatmapSql);
                 if ($res) {
                     while ($row = $res->fetch_assoc()) {
-                        $hourlyMap[(int) $row['h']] = (int) $row['vol'];
+                        $chartData[] = [
+                            'wday' => (int) $row['wday'],
+                            'hour' => (int) $row['h'],
+                            'volume' => (int) $row['vol']
+                        ];
                     }
                 }
-                for ($i = 0; $i <= 23; $i++) {
-                    $vol = $hourlyMap[$i] ?? 0;
-                    $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
-                }
             } else {
-                // For daily
-                $dailySql = "SELECT DATE(dl.received_at) as d, COUNT(*) as vol 
-                             FROM distribution_logs dl 
-                             INNER JOIN (
-                                 SELECT lead_id, MAX(id) as max_id 
-                                 FROM distribution_logs 
-                                 WHERE status != 'silent' AND $dateCondition
-                                 GROUP BY lead_id
-                             ) dl_max ON dl.id = dl_max.max_id
-                             WHERE $dateConditionDl 
-                             GROUP BY DATE(dl.received_at) 
-                             ORDER BY d ASC";
-                $res = $conn->query($dailySql);
-                if ($res) {
-                    while ($row = $res->fetch_assoc()) {
-                        $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => (int) $row['vol']];
+                $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
+                if ($useHourly) {
+                    $hourlySql = "SELECT HOUR(dl.received_at) as h, COUNT(*) as vol 
+                                  FROM distribution_logs dl 
+                                  INNER JOIN (
+                                      SELECT lead_id, MAX(id) as max_id 
+                                      FROM distribution_logs 
+                                      WHERE status != 'silent' AND $dateCondition
+                                      GROUP BY lead_id
+                                  ) dl_max ON dl.id = dl_max.max_id
+                                  WHERE $dateConditionDl 
+                                  GROUP BY HOUR(dl.received_at) 
+                                  ORDER BY h ASC";
+                    $res = $conn->query($hourlySql);
+                    $hourlyMap = [];
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $hourlyMap[(int) $row['h']] = (int) $row['vol'];
+                        }
+                    }
+                    for ($i = 0; $i <= 23; $i++) {
+                        $vol = $hourlyMap[$i] ?? 0;
+                        $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
+                    }
+                } else {
+                    // For daily
+                    $dailySql = "SELECT DATE(dl.received_at) as d, COUNT(*) as vol 
+                                 FROM distribution_logs dl 
+                                 INNER JOIN (
+                                     SELECT lead_id, MAX(id) as max_id 
+                                     FROM distribution_logs 
+                                     WHERE status != 'silent' AND $dateCondition
+                                     GROUP BY lead_id
+                                 ) dl_max ON dl.id = dl_max.max_id
+                                 WHERE $dateConditionDl 
+                                 GROUP BY DATE(dl.received_at) 
+                                 ORDER BY d ASC";
+                    $res = $conn->query($dailySql);
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $chartData[] = ['time' => date('d/m', strtotime($row['d'])), 'volume' => (int) $row['vol']];
+                        }
                     }
                 }
             }

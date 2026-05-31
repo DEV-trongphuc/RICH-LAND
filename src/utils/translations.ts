@@ -362,10 +362,16 @@ export const en: Record<string, string> = {
   "Theo giờ": "By hour",
   "Heatmap": "Heatmap",
   "Lưu lượng Data:": "Data Flow:",
+  "Ít": "Less",
+  "Nhiều": "More",
   "Chưa có dữ liệu thống kê": "No statistical data available",
   "Lịch sử giao Data gần đây": "Recent distribution history",
   "Xem tất cả": "View all",
   "Xem chi tiết log sử dụng": "View usage log details",
+  "Sản lượng Giao tiếp": "Communication Volume",
+  "Tài nguyên AI (Tokens)": "AI Resources (Tokens)",
+  "Input": "Input",
+  "Output": "Output",
   "Hệ thống": "System",
   "Tài nguyên sử dụng": "Resource Usage",
   "Khách hàng": "Customer",
@@ -2012,7 +2018,11 @@ export const en: Record<string, string> = {
   "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "Display the history of comparisons and imports of legacy data into the CRM system.",
   "Các bản ghi dữ liệu đã được nhập gần đây:": "Recently imported data records:",
   "Tổng cộng: {count} bản ghi": "Total: {count} records",
-  "Dành riêng cho {name}": "Exclusively for {name}"
+  "Dành riêng cho {name}": "Exclusively for {name}",
+  "Chi phí Zalo API ước tính:": "Estimated Zalo API cost:",
+  "Miễn phí / Tích hợp": "Free / Integrated",
+  "Lưu lượng Lead & Hiệu suất theo thời gian": "Lead Flow & Performance over time",
+  "Chi phí Amazon SES ước tính:": "Estimated Amazon SES cost:"
 };
 
 export const ja: Record<string, string> = {
@@ -2341,10 +2351,16 @@ export const ja: Record<string, string> = {
   "Theo giờ": "毎時",
   "Heatmap": "ヒートマップ",
   "Lưu lượng Data:": "データトラフィック:",
+  "Ít": "少",
+  "Nhiều": "多",
   "Chưa có dữ liệu thống kê": "まだ統計データはありません",
   "Lịch sử giao Data gần đây": "最近のデータ配信履歴",
   "Xem tất cả": "全て見る",
   "Xem chi tiết log sử dụng": "使用ログの詳細を表示",
+  "Sản lượng Giao tiếp": "通信量",
+  "Tài nguyên AI (Tokens)": "AIリソース (トークン)",
+  "Input": "入力",
+  "Output": "出力",
   "Hệ thống": "システム",
   "Tài nguyên sử dụng": "リソース使用量",
   "Khách hàng": "お客様",
@@ -3980,7 +3996,11 @@ export const ja: Record<string, string> = {
   "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "過去のデータの照合およびCRMシステムへのインポート履歴を表示します。",
   "Các bản ghi dữ liệu đã được nhập gần đây:": "最近インポートされたデータレコード:",
   "Tổng cộng: {count} bản ghi": "合計: {count} 件のレコード",
-  "Dành riêng cho {name}": "{name} 専用"
+  "Dành riêng cho {name}": "{name} 専用",
+  "Chi phí Zalo API ước tính:": "Zalo API推定コスト:",
+  "Miễn phí / Tích hợp": "無料 / 統合済み",
+  "Lưu lượng Lead & Hiệu suất theo thời gian": "リード流量と時間経過によるパフォーマンス",
+  "Chi phí Amazon SES ước tính:": "Amazon SES推定コスト:"
 };
 
 export const zh: Record<string, string> = {
@@ -4309,10 +4329,16 @@ export const zh: Record<string, string> = {
   "Theo giờ": "每小时",
   "Heatmap": "热力图",
   "Lưu lượng Data:": "数据流量：",
+  "Ít": "少",
+  "Nhiều": "多",
   "Chưa có dữ liệu thống kê": "尚无统计数据",
   "Lịch sử giao Data gần đây": "最近的数据传送历史记录",
   "Xem tất cả": "查看全部",
   "Xem chi tiết log sử dụng": "查看使用日志详情",
+  "Sản lượng Giao tiếp": "通信量",
+  "Tài nguyên AI (Tokens)": "AI资源 (Token)",
+  "Input": "输入",
+  "Output": "输出",
   "Hệ thống": "系统",
   "Tài nguyên sử dụng": "资源使用情况",
   "Khách hàng": "客户",
@@ -5949,5 +5975,9 @@ export const zh: Record<string, string> = {
   "Hiển thị lịch sử các lần đối chiếu và nhập dữ liệu cũ vào hệ thống CRM.": "显示历史数据比对以及导入CRM系统的历史记录。",
   "Các bản ghi dữ liệu đã được nhập gần đây:": "最近导入的数据记录:",
   "Tổng cộng: {count} bản ghi": "总计: {count} 条记录",
-  "Dành riêng cho {name}": "{name} 专属"
+  "Dành riêng cho {name}": "{name} 专属",
+  "Chi phí Zalo API ước tính:": "Zalo API预估成本:",
+  "Miễn phí / Tích hợp": "免费 / 已集成",
+  "Lưu lượng Lead & Hiệu suất theo thời gian": "潜在客户流量与随时间变化的效果",
+  "Chi phí Amazon SES ước tính:": "Amazon SES预估成本:"
 };

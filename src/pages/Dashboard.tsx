@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
   GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
-  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink
+  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink,
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -82,6 +82,24 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [connections, setConnections] = useState<any[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [healthModalTab, setHealthModalTab] = useState<'stats' | 'connections'>('stats');
+  const [healthChartMetric, setHealthChartMetric] = useState<'zalo' | 'email' | 'token'>('zalo');
+
+  const getMetricLabel = (metric: string) => {
+    switch (metric) {
+      case 'zalo':
+        return t('Số tin Zalo');
+      case 'email':
+        return t('Số Mail');
+      case 'token':
+        return t('Số Token AI');
+      default:
+        return t('Lưu lượng Lead');
+    }
+  };
+
+  const getMetricColor = (_metric: string) => {
+    return '#7c3aed';
+  };
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
   const displayChartMode = isSingleDay ? 'hour' : chartMode;
@@ -162,8 +180,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     try {
       // BUG-04 fix: Dùng Promise.all để gọi song song, tiết kiệm ~1-2s
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
+      const metric = showHealthModal ? healthChartMetric : 'lead';
       const [statsJson, logsJson, settingsJson, connectionsJson] = await Promise.all([
-        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}`),
+        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}&chart_metric=${metric}`),
         fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=5'),
         fetchAPI('get_settings'),
         fetchAPI('get_connections')
@@ -205,7 +224,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       fetchDashboard(abortController.signal);
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
-  }, [dateFilter, chartMode, isActive]);
+  }, [dateFilter, chartMode, healthChartMetric, showHealthModal, isActive]);
 
   useEffect(() => {
     if (isActive) {
@@ -470,6 +489,25 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         .consultant-chart-icon {
           transition: all 0.2s ease-in-out;
         }
+        .stat-card {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .stat-card.total-card:hover {
+          box-shadow: 0 6px 16px rgba(124, 58, 237, 0.15) !important;
+          border-color: #7c3aed !important;
+        }
+        .stat-card.distributed-card:hover {
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15) !important;
+          border-color: #3b82f6 !important;
+        }
+        .stat-card.duplicates-card:hover {
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
+          border-color: #f59e0b !important;
+        }
+        .stat-card.errors-card:hover {
+          box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15) !important;
+          border-color: #ef4444 !important;
+        }
       `}</style>
 
       {/* Header */}
@@ -667,7 +705,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           return (
             <div
               key={i}
-              className="stat-card hover-lift"
+              className={`stat-card hover-lift ${card.id}-card`}
               style={{
                 minHeight: '140px',
                 display: 'flex',
@@ -790,14 +828,25 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       ) : (
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'flex-start' : 'flex-start',
+              marginBottom: '1rem',
+              gap: isMobile ? '12px' : '8px'
+            }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                   {displayChartMode === 'heatmap'
                     ? t('Bản đồ mật độ Lead theo ngày và giờ')
                     : `${t('Hiệu suất xử lý Data theo')} ${displayChartMode === 'hour' ? t('giờ') : t('ngày')}`}
                 </h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>{t('Biểu đồ thể hiện lưu lượng Data đổ về')} {dateFilter === 'Tùy chỉnh' ? t('trong khoảng thời gian đã chọn') : `${t('trong')} ${getDisplayDateFilterText(dateFilter).toLowerCase()}`}.</p>
+                {!isMobile && (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                    {t('Biểu đồ thể hiện lưu lượng Data đổ về')} {dateFilter === 'Tùy chỉnh' ? t('trong khoảng thời gian đã chọn') : `${t('trong')} ${getDisplayDateFilterText(dateFilter).toLowerCase()}`}.
+                  </p>
+                )}
               </div>
               {!isSingleDay && (
                 <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
@@ -856,117 +905,130 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               )}
             </div>
             {displayChartMode === 'heatmap' ? (
-              <div style={{ position: 'relative', width: '100%', height: 260, overflowY: 'hidden', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <div style={{ minWidth: '640px', padding: '10px 5px 10px 0' }}>
-                  {/* Header Row: Hours */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', marginBottom: '6px' }}>
-                    <div />
-                    {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                      <div key={h} style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>
-                        {h % 2 === 0 ? `${String(h).padStart(2, '0')}h` : ''}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 7 Days Rows */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {(() => {
-                      const heatmapGrid = Array.from({ length: 7 }, () => Array(24).fill(0));
-                      let maxVal = 0;
-                      if (Array.isArray(stats?.chartData)) {
-                        stats.chartData.forEach((item: any) => {
-                          if (item && typeof item.wday === 'number' && typeof item.hour === 'number') {
-                            const w = item.wday;
-                            const h = item.hour;
-                            const vol = item.volume || 0;
-                            if (w >= 0 && w < 7 && h >= 0 && h < 24) {
-                              heatmapGrid[w][h] = vol;
-                              if (vol > maxVal) maxVal = vol;
-                            }
-                          }
-                        });
-                      }
-                      if (maxVal === 0) maxVal = 1;
-
-                      return daysOfWeekShort.map((dayName, dIdx) => (
-                        <div key={dIdx} style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', alignItems: 'center' }}>
-                          {/* Y-axis label */}
-                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', userSelect: 'none' }}>
-                            {dayName}
-                          </div>
-                          {/* 24 Cells */}
-                          {Array.from({ length: 24 }, (_, h) => {
-                            const val = heatmapGrid[dIdx][h];
-                            const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
-                            const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
-
-                            return (
-                              <div
-                                key={h}
-                                onMouseEnter={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  const cardEl = e.currentTarget.closest('.card');
-                                  const cardRect = cardEl?.getBoundingClientRect();
-                                  if (cardRect) {
-                                    setHoveredCell({
-                                      wday: dIdx,
-                                      hour: h,
-                                      volume: val,
-                                      x: rect.left - cardRect.left + rect.width / 2,
-                                      y: rect.top - cardRect.top - 60
-                                    });
-                                  }
-                                }}
-                                onMouseLeave={() => setHoveredCell(null)}
-                                style={{
-                                  aspectRatio: '1',
-                                  background: val === 0 ? 'var(--color-border-light)' : 'var(--color-primary)',
-                                  opacity: isHovered ? 1 : opacity,
-                                  transform: isHovered ? 'scale(1.2)' : 'scale(1)',
-                                  boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
-                                  borderRadius: '3px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  zIndex: isHovered ? 10 : 1,
-                                  border: '1px solid rgba(0, 0, 0, 0.03)'
-                                }}
-                              />
-                            );
-                          })}
+              <>
+                <div style={{ position: 'relative', width: '100%', height: 260, overflowY: 'hidden', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <div style={{ minWidth: '640px', padding: '10px 5px 10px 0' }}>
+                    {/* Header Row: Hours */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', marginBottom: '6px' }}>
+                      <div />
+                      {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                        <div key={h} style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>
+                          {h % 2 === 0 ? `${String(h).padStart(2, '0')}h` : ''}
                         </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
+                      ))}
+                    </div>
 
-                {/* Floating Tooltip inside relative card parent */}
-                {hoveredCell && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${hoveredCell.x}px`,
-                      top: `${hoveredCell.y}px`,
-                      transform: 'translateX(-50%)',
-                      background: 'var(--color-surface)',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.1)',
-                      border: '1px solid var(--color-border)',
-                      pointerEvents: 'none',
-                      zIndex: 100,
-                      whiteSpace: 'nowrap',
-                      animation: 'fadeIn 0.12s ease-out'
-                    }}
-                  >
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                      {daysOfWeek[hoveredCell.wday]} • {String(hoveredCell.hour).padStart(2, '0')}:00
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: 2 }}>
-                      {t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{hoveredCell.volume}</span>
+                    {/* 7 Days Rows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(() => {
+                        const heatmapGrid = Array.from({ length: 7 }, () => Array(24).fill(0));
+                        let maxVal = 0;
+                        if (Array.isArray(stats?.chartData)) {
+                          stats.chartData.forEach((item: any) => {
+                            if (item && typeof item.wday === 'number' && typeof item.hour === 'number') {
+                              const w = item.wday;
+                              const h = item.hour;
+                              const vol = item.volume || 0;
+                              if (w >= 0 && w < 7 && h >= 0 && h < 24) {
+                                heatmapGrid[w][h] = vol;
+                                if (vol > maxVal) maxVal = vol;
+                              }
+                            }
+                          });
+                        }
+                        if (maxVal === 0) maxVal = 1;
+
+                        return daysOfWeekShort.map((dayName, dIdx) => (
+                          <div key={dIdx} style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', alignItems: 'center' }}>
+                            {/* Y-axis label */}
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', userSelect: 'none' }}>
+                              {dayName}
+                            </div>
+                            {/* 24 Cells */}
+                            {Array.from({ length: 24 }, (_, h) => {
+                              const val = heatmapGrid[dIdx][h];
+                              const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
+                              const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
+
+                              return (
+                                <div
+                                  key={h}
+                                  onMouseEnter={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const cardEl = e.currentTarget.closest('.card');
+                                    const cardRect = cardEl?.getBoundingClientRect();
+                                    if (cardRect) {
+                                      setHoveredCell({
+                                        wday: dIdx,
+                                        hour: h,
+                                        volume: val,
+                                        x: rect.left - cardRect.left + rect.width / 2,
+                                        y: rect.top - cardRect.top - 60
+                                      });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredCell(null)}
+                                  style={{
+                                    aspectRatio: '1',
+                                    background: val === 0 ? 'var(--color-border-light)' : 'var(--color-primary)',
+                                    opacity: isHovered ? 1 : opacity,
+                                    transform: isHovered ? 'scale(1.2)' : 'scale(1)',
+                                    boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    zIndex: isHovered ? 10 : 1,
+                                    border: '1px solid rgba(0, 0, 0, 0.03)'
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Floating Tooltip inside relative card parent */}
+                  {hoveredCell && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${hoveredCell.x}px`,
+                        top: `${hoveredCell.y}px`,
+                        transform: 'translateX(-50%)',
+                        background: 'var(--color-surface)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.1)',
+                        border: '1px solid var(--color-border)',
+                        pointerEvents: 'none',
+                        zIndex: 100,
+                        whiteSpace: 'nowrap',
+                        animation: 'fadeIn 0.12s ease-out'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {daysOfWeek[hoveredCell.wday]} • {String(hoveredCell.hour).padStart(2, '0')}:00
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: 2 }}>
+                        {t('Lưu lượng Data:')} <span style={{ fontWeight: 800 }}>{hoveredCell.volume}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Heatmap Legend */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '10px', fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingRight: '4px', flexWrap: 'wrap' }}>
+                  <span>{t('Ít')}</span>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '2px', background: 'var(--color-border-light)', opacity: 0.08, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '2px', background: 'var(--color-primary)', opacity: 0.3, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '2px', background: 'var(--color-primary)', opacity: 0.6, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '2px', background: 'var(--color-primary)', opacity: 0.9, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                  </div>
+                  <span>{t('Nhiều')}</span>
+                </div>
+              </>
             ) : (
               stats?.chartData && stats.chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={260}>
@@ -1534,33 +1596,33 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     {/* Stacked Percentage Bar */}
                     <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--color-border-light)', position: 'relative' }}>
                       {statsData.summary.successful > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Thành công')}: ${statsData.summary.successful}`} 
+                          }}
+                          title={`${t('Thành công')}: ${statsData.summary.successful}`}
                         />
                       )}
                       {(statsData.summary.reminder || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.reminder || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fcd34d, #f59e0b)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`} 
+                          }}
+                          title={`${t('Nhắc lại')}: ${statsData.summary.reminder}`}
                         />
                       )}
                       {(statsData.summary.error || 0) > 0 && (
-                        <div 
-                          style={{ 
-                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`, 
+                        <div
+                          style={{
+                            width: `${((statsData.summary.error || 0) / Math.max(1, statsData.summary.total)) * 100}%`,
                             background: 'linear-gradient(90deg, #fca5a5, #ef4444)',
                             transition: 'width 0.3s ease'
-                          }} 
-                          title={`${t('Lỗi')}: ${statsData.summary.error}`} 
+                          }}
+                          title={`${t('Lỗi')}: ${statsData.summary.error}`}
                         />
                       )}
                     </div>
@@ -1826,9 +1888,12 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       {showHealthModal && (
         <CustomModal
           isOpen={showHealthModal}
-          onClose={() => setShowHealthModal(false)}
+          onClose={() => {
+            setShowHealthModal(false);
+            setHealthChartMetric('zalo');
+          }}
           title={t("Thống kê & Kết nối hệ thống")}
-          width="480px"
+          width={isMobile ? "100%" : "960px"}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
 
@@ -1888,42 +1953,67 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
+                  gap: '0.75rem',
+                  alignItems: 'stretch'
+                }}>
                   {/* Zalo Card */}
                   <div style={{
-                    padding: '16px',
-                    background: 'var(--color-surface)',
-                    borderRadius: 14,
-                    border: '1px solid var(--color-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Zalo Bot nhắn đi")}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)' }}>
-                      {(stats?.total_zalo_sent ?? 0).toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Email Card */}
-                  <div style={{
-                    padding: '16px',
+                    padding: '12px 14px',
                     background: 'var(--color-surface)',
                     borderRadius: 14,
                     border: '1px solid var(--color-border)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 12,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    height: '100%'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Zalo Bot nhắn đi")}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)' }}>
+                        {(stats?.total_zalo_sent ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '0.6875rem',
+                      color: 'var(--color-text-muted)',
+                      borderTop: '1px dashed var(--color-border-light)',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontWeight: 500
+                    }}>
+                      <span>{t("Chi phí ước tính:")}</span>
+                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                        {t("Miễn phí / Tích hợp")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Email Card */}
+                  <div style={{
+                    padding: '12px 14px',
+                    background: 'var(--color-surface)',
+                    borderRadius: 14,
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    height: '100%'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1940,7 +2030,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       </span>
                     </div>
                     <div style={{
-                      fontSize: '0.75rem',
+                      fontSize: '0.6875rem',
                       color: 'var(--color-text-muted)',
                       borderTop: '1px dashed var(--color-border-light)',
                       paddingTop: '8px',
@@ -1948,7 +2038,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       justifyContent: 'space-between',
                       fontWeight: 500
                     }}>
-                      <span>{t("Chi phí Amazon SES ước tính:")}</span>
+                      <span>{t("Chi phí ước tính:")}</span>
                       <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
                         {(() => {
                           const sentEmails = stats?.total_emails_sent ?? 0;
@@ -1962,14 +2052,16 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                   {/* Tokens Card */}
                   <div style={{
-                    padding: '16px',
+                    padding: '12px 14px',
                     background: 'var(--color-surface)',
                     borderRadius: 14,
                     border: '1px solid var(--color-border)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 12,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    height: '100%'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1985,66 +2077,368 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         {(stats?.total_tokens_used ?? 0).toLocaleString()}
                       </span>
                     </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--color-text-muted)',
-                      borderTop: '1px dashed var(--color-border-light)',
-                      paddingTop: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontWeight: 500
-                    }}>
-                      <span>{t("Chi phí ước tính:")}</span>
-                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
-                        {(() => {
-                          const promptT = stats?.total_prompt_tokens_used ?? 0;
-                          const compT = stats?.total_completion_tokens_used ?? 0;
-                          let costUsd = 0;
-                          if (promptT > 0 || compT > 0) {
-                            costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
-                          } else {
-                            costUsd = (stats?.total_tokens_used ?? 0) * 0.0000001336;
-                          }
-                          const costVnd = costUsd * 25400;
-                          return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
-                        })()}
-                      </span>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      borderTop: '1px solid var(--color-border-light)',
-                      paddingTop: '8px',
-                      marginTop: '4px'
-                    }}>
-                      <button
-                        onClick={() => {
-                          setShowHealthModal(false);
-                          navigate(`/gatekeeper?open_tokens=true&date=${encodeURIComponent(dateFilter)}`);
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--color-primary)',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <ExternalLink size={12} />
-                        {t("Xem chi tiết log sử dụng")}
-                      </button>
+                    <div>
+                      <div style={{
+                        fontSize: '0.6875rem',
+                        color: 'var(--color-text-muted)',
+                        borderTop: '1px dashed var(--color-border-light)',
+                        paddingTop: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontWeight: 500
+                      }}>
+                        <span>{t("Chi phí ước tính:")}</span>
+                        <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                          {(() => {
+                            const promptT = stats?.total_prompt_tokens_used ?? 0;
+                            const compT = stats?.total_completion_tokens_used ?? 0;
+                            let costUsd = 0;
+                            if (promptT > 0 || compT > 0) {
+                              costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
+                            } else {
+                              costUsd = (stats?.total_tokens_used ?? 0) * 0.0000001336;
+                            }
+                            const costVnd = costUsd * 25400;
+                            return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
+                          })()}
+                        </span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        borderTop: '1px solid var(--color-border-light)',
+                        paddingTop: '8px',
+                        marginTop: '8px'
+                      }}>
+                        <button
+                          onClick={() => {
+                            setShowHealthModal(false);
+                            setHealthChartMetric('zalo');
+                            navigate(`/gatekeeper?open_tokens=true&date=${encodeURIComponent(dateFilter)}`);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--color-primary)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <ExternalLink size={12} />
+                          {t("Xem chi tiết log sử dụng")}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Full-width Trend Chart Block */}
+                {stats && (
+                  <div 
+                    className="modal-heatmap-container"
+                    style={{
+                      padding: '12px 16px 12px 12px',
+                      background: 'var(--color-bg)',
+                      borderRadius: 12,
+                      border: '1px solid var(--color-border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '2px',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {t("Lưu lượng Lead & Hiệu suất theo thời gian")}
+                      </span>
+                      {!isSingleDay && (
+                        <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '2px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                          <button
+                            onClick={() => setChartMode('day')}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: displayChartMode === 'day' ? 'var(--color-bg)' : 'transparent',
+                              color: displayChartMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: displayChartMode === 'day' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                            }}
+                          >
+                            {t('Theo ngày')}
+                          </button>
+                          <button
+                            onClick={() => setChartMode('hour')}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: displayChartMode === 'hour' ? 'var(--color-bg)' : 'transparent',
+                              color: displayChartMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: displayChartMode === 'hour' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                            }}
+                          >
+                            {t('Theo giờ')}
+                          </button>
+                          <button
+                            onClick={() => setChartMode('heatmap')}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: displayChartMode === 'heatmap' ? 'var(--color-bg)' : 'transparent',
+                              color: displayChartMode === 'heatmap' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: displayChartMode === 'heatmap' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                            }}
+                          >
+                            {t('Heatmap')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metric Switcher Pills with Icons */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                      marginBottom: '6px'
+                    }}>
+                      {[
+                        { id: 'zalo', label: t('Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, borderRadius: '50%' }} alt="Zalo" /> },
+                        { id: 'email', label: t('Email gửi'), icon: <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 13, height: 13 }} alt="Gmail" /> },
+                        { id: 'token', label: t('Token AI'), icon: <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 13, height: 13 }} alt="Gemini" /> }
+                      ].map((item) => {
+                        const isSelected = healthChartMetric === item.id;
+                        const activeColor = getMetricColor(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => setHealthChartMetric(item.id as any)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '5px 12px',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              border: isSelected ? `1px solid ${activeColor}` : '1px solid var(--color-border)',
+                              background: isSelected ? `${activeColor}10` : 'var(--color-surface)',
+                              color: isSelected ? activeColor : 'var(--color-text-muted)',
+                              boxShadow: isSelected ? `0 1px 3px ${activeColor}15` : 'none'
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? activeColor : 'var(--color-text-light)' }}>
+                              {item.icon}
+                            </span>
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {displayChartMode === 'heatmap' ? (
+                      <>
+                        <div style={{ position: 'relative', width: '100%', height: 160, overflowY: 'hidden', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                          <div style={{ minWidth: '640px', padding: '5px 5px 5px 0' }}>
+                            {/* Header Row: Hours */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', marginBottom: '4px' }}>
+                              <div />
+                              {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                                <div key={h} style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>
+                                  {h % 2 === 0 ? `${String(h).padStart(2, '0')}h` : ''}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 7 Days Rows */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              {(() => {
+                                const heatmapGrid = Array.from({ length: 7 }, () => Array(24).fill(0));
+                                let maxVal = 0;
+                                if (Array.isArray(stats?.chartData)) {
+                                  stats.chartData.forEach((item: any) => {
+                                    if (item && typeof item.wday === 'number' && typeof item.hour === 'number') {
+                                      const w = item.wday;
+                                      const h = item.hour;
+                                      const vol = item.volume || 0;
+                                      if (w >= 0 && w < 7 && h >= 0 && h < 24) {
+                                        heatmapGrid[w][h] = vol;
+                                        if (vol > maxVal) maxVal = vol;
+                                      }
+                                    }
+                                  });
+                                }
+                                if (maxVal === 0) maxVal = 1;
+
+                                return daysOfWeekShort.map((dayName, dIdx) => (
+                                  <div key={dIdx} style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, 1fr)', gap: '4px', alignItems: 'center' }}>
+                                    {/* Y-axis label */}
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)', userSelect: 'none' }}>
+                                      {dayName}
+                                    </div>
+                                    {/* 24 Cells */}
+                                    {Array.from({ length: 24 }, (_, h) => {
+                                      const val = heatmapGrid[dIdx][h];
+                                      const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
+                                      const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
+
+                                      return (
+                                        <div
+                                          key={h}
+                                          onMouseEnter={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const cardEl = e.currentTarget.closest('.modal-heatmap-container');
+                                            const cardRect = cardEl?.getBoundingClientRect();
+                                            if (cardRect) {
+                                              setHoveredCell({
+                                                wday: dIdx,
+                                                hour: h,
+                                                volume: val,
+                                                x: rect.left - cardRect.left + rect.width / 2,
+                                                y: rect.top - cardRect.top - 60
+                                              });
+                                            }
+                                          }}
+                                          onMouseLeave={() => setHoveredCell(null)}
+                                          style={{
+                                            aspectRatio: '1',
+                                            background: val === 0 ? 'var(--color-border-light)' : getMetricColor(healthChartMetric),
+                                            opacity: isHovered ? 1 : opacity,
+                                            transform: isHovered ? 'scale(1.2)' : 'scale(1)',
+                                            boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
+                                            borderRadius: '2px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            zIndex: isHovered ? 10 : 1,
+                                            border: '1px solid rgba(0, 0, 0, 0.03)'
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* Floating Tooltip inside relative card parent */}
+                          {hoveredCell && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: `${hoveredCell.x}px`,
+                                top: `${hoveredCell.y}px`,
+                                transform: 'translateX(-50%)',
+                                background: 'var(--color-surface)',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.1)',
+                                border: '1px solid var(--color-border)',
+                                pointerEvents: 'none',
+                                zIndex: 100,
+                                whiteSpace: 'nowrap',
+                                animation: 'fadeIn 0.12s ease-out'
+                              }}
+                            >
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {daysOfWeek[hoveredCell.wday]} • {String(hoveredCell.hour).padStart(2, '0')}:00
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: getMetricColor(healthChartMetric), marginTop: 2 }}>
+                                {getMetricLabel(healthChartMetric)}: <span style={{ fontWeight: 800 }}>{hoveredCell.volume.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {/* Heatmap Legend */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '6px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingRight: '4px', flexWrap: 'wrap' }}>
+                          <span>{t('Ít')}</span>
+                          <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: 'var(--color-border-light)', opacity: 0.08, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.3, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.6, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                            <div style={{ width: 8, height: 8, borderRadius: '1.5px', background: getMetricColor(healthChartMetric), opacity: 0.9, border: '1px solid rgba(0, 0, 0, 0.03)' }} />
+                          </div>
+                          <span>{t('Nhiều')}</span>
+                        </div>
+                      </>
+                    ) : (
+                      stats.chartData && stats.chartData.length > 0 ? (
+                        <div style={{ height: 180, width: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.chartData} margin={{ left: -15, right: 10, top: 15, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                              <XAxis
+                                dataKey="time"
+                                tick={{ fontSize: 9, fill: 'var(--color-text-light)' }}
+                                axisLine={false}
+                                tickLine={false}
+                              />
+                              <YAxis 
+                                domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} 
+                                tick={{ fontSize: 8, fill: 'var(--color-text-light)' }} 
+                                axisLine={false} 
+                                tickLine={false} 
+                                width={healthChartMetric === 'token' ? 45 : 30}
+                                tickFormatter={(v) => typeof v === 'number' ? (v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toString())) : v}
+                              />
+                              <Tooltip content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div style={{ background: 'var(--color-surface)', padding: '10px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.75rem' }}>
+                                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>{label}</div>
+                                      <div style={{ color: getMetricColor(healthChartMetric) }}>
+                                        {getMetricLabel(healthChartMetric)}: <span style={{ fontWeight: 800 }}>{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }} />
+                              <Bar dataKey="volume" fill={getMetricColor(healthChartMetric)} fillOpacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={24}>
+                                <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 9, fontWeight: 700 }} offset={4} formatter={(v: any) => typeof v === 'number' ? v.toLocaleString() : (v ? String(v) : '')} />
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                          {t('Chưa có dữ liệu thống kê')}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

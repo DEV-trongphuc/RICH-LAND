@@ -373,6 +373,18 @@ const RoundsInner = () => {
 
   return (
     <div className="fade-in-view">
+      <style>{`
+        .rounds-grid {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+          gap: 1.25rem;
+        }
+        @media (min-width: 1200px) {
+          .rounds-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+      `}</style>
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -504,16 +516,15 @@ const RoundsInner = () => {
       </div>
 
       {loading ? (
-        <div className="responsive-grid-auto-400" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        <div className="rounds-grid">
           {[1, 2, 3].map(i => <RoundCardSkeleton key={i} />)}
         </div>
       ) : (
         <div
-          className={viewMode === 'grid' ? 'responsive-grid-auto-400' : ''}
-          style={{
-            display: viewMode === 'grid' ? 'grid' : 'flex',
-            flexDirection: viewMode === 'list' ? 'column' : 'row',
-            gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(320px, 1fr))' : 'none',
+          className={viewMode === 'grid' ? 'rounds-grid' : ''}
+          style={viewMode === 'grid' ? {} : {
+            display: 'flex',
+            flexDirection: 'column',
             gap: '1.25rem'
           }}>
           {rounds.length === 0 ? (
