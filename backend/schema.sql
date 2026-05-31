@@ -69,6 +69,7 @@ CREATE TABLE `admin_logs` (
   `account_id` int(11) NOT NULL,
   `action` varchar(100) NOT NULL,
   `details` longtext DEFAULT NULL COMMENT 'JSON details',
+  `log_type` varchar(50) GENERATED ALWAYS AS (JSON_VALUE(details, '$.type')) VIRTUAL,
   `ip_address` varchar(45) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `is_rolled_back` tinyint(1) DEFAULT 0 COMMENT 'Đánh dấu log đã được hoàn tác'
@@ -401,7 +402,8 @@ ALTER TABLE `admin_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `account_id` (`account_id`),
   ADD KEY `idx_created_at` (`created_at`),
-  ADD KEY `idx_action_created` (`action`,`created_at`);
+  ADD KEY `idx_action_created` (`action`,`created_at`),
+  ADD KEY `idx_action_log_type_created` (`action`,`log_type`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `communication_logs`

@@ -523,7 +523,12 @@ const ConsultantsInner = () => {
                         </div>
                       </div>
                     </td>
-                    <td data-label={t('Email')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{u.email}</td>
+                    <td data-label={t('Email')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                        <span>{u.email}</span>
+                      </div>
+                    </td>
                     <td data-label={t('Zalo Bot')}>
                       {u.zalo_chat_id ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -634,7 +639,7 @@ const ConsultantsInner = () => {
         <div className="overlay-backdrop" onClick={() => setModalOpen(false)}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }}
+            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -1037,7 +1042,7 @@ const ConsultantsInner = () => {
       {/* Quick Message Modal */}
       {quickMessageOpen && quickMessageTarget && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => setQuickMessageOpen(false)}>
-          <div className="card" style={{ width: '100%', maxWidth: 400, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: '100%', maxWidth: 400, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <MessageCircle size={20} fill="#0068ff" color="white" />
@@ -1085,7 +1090,7 @@ const ConsultantsInner = () => {
               maxHeight: '92vh',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideUp 0.2s ease-out'
+              animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1104,7 +1109,7 @@ const ConsultantsInner = () => {
                 <div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Báo cáo hiệu suất TVV')}</h3>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • {statsConsultant.email}
+                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', verticalAlign: 'middle' }}><img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} /> {statsConsultant.email}</span>
                   </p>
                 </div>
               </div>

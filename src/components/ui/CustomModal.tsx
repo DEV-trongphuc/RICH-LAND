@@ -81,10 +81,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             <motion.div
               className={styles.modal}
               style={width ? { width, maxWidth: '95vw' } : {}}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9, y: 0 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", duration: 0.4, bounce: 0.1 }}
+              exit={{ opacity: 0, scale: 0.9, y: 0 }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
             >
               {title && (
                 <div className={styles.header}>

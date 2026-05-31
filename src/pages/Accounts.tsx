@@ -460,7 +460,11 @@ const AccountsInner = () => {
                       </td>
                       <td data-label={t('Email đăng nhập')} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Shield size={14} />
+                          {acc.email ? (
+                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                          ) : (
+                            <Shield size={14} />
+                          )}
                           <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có email')}</span>}</span>
                           {acc.email && (
                             Number(acc.is_confirmed) === 1 ? (
@@ -1206,7 +1210,7 @@ const AccountsInner = () => {
         <div className="overlay-backdrop" onClick={() => setShowReplacementModal(false)}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', animation: 'slideUp 0.2s ease-out', display: 'flex', flexDirection: 'column' }}
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>

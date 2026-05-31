@@ -20,7 +20,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
-import { TableSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, StatRowSkeleton, CalendarSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
 import vnFlag from '../assets/vn.svg';
@@ -2449,9 +2449,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               overflowY: 'auto'
             }} className="custom-scrollbar">
               {calendarLoading ? (
-                <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-                  <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu lịch biểu...')}</span>
+                <div style={{ gridColumn: 'span 7' }}>
+                  <CalendarSkeleton />
                 </div>
               ) : days}
             </div>
@@ -4016,9 +4015,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           width="900px"
         >
           {dayDetailsLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-              <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
+            <div style={{ padding: '1rem' }}>
+              <TableSkeleton rows={5} cols={4} />
             </div>
           ) : dayDetails ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '580px', margin: '-1.5rem', overflow: 'hidden' }}>

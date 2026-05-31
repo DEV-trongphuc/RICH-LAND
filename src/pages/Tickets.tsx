@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../utils/api';
-import { TableSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -16,6 +16,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
+import { detectCountryFromPhone } from '../utils/phoneHelper';
 import { useNavigate } from 'react-router-dom';
 
 type Lead = {
@@ -2062,7 +2063,31 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   marginBottom: '1rem'
                 }}>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> {t("Phone")}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Phone size={12} /> {t("Phone")}
+                      </div>
+                      {(() => {
+                        const country = detectCountryFromPhone(selectedLead.phone);
+                        if (!country) return null;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title={country.name}>
+                            <img
+                              src={country.flagUrl}
+                              alt={country.name}
+                              style={{
+                                width: '16px',
+                                height: '11px',
+                                borderRadius: '2px',
+                                objectFit: 'cover',
+                                border: '1px solid rgba(0,0,0,0.1)'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{country.code}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -3939,7 +3964,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               maxHeight: '92vh',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideUp 0.2s ease-out'
+              animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -3958,7 +3983,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 <div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Báo cáo hiệu suất TVV')}</h3>
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • {statsConsultant.email}
+                    <strong>{statsConsultant.name}</strong> • ID: {statsConsultant.id} • <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', verticalAlign: 'middle' }}><img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} /> {statsConsultant.email}</span>
                   </p>
                 </div>
               </div>
@@ -4009,9 +4034,14 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             {/* Content Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
               {statsLoading && !statsData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
-                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải báo cáo...')}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                  </div>
+                  <ChartSkeleton height={180} />
                 </div>
               ) : !statsData ? (
                 <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>
@@ -4466,11 +4496,15 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>
-                        <div style={{ fontSize: '0.8rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2 }}>
-                          {noEmail
-                            ? <span style={{ color: 'var(--color-danger)' }}>{t("⚠ Chưa cài email — không nhận được")}</span>
-                            : acc.email
-                          }
+                        <div style={{ fontSize: '0.8rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {noEmail ? (
+                            <span style={{ color: 'var(--color-danger)' }}>{t("⚠ Chưa cài email — không nhận được")}</span>
+                          ) : (
+                            <>
+                              <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
+                              <span>{acc.email}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                       {/* Role badge */}

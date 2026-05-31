@@ -11,6 +11,7 @@ interface SkeletonProps {
 export const Skeleton = ({ width = '100%', height = 16, borderRadius = 8, style }: SkeletonProps) => (
   <>
     <div
+      className="skeleton"
       style={{
         width,
         height,
@@ -33,7 +34,7 @@ export const Skeleton = ({ width = '100%', height = 16, borderRadius = 8, style 
 
 // ─── KPI card skeleton ───────────────────────────────────────────────────────
 export const KpiCardSkeleton = () => (
-  <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+  <div className="card skeleton-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <Skeleton width={100} height={12} />
       <Skeleton width={36} height={36} borderRadius="50%" />
@@ -57,7 +58,7 @@ export const TableRowSkeleton = ({ cols = 4 }: { cols?: number }) => (
 
 // ─── Table skeleton (full) ───────────────────────────────────────────────────
 export const TableSkeleton = ({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) => (
-  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+  <div className="card skeleton-card" style={{ padding: 0, overflow: 'hidden' }}>
     {/* Header */}
     <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 16 }}>
       {Array.from({ length: cols }).map((_, i) => (
@@ -76,7 +77,7 @@ export const TableSkeleton = ({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
 
 // ─── Card skeleton (general) ─────────────────────────────────────────────────
 export const CardSkeleton = ({ height = 120 }: { height?: number }) => (
-  <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
+  <div className="card skeleton-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <Skeleton width={44} height={44} borderRadius="50%" />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -113,7 +114,7 @@ export const StatRowSkeleton = () => (
 
 // ─── Round card skeleton ─────────────────────────────────────────────────────
 export const RoundCardSkeleton = () => (
-  <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
+  <div className="card skeleton-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Skeleton width={160} height={18} />
@@ -129,6 +130,47 @@ export const RoundCardSkeleton = () => (
     <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
       <Skeleton width={80} height={32} borderRadius={8} />
       <Skeleton width={100} height={32} borderRadius={8} />
+    </div>
+  </div>
+);
+
+// ─── Calendar skeleton ────────────────────────────────────────────────────────
+export const CalendarSkeleton = () => (
+  <div className="skeleton-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 'minmax(110px, 1fr)', width: '100%' }}>
+    {Array.from({ length: 28 }).map((_, i) => (
+      <div
+        key={i}
+        style={{
+          borderRight: '1px solid var(--color-border-light)',
+          borderBottom: '1px solid var(--color-border-light)',
+          padding: '0.75rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          background: i % 7 === 5 || i % 7 === 6 ? 'var(--color-calendar-weekend, rgba(0,0,0,0.01))' : 'transparent'
+        }}
+      >
+        <Skeleton width={20} height={12} />
+        <Skeleton width="80%" height={10} style={{ marginTop: 4 }} />
+        <Skeleton width="50%" height={10} />
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Chart skeleton ──────────────────────────────────────────────────────────
+export const ChartSkeleton = ({ height = 300 }: { height?: number }) => (
+  <div className="card skeleton-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Skeleton width={180} height={16} />
+      <Skeleton width={100} height={12} />
+    </div>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 16, height: height - 60, padding: '10px 0' }}>
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
+          <Skeleton width="100%" height={`${Math.max(15, Math.sin(i) * 40 + 50)}%`} borderRadius="4px 4px 0 0" />
+        </div>
+      ))}
     </div>
   </div>
 );

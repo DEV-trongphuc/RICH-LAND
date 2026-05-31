@@ -1518,6 +1518,18 @@ select:focus {
   }
 }
 
+@keyframes modalSpring {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
 
 @keyframes pulse {
 
@@ -1564,6 +1576,19 @@ select:focus {
     background-position: -200% 0;
   }
 }
+
+/* Prevent hover zoom, transitions, and border highlights on skeletons */
+.skeleton,
+.skeleton-card,
+[class*="skeleton"],
+[class*="skeleton"] * {
+  pointer-events: none !important;
+  transform: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  border-color: var(--color-border-light) !important;
+}
+
 
 /* Lead Score dots */
 .score-dot {

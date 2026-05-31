@@ -20,7 +20,8 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
-import { TableSkeleton, Skeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, Skeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
+import { detectCountryFromPhone } from '../utils/phoneHelper';
 
 type Lead = {
   id: number;
@@ -3856,9 +3857,14 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             </div>
 
             {statsLoading && !statsData ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '3rem 0', alignItems: 'center', justifyContent: 'center' }}>
-                <RefreshCw size={32} color="var(--color-primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê...')}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                </div>
+                <ChartSkeleton height={260} />
               </div>
             ) : !statsData ? (
               <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -4266,9 +4272,14 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             </div>
 
             {tokenStatsLoading && !tokenStatsData ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '4rem 0', alignItems: 'center', justifyContent: 'center' }}>
-                <RefreshCw size={32} color="var(--color-primary)" className="spin" />
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Đang tính toán thống kê Token...')}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                  <KpiCardSkeleton />
+                </div>
+                <TableSkeleton rows={4} cols={5} />
               </div>
             ) : !tokenStatsData ? (
               <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -5042,7 +5053,31 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   marginBottom: '1rem'
                 }}>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> {t("Phone")}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Phone size={12} /> {t("Phone")}
+                      </div>
+                      {(() => {
+                        const country = detectCountryFromPhone(selectedLead.phone);
+                        if (!country) return null;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title={country.name}>
+                            <img
+                              src={country.flagUrl}
+                              alt={country.name}
+                              style={{
+                                width: '16px',
+                                height: '11px',
+                                borderRadius: '2px',
+                                objectFit: 'cover',
+                                border: '1px solid rgba(0,0,0,0.1)'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{country.code}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -6237,7 +6272,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               maxHeight: '92vh',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideUp 0.2s ease-out'
+              animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -6307,9 +6342,14 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             {/* Content Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
               {statsConsultantLoading && !statsConsultantData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
-                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải báo cáo...')}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                  </div>
+                  <ChartSkeleton height={180} />
                 </div>
               ) : !statsConsultantData ? (
                 <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>

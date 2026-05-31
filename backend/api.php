@@ -2701,29 +2701,22 @@ switch ($action) {
 
             // Cộng thêm "Bù blacklist" từ admin_logs vào Đã bù (và tổng gửi đi)
             $sqlBlacklistLogs = "
-                SELECT details FROM admin_logs
+                SELECT COUNT(*) as cnt FROM admin_logs
                 WHERE action = 'BLOCK_LEAD_BLACKLIST'
+                  AND JSON_VALUE(details, '$.old_consultant_id') = ?
+                  AND (JSON_VALUE(details, '$.compensate_sale') = 'true'
+                       OR JSON_VALUE(details, '$.compensate_sale') = 1
+                       OR JSON_VALUE(details, '$.compensate_sale') = '1')
                   AND $ticketCondition
             ";
             $stmtBlacklistLogs = $conn->prepare($sqlBlacklistLogs);
             if ($stmtBlacklistLogs) {
-                if (!empty($ticketTypes)) {
-                    $stmtBlacklistLogs->bind_param($ticketTypes, ...$ticketParams);
-                }
+                $bindTypesB = "i" . $ticketTypes;
+                $bindParamsB = array_merge([$consultantId], $ticketParams);
+                $stmtBlacklistLogs->bind_param($bindTypesB, ...$bindParamsB);
                 $stmtBlacklistLogs->execute();
-                $resBlacklistLogs = $stmtBlacklistLogs->get_result();
-                while ($rowB = $resBlacklistLogs->fetch_assoc()) {
-                    $det = json_decode($rowB['details'], true);
-                    if ($det) {
-                        $oldId = isset($det['old_consultant_id']) ? (int) $det['old_consultant_id'] : 0;
-                        if ($oldId === $consultantId) {
-                            $isComp = $det['compensate_sale'] ?? false;
-                            if ($isComp === true || $isComp === 1 || $isComp === '1' || $isComp === 'true') {
-                                $blacklistCompCount++;
-                            }
-                        }
-                    }
-                }
+                $resBlacklistLogs = $stmtBlacklistLogs->get_result()->fetch_assoc();
+                $blacklistCompCount = (int) ($resBlacklistLogs['cnt'] ?? 0);
                 $stmtBlacklistLogs->close();
             }
             // $ticketsStats['approved'] += $activeCompSum + $blacklistCompCount;
@@ -9043,13 +9036,13 @@ switch ($action) {
         $prevDateConditionCreated = str_replace('received_at', 'created_at', $prevDateCondition);
 
         $autoBlacklistCnt = 0;
-        $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $dateConditionCreated");
+        $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $dateConditionCreated");
         if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
             $autoBlacklistCnt = (int) $row['cnt'];
         }
 
         $prevAutoBlacklistCnt = 0;
-        $prevBlacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND details LIKE '%\"type\":\"auto\"%' AND $prevDateConditionCreated");
+        $prevBlacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $prevDateConditionCreated");
         if ($prevBlacklistRes && $row = $prevBlacklistRes->fetch_assoc()) {
             $prevAutoBlacklistCnt = (int) $row['cnt'];
         }

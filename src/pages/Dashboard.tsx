@@ -568,7 +568,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         }
         @media (max-width: 640px) {
           .dashboard-kpi-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
           }
         }
       `}</style>

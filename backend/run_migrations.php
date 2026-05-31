@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 144;
+$targetVersion = 145;
 $currentVersion = 0;
 
 // Query current DB version
@@ -182,6 +182,9 @@ if (!$apply) {
 
             // Version 144
             echo "<tr><td>v144</td><td>Thêm thiết lập gửi báo cáo tháng cho Sale và lịch gửi vào ngày 1 hàng tháng.</td><td>" . ($currentVersion >= 144 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+
+            // Version 145
+            echo "<tr><td>v145</td><td>Tối ưu hóa hiệu năng bằng cách thêm cột ảo log_type và chỉ mục tương ứng cho admin_logs.</td><td>" . ($currentVersion >= 145 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
 
             echo "</tbody></table>";
             echo "</div>";
@@ -1227,6 +1230,29 @@ try {
         $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '144') ON DUPLICATE KEY UPDATE setting_value = '144'");
         $currentVersion = 144;
         $logMsg("Hoàn thành cập nhật phiên bản 144.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 16: Version 145 (Optimize admin_logs performance with VIRTUAL generated column log_type and idx_action_log_type_created index)
+    // --------------------------------------------------
+    if ($currentVersion < 145) {
+        $logMsg("Đang chạy cập nhật phiên bản 145 (Tối ưu hóa hiệu năng admin_logs)...", "info");
+        
+        $chkColLogType = $conn->query("SHOW COLUMNS FROM admin_logs LIKE 'log_type'");
+        if ($chkColLogType && $chkColLogType->num_rows === 0) {
+            $conn->query("ALTER TABLE admin_logs ADD COLUMN log_type VARCHAR(50) GENERATED ALWAYS AS (JSON_VALUE(details, '$.type')) VIRTUAL");
+            $logMsg("Đã thêm cột ảo log_type vào admin_logs.", "success");
+        }
+        
+        $chkIdxLogType = $conn->query("SHOW INDEX FROM admin_logs WHERE Key_name='idx_action_log_type_created'");
+        if ($chkIdxLogType && $chkIdxLogType->num_rows === 0) {
+            $conn->query("ALTER TABLE admin_logs ADD INDEX `idx_action_log_type_created` (`action`, `log_type`, `created_at`)");
+            $logMsg("Đã thêm INDEX idx_action_log_type_created vào admin_logs.", "success");
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '145') ON DUPLICATE KEY UPDATE setting_value = '145'");
+        $currentVersion = 145;
+        $logMsg("Hoàn thành cập nhật phiên bản 145.", "success");
     }
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

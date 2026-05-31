@@ -15,6 +15,9 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
+import { CalendarSkeleton, TableSkeleton, KpiCardSkeleton, CardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
+import { detectCountryFromPhone } from '../utils/phoneHelper';
+
 
 type Lead = {
   id: number;
@@ -1542,9 +1545,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 overflowY: 'auto'
               }} className="custom-scrollbar">
                 {calendarLoading ? (
-                  <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-                    <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu lịch biểu...')}</span>
+                  <div style={{ gridColumn: 'span 7' }}>
+                    <CalendarSkeleton />
                   </div>
                 ) : days}
               </div>
@@ -2140,7 +2142,31 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   marginBottom: '1rem'
                 }}>
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> Phone</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Phone size={12} /> Phone
+                      </div>
+                      {(() => {
+                        const country = detectCountryFromPhone(selectedLead.phone);
+                        if (!country) return null;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title={country.name}>
+                            <img
+                              src={country.flagUrl}
+                              alt={country.name}
+                              style={{
+                                width: '16px',
+                                height: '11px',
+                                borderRadius: '2px',
+                                objectFit: 'cover',
+                                border: '1px solid rgba(0,0,0,0.1)'
+                              }}
+                            />
+                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{country.code}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -3554,9 +3580,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         {selectedDate !== null && (
           <>
             {dayDetailsLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: 12 }}>
-                <RefreshCw size={24} className="spin" style={{ color: 'var(--color-primary)' }} />
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Đang tải dữ liệu chi tiết...')}</span>
+              <div style={{ padding: '1rem' }}>
+                <TableSkeleton rows={6} cols={4} />
               </div>
             ) : dayDetails ? (
               <div style={{ display: 'flex', flexDirection: 'column', height: '580px', margin: '-1.5rem', overflow: 'hidden' }}>
@@ -4386,7 +4411,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               maxHeight: '92vh',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideUp 0.2s ease-out'
+              animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -4456,9 +4481,21 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             {/* Content Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
               {statsLoading && !statsData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
-                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải báo cáo...')}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* KPI Cards Skeleton Row */}
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                  </div>
+                  {/* Chart Skeleton */}
+                  <ChartSkeleton height={180} />
+                  {/* Two Columns Grid for other charts */}
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <CardSkeleton height={140} />
+                    <CardSkeleton height={140} />
+                  </div>
                 </div>
               ) : !statsData ? (
                 <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>
