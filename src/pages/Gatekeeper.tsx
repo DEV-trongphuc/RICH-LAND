@@ -2513,45 +2513,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         {new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
                         {new Date(l.created_at).toLocaleDateString('vi-VN')}
                       </div>
-                    </div>
-                  </div>
-
-                  <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
-
-                  {/* Allocation Info (Sale & Round like /data) */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '0.75rem',
-                    padding: '2px 0'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: 'var(--color-text-muted)' }}>{t('Giao cho')}:</span>
-                      {l.consultant_name ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Avatar src={l.consultant_avatar} name={l.consultant_name} size={20} aiScreened={!!(l.ai_screener_status && l.ai_screener_status !== 'not_screened')} />
-                          <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{l.consultant_name}</span>
+                      {l.round_name && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          <Zap size={10} /> {l.round_name}
                         </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                       )}
                     </div>
-                    {l.round_name && (
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        background: '#e0e7ff',
-                        color: '#4338ca',
-                        fontSize: '0.65rem',
-                        fontWeight: 700
-                      }}>
-                        {l.round_name}
-                      </span>
-                    )}
                   </div>
-
-                  <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
 
                   {/* AI Evaluation details callout */}
                   <div style={{
@@ -4861,12 +4829,59 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         )}
                       </>
                     )}
+
+                    {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
+                      <button
+                        onClick={() => {
+                          setSelectedLead(null);
+                          setActioningHeldLead(selectedLead);
+                          setHeldActionReason('');
+                          setHeldActionModalOpen('blacklist');
+                        }}
+                        title={t("Chặn & Blacklist khách hàng này")}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid var(--color-danger-light)',
+                          borderRadius: '10px',
+                          padding: '8px 18px',
+                          color: 'var(--color-danger)',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = 'var(--color-danger)';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(239, 68, 68, 0.2)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                          e.currentTarget.style.color = 'var(--color-danger)';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.05)';
+                        }}
+                      >
+                        <AlertTriangle size={14} />
+                        {t('Chặn')}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> {t("Phone")}</div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.75rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> {t("Phone")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -4896,13 +4911,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
                         {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                       </div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> {t("Email")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> {t("Email")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -4932,16 +4947,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
                         {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t("Nguồn Data")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><ExternalLink size={12} /> {t("Nguồn Data")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -4971,11 +4983,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t("Trạng thái")}</div>
                     <div>
                       {getStatusBadge(selectedLead.status, selectedLead.report_status)}
                     </div>
@@ -5228,35 +5240,19 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         {t("Duyệt & Phân bổ Lead")}
                       </button>
 
-                      <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
-                          onClick={() => {
-                            setSelectedLead(null);
-                            setActioningHeldLead(selectedLead);
-                            setHeldActionReason('');
-                            setHeldActionModalOpen('reject');
-                          }}
-                          className="btn primary"
-                          style={{ flex: 1, height: 46, background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700, padding: '0 8px', whiteSpace: 'nowrap' }}
-                        >
-                          <XCircle size={18} />
-                          {t("Xác nhận dưới chuẩn")}
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedLead(null);
-                            setActioningHeldLead(selectedLead);
-                            setHeldActionReason('');
-                            setHeldActionModalOpen('blacklist');
-                          }}
-                          className="btn outline"
-                          style={{ width: 46, height: 46, padding: 0, borderColor: 'var(--color-danger)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                          title={t("Chặn số & Blacklist")}
-                        >
-                          <ShieldAlert size={20} />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedLead(null);
+                          setActioningHeldLead(selectedLead);
+                          setHeldActionReason('');
+                          setHeldActionModalOpen('reject');
+                        }}
+                        className="btn primary"
+                        style={{ width: '100%', height: 46, background: 'var(--color-warning)', borderColor: 'var(--color-warning)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700 }}
+                      >
+                        <XCircle size={18} />
+                        {t("Xác nhận dưới chuẩn")}
+                      </button>
 
                       <div style={{
                         marginTop: '1rem', padding: '1rem',

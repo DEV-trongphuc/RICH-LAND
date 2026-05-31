@@ -32,6 +32,8 @@ type Lead = {
   last_activity_at?: string | null;
   ai_screener_status?: string;
   ai_evaluation?: string;
+  reason?: string;
+  report_created_at?: string;
 };
 
 const parseServerDate = (dateStr: string) => {
@@ -1111,7 +1113,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           resolved_at: r.resolved_at,
                           last_activity_at: r.last_activity_at,
                           ai_screener_status: r.ai_screener_status,
-                          ai_evaluation: r.ai_evaluation
+                          ai_evaluation: r.ai_evaluation,
+                          reason: r.reason,
+                          report_created_at: r.created_at
                         });
                       }}
                       style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', background: 'transparent', cursor: 'pointer' }}
@@ -1236,7 +1240,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       resolved_at: r.resolved_at,
                       last_activity_at: r.last_activity_at,
                       ai_screener_status: r.ai_screener_status,
-                      ai_evaluation: r.ai_evaluation
+                      ai_evaluation: r.ai_evaluation,
+                      reason: r.reason,
+                      report_created_at: r.created_at
                     });
                   }}
                   style={{
@@ -1839,9 +1845,14 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   </div>
                 </div>
 
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Phone size={14} /> {t("Phone")}</div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.75rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Phone size={12} /> {t("Phone")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -1871,13 +1882,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
                         {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                       </div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Mail size={14} /> {t("Email")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> {t("Email")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -1907,16 +1918,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
                         {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><ExternalLink size={14} /> {t("Nguồn Data")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><ExternalLink size={12} /> {t("Nguồn Data")}</div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
@@ -1946,11 +1954,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.source}</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}><Tag size={14} /> {t("Trạng thái")}</div>
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t("Trạng thái")}</div>
                     <div>
                       {selectedLead.status === 'assigned' && (
                         selectedLead.report_status === 'pending' ? (
@@ -1977,6 +1985,68 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   const { cleanNote, errorNotes, blacklistNotes, warningNotes, aiDecisionNotes } = parseNote(selectedLead.note || '');
                   return (
                     <>
+                      {/* Active Ticket Report Card */}
+                      {selectedLead.reason && (
+                        <div style={{
+                          background: theme === 'dark' ? 'rgba(239, 68, 68, 0.08)' : 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
+                          border: theme === 'dark' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid #fecaca',
+                          padding: '1.25rem',
+                          borderRadius: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          marginBottom: '1rem',
+                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(239, 68, 68, 0.03)'
+                        }}
+                          className="premium-alert-card"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2',
+                              padding: '8px',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: theme === 'dark' ? '#f87171' : '#dc2626'
+                            }}>
+                              <AlertTriangle size={18} strokeWidth={2.5} />
+                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#f87171' : '#991b1b', letterSpacing: '-0.01em' }}>
+                              {t("Thông tin báo cáo lỗi")}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#7f1d1d' }}>
+                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#f87171' : '#b91c1c', marginRight: '6px' }}>
+                                {t("Lý do lỗi:")}
+                              </span>
+                              <span style={{ fontWeight: 600 }}>{selectedLead.reason}</span>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            paddingTop: '0.75rem',
+                            marginTop: '0.25rem',
+                            borderTop: theme === 'dark' ? '1px dashed rgba(239, 68, 68, 0.2)' : '1px dashed rgba(220, 38, 38, 0.15)',
+                            flexWrap: 'wrap'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#7f1d1d' }}>
+                              <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={16} />
+                              <span>{t("Người báo cáo:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#991b1b' }}>{selectedLead.assigned_to_name}</strong></span>
+                            </div>
+                            <span style={{ color: theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#fca5a5', fontSize: '0.75rem' }}>•</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: theme === 'dark' ? 'var(--color-text-muted)' : '#7f1d1d' }}>
+                              <Clock size={13} style={{ opacity: 0.7 }} />
+                              <span>{t("Thời gian:")} <strong style={{ color: theme === 'dark' ? 'var(--color-text)' : '#991b1b' }}>{selectedLead.report_created_at ? new Date(selectedLead.report_created_at).toLocaleString('vi-VN') : ''}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
 
                       {/* Error Notes (Approved / Rejected) */}
@@ -2612,7 +2682,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                       <Avatar src={selectedLead.assigned_to_avatar} name={selectedLead.assigned_to_name} size={40} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t("Người tiếp nhận")}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t("Người tiếp nhận Lead")}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{selectedLead.assigned_to_name}</div>
                       </div>
                     </div>
