@@ -60,7 +60,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     return cached === null ? true : cached === '1';
   });
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || 'Tháng này';
+    return localStorage.getItem('domation_global_date') || '7 ngày qua';
   });
 
   const handleUpdateDateFilter = (val: string) => {

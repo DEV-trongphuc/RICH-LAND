@@ -28,7 +28,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || 'Tháng này';
+    return localStorage.getItem('domation_global_date') || '7 ngày qua';
   });
 
   const handleUpdateDateFilter = (val: string) => {

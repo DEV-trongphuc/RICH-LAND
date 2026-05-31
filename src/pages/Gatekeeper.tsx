@@ -533,7 +533,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
   // Search Params
   const getInitialDateFilter = () => {
-    return localStorage.getItem('domation_global_date') || 'Tháng này';
+    return localStorage.getItem('domation_global_date') || '7 ngày qua';
   };
   const dateFilter = searchParams.get('date') || getInitialDateFilter();
 
@@ -2212,6 +2212,24 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 />
               </div>
             </div>
+
+            {(activeTab === 'queue' || activeTab === 'ai_pending') && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: 'var(--color-warning)',
+                background: 'var(--color-warning-light)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                whiteSpace: 'nowrap'
+              }}>
+                <Sparkles size={12} /> {t(activeTab === 'queue' ? 'Hiển thị toàn bộ lead chờ duyệt' : 'Hiển thị toàn bộ lead chờ AI đánh giá')}
+              </div>
+            )}
 
             {/* Guide & Toggle Switch on Mobile (Only shown on mobile when filter is expanded) */}
             <div className="mobile-only mobile-w-full" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -4305,9 +4323,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   const costVnd = costUsd * 25400;
 
                   return (
-                    <div style={{
+                    <div className="responsive-grid-4" style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
                       gap: '12px'
                     }}>
                       <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '12px' }}>
@@ -4889,7 +4907,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="detail-action-buttons">
                     {user?.role === 'admin' && (
                       <>
                         {isAdminEditingLead ? (
@@ -4898,20 +4916,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               onClick={handleSaveLeadFields}
                               disabled={isSavingLeadFields}
                               title={t("Lưu thay đổi")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                 border: 'none',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
                                 color: '#ffffff',
-                                fontSize: '0.85rem',
                                 fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -4923,24 +4934,16 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               }}
                             >
                               <Check size={14} />
-                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu thay đổi')}
+                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu')}
                             </button>
                             <button
                               onClick={() => setIsAdminEditingLead(false)}
                               title={t("Hủy")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
-                                color: 'var(--color-text-muted)',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                color: 'var(--color-text-muted)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.background = 'var(--color-border-light)';
@@ -4971,19 +4974,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               setIsAdminEditingLead(true);
                             }}
                             title={t("Sửa thông tin")}
+                            className="detail-action-btn"
                             style={{
                               background: 'rgba(124, 58, 237, 0.08)',
                               border: '1px solid var(--color-primary-light)',
-                              borderRadius: '10px',
-                              padding: '8px 18px',
                               color: 'var(--color-primary)',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                               boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
                             }}
                             onMouseOver={e => {
@@ -5005,7 +5000,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         )}
                       </>
                     )}
-
+ 
                     {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
@@ -5015,19 +5010,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           setHeldActionModalOpen('blacklist');
                         }}
                         title={t("Chặn & Blacklist khách hàng này")}
+                        className="detail-action-btn"
                         style={{
                           background: 'rgba(239, 68, 68, 0.08)',
                           border: '1px solid var(--color-danger-light)',
-                          borderRadius: '10px',
-                          padding: '8px 18px',
                           color: 'var(--color-danger)',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
                         }}
                         onMouseOver={e => {

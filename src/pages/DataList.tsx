@@ -318,7 +318,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const navigate = useNavigate();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
-  const dateFilter = searchParams.get('date') || 'this_month';
+  const dateFilter = searchParams.get('date') || '7days';
   const consultantFilter = searchParams.get('consultant') || 'all';
   const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
@@ -1972,24 +1972,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="detail-action-buttons">
                     {!isAdminEditingLead && (
                       <button
                         onClick={() => selectedLead && handleCopyFullInfo(selectedLead)}
                         title={t("Sao chép toàn bộ thông tin")}
+                        className="detail-action-btn"
                         style={{
                           background: copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
                           border: copiedType === 'full' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.2)',
-                          borderRadius: '10px',
-                          padding: '8px 18px',
                           color: copiedType === 'full' ? '#10b981' : '#3b82f6',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: '0 2px 6px rgba(59, 130, 246, 0.05)'
                         }}
                         onMouseOver={e => {
@@ -2017,20 +2009,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               onClick={handleSaveLeadFields}
                               disabled={isSavingLeadFields}
                               title={t("Lưu thay đổi")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                 border: 'none',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
                                 color: '#ffffff',
-                                fontSize: '0.85rem',
                                 fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -2042,24 +2027,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               }}
                             >
                               <Check size={14} />
-                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu thay đổi')}
+                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu')}
                             </button>
                             <button
                               onClick={() => setIsAdminEditingLead(false)}
                               title={t("Hủy")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
-                                color: 'var(--color-text-muted)',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                color: 'var(--color-text-muted)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.background = 'var(--color-border-light)';
@@ -2090,19 +2067,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               setIsAdminEditingLead(true);
                             }}
                             title={t("Sửa thông tin")}
+                            className="detail-action-btn"
                             style={{
                               background: 'rgba(124, 58, 237, 0.08)',
                               border: '1px solid var(--color-primary-light)',
-                              borderRadius: '10px',
-                              padding: '8px 18px',
                               color: 'var(--color-primary)',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                               boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
                             }}
                             onMouseOver={e => {
@@ -2124,7 +2093,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         )}
                       </>
                     )}
-
+ 
                     {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
@@ -2133,19 +2102,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           setConfirmBlockOpen(true);
                         }}
                         title={t("Chặn & Blacklist khách hàng này")}
+                        className="detail-action-btn"
                         style={{
                           background: 'rgba(239, 68, 68, 0.08)',
                           border: '1px solid var(--color-danger-light)',
-                          borderRadius: '10px',
-                          padding: '8px 18px',
                           color: 'var(--color-danger)',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
                         }}
                         onMouseOver={e => {

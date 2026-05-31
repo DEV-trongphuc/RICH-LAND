@@ -241,7 +241,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const saleFilter = searchParams.get('consultant') || '';
 
   const getInitialDateFilter = () => {
-    return localStorage.getItem('domation_global_date') || 'Tháng này';
+    return localStorage.getItem('domation_global_date') || '7 ngày qua';
   };
   const dateFilter = searchParams.get('date') || getInitialDateFilter();
 
@@ -951,7 +951,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const filteredReports = reports;
 
   const pendingCount = stats.pending;
-  const hasActiveFilters = saleFilter || (dateFilter !== 'Tháng này' && dateFilter !== 'all' && dateFilter !== '');
+  const hasActiveFilters = saleFilter || (dateFilter !== '7 ngày qua' && dateFilter !== 'all' && dateFilter !== '');
 
   const FILTER_TABS = [
     { key: 'pending', label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },
@@ -963,26 +963,164 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   return (
     <div>
       {/* ── Header ── */}
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
             <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
           </h1>
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
             {t('Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên')}
           </p>
         </div>
+
+        {/* Filters right aligned on same row as title on desktop */}
+        <div className="responsive-hide-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Sale filter */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <CustomSelect
+              options={[
+                { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
+                ...consultantOptions.map(name => {
+                  const matched = allConsultants.find(c => c.name === name);
+                  return {
+                    value: name,
+                    label: name,
+                    avatar: matched?.avatar || ''
+                  };
+                })
+              ]}
+              value={saleFilter}
+              onChange={val => updateParams('consultant', val.toString())}
+              showAvatars={true}
+              searchable={true}
+              width={200}
+            />
+          </div>
+
+          {/* Date Filter */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={val => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                updateParams('date', val.toString());
+              }}
+              width="100%"
+            />
+          </div>
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button onClick={() => {
+              setSearchParams((prev: any) => {
+                prev.delete('consultant');
+                prev.delete('date');
+                prev.delete('page');
+                return prev;
+              }, { replace: true });
+            }}
+              style={{
+                fontSize: '0.75rem', padding: '0 12px', borderRadius: 8,
+                border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
+                color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+                transition: 'all 0.15s',
+                height: 38
+              }}>
+              ✕ {t('Xóa lọc')}
+            </button>
+          )}
+
+          {/* Auto duyệt Toggle */}
+          <div
+            onClick={() => setShowAutoApproveModal(true)}
+            title={t("Cấu hình quy tắc tự động duyệt")}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              padding: '0 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              height: 38,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--color-surface)';
+              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+              if (label) label.style.color = 'var(--color-text-muted)';
+            }}
+          >
+            <span
+              className="auto-approve-label"
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--color-text-muted)',
+                transition: 'color 0.2s',
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted'
+              }}
+            >
+              {t('Auto duyệt')}
+            </span>
+            <div
+              style={{
+                width: 36, height: 20, borderRadius: 10,
+                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                position: 'relative', transition: 'background 0.2s',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+              }} />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
         {FILTER_TABS.map(tab => (
-          <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8.5rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
+          <button key={tab.key} onClick={() => updateParams('status', tab.key)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: activeFilter === tab.key ? tab.color : 'var(--color-border)', background: activeFilter === tab.key ? tab.bg : 'transparent', color: activeFilter === tab.key ? tab.color : 'var(--color-text-muted)', transition: 'all 0.15s' }}>
             {t(tab.label)} {`(${stats[tab.key]})`}
           </button>
         ))}
         <button onClick={fetchReports} disabled={loading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
           <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
         </button>
+
+        {activeFilter === 'pending' && (
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'var(--color-warning)',
+            background: 'var(--color-warning-light)',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid rgba(245, 158, 11, 0.2)',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            marginLeft: 8
+          }}>
+            <Sparkles size={12} /> {t('Hiển thị toàn bộ ticket chờ duyệt')}
+          </div>
+        )}
+
         <button
           onClick={() => setShowSettingsModal(true)}
           title={t("Thiết lập thông báo Ticket")}
@@ -1006,6 +1144,12 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           {pendingCount > 0 ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
           {pendingCount} {t('chờ duyệt')}
         </div>
+
+        <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)', marginLeft: 8 }} />
+
+        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)', marginLeft: 4 }}>
+          {t('Tổng cộng:')} {totalCount} {t('tickets')}
+        </span>
       </div>
 
       <div className="filter-mobile-only" style={{ width: '100%', marginBottom: '1rem' }}>
@@ -1094,7 +1238,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         </div>
       </div>
 
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
+      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''} filter-mobile-only`} style={{
         position: 'relative', zIndex: 100,
         display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
         padding: '14px 18px',
@@ -1148,6 +1292,23 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             width="100%"
           />
         </div>
+
+        {activeFilter === 'pending' && (
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'var(--color-warning)',
+            background: 'var(--color-warning-light)',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid rgba(245, 158, 11, 0.2)',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            <Sparkles size={12} /> {t('Hiển thị toàn bộ ticket chờ duyệt')}
+          </div>
+        )}
 
         {/* Clear filters */}
         {hasActiveFilters && (
@@ -1864,24 +2025,16 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="detail-action-buttons">
                     {!isAdminEditingLead && (
                       <button
                         onClick={() => selectedLead && handleCopyFullInfo(selectedLead)}
                         title={t("Sao chép toàn bộ thông tin")}
+                        className="detail-action-btn"
                         style={{
                           background: copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
                           border: copiedType === 'full' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.2)',
-                          borderRadius: '10px',
-                          padding: '8px 18px',
                           color: copiedType === 'full' ? '#10b981' : '#3b82f6',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: '0 2px 6px rgba(59, 130, 246, 0.05)'
                         }}
                         onMouseOver={e => {
@@ -1909,20 +2062,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               onClick={handleSaveLeadFields}
                               disabled={isSavingLeadFields}
                               title={t("Lưu thay đổi")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                 border: 'none',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
                                 color: '#ffffff',
-                                fontSize: '0.85rem',
                                 fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1934,24 +2080,16 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               }}
                             >
                               <Check size={14} />
-                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu thay đổi')}
+                              {isSavingLeadFields ? t('Đang lưu...') : t('Lưu')}
                             </button>
                             <button
                               onClick={() => setIsAdminEditingLead(false)}
                               title={t("Hủy")}
+                              className="detail-action-btn"
                               style={{
                                 background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
-                                borderRadius: '10px',
-                                padding: '8px 18px',
-                                color: 'var(--color-text-muted)',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                color: 'var(--color-text-muted)'
                               }}
                               onMouseOver={e => {
                                 e.currentTarget.style.background = 'var(--color-border-light)';
@@ -1982,19 +2120,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               setIsAdminEditingLead(true);
                             }}
                             title={t("Sửa thông tin")}
+                            className="detail-action-btn"
                             style={{
                               background: 'rgba(124, 58, 237, 0.08)',
                               border: '1px solid var(--color-primary-light)',
-                              borderRadius: '10px',
-                              padding: '8px 18px',
                               color: 'var(--color-primary)',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                               boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
                             }}
                             onMouseOver={e => {
@@ -2016,7 +2146,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         )}
                       </>
                     )}
-
+ 
                     {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
@@ -2025,19 +2155,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           setConfirmBlockOpen(true);
                         }}
                         title={t("Chặn & Blacklist khách hàng này")}
+                        className="detail-action-btn"
                         style={{
                           background: 'rgba(239, 68, 68, 0.08)',
                           border: '1px solid var(--color-danger-light)',
-                          borderRadius: '10px',
-                          padding: '8px 18px',
                           color: 'var(--color-danger)',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                           boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
                         }}
                         onMouseOver={e => {

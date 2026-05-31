@@ -2857,13 +2857,41 @@ switch ($action) {
                 ];
             }
 
-            // 2. Fetch monthly stats to compute fairness index (Tháng này)
+            // 2. Fetch stats to compute fairness index (defaults to 7 ngày qua)
+            $date = isset($_GET['date']) ? trim($_GET['date']) : '7 ngày qua';
+            $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+
+            if ($date === 'all' || $date === '') {
+                $dateCondition = "1=1";
+            } else if ($date === 'Hôm nay') {
+                $dateCondition = "received_at >= CURDATE() AND received_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+            } else if ($date === 'Hôm qua') {
+                $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND received_at < CURDATE()";
+            } else if ($date === 'Tuần này') {
+                $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND received_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === 'Tuần trước') {
+                $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND received_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            } else if ($date === 'Tuần trước nữa') {
+                $dateCondition = "received_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND received_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === '7 ngày qua') {
+                $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            } else if ($date === '30 ngày qua') {
+                $dateCondition = "received_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            } else if ($date === 'Tháng này') {
+                $dateCondition = "received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            } else if ($date === 'Tháng trước') {
+                $dateCondition = "received_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND received_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+            } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+                $start = $conn->real_escape_string($matches[1]);
+                $end = $conn->real_escape_string($matches[2]);
+                $dateCondition = "received_at >= '$start 00:00:00' AND received_at <= '$end 23:59:59'";
+            }
+
             $counts = [];
             $countsQuery = "SELECT assigned_to, round_id, status, COUNT(*) as cnt 
                             FROM distribution_logs 
                             WHERE round_id IN ($idsStr)
-                              AND received_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') 
-                              AND received_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+                              AND $dateCondition
                               AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                             GROUP BY assigned_to, round_id, status";
             $countsRes = $conn->query($countsQuery);
@@ -4699,59 +4727,59 @@ switch ($action) {
             $dateCondition = "r.created_at >= '$start 00:00:00' AND r.created_at <= '$end 23:59:59'";
         }
 
-        if ($dateCondition !== "1=1") {
-            $conds[] = $dateCondition;
-        }
+        $baseConds = $conds;
+        $baseParams = $params;
+        $baseTypes = $types;
 
-        // Stats Condition
-        $statsConds = $conds;
-        $statsParams = $params;
-        $statsTypes = $types;
-
-        // Records Condition (includes status)
-        $recordsConds = $conds;
-        $recordsParams = $params;
-        $recordsTypes = $types;
-        if ($status !== 'all' && in_array($status, ['pending', 'approved', 'rejected'])) {
+        // Records Condition (includes status and conditionally dateCondition)
+        $recordsConds = $baseConds;
+        $recordsParams = $baseParams;
+        $recordsTypes = $baseTypes;
+        if ($status === 'pending') {
+            $recordsConds[] = "r.status = 'pending'";
+        } else if ($status === 'approved' || $status === 'rejected') {
             $recordsConds[] = "r.status = ?";
             $recordsParams[] = $status;
             $recordsTypes .= "s";
+            if ($dateCondition !== "1=1") {
+                $recordsConds[] = $dateCondition;
+            }
+        } else {
+            // $status === 'all'
+            if ($dateCondition !== "1=1") {
+                $recordsConds[] = "(r.status = 'pending' OR (r.status IN ('approved', 'rejected') AND $dateCondition))";
+            }
         }
 
-        $statsWhere = count($statsConds) > 0 ? "WHERE " . implode(" AND ", $statsConds) : "";
         $recordsWhere = count($recordsConds) > 0 ? "WHERE " . implode(" AND ", $recordsConds) : "";
 
         // Query 1: Get Stats per status (for badges)
         $statsSql = "
-            SELECT r.status, COUNT(*) as cnt 
+            SELECT 
+                SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) as pending_cnt,
+                SUM(CASE WHEN r.status = 'approved' AND ($dateCondition) THEN 1 ELSE 0 END) as approved_cnt,
+                SUM(CASE WHEN r.status = 'rejected' AND ($dateCondition) THEN 1 ELSE 0 END) as rejected_cnt
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
             JOIN consultants c ON r.consultant_id = c.id
             JOIN distribution_rounds dr ON r.round_id = dr.id
-            $statsWhere
-            GROUP BY r.status
+            " . (count($baseConds) > 0 ? "WHERE " . implode(" AND ", $baseConds) : "") . "
         ";
         $stmtStats = $conn->prepare($statsSql);
-        if (count($statsParams) > 0) {
-            $stmtStats->bind_param($statsTypes, ...$statsParams);
+        if (count($baseParams) > 0) {
+            $stmtStats->bind_param($baseTypes, ...$baseParams);
         }
         $stmtStats->execute();
         $resStats = $stmtStats->get_result();
+        $rowStats = $resStats->fetch_assoc();
+        $stmtStats->close();
 
         $stats = [
-            'pending' => 0,
-            'approved' => 0,
-            'rejected' => 0,
-            'all' => 0
+            'pending' => (int) ($rowStats['pending_cnt'] ?? 0),
+            'approved' => (int) ($rowStats['approved_cnt'] ?? 0),
+            'rejected' => (int) ($rowStats['rejected_cnt'] ?? 0),
         ];
-        while ($row = $resStats->fetch_assoc()) {
-            $st = $row['status'];
-            $cnt = (int) $row['cnt'];
-            if (isset($stats[$st])) {
-                $stats[$st] = $cnt;
-            }
-            $stats['all'] += $cnt;
-        }
+        $stats['all'] = $stats['pending'] + $stats['approved'] + $stats['rejected'];
 
         // Query 2: Get total records count for pagination
         $countSql = "
@@ -5453,8 +5481,10 @@ switch ($action) {
             $dateCondition = "l.created_at >= '$start 00:00:00' AND l.created_at <= '$end 23:59:59'";
         }
 
-        if ($dateCondition !== "1=1") {
-            $conds[] = $dateCondition;
+        if (in_array($status, ['rejected', 'approved'])) {
+            if ($dateCondition !== "1=1") {
+                $conds[] = $dateCondition;
+            }
         }
 
         $where = count($conds) > 0 ? "WHERE " . implode(" AND ", $conds) : "";
@@ -5470,17 +5500,14 @@ switch ($action) {
             $commonParams[] = $searchVal;
             $commonTypes .= "sss";
         }
-        if ($dateCondition !== "1=1") {
-            $commonConds[] = $dateCondition;
-        }
         $whereCommon = count($commonConds) > 0 ? "WHERE " . implode(" AND ", $commonConds) : "";
 
         $countsSql = "
             SELECT 
                 SUM(CASE WHEN l.status = 'pending_approval' AND NOT ( (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) ) THEN 1 ELSE 0 END) as queue_cnt,
                 SUM(CASE WHEN l.status = 'pending_approval' AND ( (l.ai_screener_status = 'pending' OR (l.ai_screener_status = 'error' AND l.ai_attempts < 3)) AND l.created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) ) THEN 1 ELSE 0 END) as ai_pending_cnt,
-                SUM(CASE WHEN l.status IN ('rejected', 'blacklisted') THEN 1 ELSE 0 END) as substandard_cnt,
-                SUM(CASE WHEN l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %') THEN 1 ELSE 0 END) as assigned_cnt
+                SUM(CASE WHEN (l.status IN ('rejected', 'blacklisted')) AND ($dateCondition) THEN 1 ELSE 0 END) as substandard_cnt,
+                SUM(CASE WHEN (l.status = 'active' AND (l.ai_screener_status IN ('failed', 'error') OR l.note LIKE '%[Duyệt %')) AND ($dateCondition) THEN 1 ELSE 0 END) as assigned_cnt
             FROM leads l
             $whereCommon
         ";

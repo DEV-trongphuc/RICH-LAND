@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { RoundCardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomModal } from '../components/ui/CustomModal';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -59,6 +61,55 @@ const RoundsInner = () => {
   const [consultants, setConsultants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const [dateFilter, setDateFilter] = useState(() => {
+    return localStorage.getItem('domation_global_date') || '7 ngày qua';
+  });
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const handleUpdateDateFilter = (val: string) => {
+    setDateFilter(val);
+    localStorage.setItem('domation_global_date', val);
+    window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
+  };
+
+  const getDisplayDateFilterText = (val: string) => {
+    if (val.includes(' đến ')) {
+      const parts = val.split(' đến ');
+      if (parts.length === 2) {
+        return `${parts[0]} - ${parts[1]}`;
+      }
+    }
+    return t(val);
+  };
+
+  const dateOptions = [
+    { value: 'Hôm nay', label: t('Hôm nay') },
+    { value: 'Hôm qua', label: t('Hôm qua') },
+    { value: 'Tuần này', label: t('Tuần này') },
+    { value: 'Tuần trước', label: t('Tuần trước') },
+    { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+    { value: '7 ngày qua', label: t('7 ngày qua') },
+    { value: '30 ngày qua', label: t('30 ngày qua') },
+    { value: 'Tháng này', label: t('Tháng này') },
+    { value: 'Tháng trước', label: t('Tháng trước') }
+  ];
+
+  if (dateFilter && !dateOptions.some(o => o.value === dateFilter) && dateFilter !== 'Tùy chỉnh') {
+    dateOptions.push({ value: dateFilter, label: getDisplayDateFilterText(dateFilter) });
+  }
+
+  dateOptions.push({ value: 'Tùy chỉnh', label: t('Tùy chỉnh...') });
+
+  const handleCustomDateSubmit = () => {
+    if (!startDate || !endDate) return toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
+    if (new Date(startDate) > new Date(endDate)) return toast.error(t("Từ ngày không được lớn hơn Đến ngày"));
+    const label = `${startDate} đến ${endDate}`;
+    handleUpdateDateFilter(label);
+    setShowDateModal(false);
+  };
 
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -134,7 +185,7 @@ const RoundsInner = () => {
 
   const fetchRounds = async () => {
     try {
-      const json = await fetchAPI('get_rounds');
+      const json = await fetchAPI(`get_rounds&date=${encodeURIComponent(dateFilter)}`);
       if (json.success) setRounds(json.data);
     } catch (e: any) {
       toast.error(t('Không thể tải dữ liệu: ') + e.message);
@@ -153,9 +204,22 @@ const RoundsInner = () => {
 
   useEffect(() => {
     fetchRounds();
+  }, [dateFilter]);
+
+  useEffect(() => {
     fetchConsultants();
     fetchAccounts();
   }, []);
+
+  useEffect(() => {
+    const handleGlobalDate = (e: any) => {
+      if (e.detail && e.detail !== dateFilter) {
+        setDateFilter(e.detail);
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
+  }, [dateFilter]);
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -163,7 +227,7 @@ const RoundsInner = () => {
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, []);
+  }, [dateFilter]);
 
   const openAddModal = () => {
     setEditingRound(null);
@@ -397,6 +461,21 @@ const RoundsInner = () => {
         </div>
 
         <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Date Filter Dropdown */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 180 }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={val => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                handleUpdateDateFilter(val.toString());
+              }}
+              width="100%"
+            />
+          </div>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1727,6 +1806,41 @@ const RoundsInner = () => {
         message={t("Bạn có chắc chắn muốn xóa vòng này không? Lưu ý: Việc xóa vòng phân bổ sẽ ảnh hưởng trực tiếp đến các Rule định tuyến đang trỏ đến vòng này!")}
         confirmText={t("Xóa vĩnh viễn")}
       />
+
+      {/* Date Picker Modal */}
+      <CustomModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
+        title={t("Tùy chỉnh thời gian")}
+        width="400px"
+      >
+        {showDateModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem 0' }}>
+            <div>
+              <label className="form-label">{t('Từ ngày')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">{t('Đến ngày')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn outline" onClick={() => setShowDateModal(false)}>{t('Hủy')}</button>
+              <button className="btn primary" onClick={handleCustomDateSubmit}>{t('Áp dụng')}</button>
+            </div>
+          </div>
+        )}
+      </CustomModal>
     </div>
   );
 };
