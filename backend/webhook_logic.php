@@ -912,7 +912,7 @@ function getNextConsultantInRound($conn, $roundId)
     // Calculate active count of available consultants
     $activeCount = 0;
     foreach ($consultants as $c) {
-        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && !empty($c['leave_end']) && $today >= $c['leave_start'] && $today <= $c['leave_end']));
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
         if (!$isOnVacation) {
             $activeCount++;
         }
@@ -920,7 +920,7 @@ function getNextConsultantInRound($conn, $roundId)
 
     foreach ($consultants as $row) {
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
-        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && !empty($row['leave_end']) && $today >= $row['leave_start'] && $today <= $row['leave_end']));
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
 
@@ -1010,7 +1010,7 @@ function getNextConsultantInRound($conn, $roundId)
         $candidate = $consultants[$nextIdx];
 
         // Check availability (only vacation/leave counts as unavailable for skipping)
-        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
 
         if ($isAvailable) {
@@ -1094,6 +1094,39 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
 
     $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
 
+    // Check if duplicate to track original source if source changes
+    $oldSource = null;
+    $dupId = null;
+    if (!empty($phone)) {
+        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE phone = ? LIMIT 1");
+        $sStmt->bind_param("s", $phone);
+        $sStmt->execute();
+        $res = $sStmt->get_result();
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $dupId = $row['id'];
+            $oldSource = $row['source'];
+        }
+        $sStmt->close();
+    }
+    if (!$dupId && !empty($email)) {
+        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE email = ? LIMIT 1");
+        $sStmt->bind_param("s", $email);
+        $sStmt->execute();
+        $res = $sStmt->get_result();
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $dupId = $row['id'];
+            $oldSource = $row['source'];
+        }
+        $sStmt->close();
+    }
+
+    if ($dupId && !empty($oldSource) && !empty($source) && strcasecmp(trim($oldSource), trim($source)) !== 0) {
+        $sourceUpdateNote = "[Cập nhật nguồn: Nguồn trước đó là " . $oldSource . "]";
+        $note = empty(trim($note ?? '')) ? $sourceUpdateNote : $note . "\n" . $sourceUpdateNote;
+    }
+
     $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE 
@@ -1152,26 +1185,37 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     }
 
     $id = null;
+    $oldSource = null;
     if (!empty($phone)) {
-        $sStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE phone = ? LIMIT 1");
         $sStmt->bind_param("s", $phone);
         $sStmt->execute();
         $res = $sStmt->get_result();
-        if ($res->num_rows > 0)
-            $id = $res->fetch_assoc()['id'];
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $id = $row['id'];
+            $oldSource = $row['source'];
+        }
         $sStmt->close();
     }
     if (!$id && !empty($email)) {
-        $sStmt = $conn->prepare("SELECT id FROM leads WHERE email = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE email = ? LIMIT 1");
         $sStmt->bind_param("s", $email);
         $sStmt->execute();
         $res = $sStmt->get_result();
-        if ($res->num_rows > 0)
-            $id = $res->fetch_assoc()['id'];
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $id = $row['id'];
+            $oldSource = $row['source'];
+        }
         $sStmt->close();
     }
 
     if ($id) {
+        if (!empty($oldSource) && !empty($source) && strcasecmp(trim($oldSource), trim($source)) !== 0) {
+            $sourceUpdateNote = "[Cập nhật nguồn: Nguồn trước đó là " . $oldSource . "]";
+            $note = empty(trim($note ?? '')) ? $sourceUpdateNote : $note . "\n" . $sourceUpdateNote;
+        }
         $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
         if ($onlyUpdateDate) {
             $uStmt = $conn->prepare("UPDATE leads SET last_interaction_date = ? WHERE id = ?");
@@ -1347,14 +1391,14 @@ function simulateNextConsultantInRound($conn, $roundId)
     // Calculate active count of available consultants
     $activeCount = 0;
     foreach ($consultants as $c) {
-        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && !empty($c['leave_end']) && $today >= $c['leave_start'] && $today <= $c['leave_end']));
+        $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
         if (!$isOnVacation) {
             $activeCount++;
         }
     }
 
     foreach ($consultants as $row) {
-        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && !empty($row['leave_end']) && $today >= $row['leave_start'] && $today <= $row['leave_end']));
+        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isAvailable = !$isOnVacation;
 
@@ -1420,7 +1464,7 @@ function simulateNextConsultantInRound($conn, $roundId)
     do {
         $candidate = $simulatedConsultants[$nextIdx];
 
-        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && !empty($candidate['leave_end']) && $today >= $candidate['leave_start'] && $today <= $candidate['leave_end']));
+        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isAvailable = !$isOnVacation;
 
         if ($isAvailable) {

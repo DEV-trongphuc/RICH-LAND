@@ -41,7 +41,16 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     const cached = localStorage.getItem('ai_screener_enabled');
     return cached === null ? true : cached === '1';
   });
-  const [dateFilter, setDateFilter] = useState('Tháng này');
+  const [dateFilter, setDateFilter] = useState(() => {
+    return localStorage.getItem('domation_global_date') || 'Tháng này';
+  });
+
+  const handleUpdateDateFilter = (val: string) => {
+    setDateFilter(val);
+    localStorage.setItem('domation_global_date', val);
+    window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
+  };
+
   const [chartMode, setChartMode] = useState<'day' | 'hour'>('day');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [settings, setSettings] = useState<any>(null);
@@ -172,6 +181,26 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
   }, [dateFilter, chartMode, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      const savedDate = localStorage.getItem('domation_global_date');
+      if (savedDate && savedDate !== dateFilter) {
+        setDateFilter(savedDate);
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleGlobalDate = (e: any) => {
+      const newDate = e.detail;
+      if (newDate && newDate !== dateFilter) {
+        setDateFilter(newDate);
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
+  }, [dateFilter]);
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -348,7 +377,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     // startDate/endDate from <input type="date"> are already in YYYY-MM-DD format
     const label = `${startDate} đến ${endDate}`;
 
-    setDateFilter(label);
+    handleUpdateDateFilter(label);
     setShowDateModal(false);
   };
 
@@ -434,7 +463,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   setShowDateModal(true);
                   return;
                 }
-                setDateFilter(String(val));
+                handleUpdateDateFilter(String(val));
               }}
               width="100%"
             />

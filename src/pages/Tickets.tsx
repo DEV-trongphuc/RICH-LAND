@@ -230,7 +230,12 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
-  const dateFilter = searchParams.get('date') || 'Tháng này';
+
+  const getInitialDateFilter = () => {
+    return localStorage.getItem('domation_global_date') || 'Tháng này';
+  };
+  const dateFilter = searchParams.get('date') || getInitialDateFilter();
+
   const currentPage = Number(searchParams.get('page') || '1');
 
   const [showDateModal, setShowDateModal] = useState(false);
@@ -406,6 +411,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   const updateParams = (key: string, value: string) => {
+    if (key === 'date') {
+      localStorage.setItem('domation_global_date', value);
+      window.dispatchEvent(new CustomEvent('global-date-change', { detail: value }));
+    }
     setSearchParams((prev: any) => {
       if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
       else prev.set(key, value);
@@ -488,6 +497,32 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       fetchReports();
     }
   }, [searchParams, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      const saved = localStorage.getItem('domation_global_date');
+      if (saved && searchParams.get('date') !== saved) {
+        setSearchParams((prev: any) => {
+          prev.set('date', saved);
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleGlobalDate = (e: any) => {
+      const newDate = e.detail;
+      if (newDate && searchParams.get('date') !== newDate) {
+        setSearchParams((prev: any) => {
+          prev.set('date', newDate);
+          return prev;
+        }, { replace: true });
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchAPI('get_settings')

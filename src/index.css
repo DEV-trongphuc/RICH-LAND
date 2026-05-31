@@ -369,19 +369,19 @@
 
 [data-theme="dark"] {
   /* Brand & Layout Backgrounds */
-  --color-bg: #0b0f17;             /* Darker, richer deep navy-slate background */
-  --color-surface: #121824;        /* Soft card surface background */
-  --sidebar-bg: #141b29;           /* Cohesive deep navy sidebar background */
-  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --color-bg: #060913;             /* Premium deep slate-navy background */
+  --color-surface: #0f1422;        /* Luminous deep slate-navy card surface */
+  --sidebar-bg: #0a0e1a;           /* Darker navy-slate sidebar for contrast hierarchy */
+  --sidebar-hover: rgba(255, 255, 255, 0.04);
   --sidebar-active: rgba(139, 92, 246, 0.15); /* Softer violet active theme state */
 
-  /* Soft and Clean Borders */
-  --color-border: rgba(148, 163, 184, 0.12);       /* Clean refined border */
-  --color-border-light: rgba(148, 163, 184, 0.06); /* Finer separator line */
+  /* Soft and Premium Indigo/Navy Border Accents */
+  --color-border: rgba(99, 102, 241, 0.15);        /* Slate-indigo border tint */
+  --color-border-light: rgba(99, 102, 241, 0.08);  /* Subtle divider tint */
 
-  --color-text: #f1f5f9;           /* Soft slate-100 off-white text (prevents glare) */
-  --color-text-light: #cbd5e1;     /* Soft secondary text */
-  --color-text-muted: #94a3b8;     /* Slate-400 for descriptions and muted elements */
+  --color-text: #f8fafc;           /* Slate-50 crisp readable text */
+  --color-text-light: #cbd5e1;     /* Slate-300 secondary text */
+  --color-text-muted: #64748b;     /* Slate-500 muted text */
 
   /* Cohesive Violet Brand Accent */
   --color-primary: #a78bfa;        /* Softer violet-400 for text accents, badges, toggles */
@@ -390,28 +390,28 @@
 
   /* Optimized Semantic Badges/Alerts Contrast for eye-friendly reading */
   --color-success: #34d399;        /* Emerald-400 for vibrant and highly legible success labels */
-  --color-success-light: rgba(52, 211, 153, 0.1);
+  --color-success-light: rgba(52, 211, 153, 0.08);
   --color-warning: #fbbf24;        /* Amber-400 warm yellow for warning labels */
-  --color-warning-light: rgba(251, 191, 36, 0.1);
+  --color-warning-light: rgba(251, 191, 36, 0.08);
   --color-danger: #f87171;         /* Red-400 soft coral red for danger labels */
-  --color-danger-light: rgba(248, 113, 113, 0.1);
+  --color-danger-light: rgba(248, 113, 113, 0.08);
   --color-info: #60a5fa;           /* Blue-400 sky blue for info labels */
-  --color-info-light: rgba(96, 165, 250, 0.1);
+  --color-info-light: rgba(96, 165, 250, 0.08);
 
   /* Temperature Score colors optimized for dark theme reading */
   --score-hot: #f87171;
   --score-warm: #fb923c;
   --score-neutral: #fbbf24;
   --score-cool: #60a5fa;
-  --score-cold: #94a3b8;
+  --score-cold: #64748b;
 
-  /* Colored Glow Shadows for Dark Theme Elevation */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 32px -4px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.4);
-  --shadow-primary: 0 8px 24px -4px rgba(139, 92, 246, 0.25);
+  /* Premium Elevated Dark Theme Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.65), 0 4px 12px -4px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 32px -4px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 8px 24px -4px rgba(139, 92, 246, 0.3);
 }
 
 [data-theme="dark"] th {
@@ -576,8 +576,8 @@ ul {
 }
 
 [data-theme="dark"] .glass {
-  background: rgba(26, 26, 36, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 21, 36, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .card-body {
@@ -886,7 +886,7 @@ select:focus {
 [data-theme="dark"] .form-textarea,
 [data-theme="dark"] .form-control,
 [data-theme="dark"] select {
-  background: #080b11;
+  background: #060913;
   border-color: var(--color-border);
 }
 
@@ -903,7 +903,7 @@ select:focus {
 }
 
 [data-theme="dark"] .filter-search {
-  background: #080b11;
+  background: #060913;
   border-color: var(--color-border);
 }
 
@@ -921,7 +921,7 @@ select:focus {
 }
 
 [data-theme="dark"] .modal-footer {
-  background: #0e121d;
+  background: #0a0e1a;
   border-top-color: var(--color-border);
 }
 
@@ -2626,7 +2626,7 @@ th.col-check {
    OPTIMIZED DARK THEME BUTTONS & SEMANTICS (Contrast Fixes)
    ================================================ */
 [data-theme="dark"] .btn.primary {
-  color: #0b0f17 !important; /* Dark navy text on light violet background for premium contrast */
+  color: #060913 !important; /* Dark navy text on light violet background for premium contrast */
   font-weight: 800;
   box-shadow: 0 4px 12px 0 rgba(167, 139, 250, 0.2);
 }
@@ -2647,7 +2647,7 @@ th.col-check {
 
 /* Selector targeting warning buttons with inline var(--color-warning) styling on dark theme */
 [data-theme="dark"] button[style*="var(--color-warning)"] {
-  color: #0b0f17 !important; /* Dark text on bright amber button for accessibility */
+  color: #060913 !important; /* Dark text on bright amber button for accessibility */
   font-weight: 800;
 }
 

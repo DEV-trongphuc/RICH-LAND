@@ -27,7 +27,15 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   const [data, setData] = useState<any>(null);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('Tháng này');
+  const [dateFilter, setDateFilter] = useState(() => {
+    return localStorage.getItem('domation_global_date') || 'Tháng này';
+  });
+
+  const handleUpdateDateFilter = (val: string) => {
+    setDateFilter(val);
+    localStorage.setItem('domation_global_date', val);
+    window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
+  };
   const [roundFilter, setRoundFilter] = useState(() => {
     return searchParams.get('round_id') || '';
   });
@@ -349,12 +357,32 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
     }
   }, [dateFilter, roundFilter, isActive]);
 
+  useEffect(() => {
+    if (isActive) {
+      const savedDate = localStorage.getItem('domation_global_date');
+      if (savedDate && savedDate !== dateFilter) {
+        setDateFilter(savedDate);
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleGlobalDate = (e: any) => {
+      const newDate = e.detail;
+      if (newDate && newDate !== dateFilter) {
+        setDateFilter(newDate);
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
+  }, [dateFilter]);
+
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) return toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
     if (new Date(startDate) > new Date(endDate)) return toast.error(t("Từ ngày không được lớn hơn Đến ngày"));
 
     const label = `${startDate} ${t('đến')} ${endDate}`;
-    setDateFilter(label);
+    handleUpdateDateFilter(label);
     setShowDateModal(false);
   };
 
@@ -904,7 +932,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                   setShowDateModal(true);
                   return;
                 }
-                setDateFilter(String(val));
+                handleUpdateDateFilter(String(val));
               }}
               width="100%"
             />
@@ -1414,12 +1442,32 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {t("Bảng Thống Kê Độ Lệch Chi Tiết")} {isSimulating && <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderRadius: '6px', fontWeight: 800 }}>{t("MÔ PHỎNG")}</span>}
             </h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
-              {isSimulating
-                ? t("Đang ở chế độ giả lập. Bật/tắt ca trực (checkbox) và điều chỉnh thanh trượt (slider) của từng Sale để xem kết quả.")
-                : t("Chi tiết từng Sale trong vòng được audit: Tỷ lệ (Ratio) cài đặt, số lead nhận được, và đánh giá lệch so với trung bình hệ thống.")
-              }
-            </p>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+              {isSimulating ? (
+                <span>{t("Đang ở chế độ giả lập. Bật/tắt ca trực (checkbox) và điều chỉnh thanh trượt (slider) của từng Sale để xem kết quả.")}</span>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 6px' }}>
+                  <span>{t("Chi tiết từng Sale trong vòng được audit: Tỷ lệ (Ratio) cài đặt, số lead nhận được")}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-border-light)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600 }}>
+                    <span>{t("Thành công")}</span>
+                    <span style={{ opacity: 0.7 }}>=</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                      {t("Đã chia")}
+                    </span>
+                    <span style={{ opacity: 0.7 }}>+</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#6366f1' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6366f1' }} />
+                      {t("Bù")}
+                    </span>
+                  </span>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                    {t("(không tính lead bị trùng, lỗi/ticket, nhắc lại, blacklist...)")}
+                  </span>
+                  <span>{t(", và đánh giá lệch so với trung bình hệ thống.")}</span>
+                </div>
+              )}
+            </div>
           </div>
           <span style={{ fontSize: '0.7rem', padding: '4px 10px', borderRadius: 8, background: 'var(--color-border-light)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text-light)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Layers size={12} /> {t("Số Sale được đo lường:")} {activeData?.consultants?.length || 0}
@@ -1461,7 +1509,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                   }}>
                     Ratio {isSimulating && t("(Nhập)")}
                   </th>
-                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>{t("Lead Nhận")}</th>
+                  <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>{t("Thành công")}</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>{t("Phân bổ theo Nguồn")}</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>{t("Duyệt Ticket")}</th>
                   <th style={{ padding: '14px 18px', fontSize: '0.72rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', textAlign: 'center' }}>{t("Data bù")}</th>
@@ -1838,7 +1886,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                 {/* Core Stats Overview */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Tổng Data Đã Chia")}</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Thành công")}</span>
                     <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
                   </div>
                   <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>

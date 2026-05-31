@@ -93,6 +93,12 @@ const RoundsInner = () => {
 
   // Compensation Modal State
   const [compModalOpen, setCompModalOpen] = useState(false);
+
+  // CC config states
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAdmins, setSelectedAdmins] = useState<string[]>([]);
+  const [enableExternalCc, setEnableExternalCc] = useState(false);
+  const [externalCcEmails, setExternalCcEmails] = useState('');
   const [compRound, setCompRound] = useState<any>(null);
   const [compData, setCompData] = useState<Record<number, number>>({});
   const [compReasons, setCompReasons] = useState<Record<number, string>>({});
@@ -136,9 +142,19 @@ const RoundsInner = () => {
     setLoading(false);
   };
 
+  const fetchAccounts = async () => {
+    try {
+      const json = await fetchAPI('get_accounts');
+      if (json.success) setAccounts(json.data || []);
+    } catch (e: any) {
+      console.error(t('Không thể tải tài khoản:'), e.message);
+    }
+  };
+
   useEffect(() => {
     fetchRounds();
     fetchConsultants();
+    fetchAccounts();
   }, []);
 
   useEffect(() => {
@@ -152,6 +168,9 @@ const RoundsInner = () => {
   const openAddModal = () => {
     setEditingRound(null);
     setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false });
+    setSelectedAdmins([]);
+    setEnableExternalCc(false);
+    setExternalCcEmails('');
     setModalOpen(true);
   };
 
@@ -207,6 +226,22 @@ const RoundsInner = () => {
       compensations: r.compensations || {},
       is_fallback: !!r.is_fallback
     });
+
+    // Parse cc_emails into selected admins and external emails
+    const emailsList = r.cc_emails
+      ? r.cc_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
+      : [];
+    const adminEmails = accounts
+      .filter(a => (a.role === 'admin' || Number(a.id) === 1) && a.email)
+      .map(a => a.email.trim().toLowerCase());
+    
+    const matchedAdmins = emailsList.filter((e: string) => adminEmails.includes(e.toLowerCase()));
+    const externalEmails = emailsList.filter((e: string) => !adminEmails.includes(e.toLowerCase()));
+
+    setSelectedAdmins(matchedAdmins);
+    setEnableExternalCc(externalEmails.length > 0);
+    setExternalCcEmails(externalEmails.join(', '));
+
     setModalOpen(true);
     fetchReports(r.id);
     fetchActiveLogs(r.id);
@@ -264,7 +299,20 @@ const RoundsInner = () => {
     setIsSaving(true);
     try {
       const action = editingRound ? 'edit_round' : 'add_round';
-      const payload = { ...formData, id: editingRound?.id, consultants: formData.selected_users };
+
+      // Combine selected admin emails and external emails
+      const adminsPart = selectedAdmins;
+      const externalPart = enableExternalCc
+        ? externalCcEmails.split(',').map((e: string) => e.trim()).filter(Boolean)
+        : [];
+      const combinedCcEmails = [...adminsPart, ...externalPart].join(', ');
+
+      const payload = { 
+        ...formData, 
+        cc_emails: combinedCcEmails,
+        id: editingRound?.id, 
+        consultants: formData.selected_users 
+      };
 
       const json = await fetchAPI(action, {
         method: 'POST',
@@ -947,15 +995,101 @@ const RoundsInner = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">{t("Email CC khi chia Data")}</label>
-                      <input
-                        className="form-input"
-                        placeholder={t("VD: giamdoc@domation.vn, quanly@domation.vn")}
-                        value={formData.cc_emails}
-                        onChange={e => setFormData({ ...formData, cc_emails: e.target.value })}
-                      />
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t("Phân tách các email bằng dấu phẩy (,). Các email này sẽ nhận thông báo mỗi khi có Data rơi vào vòng này.")}</p>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Users size={14} /> {t("Chọn Admin nhận CC khi chia Data")}
+                      </label>
+                      {(() => {
+                        const admins = accounts.filter(a => (a.role === 'admin' || Number(a.id) === 1) && a.email);
+                        if (admins.length === 0) {
+                          return (
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '4px 0 12px' }}>
+                              {t("Không có tài khoản Admin nào có email")}
+                            </p>
+                          );
+                        }
+                        return (
+                          <div className="custom-scrollbar" style={{
+                            maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem',
+                            border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.5rem', background: 'var(--color-bg)'
+                          }}>
+                            {admins.map(admin => {
+                              const isSelected = selectedAdmins.includes(admin.email);
+                              return (
+                                <div
+                                  key={admin.id}
+                                  onClick={() => {
+                                    setSelectedAdmins(prev => 
+                                      prev.includes(admin.email) 
+                                        ? prev.filter(e => e !== admin.email) 
+                                        : [...prev, admin.email]
+                                    );
+                                  }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.5rem',
+                                    borderRadius: '6px', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                                    border: '1px solid ' + (isSelected ? 'var(--color-primary-light)' : 'var(--color-border-light)'),
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={e => {
+                                    if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    if (!isSelected) e.currentTarget.style.background = 'var(--color-surface)';
+                                  }}
+                                >
+                                  <Avatar src={admin.avatar} name={admin.name} size={24} />
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>
+                                      {admin.name}
+                                    </p>
+                                    <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                      {admin.email}
+                                    </p>
+                                  </div>
+                                  <div style={{
+                                    width: 16, height: 16, borderRadius: '4px', border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? 'var(--color-primary)' : 'transparent',
+                                    transition: 'all 0.15s ease'
+                                  }}>
+                                    {isSelected && <Check size={10} color="white" strokeWidth={3} />}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
+
+                    <div className="form-group" style={{ marginTop: '-0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                          {t("Nhận thêm CC email ngoài hệ thống")}
+                        </label>
+                        <ToggleSwitch
+                          checked={enableExternalCc}
+                          onChange={(checked) => setEnableExternalCc(checked)}
+                        />
+                      </div>
+                    </div>
+
+                    {enableExternalCc && (
+                      <div className="form-group" style={{ 
+                        marginTop: '-0.25rem',
+                        animation: 'fadeIn 0.2s ease-out'
+                      }}>
+                        <label className="form-label">{t("Nhập CC email ngoài hệ thống")}</label>
+                        <input
+                          className="form-input"
+                          placeholder={t("VD: giamdoc@domation.vn, quanly@domation.vn")}
+                          value={externalCcEmails}
+                          onChange={e => setExternalCcEmails(e.target.value)}
+                        />
+                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          {t("Phân tách các email bằng dấu phẩy (,).")}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="form-group">
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t("Trạng thái Vòng")}</label>

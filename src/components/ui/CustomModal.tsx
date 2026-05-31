@@ -21,7 +21,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   width, 
   children, 
   showCloseIcon = true,
-  disableAnimation = true
+  disableAnimation = false
 }) => {
   // Prevent body scroll when modal is open
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
@@ -404,6 +404,35 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       if (key !== 'page') prev.delete('page');
       return prev;
     }, { replace: true });
+  };
+
+  const [copiedType, setCopiedType] = useState<string | null>(null);
+
+  const handleCopyText = (text: string, successMessage: string, type?: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast.success(successMessage);
+        if (type) {
+          setCopiedType(type);
+          setTimeout(() => setCopiedType(null), 1500);
+        }
+      })
+      .catch(() => toast.error(t('Lỗi khi sao chép')));
+  };
+
+  const handleCopyFullInfo = (lead: Lead) => {
+    const isUserAdmin = user?.role === 'admin';
+    const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
+    const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
+    const text = [
+      `${t('Họ tên')}: ${lead.name || ''}`,
+      `${t('Số điện thoại')}: ${displayPhone || ''}`,
+      `Email: ${displayEmail || ''}`,
+      `${t('Nguồn')}: ${lead.source || ''}`,
+      `${t('Loại')}: ${lead.type || ''}`,
+      `${t('Ghi chú')}: ${lead.note || ''}`
+    ].join('\n');
+    handleCopyText(text, t('Đã sao chép toàn bộ thông tin khách hàng!'), 'full');
   };
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -1800,6 +1829,42 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {!isAdminEditingLead && (
+                      <button
+                        onClick={() => selectedLead && handleCopyFullInfo(selectedLead)}
+                        title={t("Sao chép toàn bộ thông tin")}
+                        style={{
+                          background: copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                          border: copiedType === 'full' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.2)',
+                          borderRadius: '10px',
+                          padding: '8px 18px',
+                          color: copiedType === 'full' ? '#10b981' : '#3b82f6',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 2px 6px rgba(59, 130, 246, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = copiedType === 'full' ? '#10b981' : '#3b82f6';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = copiedType === 'full' ? '0 6px 15px rgba(16, 185, 129, 0.2)' : '0 6px 15px rgba(59, 130, 246, 0.2)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)';
+                          e.currentTarget.style.color = copiedType === 'full' ? '#10b981' : '#3b82f6';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(59, 130, 246, 0.05)';
+                        }}
+                      >
+                        {copiedType === 'full' ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedType === 'full' ? t('Đã chép') : t('Sao chép')}
+                      </button>
+                    )}
                     {user?.role === 'admin' && (
                       <>
                         {isAdminEditingLead ? (
@@ -1996,8 +2061,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
+                          {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                        </span>
+                        {!isAdminEditingLead && (
+                          <button
+                            onClick={() => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone')}
+                            title={t("Sao chép số điện thoại")}
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              color: copiedType === 'phone' ? '#10b981' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              transition: 'all 0.2s',
+                              background: copiedType === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
+                            }}
+                            onMouseOver={e => {
+                              e.currentTarget.style.color = copiedType === 'phone' ? '#10b981' : 'var(--color-primary)';
+                              e.currentTarget.style.background = copiedType === 'phone' ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)';
+                            }}
+                            onMouseOut={e => {
+                              e.currentTarget.style.color = copiedType === 'phone' ? '#10b981' : 'var(--color-text-muted)';
+                              e.currentTarget.style.background = copiedType === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+                            }}
+                          >
+                            {copiedType === 'phone' ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2032,8 +2125,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
-                        {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
+                          {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                        </span>
+                        {!isAdminEditingLead && (
+                          <button
+                            onClick={() => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email')}
+                            title={t("Sao chép email")}
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              color: copiedType === 'email' ? '#10b981' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              transition: 'all 0.2s',
+                              background: copiedType === 'email' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
+                            }}
+                            onMouseOver={e => {
+                              e.currentTarget.style.color = copiedType === 'email' ? '#10b981' : 'var(--color-primary)';
+                              e.currentTarget.style.background = copiedType === 'email' ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)';
+                            }}
+                            onMouseOut={e => {
+                              e.currentTarget.style.color = copiedType === 'email' ? '#10b981' : 'var(--color-text-muted)';
+                              e.currentTarget.style.background = copiedType === 'email' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+                            }}
+                          >
+                            {copiedType === 'email' ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

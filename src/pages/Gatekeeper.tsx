@@ -525,7 +525,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   }, []);
 
   // Search Params
-  const dateFilter = searchParams.get('date') || 'Tháng này';
+  const getInitialDateFilter = () => {
+    return localStorage.getItem('domation_global_date') || 'Tháng này';
+  };
+  const dateFilter = searchParams.get('date') || getInitialDateFilter();
+
   const currentPage = Number(searchParams.get('page') || '1');
 
   // Lists & Configs States
@@ -739,6 +743,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     if (currentValue === value || (value === '1' && key === 'page' && !searchParams.has('page'))) {
       return;
     }
+    if (key === 'date') {
+      localStorage.setItem('domation_global_date', value);
+      window.dispatchEvent(new CustomEvent('global-date-change', { detail: value }));
+    }
     setSearchParams((prev: any) => {
       const next = new URLSearchParams(prev);
       if (value === '' || (key !== 'status' && value === 'all')) next.delete(key);
@@ -920,6 +928,34 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     fetchHeldLeads();
     fetchDashboardStats();
   };
+
+  useEffect(() => {
+    if (isActive) {
+      const saved = localStorage.getItem('domation_global_date');
+      if (saved && searchParams.get('date') !== saved) {
+        setSearchParams((prev: any) => {
+          const next = new URLSearchParams(prev);
+          next.set('date', saved);
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleGlobalDate = (e: any) => {
+      const newDate = e.detail;
+      if (newDate && searchParams.get('date') !== newDate) {
+        setSearchParams((prev: any) => {
+          const next = new URLSearchParams(prev);
+          next.set('date', newDate);
+          return next;
+        }, { replace: true });
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
+  }, [searchParams]);
 
   const fetchSettings = async () => {
     setSettingsLoading(true);
