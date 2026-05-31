@@ -1252,9 +1252,18 @@ const RoundsInner = () => {
                                 onMouseLeave={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'transparent'; }}
                               >
                                 <Avatar src={user.avatar} name={user.name} size={28} />
-                                <div style={{ flex: 1 }}>
-                                  <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>{user.name}</p>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email} • {user.status === 'active' ? t('Đang nhận data') : t('Không nhận data')}</p>
+                                 <div style={{ flex: 1 }}>
+                                  <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{user.name}</p>
+                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                                    {user.email && (
+                                      <img
+                                        src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                        alt="Gmail"
+                                        style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <span>{user.email} • {user.status === 'active' ? t('Đang nhận data') : t('Không nhận data')}</span>
+                                  </p>
                                 </div>
                                 {isSelected && <Check size={16} color="var(--color-primary)" />}
                               </div>
@@ -1293,7 +1302,18 @@ const RoundsInner = () => {
                                       </span>
                                     )}
                                   </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    {user.email && (
+                                      <>
+                                        <img
+                                          src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                          alt="Gmail"
+                                          style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                        />
+                                        <span>{user.email}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                                 <button
                                   type="button"

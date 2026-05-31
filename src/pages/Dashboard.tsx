@@ -1149,7 +1149,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onClick={() => navigate(`/data?search=${encodeURIComponent(log.phone)}`)}
+                      onClick={() => navigate(`/data?open_id=${log.id}&auto_open=true`)}
                     >
                       <Avatar
                         src={

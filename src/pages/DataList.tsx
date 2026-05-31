@@ -509,6 +509,35 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [searchParams, isActive]);
+  useEffect(() => {
+    if (isActive && leads.length > 0) {
+      const autoOpen = searchParams.get('auto_open');
+      const openId = searchParams.get('open_id');
+      const phoneParam = searchParams.get('search');
+      
+      if (autoOpen === 'true' || openId) {
+        let foundLead = null;
+        if (openId) {
+          foundLead = leads.find(l => String(l.id) === String(openId) || String(l.lead_id) === String(openId));
+        }
+        if (!foundLead && phoneParam) {
+          foundLead = leads.find(l => l.phone === phoneParam);
+        }
+        if (!foundLead && leads.length === 1) {
+          foundLead = leads[0];
+        }
+        if (foundLead) {
+          setSelectedLead(foundLead);
+          
+          setSearchParams((prev: any) => {
+            prev.delete('auto_open');
+            prev.delete('open_id');
+            return prev;
+          }, { replace: true });
+        }
+      }
+    }
+  }, [leads, searchParams, isActive]);
 
   const updateParams = (key: string, value: string) => {
     setSearchParams((prev: any) => {
