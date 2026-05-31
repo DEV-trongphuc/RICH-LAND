@@ -369,49 +369,49 @@
 
 [data-theme="dark"] {
   /* Brand & Layout Backgrounds */
-  --color-bg: #0b0f19;             /* Premium cosmic space background */
-  --color-surface: #121826;        /* Slate dark surface, standing out beautifully from bg */
-  --sidebar-bg: #161d31;           /* Deep navy-slate sidebar (not too dark/black) */
-  --sidebar-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-active: rgba(99, 102, 241, 0.85); /* Premium indigo theme active */
+  --color-bg: #0b0f17;             /* Darker, richer deep navy-slate background */
+  --color-surface: #121824;        /* Soft card surface background */
+  --sidebar-bg: #141b29;           /* Cohesive deep navy sidebar background */
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: rgba(139, 92, 246, 0.15); /* Softer violet active theme state */
 
-  /* High Contrast Borders */
-  --color-border: rgba(255, 255, 255, 0.08);       /* Clean refined border */
-  --color-border-light: rgba(255, 255, 255, 0.04); /* Finer separator line */
+  /* Soft and Clean Borders */
+  --color-border: rgba(148, 163, 184, 0.12);       /* Clean refined border */
+  --color-border-light: rgba(148, 163, 184, 0.06); /* Finer separator line */
 
-  --color-text: #dadada;           /* Soft light grey text (not too white) */
-  --color-text-light: #cbd5e1;     /* Soft secondary grey text */
-  --color-text-muted: #9ca3af;     /* Slate-400 for secondary text and descriptions */
+  --color-text: #f1f5f9;           /* Soft slate-100 off-white text (prevents glare) */
+  --color-text-light: #cbd5e1;     /* Soft secondary text */
+  --color-text-muted: #94a3b8;     /* Slate-400 for descriptions and muted elements */
 
-  /* Rich Color Accent */
-  --color-primary: #6366f1;        /* Indigo-500 accent color */
-  --color-primary-hover: #4f46e5;  /* Deep indigo-600 */
-  --color-primary-light: rgba(99, 102, 241, 0.15); /* Strong active highlight */
+  /* Cohesive Violet Brand Accent */
+  --color-primary: #a78bfa;        /* Softer violet-400 for text accents, badges, toggles */
+  --color-primary-hover: #c084fc;  /* Purple-400 for interactive hover highlights */
+  --color-primary-light: rgba(167, 139, 250, 0.12); /* Subtle violet glow background */
 
-  /* Optimized Semantic Badges/Alerts Contrast for dark background reading */
-  --color-success: #34d399;        /* Emerald-400 for vibrant and high-legibility green */
-  --color-success-light: rgba(52, 211, 153, 0.14);
-  --color-warning: #fbbf24;        /* Amber-400 warm yellow */
-  --color-warning-light: rgba(251, 191, 36, 0.14);
-  --color-danger: #f87171;         /* Red-400 soft coral red */
-  --color-danger-light: rgba(248, 113, 113, 0.14);
-  --color-info: #60a5fa;           /* Blue-400 sky blue */
-  --color-info-light: rgba(96, 165, 250, 0.14);
+  /* Optimized Semantic Badges/Alerts Contrast for eye-friendly reading */
+  --color-success: #34d399;        /* Emerald-400 for vibrant and highly legible success labels */
+  --color-success-light: rgba(52, 211, 153, 0.1);
+  --color-warning: #fbbf24;        /* Amber-400 warm yellow for warning labels */
+  --color-warning-light: rgba(251, 191, 36, 0.1);
+  --color-danger: #f87171;         /* Red-400 soft coral red for danger labels */
+  --color-danger-light: rgba(248, 113, 113, 0.1);
+  --color-info: #60a5fa;           /* Blue-400 sky blue for info labels */
+  --color-info-light: rgba(96, 165, 250, 0.1);
 
   /* Temperature Score colors optimized for dark theme reading */
   --score-hot: #f87171;
   --score-warm: #fb923c;
   --score-neutral: #fbbf24;
   --score-cool: #60a5fa;
-  --score-cold: #9ca3af;
+  --score-cold: #94a3b8;
 
   /* Colored Glow Shadows for Dark Theme Elevation */
-  --shadow-xs: 0 1px 2px rgba(99, 102, 241, 0.03);
-  --shadow-sm: 0 2px 4px rgba(99, 102, 241, 0.03), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px -2px rgba(99, 102, 241, 0.04), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 24px -4px rgba(99, 102, 241, 0.06), 0 4px 12px -4px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 20px 32px -4px rgba(99, 102, 241, 0.08), 0 8px 16px -8px rgba(0, 0, 0, 0.6);
-  --shadow-primary: 0 8px 24px -4px rgba(99, 102, 241, 0.35);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 32px -4px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 8px 24px -4px rgba(139, 92, 246, 0.25);
 }
 
 [data-theme="dark"] th {
@@ -886,43 +886,43 @@ select:focus {
 [data-theme="dark"] .form-textarea,
 [data-theme="dark"] .form-control,
 [data-theme="dark"] select {
-  background: #0d1321;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #080b11;
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .form-input:focus,
 [data-theme="dark"] .form-textarea:focus,
 [data-theme="dark"] .form-control:focus,
 [data-theme="dark"] select:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25), 0 0 12px rgba(129, 140, 248, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light), 0 0 12px rgba(167, 139, 250, 0.1);
 }
 
 [data-theme="dark"] select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
 [data-theme="dark"] .filter-search {
-  background: #0d1321;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #080b11;
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .filter-search:focus-within {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25), 0 0 12px rgba(129, 140, 248, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light), 0 0 12px rgba(167, 139, 250, 0.1);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 [data-theme="dark"] .modal-footer {
-  background: #0d1321;
-  border-top-color: rgba(255, 255, 255, 0.08);
+  background: #0e121d;
+  border-top-color: var(--color-border);
 }
 
 .form-input.error,
@@ -2620,5 +2620,34 @@ th.col-check {
 :not(html):not(body) {
   scrollbar-width: none !important; /* Firefox */
   -ms-overflow-style: none !important; /* IE/Edge */
+}
+
+/* ================================================
+   OPTIMIZED DARK THEME BUTTONS & SEMANTICS (Contrast Fixes)
+   ================================================ */
+[data-theme="dark"] .btn.primary {
+  color: #0b0f17 !important; /* Dark navy text on light violet background for premium contrast */
+  font-weight: 800;
+  box-shadow: 0 4px 12px 0 rgba(167, 139, 250, 0.2);
+}
+
+[data-theme="dark"] .btn.primary:hover {
+  box-shadow: 0 6px 18px 0 rgba(167, 139, 250, 0.35);
+}
+
+[data-theme="dark"] .btn.success {
+  background: #059669 !important; /* Deeper green for clear white-text contrast */
+  border-color: #059669 !important;
+}
+
+[data-theme="dark"] .btn.danger {
+  background: #dc2626 !important; /* Deeper red for clear white-text contrast */
+  border-color: #dc2626 !important;
+}
+
+/* Selector targeting warning buttons with inline var(--color-warning) styling on dark theme */
+[data-theme="dark"] button[style*="var(--color-warning)"] {
+  color: #0b0f17 !important; /* Dark text on bright amber button for accessibility */
+  font-weight: 800;
 }
 
