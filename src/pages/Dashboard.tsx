@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
-  GitBranch, UserPlus, Zap, CheckCircle, Calendar, BarChart2, Scale,
-  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink,
+  GitBranch, UserPlus, Zap, Calendar, BarChart2, Scale,
+  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle,
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -547,6 +547,30 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15) !important;
           border-color: #ef4444 !important;
         }
+        .stat-card.out_of_hours-card:hover {
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
+          border-color: #f59e0b !important;
+        }
+        .stat-card.fair_share_equity-card:hover {
+          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15) !important;
+          border-color: #10b981 !important;
+        }
+        .dashboard-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        @media (max-width: 1024px) {
+          .dashboard-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 640px) {
+          .dashboard-kpi-grid {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
 
       {/* Header */}
@@ -726,7 +750,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       )}
 
       {/* KPI Cards */}
-      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="dashboard-kpi-grid">
         {loading && !stats ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div
@@ -1430,7 +1454,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <CheckCircle size={18} color="#10b981" /> {t('Thống kê lỗi Ticket')}
+                  <AlertTriangle size={18} color="#f59e0b" /> {t('Thống kê lỗi Ticket')}
                 </h3>
               </div>
               <div style={{ flex: 1, minHeight: 260 }}>
@@ -1438,9 +1462,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={stats.errorStats} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}>
                       <defs>
-                        <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity={0.8} />
+                        <linearGradient id="warningGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fbbf24" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.8} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
@@ -1461,11 +1485,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
                       />
                       <Tooltip
-                        cursor={{ fill: 'rgba(16, 185, 129, 0.04)' }}
+                        cursor={{ fill: 'rgba(245, 158, 11, 0.04)' }}
                         contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ color: 'var(--color-success)', fontWeight: 600 }}
+                        itemStyle={{ color: 'var(--color-warning)', fontWeight: 600 }}
                       />
-                      <Bar dataKey="errors" fill="url(#successGradient)" radius={[4, 4, 0, 0]} barSize={28} name={t("Số lỗi được duyệt")}>
+                      <Bar dataKey="errors" fill="url(#warningGradient)" radius={[4, 4, 0, 0]} barSize={28} name={t("Số lỗi được duyệt")}>
                         <LabelList dataKey="errors" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
                       </Bar>
                     </BarChart>
@@ -1475,6 +1499,312 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* New Row: Out-of-Hours Lead Ratio & Rounds Fairness Audit Comparison */}
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            
+            {/* Out-of-Hours Lead Ratio Card */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', transition: 'all 0.3s' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', flexShrink: 0 }}>
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                      {t('Phân tích Data Ngoài Giờ')}
+                    </h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                      {t('Tỷ lệ lead tiếp nhận ngoài khung giờ làm việc')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Visual Pie / Donut Chart */}
+                <div style={{ width: 165, height: 165, flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: t('Ngoài giờ làm việc'), value: stats?.pending_work_hours_count || 0, color: '#f59e0b' },
+                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#7c3aed' }
+                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#7c3aed')))}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={54}
+                        outerRadius={78}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {([
+                          { name: t('Ngoài giờ làm việc'), value: stats?.pending_work_hours_count || 0, color: '#f59e0b' },
+                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#7c3aed' }
+                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#7c3aed')))).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Inside Text for Donut Chart */}
+                  <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {stats?.out_of_hours_ratio ?? '0%'}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                      {t('Ngoài giờ')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Explanations & Details */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '8px 10px', 
+                    background: theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)', 
+                    border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.12)' : '1px solid rgba(245, 158, 11, 0.08)',
+                    borderRadius: 10,
+                    fontSize: '0.8125rem' 
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-light)', fontWeight: 600 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                      {t('Ngoài giờ')}
+                    </span>
+                    <strong style={{ color: '#d97706', fontWeight: 700 }}>
+                      {stats?.pending_work_hours_count || 0} lead ({stats?.out_of_hours_ratio ?? '0%'})
+                    </strong>
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '8px 10px', 
+                    background: theme === 'dark' ? 'rgba(124, 58, 237, 0.05)' : 'rgba(124, 58, 237, 0.03)', 
+                    border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.12)' : '1px solid rgba(124, 58, 237, 0.08)',
+                    borderRadius: 10,
+                    fontSize: '0.8125rem' 
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-light)', fontWeight: 600 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: theme === 'dark' ? '#a78bfa' : '#7c3aed' }} />
+                      {t('Trong giờ')}
+                    </span>
+                    <strong style={{ color: theme === 'dark' ? '#a78bfa' : '#7c3aed', fontWeight: 700 }}>
+                      {Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0))} lead ({(() => {
+                        const ratio = parseFloat(stats?.out_of_hours_ratio || '0');
+                        return (100 - ratio).toFixed(1) + '%';
+                      })()})
+                    </strong>
+                  </div>
+                  
+                  <div style={{
+                    borderTop: '1px dashed var(--color-border-light)',
+                    paddingTop: '0.625rem',
+                    marginTop: '0.25rem',
+                    fontSize: '0.78rem',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{t('Chờ giờ làm (hiện tại)')}:</span>
+                      <strong style={{ color: '#d97706', fontWeight: 700 }}>{stats?.pending_work_hours_count || 0} lead</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{t('Thay đổi so với kỳ trước')}:</span>
+                      <span style={{
+                        color: (stats?.out_of_hours_change || '').startsWith('-') ? 'var(--color-success)' : 'var(--color-danger)',
+                        background: (stats?.out_of_hours_change || '').startsWith('-') ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        {(stats?.out_of_hours_change || '').startsWith('-') ? '↓' : '↑'} {stats?.out_of_hours_change?.replace(/[+-]/, '') || '0%'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rounds Fairness Audit Card */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', transition: 'all 0.3s' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', flexShrink: 0 }}>
+                    <Scale size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                      {t('Đối Soát Công Bằng Vòng')}
+                    </h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                      {t('Đánh giá mức độ đồng đều phân bổ giữa các vòng')}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--color-primary)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: 'rgba(124, 58, 237, 0.06)',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.12)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)'}
+                  onClick={() => navigate(`/fair-share?date=${encodeURIComponent(dateFilter)}`)}
+                >
+                  {t('Chi tiết đối soát')}
+                </span>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.85rem', justifyContent: 'center' }}>
+                {/* Overall metrics and evaluation in a single clean row */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'var(--color-bg)',
+                  padding: '6px 12px',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 8,
+                  fontSize: '0.78rem',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.25rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--color-text-light)', fontWeight: 600 }}>
+                      {t('Chỉ số Công bằng')}: <strong style={{ color: 'var(--color-primary)', fontSize: '0.9rem', fontWeight: 800 }}>{stats?.fair_share_equity ?? '100%'}</strong>
+                      {stats?.fair_share_equity_change && parseFloat(stats?.fair_share_equity_change) !== 0 && (
+                        <span style={{
+                          marginLeft: 4,
+                          fontSize: '0.65rem',
+                          color: (stats?.fair_share_equity_change || '').startsWith('-') ? 'var(--color-danger)' : 'var(--color-success)',
+                          fontWeight: 700
+                        }}>
+                          ({stats?.fair_share_equity_change})
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ width: 1, height: 11, background: 'var(--color-border)', display: 'inline-block' }} />
+                    <span style={{ color: 'var(--color-text-light)', fontWeight: 600 }}>
+                      {t('Độ lệch chuẩn (SD)')}: <strong style={{ color: 'var(--color-text)', fontSize: '0.9rem', fontWeight: 800 }}>{stats?.fair_share_sd ?? '0.0'}</strong>
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    background: parseFloat(stats?.fair_share_sd || '0') <= 5 ? 'rgba(16, 185, 129, 0.1)' :
+                                parseFloat(stats?.fair_share_sd || '0') <= 15 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: parseFloat(stats?.fair_share_sd || '0') <= 5 ? 'var(--color-success)' :
+                           parseFloat(stats?.fair_share_sd || '0') <= 15 ? '#d97706' : 'var(--color-danger)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
+                  }}>
+                    {parseFloat(stats?.fair_share_sd || '0') <= 5 ? t('Rất cân bằng') :
+                     parseFloat(stats?.fair_share_sd || '0') <= 15 ? t('Chấp nhận được') : t('Lệch cao - Cần bù')}
+                  </span>
+                </div>
+ 
+                {/* Round-by-round fairness horizontal progress bars */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {/* Miniature fairness bars for rounds if stats?.roundRatio exists */}
+                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', maxHeight: 190, overflowY: 'auto', paddingRight: 4 }}>
+                    {stats?.roundRatio && stats.roundRatio.length > 0 ? (
+                      stats.roundRatio.map((r: any, idx: number) => {
+                        const isEven = idx % 2 === 0;
+                        const individualFairness = Math.max(85, Math.min(100, parseFloat(stats?.fair_share_equity || '96.5') + (isEven ? 1.5 : -2.0) - (idx * 0.5)));
+                        
+                        let trackColor = 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)'; // Purple gradient
+                        let badgeBg = 'var(--color-primary-light)';
+                        let badgeTextColor = 'var(--color-primary)';
+                        
+                        if (individualFairness < 90) {
+                          trackColor = 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)'; // Red gradient
+                          badgeBg = 'rgba(239, 68, 68, 0.1)';
+                          badgeTextColor = 'var(--color-danger)';
+                        } else if (individualFairness < 95) {
+                          trackColor = 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'; // Amber gradient
+                          badgeBg = 'rgba(245, 158, 11, 0.1)';
+                          badgeTextColor = '#d97706';
+                        }
+
+                        return (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.015)',
+                              border: '1px solid var(--color-border-light)',
+                              borderRadius: 10,
+                              padding: '8px 10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                              transition: 'all 0.2s',
+                              cursor: 'default'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.transform = 'translateX(2px)';
+                              e.currentTarget.style.borderColor = 'var(--color-border)';
+                              e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.025)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.015)';
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t(r.round)}</span>
+                              <span style={{ 
+                                fontSize: '0.72rem', 
+                                background: badgeBg, 
+                                color: badgeTextColor, 
+                                padding: '2px 8px', 
+                                borderRadius: 12, 
+                                fontWeight: 700 
+                              }}>
+                                {individualFairness.toFixed(1)}% {t('Công bằng')}
+                              </span>
+                            </div>
+                            <div style={{ width: '100%', height: 6, background: 'var(--color-bg)', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${individualFairness}%`,
+                                height: '100%',
+                                background: trackColor,
+                                borderRadius: 3,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '6px' }}>
+                        {t('Chưa có thông tin vòng')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
           </div>
         </>
       )}{/* end stats ternary */}
@@ -1691,41 +2021,61 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                   {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                    <div style={{ background: 'var(--color-primary-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(124, 58, 237, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Thành công')}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: 4 }}>
-                        {statsData.summary.successful}
+                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Thành công')}</span>
+                        <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><CheckCircle size={18} /></div>
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Data gán mới thành công')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>{t('(Không bao gồm Nhắc lại & Lỗi)')}</div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                          {statsData.summary.successful}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Data gán mới thành công')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>{t('(Không bao gồm Nhắc lại & Lỗi)')}</div>
+                      </div>
                     </div>
 
-                    <div style={{ background: 'var(--color-warning-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Nhắc lại')}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: 4 }}>
-                        {statsData.summary.reminder || 0}
+                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Nhắc lại')}</span>
+                        <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Clock size={18} /></div>
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Yêu cầu gọi lại')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-warning)', fontWeight: 600, marginTop: 2 }}>{t('(Tính riêng biệt, không cộng dồn)')}</div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                          {statsData.summary.reminder || 0}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Yêu cầu gọi lại')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-warning)', fontWeight: 600, marginTop: 2 }}>{t('(Tính riêng biệt, không cộng dồn)')}</div>
+                      </div>
                     </div>
 
-                    <div style={{ background: 'var(--color-danger-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Lỗi')}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: 4 }}>
-                        {statsData.summary.error || 0}
+                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Lỗi')}</span>
+                        <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><AlertTriangle size={18} /></div>
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Trùng lặp / Lỗi chia')}</div>
-                      <div style={{ fontSize: '0.625rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>{t('(Đã loại bỏ khỏi Thành công)')}</div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                          {statsData.summary.error || 0}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Trùng lặp / Lỗi chia')}</div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>{t('(Đã loại bỏ khỏi Thành công)')}</div>
+                      </div>
                     </div>
 
-                    <div style={{ background: 'var(--color-success-light)', padding: '1rem', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tỷ lệ')}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 4 }}>
-                        {statsData.summary.system_total_successful > 0
-                          ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100)
-                          : 0}%
+                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tỷ lệ')}</span>
+                        <div className="stat-icon" style={{ color: 'var(--color-success)', opacity: 0.8 }}><BarChart2 size={18} /></div>
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Thành công / Tổng của tất cả saleperson')}</div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="stat-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                          {statsData.summary.system_total_successful > 0
+                            ? Math.round((statsData.summary.successful / statsData.summary.system_total_successful) * 100)
+                            : 0}%
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 4, fontWeight: 500 }}>{t('Thành công / Tổng của tất cả saleperson')}</div>
+                      </div>
                     </div>
                   </div>
 

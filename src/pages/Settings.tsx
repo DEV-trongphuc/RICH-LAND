@@ -916,7 +916,7 @@ const SettingsInner = () => {
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
           <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
             {/* AI Assistant Tab Content */}
-            <div style={{ display: activeTab === 'ai' ? 'block' : 'none', animation: activeTab === 'ai' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 6, borderRadius: 6 }}>
@@ -982,7 +982,7 @@ const SettingsInner = () => {
 
             </div>
 
-            <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none', animation: activeTab === 'duplicate_check' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {checkedResults.length > 0 ? (
                   // Screen 1: Checked Results Table
@@ -1754,7 +1754,7 @@ const SettingsInner = () => {
             </div>
 
             {/* Cấu hình Gửi tin & Email */}
-            <div style={{ display: activeTab === 'communications' ? 'block' : 'none', animation: activeTab === 'communications' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div style={{ display: activeTab === 'communications' ? 'block' : 'none' }} className="subtab-enter-active">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
@@ -1960,8 +1960,8 @@ function doPost(e) {
             </div>
 
             {/* ===== TAB: BÁO CÁO NGÀY ===== */}
-            <div style={{ display: activeTab === 'report' ? 'block' : 'none' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: activeTab === 'report' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div style={{ display: activeTab === 'report' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
                 {/* Giờ gửi */}
                 <div className="card" style={{ padding: '1.5rem' }}>
@@ -2141,7 +2141,7 @@ function doPost(e) {
             </div>
 
             {/* Fallback & Blacklist Configs (Processing Tab) */}
-            <div style={{ display: activeTab === 'processing' ? 'block' : 'none', animation: activeTab === 'processing' ? 'fadeIn 0.2s ease-out' : 'none' }}>
+            <div style={{ display: activeTab === 'processing' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>

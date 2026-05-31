@@ -81,14 +81,14 @@ const AppTabs = () => {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* User Pages */}
-      <div style={{ display: currentPath === '/' ? 'block' : 'none' }}>
+      <div style={{ display: currentPath === '/' ? 'block' : 'none' }} className={currentPath === '/' ? 'page-enter-active' : ''}>
         {visitedPaths.includes('/') && (
           <Suspense fallback={<PageLoader />}>
             <Dashboard />
           </Suspense>
         )}
       </div>
-      <div style={{ display: (currentPath === '/data' || currentPath === '/calendar') ? 'block' : 'none' }}>
+      <div style={{ display: (currentPath === '/data' || currentPath === '/calendar') ? 'block' : 'none' }} className={(currentPath === '/data' || currentPath === '/calendar') ? 'page-enter-active' : ''}>
         {(visitedPaths.includes('/data') || visitedPaths.includes('/calendar')) && (
           <Suspense fallback={<PageLoader />}>
             <DataList />
@@ -99,63 +99,63 @@ const AppTabs = () => {
       {/* Admin Pages */}
       {user?.role === 'admin' && (
         <>
-          <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/consultants') && (
               <Suspense fallback={<PageLoader />}>
                 <Consultants />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/rounds' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/rounds' ? 'block' : 'none' }} className={currentPath === '/rounds' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/rounds') && (
               <Suspense fallback={<PageLoader />}>
                 <Rounds />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }} className={currentPath === '/tickets' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/tickets') && (
               <Suspense fallback={<PageLoader />}>
                 <Tickets />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/rules' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/rules' ? 'block' : 'none' }} className={currentPath === '/rules' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/rules') && (
               <Suspense fallback={<PageLoader />}>
                 <RuleSettings />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/integrations' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/integrations' ? 'block' : 'none' }} className={currentPath === '/integrations' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/integrations') && (
               <Suspense fallback={<PageLoader />}>
                 <Integrations />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/settings' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/settings' ? 'block' : 'none' }} className={currentPath === '/settings' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/settings') && (
               <Suspense fallback={<PageLoader />}>
                 <Settings />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }} className={currentPath === '/accounts' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/accounts') && (
               <Suspense fallback={<PageLoader />}>
                 <Accounts />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/gatekeeper' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/gatekeeper' ? 'block' : 'none' }} className={currentPath === '/gatekeeper' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/gatekeeper') && (
               <Suspense fallback={<PageLoader />}>
                 <Gatekeeper />
               </Suspense>
             )}
           </div>
-          <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }}>
+          <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }} className={currentPath === '/fair-share' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/fair-share') && (
               <Suspense fallback={<PageLoader />}>
                 <FairShareAudit />

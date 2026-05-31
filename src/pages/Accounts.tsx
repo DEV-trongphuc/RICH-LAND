@@ -430,7 +430,7 @@ const AccountsInner = () => {
       </div>
  
       {activeTab === 'accounts' ? (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card subtab-enter-active" style={{ overflow: 'hidden' }}>
           {loading ? (
             <TableSkeleton cols={6} rows={5} />
           ) : (
@@ -554,7 +554,7 @@ const AccountsInner = () => {
           )}
         </div>
       ) : (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card subtab-enter-active" style={{ overflow: 'hidden' }}>
           {loadingLogs ? (
             <TableSkeleton cols={5} rows={8} />
           ) : (

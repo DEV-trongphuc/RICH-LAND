@@ -1134,7 +1134,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
                                 email = IF(VALUES(email) IS NOT NULL AND VALUES(email) != '' AND (email = '' OR email IS NULL), VALUES(email), email),
                                 source = VALUES(source),
                                 type = VALUES(type),
-                                note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n', VALUES(note)))),
+                                note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n___\n[Ngày ', DATE_FORMAT(NOW(), '%d/%m/%Y'), ']\n', VALUES(note)))),
                                 last_interaction_date = VALUES(last_interaction_date),
                                 assigned_to = IF(assigned_to IS NULL OR assigned_to = 0, VALUES(assigned_to), assigned_to),
                                 connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id)");
@@ -1227,7 +1227,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
                 phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
                 source = ?, 
                 type = ?, 
-                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), 
+                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', CONCAT('\n___\n[Ngày ', DATE_FORMAT(NOW(), '%d/%m/%Y'), ']\n')), ?)), 
                 last_interaction_date = ?, 
                 assigned_to = ?, 
                 connection_id = IF(? IS NOT NULL, ?, connection_id) 
@@ -1241,7 +1241,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
                 phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
                 source = ?, 
                 type = ?, 
-                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', '\n'), ?)), 
+                note = IF(TRIM(?) = '', note, CONCAT(IFNULL(note, ''), IF(IFNULL(note, '') = '', '', CONCAT('\n___\n[Ngày ', DATE_FORMAT(NOW(), '%d/%m/%Y'), ']\n')), ?)), 
                 last_interaction_date = ?, 
                 connection_id = IF(? IS NOT NULL, ?, connection_id) 
                 WHERE id = ?");

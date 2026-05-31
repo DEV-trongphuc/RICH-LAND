@@ -2683,4 +2683,38 @@ th.col-check {
   }
 }
 
+/* ================================================
+   PAGE & SUBTAB VIEW ENTER TRANSITIONS (Slide-up & Fade-in)
+   ================================================ */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter-active {
+  animation: page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes subtab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.subtab-enter-active {
+  animation: subtab-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
 

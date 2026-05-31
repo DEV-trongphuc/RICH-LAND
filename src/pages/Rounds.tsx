@@ -988,7 +988,7 @@ const RoundsInner = () => {
             )}
 
             {activeTab === 'config' ? (
-              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
+              <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
                 <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
@@ -1103,8 +1103,10 @@ const RoundsInner = () => {
                     )}
 
                     <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t("Trạng thái Vòng")}</label>
-                      <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                          <Shield size={14} /> {t("Trạng thái Vòng")}
+                        </label>
                         <ToggleSwitch
                           checked={formData.is_active === 1}
                           onChange={(checked) => setFormData({ ...formData, is_active: checked ? 1 : 0 })}
@@ -1350,7 +1352,7 @@ const RoundsInner = () => {
                 </div>
               </form>
             ) : activeTab === 'reports' ? (
-              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar subtab-enter-active">
                 {loadingReports ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu báo cáo...")}</div>
                 ) : reports.length === 0 ? (
@@ -1466,7 +1468,7 @@ const RoundsInner = () => {
                 )}
               </div>
             ) : (
-              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+              <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar subtab-enter-active">
                 {loadingActiveLogs ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu log...")}</div>
                 ) : activeLogs.length === 0 ? (

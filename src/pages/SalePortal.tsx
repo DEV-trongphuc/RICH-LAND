@@ -3450,12 +3450,14 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             )}
 
             {/* Render views based on activeTab */}
-            {activeTab === 'dashboard' && renderDashboardView()}
-            {activeTab === 'data' && renderDataView()}
-            {activeTab === 'calendar' && renderCalendarView()}
-            {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
-            {activeTab === 'tickets' && renderTicketsView()}
-            {activeTab === 'schedule' && renderScheduleView()}
+            <div key={activeTab} className="subtab-enter-active">
+              {activeTab === 'dashboard' && renderDashboardView()}
+              {activeTab === 'data' && renderDataView()}
+              {activeTab === 'calendar' && renderCalendarView()}
+              {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
+              {activeTab === 'tickets' && renderTicketsView()}
+              {activeTab === 'schedule' && renderScheduleView()}
+            </div>
           </div>
         </main>
       </div>

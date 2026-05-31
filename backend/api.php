@@ -9123,6 +9123,135 @@ switch ($action) {
             return ($change > 0 ? '+' : '') . number_format($change, 1) . '%';
         };
 
+        // NEW CALCULATIONS: Out-of-Hours Lead Ratio and Fair-Share Equity
+        // 1. Out of Hours Lead Ratio
+        $outOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $dateCondition");
+        $outOfHoursCount = ($outOfHoursRes && $row = $outOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
+        
+        $totalLogsCount = (int)$statsRes['total'];
+        $outOfHoursRatioVal = $totalLogsCount > 0 ? ($outOfHoursCount / $totalLogsCount) * 100 : 0;
+        $outOfHoursRatio = number_format($outOfHoursRatioVal, 1) . '%';
+
+        $prevOutOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $prevDateCondition");
+        $prevOutOfHoursCount = ($prevOutOfHoursRes && $row = $prevOutOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
+        
+        $prevTotalLogsCount = (int)$prevStatsRes['total'];
+        $prevOutOfHoursRatioVal = $prevTotalLogsCount > 0 ? ($prevOutOfHoursCount / $prevTotalLogsCount) * 100 : 0;
+        
+        $outOfHoursChange = $calcChange($outOfHoursCount, $prevOutOfHoursCount);
+
+        // 2. Fair-Share Equity
+        $calcFairness = function($conn, $dateCondition) {
+            $consultants = [];
+            $sql = "SELECT id FROM consultants WHERE status = 'active'";
+            $res = $conn->query($sql);
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $cId = (int)$row['id'];
+                    $consultants[$cId] = [
+                        'id' => $cId,
+                        'receive_ratio' => 1,
+                        'assigned_count' => 0
+                    ];
+                }
+            }
+            
+            if (empty($consultants)) {
+                return ['fairness' => 100.0, 'sd' => 0.0];
+            }
+            
+            $leadCountsSql = "SELECT assigned_to, 
+                                     CASE 
+                                       WHEN status = 'pending_work_hours' AND (message LIKE '%đền bù%' OR message LIKE '%compensation%' OR message LIKE '%Bù lượt%') THEN 'compensation'
+                                       ELSE status 
+                                     END as adjusted_status, 
+                                     COUNT(*) as cnt 
+                              FROM distribution_logs 
+                              WHERE $dateCondition 
+                                AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                              GROUP BY assigned_to, adjusted_status";
+            $countsRes = $conn->query($leadCountsSql);
+            $consultantStatusCounts = [];
+            if ($countsRes) {
+                while ($row = $countsRes->fetch_assoc()) {
+                    $cId = (int)$row['assigned_to'];
+                    $status = $row['adjusted_status'];
+                    $cnt = (int)$row['cnt'];
+                    if (!isset($consultantStatusCounts[$cId])) {
+                        $consultantStatusCounts[$cId] = [
+                            'assigned' => 0,
+                            'compensation' => 0,
+                            'rule_6_month' => 0,
+                            'pending_work_hours' => 0,
+                            'error' => 0
+                        ];
+                    }
+                    if (array_key_exists($status, $consultantStatusCounts[$cId])) {
+                        $consultantStatusCounts[$cId][$status] = $cnt;
+                    }
+                }
+            }
+            
+            foreach ($consultants as $cId => &$c) {
+                if (isset($consultantStatusCounts[$cId])) {
+                    $sc = $consultantStatusCounts[$cId];
+                    $c['assigned_count'] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + max(0, $sc['error'] - $sc['compensation']);
+                }
+            }
+            unset($c);
+            
+            $rawCounts = [];
+            $normalizedCounts = [];
+            $totalLeads = 0;
+            foreach ($consultants as $c) {
+                $rawCounts[] = $c['assigned_count'];
+                $ratio = max(1, $c['receive_ratio']);
+                $normalizedCounts[] = $c['assigned_count'] * $ratio;
+                $totalLeads += $c['assigned_count'];
+            }
+            
+            $N = count($consultants);
+            $mean = 0;
+            $standardDeviation = 0;
+            $giniNormalized = 0;
+            
+            if ($N > 0) {
+                $mean = $totalLeads / $N;
+                
+                $sumSqDiff = 0;
+                foreach ($rawCounts as $x) {
+                    $sumSqDiff += pow($x - $mean, 2);
+                }
+                $standardDeviation = sqrt($sumSqDiff / $N);
+                
+                $sumNorm = array_sum($normalizedCounts);
+                if ($sumNorm > 0) {
+                    $doubleSumDiffNorm = 0;
+                    for ($i = 0; $i < $N; $i++) {
+                        for ($j = 0; $j < $N; $j++) {
+                            $doubleSumDiffNorm += abs($normalizedCounts[$i] - $normalizedCounts[$j]);
+                        }
+                    }
+                    $giniNormalized = $doubleSumDiffNorm / (2 * $N * $sumNorm);
+                }
+            }
+            
+            $fairnessIndex = (1 - $giniNormalized) * 100;
+            return [
+                'fairness' => round($fairnessIndex, 1),
+                'sd' => round($standardDeviation, 1)
+            ];
+        };
+
+        $currentFairShare = $calcFairness($conn, $dateCondition);
+        $prevFairShare = $calcFairness($conn, $prevDateCondition);
+        
+        $fairShareEquity = $currentFairShare['fairness'] . '%';
+        $fairShareSD = $currentFairShare['sd'];
+        
+        $fairShareEquityChangeVal = $currentFairShare['fairness'] - $prevFairShare['fairness'];
+        $fairShareEquityChange = ($fairShareEquityChangeVal >= 0 ? '+' : '') . number_format($fairShareEquityChangeVal, 1) . '%';
+
         // Query hourly/daily chart data
         $chartMode = $_GET['chart_mode'] ?? '';
         $chartMetric = $_GET['chart_metric'] ?? 'lead';
@@ -9568,6 +9697,12 @@ switch ($action) {
                 'ai_failed_count' => $aiFailedCount,
                 'ai_screener_enabled' => $aiEnabled,
                 'accepted_today' => $acceptedCount,
+                'out_of_hours_ratio' => $outOfHoursRatio,
+                'out_of_hours_change' => $outOfHoursChange,
+                'pending_work_hours_count' => $outOfHoursCount,
+                'fair_share_equity' => $fairShareEquity,
+                'fair_share_equity_change' => $fairShareEquityChange,
+                'fair_share_sd' => $fairShareSD,
                 'total_change' => $calcChange($statsRes['total'], $prevStatsRes['total']),
                 'distributed_change' => $calcChange($statsRes['distributed'], $prevStatsRes['distributed']),
                 'duplicates_change' => $calcChange($statsRes['duplicates'], $prevStatsRes['duplicates']),

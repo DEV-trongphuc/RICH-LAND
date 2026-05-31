@@ -17,6 +17,12 @@ export const INITIAL_MOCK_DB = {
     ai_failed_count: 50,
     ai_screener_enabled: 1,
     accepted_today: 1400,
+    out_of_hours_ratio: '24.6%',
+    out_of_hours_change: '+1.2%',
+    pending_work_hours_count: 38,
+    fair_share_equity: '96.5%',
+    fair_share_equity_change: '+0.8%',
+    fair_share_sd: '12.4',
     chartData: [
       { time: '08:00', volume: 15 },
       { time: '10:00', volume: 45 },
