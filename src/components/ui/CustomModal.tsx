@@ -63,7 +63,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                 </button>
               )}
 
-              <div className={styles.content}>
+              <div className={`${styles.content} custom-scrollbar`}>
                 {children}
               </div>
             </div>
@@ -81,10 +81,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             <motion.div
               className={styles.modal}
               style={width ? { width, maxWidth: '95vw' } : {}}
-              initial={{ opacity: 0, scale: 0.9, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 0 }}
-              transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
             >
               {title && (
                 <div className={styles.header}>
@@ -102,7 +102,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                 </button>
               )}
 
-              <div className={styles.content}>
+              <div className={`${styles.content} custom-scrollbar`}>
                 {children}
               </div>
             </motion.div>

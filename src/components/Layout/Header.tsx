@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -470,62 +471,71 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
             />
           </button>
 
-          {isLangOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              right: 0,
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              padding: '4px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              minWidth: '135px',
-              zIndex: 50
-            }}>
-              {languagesList.map(lang => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setLanguage(lang.code);
-                    setIsLangOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    padding: '8px 10px',
-                    border: 'none',
-                    background: language === lang.code ? 'var(--color-bg)' : 'transparent',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    color: 'var(--color-text)',
-                    fontSize: '0.8125rem',
-                    fontWeight: language === lang.code ? 600 : 400,
-                    textAlign: 'left',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={e => {
-                    if (language !== lang.code) e.currentTarget.style.background = 'var(--color-bg)';
-                  }}
-                  onMouseLeave={e => {
-                    if (language !== lang.code) e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <img 
-                    src={lang.flag} 
-                    style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
-                    alt={lang.name} 
-                  />
-                  {lang.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence>
+            {isLangOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0.05 }}
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  minWidth: '135px',
+                  zIndex: 50,
+                  transformOrigin: 'top right'
+                }}
+              >
+                {languagesList.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setIsLangOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 10px',
+                      border: 'none',
+                      background: language === lang.code ? 'var(--color-bg)' : 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      color: 'var(--color-text)',
+                      fontSize: '0.8125rem',
+                      fontWeight: language === lang.code ? 600 : 400,
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                      if (language !== lang.code) e.currentTarget.style.background = 'var(--color-bg)';
+                    }}
+                    onMouseLeave={e => {
+                      if (language !== lang.code) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <img 
+                      src={lang.flag} 
+                      style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }} 
+                      alt={lang.name} 
+                    />
+                    {lang.name}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div
@@ -555,127 +565,136 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
             </div>
           </div>
 
-          {isProfileMenuOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              padding: '4px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              minWidth: '150px',
-              zIndex: 50
-            }}>
-              {(user?.role === 'admin' || user?.role === 'assistant') && (
-                <>
-                  <button
-                    onClick={handleProfileClick}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 10px',
-                      border: 'none',
-                      background: 'transparent',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      color: 'var(--color-text)',
-                      fontSize: '0.8125rem',
-                      textAlign: 'left',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <User size={14} />
-                    {t('Thông tin')}
-                  </button>
-                  <button
-                    onClick={handleActivityClick}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 10px',
-                      border: 'none',
-                      background: 'transparent',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      color: 'var(--color-text)',
-                      fontSize: '0.8125rem',
-                      textAlign: 'left',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <Activity size={14} />
-                    {t('Nhật ký hoạt động')}
-                  </button>
-                </>
-              )}
-
-              <a
-                href="https://zalo.me/0378859736"
-                target="_blank"
-                rel="noopener noreferrer"
+          <AnimatePresence>
+            {isProfileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0.05 }}
                 style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: 'transparent',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--color-text)',
-                  fontSize: '0.8125rem',
-                  textAlign: 'left',
-                  textDecoration: 'none',
-                  transition: 'background 0.2s'
+                  flexDirection: 'column',
+                  gap: '2px',
+                  minWidth: '150px',
+                  zIndex: 50,
+                  transformOrigin: 'top right'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
-                {t('Báo lỗi')}
-              </a>
+                {(user?.role === 'admin' || user?.role === 'assistant') && (
+                  <>
+                    <button
+                      onClick={handleProfileClick}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 10px',
+                        border: 'none',
+                        background: 'transparent',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <User size={14} />
+                      {t('Thông tin')}
+                    </button>
+                    <button
+                      onClick={handleActivityClick}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 10px',
+                        border: 'none',
+                        background: 'transparent',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Activity size={14} />
+                      {t('Nhật ký hoạt động')}
+                    </button>
+                  </>
+                )}
 
-              <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+                <a
+                  href="https://zalo.me/0378859736"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
+                  {t('Báo lỗi')}
+                </a>
 
-              <button
-                onClick={handleLogout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: 'transparent',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--color-danger)',
-                  fontSize: '0.8125rem',
-                  textAlign: 'left',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <LogOut size={14} />
-                {t('Đăng xuất')}
-              </button>
-            </div>
-          )}
+                <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-danger)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <LogOut size={14} />
+                  {t('Đăng xuất')}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

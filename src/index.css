@@ -3165,14 +3165,14 @@ th.col-check {
   opacity: 1;
 }
 
-/* Hide scrollbars globally for all scrollable elements except main html/body */
-:not(html):not(body)::-webkit-scrollbar {
+/* Hide scrollbars globally for all scrollable elements except main html/body and styled scrollbars */
+:not(html):not(body):not(.custom-scrollbar):not(.table-wrap):not(.responsive-table-wrap)::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-:not(html):not(body) {
+:not(html):not(body):not(.custom-scrollbar):not(.table-wrap):not(.responsive-table-wrap) {
   scrollbar-width: none !important;
   /* Firefox */
   -ms-overflow-style: none !important;
@@ -3272,21 +3272,21 @@ th.col-check {
 .subtab-enter-active {
   animation: subtab-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.lead-row {
+tbody tr {
   position: relative;
 }
 
-.lead-row td {
+tbody tr td {
   position: relative;
-  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.lead-row:hover td {
+tbody tr:hover td {
   background-color: var(--color-bg-alt, var(--color-surface-hover, rgba(124, 58, 237, 0.04))) !important;
 }
 
 /* Left edge slide-in indicator on the first column cell */
-.lead-row td:first-child::before {
+tbody tr td:first-child::before {
   content: '';
   position: absolute;
   left: 0;
@@ -3301,6 +3301,110 @@ th.col-check {
   z-index: 5;
 }
 
-.lead-row:hover td:first-child::before {
+tbody tr:hover td:first-child::before {
   transform: scaleY(1);
+}
+
+/* ================================================
+   PREMIUM SMOOTHNESS & UX UPGRADE
+   ================================================ */
+
+/* Global smooth scrolling */
+html {
+  scroll-behavior: smooth !important;
+}
+
+/* Tactile Active Click/Press Feedback for all interactive elements */
+.btn:active, 
+.stat-card:active, 
+.hover-lift:active, 
+.custom-toggle:active,
+.sidebar-nav-item:active,
+.mobile-nav-item:active,
+.closeBtn:active {
+  transform: scale(0.975) !important;
+  transition: transform 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+/* Soft Input Focus Glow for Premium Feel */
+.form-input:focus, 
+.form-select:focus, 
+textarea:focus, 
+select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12) !important;
+  outline: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* Custom Scrollbar for scrollable divs: 
+   Show an ultra-thin, beautiful scrollbar when hovering, hidden otherwise */
+.custom-scrollbar,
+.table-wrap,
+.responsive-table-wrap {
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+  transition: scrollbar-color 0.3s ease !important;
+}
+
+.custom-scrollbar:hover,
+.table-wrap:hover,
+.responsive-table-wrap:hover {
+  scrollbar-color: var(--color-border) transparent !important;
+}
+
+/* Webkit browser scrollbars styling (for Chrome/Safari/Edge) */
+.custom-scrollbar::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar,
+.responsive-table-wrap::-webkit-scrollbar {
+  display: block !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.table-wrap::-webkit-scrollbar-track,
+.responsive-table-wrap::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb,
+.responsive-table-wrap::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 99px !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb,
+.table-wrap:hover::-webkit-scrollbar-thumb,
+.responsive-table-wrap:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border) !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.table-wrap::-webkit-scrollbar-thumb:hover,
+.responsive-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted) !important;
+}
+
+/* Premium Card hover lifts */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="dark"] .hover-lift:hover {
+  box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.3), 0 8px 12px -6px rgba(0, 0, 0, 0.2) !important;
 }

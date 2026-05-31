@@ -172,10 +172,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, y: direction === 'down' ? -18 : 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: direction === 'down' ? -18 : 18, scale: 0.96 }}
+            transition={{ type: "spring", duration: 0.32, bounce: 0.05 }}
             className={styles.dropdown}
             style={{
               top: direction === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
@@ -199,7 +199,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 />
               </div>
             )}
-            <div className={styles.list}>
+            <div className={`${styles.list} custom-scrollbar`}>
               {filtered.length > 0 ? filtered.map((option) => (
                 <div
                   key={option.value}
