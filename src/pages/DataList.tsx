@@ -318,10 +318,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const navigate = useNavigate();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
-  const getInitialDateFilter = () => {
+  const [dateFilter, setDateFilter] = useState(() => {
     return localStorage.getItem('domation_global_date') || '30 ngày qua';
+  });
+
+  const handleUpdateDateFilter = (val: string) => {
+    setDateFilter(val);
+    localStorage.setItem('domation_global_date', val);
+    window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
-  const dateFilter = searchParams.get('date') || getInitialDateFilter();
   const consultantFilter = searchParams.get('consultant') || 'all';
   const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
@@ -483,7 +488,6 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           ai_evaluation: item.ai_evaluation
         }));
         setLeads(mappedLeads);
-        // BUG-04 fix: track truncation
         setTotalCount(json.total_count ?? mappedLeads.length);
       }
     } catch (e: any) {
@@ -496,18 +500,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     if (isActive) {
       fetchLeads();
     }
-  }, [searchParams, isActive]);
+  }, [searchParams, dateFilter, isActive]);
 
   useEffect(() => {
     if (isActive) {
       const saved = localStorage.getItem('domation_global_date') || '30 ngày qua';
-      const current = searchParams.get('date');
-      if (saved && saved !== current) {
-        setSearchParams((prev: any) => {
-          const next = new URLSearchParams(prev);
-          next.set('date', saved);
-          return next;
-        }, { replace: true });
+      if (saved && saved !== dateFilter) {
+        setDateFilter(saved);
       }
     }
   }, [isActive]);
@@ -516,17 +515,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       const newDate = e.detail;
-      if (newDate && newDate !== searchParams.get('date')) {
-        setSearchParams((prev: any) => {
-          const next = new URLSearchParams(prev);
-          next.set('date', newDate);
-          return next;
-        }, { replace: true });
+      if (newDate && newDate !== dateFilter) {
+        setDateFilter(newDate);
       }
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [searchParams, isActive]);
+  }, [dateFilter, isActive]);
 
   useEffect(() => {
     fetchConsultants();
@@ -542,7 +537,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, [searchParams, isActive]);
+  }, [searchParams, dateFilter, isActive]);
+
   useEffect(() => {
     if (isActive && leads.length > 0) {
       const autoOpen = searchParams.get('auto_open');
@@ -574,11 +570,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   }, [leads, searchParams, isActive]);
 
   const updateParams = (key: string, value: string) => {
+    if (key === 'date') {
+      handleUpdateDateFilter(value);
+      return;
+    }
     setSearchParams((prev: any) => {
-      if (value === 'all' || value === '') prev.delete(key);
-      else prev.set(key, value);
-      if (key !== 'page') prev.delete('page');
-      return prev;
+      const next = new URLSearchParams(prev);
+      if (value === 'all' || value === '') next.delete(key);
+      else next.set(key, value);
+      if (key !== 'page') next.delete('page');
+      return next;
     }, { replace: true });
   };
 

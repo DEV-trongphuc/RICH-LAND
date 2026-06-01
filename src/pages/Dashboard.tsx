@@ -778,7 +778,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 animation: 'slideUp 0.4s ease-out both',
                 animationDelay: '180ms'
               }}
-              onClick={() => navigate(`/data?status=${card.statusValue}&date=${encodeURIComponent(dateFilter)}`)}
+              onClick={() => navigate(`/data?status=${card.statusValue}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>{card.label}</span>
@@ -1135,7 +1135,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('Lịch sử giao Data gần đây')}</h3>
               <span
                 style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer' }}
-                onClick={() => navigate(`/data?date=${encodeURIComponent(dateFilter)}`)}
+                onClick={() => navigate('/data')}
               >{t('Xem tất cả')}</span>
             </div>
             <div style={{ flex: 1, padding: '0.5rem 0.5rem 1.25rem 0.5rem', overflowY: 'auto', maxHeight: 280 }}>
@@ -1668,7 +1668,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.12)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)'}
-                  onClick={() => navigate(`/fair-share?date=${encodeURIComponent(dateFilter)}`)}
+                  onClick={() => navigate('/fair-share')}
                 >
                   {t('Chi tiết đối soát')}
                 </span>
@@ -2513,7 +2513,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           onClick={() => {
                             setShowHealthModal(false);
                             setHealthChartMetric('zalo');
-                            navigate(`/gatekeeper?open_tokens=true&date=${encodeURIComponent(dateFilter)}`);
+                            navigate(`/gatekeeper?open_tokens=true`);
                           }}
                           style={{
                             background: 'transparent',

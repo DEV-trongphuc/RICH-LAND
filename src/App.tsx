@@ -409,6 +409,7 @@ export default function App() {
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
     }
+    localStorage.setItem('domation_global_date', '30 ngày qua');
   }, []);
 
   return (

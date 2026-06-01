@@ -240,10 +240,15 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
 
-  const getInitialDateFilter = () => {
+  const [dateFilter, setDateFilter] = useState(() => {
     return localStorage.getItem('domation_global_date') || '30 ngày qua';
+  });
+
+  const handleUpdateDateFilter = (val: string) => {
+    setDateFilter(val);
+    localStorage.setItem('domation_global_date', val);
+    window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
-  const dateFilter = searchParams.get('date') || getInitialDateFilter();
 
   const currentPage = Number(searchParams.get('page') || '1');
 
@@ -557,14 +562,15 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
   const updateParams = (key: string, value: string) => {
     if (key === 'date') {
-      localStorage.setItem('domation_global_date', value);
-      window.dispatchEvent(new CustomEvent('global-date-change', { detail: value }));
+      handleUpdateDateFilter(value);
+      return;
     }
     setSearchParams((prev: any) => {
-      if (value === '' || (key !== 'status' && value === 'all')) prev.delete(key);
-      else prev.set(key, value);
-      if (key !== 'page') prev.delete('page');
-      return prev;
+      const next = new URLSearchParams(prev);
+      if (value === '' || (key !== 'status' && value === 'all')) next.delete(key);
+      else next.set(key, value);
+      if (key !== 'page') next.delete('page');
+      return next;
     }, { replace: true });
   };
 
@@ -617,7 +623,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       queryParams.set('pageSize', String(ITEMS_PER_PAGE));
       if (activeFilter !== 'all') queryParams.set('status', activeFilter);
       if (saleFilter) queryParams.set('consultant', saleFilter);
-      if (dateFilter) queryParams.set('date', dateFilter);
+      if (dateFilter && dateFilter !== 'all') queryParams.set('date', dateFilter);
 
       const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
       if (res.success) {
@@ -641,16 +647,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     if (isActive) {
       fetchReports();
     }
-  }, [searchParams, isActive]);
+  }, [searchParams, dateFilter, isActive]);
 
   useEffect(() => {
     if (isActive) {
       const saved = localStorage.getItem('domation_global_date');
-      if (saved && searchParams.get('date') !== saved) {
-        setSearchParams((prev: any) => {
-          prev.set('date', saved);
-          return prev;
-        }, { replace: true });
+      if (saved && saved !== dateFilter) {
+        setDateFilter(saved);
       }
     }
   }, [isActive]);
@@ -659,16 +662,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       const newDate = e.detail;
-      if (newDate && searchParams.get('date') !== newDate) {
-        setSearchParams((prev: any) => {
-          prev.set('date', newDate);
-          return prev;
-        }, { replace: true });
+      if (newDate && newDate !== dateFilter) {
+        setDateFilter(newDate);
       }
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [searchParams, isActive]);
+  }, [dateFilter, isActive]);
 
   useEffect(() => {
     fetchAPI('get_settings')
@@ -1045,12 +1045,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             />
           </div>
 
-          {/* Clear filters */}
           {hasActiveFilters && (
             <button onClick={() => {
+              handleUpdateDateFilter('30 ngày qua');
               setSearchParams((prev: any) => {
                 prev.delete('consultant');
-                prev.delete('date');
                 prev.delete('page');
                 return prev;
               }, { replace: true });
@@ -1322,9 +1321,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           {/* Clear filters */}
           {hasActiveFilters && (
             <button onClick={() => {
+              handleUpdateDateFilter('30 ngày qua');
               setSearchParams((prev: any) => {
                 prev.delete('consultant');
-                prev.delete('date');
                 prev.delete('page');
                 return prev;
               }, { replace: true });

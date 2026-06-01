@@ -525,7 +525,26 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $res = false;
     }
 
-    if ($res->num_rows > 0) {
+    if ($res instanceof mysqli_result && $res->num_rows === 0 && $excludeLeadId) {
+        $stmtHistory = $conn->prepare("
+            SELECT dl.assigned_to, dl.received_at as last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+            FROM distribution_logs dl
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            WHERE dl.lead_id = ? 
+              AND dl.status != 'pending_approval'
+              AND dl.assigned_to IS NOT NULL 
+              AND dl.assigned_to > 0
+            ORDER BY dl.received_at DESC LIMIT 1
+        ");
+        if ($stmtHistory) {
+            $stmtHistory->bind_param("i", $excludeLeadId);
+            $stmtHistory->execute();
+            $res = $stmtHistory->get_result();
+            $stmtHistory->close();
+        }
+    }
+
+    if ($res instanceof mysqli_result && $res->num_rows > 0) {
         $row = $res->fetch_assoc();
         $lastInteraction = new DateTime($row['last_interaction_date']);
         $now = new DateTime();
