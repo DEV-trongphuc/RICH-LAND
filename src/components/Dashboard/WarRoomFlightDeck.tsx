@@ -1762,6 +1762,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   const [currentTime, setCurrentTime] = useState('');
   const [activeSalesGlow, setActiveSalesGlow] = useState<Record<number, boolean>>({});
   const [lastActiveSaleIdx, setLastActiveSaleIdx] = useState<number | null>(null);
+  const [activeSourcesGlow, setActiveSourcesGlow] = useState<Record<number, boolean>>({});
+  const [lastActiveSourceIdx, setLastActiveSourceIdx] = useState<number | null>(null);
   const [localRecentFeed, setLocalRecentFeed] = useState<any[]>([]);
 
   const [todayStats, setTodayStats] = useState<any>(null);
@@ -2133,6 +2135,14 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     return { text: t('Online'), color: '#10b981', dotColor: '#10b981' };
   };
 
+  const triggerSourceRipple = (index: number) => {
+    setLastActiveSourceIdx(index);
+    setActiveSourcesGlow(prev => ({ ...prev, [index]: true }));
+    setTimeout(() => {
+      setActiveSourcesGlow(prev => ({ ...prev, [index]: false }));
+    }, 1600);
+  };
+
   const spawnParticle = (leadName: string, sourceIdx: number, saleIdx: number, status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours', particleId: string) => {
     const coords = coordsRef.current;
     const sCoord = coords.sources[sourceIdx];
@@ -2140,6 +2150,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const saCoord = coords.sales[saleIdx] || cCoord;
 
     if (!sCoord) return;
+
+    triggerSourceRipple(sourceIdx);
 
     const startX = sCoord.x;
     const startY = sCoord.y;
@@ -3052,25 +3064,39 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
             {activeSources.map((src: any, idx: number) => {
               const Icon = src.icon;
+              const isGlow = activeSourcesGlow[idx];
+              const isPermanentGlow = idx === lastActiveSourceIdx;
               return (
                 <div
                   key={src.id}
                   ref={el => { sourceRefs.current[idx] = el; }}
                   className="war-room-source-card"
                   style={{
-                    background: 'rgba(8, 12, 28, 0.45)',
+                    background: isGlow
+                      ? `${src.color}26`
+                      : isPermanentGlow
+                        ? `${src.color}0d`
+                        : 'rgba(8, 12, 28, 0.45)',
                     backdropFilter: 'blur(25px)',
-                    border: `1px solid ${src.color}20`,
+                    border: isGlow
+                      ? `1.8px solid ${src.color}`
+                      : isPermanentGlow
+                        ? `1.2px solid ${src.color}66`
+                        : `1px solid ${src.color}20`,
                     borderRadius: isMobile ? '10px' : '14px',
                     padding: isMobile ? '0.5rem 0.75rem' : '0.8rem 1.1rem',
-                    boxShadow: `0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 10px ${src.color}03`,
+                    boxShadow: isGlow
+                      ? `0 0 25px ${src.color}c0, inset 0 0 15px ${src.color}4d`
+                      : isPermanentGlow
+                        ? `0 0 15px ${src.color}40`
+                        : `0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 10px ${src.color}03`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: isMobile ? 8 : 14,
                     position: 'relative',
                     overflow: 'hidden',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
                   }}
                 >
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: src.color }} />
