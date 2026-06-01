@@ -1041,7 +1041,14 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
-            LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
+            LEFT JOIN (
+                SELECT dr1.* FROM data_reports dr1
+                INNER JOIN (
+                    SELECT lead_id, consultant_id, MAX(id) as max_dr_id
+                    FROM data_reports
+                    GROUP BY lead_id, consultant_id
+                ) dr2 ON dr1.id = dr2.max_dr_id
+            ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
             WHERE $whereClause
             ORDER BY dl.received_at DESC
             $limitStr
@@ -1475,7 +1482,14 @@ switch ($action) {
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
-            LEFT JOIN data_reports r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
+            LEFT JOIN (
+                SELECT r1.* FROM data_reports r1
+                INNER JOIN (
+                    SELECT lead_id, consultant_id, round_id, MAX(id) as max_r_id
+                    FROM data_reports
+                    GROUP BY lead_id, consultant_id, round_id
+                ) r2 ON r1.id = r2.max_r_id
+            ) r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
             WHERE $dateCondition AND $extraCondition
             ORDER BY dl.received_at DESC 
             $limitStr
