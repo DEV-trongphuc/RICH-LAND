@@ -314,9 +314,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                             <span>{t(name)}</span>
                             {badgeCount > 0 && (
                               <span style={{
-                                fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px',
+                                fontSize: '0.7rem',
+                                minWidth: '18px',
+                                height: '18px',
+                                borderRadius: '9px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: badgeCount > 9 ? '0 5px' : '0',
                                 background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
-                                color: 'white', fontWeight: 700
+                                color: 'white',
+                                fontWeight: 700,
+                                lineHeight: 1
                               }}>
                                 {badgeCount}
                               </span>
