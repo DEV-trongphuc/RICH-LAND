@@ -13,7 +13,7 @@ import {
   CheckCircle, AlertTriangle, ChevronLeft, ChevronRight,
   Phone, Mail, Clock, Tag, XCircle,
   ExternalLink, Check, Shield, Save, Sparkles, X, Settings,
-  BarChart2, Search, CheckCircle2, GitBranch, Scale, Edit, Bell,
+  BarChart2, Search, CheckCircle2, GitBranch, Scale, Edit, Bell, Copy,
   Calendar
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -590,6 +590,19 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewType, setPreviewType] = useState<'email' | 'zalo'>('email');
   const [previewSentAt, setPreviewSentAt] = useState<string>('');
+
+  const [copiedType, setCopiedType] = useState<string | null>(null);
+  const handleCopyText = (text: string, successMessage: string, type?: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast.success(successMessage);
+        if (type) {
+          setCopiedType(type);
+          setTimeout(() => setCopiedType(null), 1500);
+        }
+      })
+      .catch(() => toast.error(t('Lỗi khi sao chép')));
+  };
 
   const fetchNotificationStatus = async (leadId: number) => {
     setNotifLoading(true);
@@ -5043,7 +5056,29 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   gap: '0.75rem',
                   marginBottom: '1rem'
                 }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                  <div
+                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
+                    style={{
+                      background: 'var(--color-bg)',
+                      padding: '0.625rem 0.75rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--color-border-light)',
+                      cursor: !isAdminEditingLead ? 'pointer' : 'default',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                        e.currentTarget.style.background = 'var(--color-bg)';
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Phone size={12} /> {t("Phone")}
@@ -5098,12 +5133,51 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
+                          {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                        </span>
+                        {!isAdminEditingLead && (
+                          <div
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              color: copiedType === 'phone' ? '#10b981' : 'var(--color-text-muted)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              background: copiedType === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
+                            }}
+                          >
+                            {copiedType === 'phone' ? <Check size={12} /> : <Copy size={12} />}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                  <div
+                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    style={{
+                      background: 'var(--color-bg)',
+                      padding: '0.625rem 0.75rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--color-border-light)',
+                      minWidth: 0,
+                      cursor: !isAdminEditingLead ? 'pointer' : 'default',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                        e.currentTarget.style.background = 'var(--color-bg)';
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> {t("Email")}</div>
                     {isAdminEditingLead ? (
                       <input
@@ -5134,8 +5208,24 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.email}>
-                        {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
+                          {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                        </span>
+                        {!isAdminEditingLead && (
+                          <div
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              color: copiedType === 'email' ? '#10b981' : 'var(--color-text-muted)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              background: copiedType === 'email' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
+                            }}
+                          >
+                            {copiedType === 'email' ? <Check size={12} /> : <Copy size={12} />}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

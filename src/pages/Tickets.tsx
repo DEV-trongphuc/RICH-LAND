@@ -2188,7 +2188,29 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   gap: '0.75rem',
                   marginBottom: '1rem'
                 }}>
-                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+                  <div
+                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
+                    style={{
+                      background: 'var(--color-bg)',
+                      padding: '0.625rem 0.75rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--color-border-light)',
+                      cursor: !isAdminEditingLead ? 'pointer' : 'default',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                        e.currentTarget.style.background = 'var(--color-bg)';
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Phone size={12} /> {t("Phone")}
@@ -2248,35 +2270,46 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
                         </span>
                         {!isAdminEditingLead && (
-                          <button
-                            onClick={() => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone')}
-                            title={t("Sao chép số điện thoại")}
+                          <div
                             style={{
                               padding: '2px 6px',
                               borderRadius: '4px',
                               color: copiedType === 'phone' ? '#10b981' : 'var(--color-text-muted)',
-                              cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              transition: 'all 0.2s',
                               background: copiedType === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
-                            }}
-                            onMouseOver={e => {
-                              e.currentTarget.style.color = copiedType === 'phone' ? '#10b981' : 'var(--color-primary)';
-                              e.currentTarget.style.background = copiedType === 'phone' ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)';
-                            }}
-                            onMouseOut={e => {
-                              e.currentTarget.style.color = copiedType === 'phone' ? '#10b981' : 'var(--color-text-muted)';
-                              e.currentTarget.style.background = copiedType === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)';
                             }}
                           >
                             {copiedType === 'phone' ? <Check size={12} /> : <Copy size={12} />}
-                          </button>
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                  <div
+                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    style={{
+                      background: 'var(--color-bg)',
+                      padding: '0.625rem 0.75rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--color-border-light)',
+                      minWidth: 0,
+                      cursor: !isAdminEditingLead ? 'pointer' : 'default',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isAdminEditingLead) {
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                        e.currentTarget.style.background = 'var(--color-bg)';
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Mail size={12} /> {t("Email")}</div>
                     {isAdminEditingLead ? (
                       <input
@@ -2312,30 +2345,18 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
                         </span>
                         {!isAdminEditingLead && (
-                          <button
-                            onClick={() => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email')}
-                            title={t("Sao chép email")}
+                          <div
                             style={{
                               padding: '2px 6px',
                               borderRadius: '4px',
                               color: copiedType === 'email' ? '#10b981' : 'var(--color-text-muted)',
-                              cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              transition: 'all 0.2s',
                               background: copiedType === 'email' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)'
-                            }}
-                            onMouseOver={e => {
-                              e.currentTarget.style.color = copiedType === 'email' ? '#10b981' : 'var(--color-primary)';
-                              e.currentTarget.style.background = copiedType === 'email' ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)';
-                            }}
-                            onMouseOut={e => {
-                              e.currentTarget.style.color = copiedType === 'email' ? '#10b981' : 'var(--color-text-muted)';
-                              e.currentTarget.style.background = copiedType === 'email' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.05)';
                             }}
                           >
                             {copiedType === 'email' ? <Check size={12} /> : <Copy size={12} />}
-                          </button>
+                          </div>
                         )}
                       </div>
                     )}
