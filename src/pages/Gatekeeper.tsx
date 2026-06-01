@@ -604,6 +604,21 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       .catch(() => toast.error(t('Lỗi khi sao chép')));
   };
 
+  const handleCopyFullInfo = (lead: Lead) => {
+    const isUserAdmin = user?.role === 'admin';
+    const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
+    const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
+    const text = [
+      `${t('Họ tên')}: ${lead.name || ''}`,
+      `${t('Số điện thoại')}: ${displayPhone || ''}`,
+      `Email: ${displayEmail || ''}`,
+      `${t('Nguồn')}: ${lead.source || ''}`,
+      `${t('Loại')}: ${lead.type || ''}`,
+      `${t('Ghi chú')}: ${lead.note || ''}`
+    ].join('\n');
+    handleCopyText(text, t('Đã sao chép toàn bộ thông tin khách hàng!'), 'full');
+  };
+
   const fetchNotificationStatus = async (leadId: number) => {
     setNotifLoading(true);
     try {
@@ -4921,6 +4936,34 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   </div>
 
                   <div className="detail-action-buttons">
+                    {!isAdminEditingLead && (
+                      <button
+                        onClick={() => selectedLead && handleCopyFullInfo(selectedLead)}
+                        title={t("Sao chép toàn bộ thông tin")}
+                        className="detail-action-btn"
+                        style={{
+                          background: copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                          border: copiedType === 'full' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.2)',
+                          color: copiedType === 'full' ? '#10b981' : '#3b82f6',
+                          boxShadow: '0 2px 6px rgba(59, 130, 246, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = copiedType === 'full' ? '#10b981' : '#3b82f6';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = copiedType === 'full' ? '0 6px 15px rgba(16, 185, 129, 0.2)' : '0 6px 15px rgba(59, 130, 246, 0.2)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = copiedType === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)';
+                          e.currentTarget.style.color = copiedType === 'full' ? '#10b981' : '#3b82f6';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(59, 130, 246, 0.05)';
+                        }}
+                      >
+                        {copiedType === 'full' ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedType === 'full' ? t('Đã chép') : t('Sao chép')}
+                      </button>
+                    )}
                     {user?.role === 'admin' && (
                       <>
                         {isAdminEditingLead ? (
