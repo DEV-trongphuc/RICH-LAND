@@ -1099,9 +1099,6 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             {t(tab.label)} {`(${stats[tab.key]})`}
           </button>
         ))}
-        <button onClick={fetchReports} disabled={loading} title={t("Làm mới")} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: loading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-          <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-        </button>
 
         {activeFilter === 'pending' && (
           <div style={{
@@ -1191,29 +1188,6 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             <Filter size={16} />
           </button>
 
-          {/* Reload Button */}
-          <button
-            onClick={fetchReports}
-            disabled={loading}
-            title={t("Làm mới")}
-            style={{
-              padding: 0,
-              borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text-muted)',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 38,
-              height: 38,
-              flexShrink: 0
-            }}
-          >
-            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-
           {/* Settings Button */}
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1238,166 +1212,175 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         </div>
       </div>
 
-      <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''} filter-mobile-only`} style={{
-        position: 'relative', zIndex: 100,
-        display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
-        padding: '14px 18px',
-        background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
-        border: '1px solid rgba(124,58,237,0.15)',
-        borderRadius: 16,
-        backdropFilter: 'blur(8px)',
-        boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
-          <Filter size={14} />
-          <span>{t('Bộ lọc')}</span>
-        </div>
-
-        <div style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
-
-        {/* Sale filter */}
-        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <CustomSelect
-            options={[
-              { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
-              ...consultantOptions.map(name => {
-                const matched = allConsultants.find(c => c.name === name);
-                return {
-                  value: name,
-                  label: name,
-                  avatar: matched?.avatar || ''
-                };
-              })
-            ]}
-            value={saleFilter}
-            onChange={val => updateParams('consultant', val.toString())}
-            showAvatars={true}
-            searchable={true}
-            width={200}
-          />
-        </div>
-
-        {/* Date Filter */}
-        <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 200 }}>
-          <CustomSelect
-            options={dateOptions}
-            value={dateFilter}
-            onChange={val => {
-              if (val === 'Tùy chỉnh') {
-                setShowDateModal(true);
-                return;
-              }
-              updateParams('date', val.toString());
-            }}
-            width="100%"
-          />
-        </div>
-
-        {activeFilter === 'pending' && (
-          <div style={{
-            fontSize: '0.75rem',
-            color: 'var(--color-warning)',
-            background: 'var(--color-warning-light)',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            border: '1px solid rgba(245, 158, 11, 0.2)',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4
-          }}>
-            <Sparkles size={12} /> {t('Hiển thị toàn bộ ticket chờ duyệt')}
-          </div>
-        )}
-
-        {/* Clear filters */}
-        {hasActiveFilters && (
-          <button onClick={() => {
-            setSearchParams((prev: any) => {
-              prev.delete('consultant');
-              prev.delete('date');
-              prev.delete('page');
-              return prev;
-            }, { replace: true });
-          }}
-            style={{
-              fontSize: '0.75rem', padding: '6px 12px', borderRadius: 10,
-              border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
-              color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4,
-              boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
-              transition: 'all 0.15s'
-            }}>
-            ✕ {t('Xóa lọc')}
-          </button>
-        )}
-
-        <div className="mobile-ml-0" style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
+      {showMobileFilters && (
+        <div className="responsive-filter-row filter-mobile-only" style={{
+          position: 'relative', zIndex: 100,
+          display: 'flex', gap: 12, marginTop: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
+          padding: '14px 18px',
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
+          border: '1px solid rgba(124,58,237,0.15)',
+          borderRadius: 16,
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
         }}>
-          {/* Auto duyệt Toggle */}
-          <div
-            onClick={() => setShowAutoApproveModal(true)}
-            title={t("Cấu hình quy tắc tự động duyệt")}
-            style={{
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8rem' }}>
+            <Filter size={14} />
+            <span>{t('Bộ lọc')}</span>
+          </div>
+
+          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+
+          {/* Sale filter */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+            <CustomSelect
+              options={[
+                { value: '', label: t('Tất cả Saleperson'), icon: <Users size={16} /> },
+                ...consultantOptions.map(name => {
+                  const matched = allConsultants.find(c => c.name === name);
+                  return {
+                    value: name,
+                    label: name,
+                    avatar: matched?.avatar || ''
+                  };
+                })
+              ]}
+              value={saleFilter}
+              onChange={val => updateParams('consultant', val.toString())}
+              showAvatars={true}
+              searchable={true}
+              width="100%"
+            />
+          </div>
+
+          {/* Date Filter */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={val => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                updateParams('date', val.toString());
+              }}
+              width="100%"
+            />
+          </div>
+
+          {activeFilter === 'pending' && (
+            <div style={{
+              fontSize: '0.75rem',
+              color: 'var(--color-warning)',
+              background: 'var(--color-warning-light)',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(245, 158, 11, 0.2)',
+              fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 8,
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-text-muted)';
-            }}
-          >
-            <span
-              className="auto-approve-label"
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: 'var(--color-text-muted)',
-                transition: 'color 0.2s',
-                textDecoration: 'underline',
-                textDecorationStyle: 'dotted'
-              }}
-            >
-              {t('Auto duyệt')}
-            </span>
-            <div
-              style={{
-                width: 36, height: 20, borderRadius: 10,
-                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
-                position: 'relative', transition: 'background 0.2s',
-                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
-              }} />
+              gap: 4,
+              width: '100%',
+              justifyContent: 'center'
+            }}>
+              <Sparkles size={12} /> {t('Hiển thị toàn bộ ticket chờ duyệt')}
             </div>
+          )}
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button onClick={() => {
+              setSearchParams((prev: any) => {
+                prev.delete('consultant');
+                prev.delete('date');
+                prev.delete('page');
+                return prev;
+              }, { replace: true });
+            }}
+              style={{
+                fontSize: '0.75rem', padding: '8px 12px', borderRadius: 10,
+                border: '1.5px solid var(--color-danger-light)', background: 'var(--color-danger-light)',
+                color: 'var(--color-danger)', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+                boxShadow: '0 1px 4px rgba(220,38,38,0.06)',
+                transition: 'all 0.15s',
+                width: '100%',
+                justifyContent: 'center'
+              }}>
+              ✕ {t('Xóa lọc')}
+            </button>
+          )}
+
+          <div className="mobile-ml-0" style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            width: '100%',
+            justifyContent: 'space-between',
+            marginTop: '4px',
+            paddingTop: '8px',
+            borderTop: '1px dashed rgba(124,58,237,0.1)'
+          }}>
+            {/* Auto duyệt Toggle */}
+            <div
+              onClick={() => setShowAutoApproveModal(true)}
+              title={t("Cấu hình quy tắc tự động duyệt")}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 8,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-text-muted)';
+              }}
+            >
+              <span
+                className="auto-approve-label"
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-muted)',
+                  transition: 'color 0.2s',
+                  textDecoration: 'underline',
+                  textDecorationStyle: 'dotted'
+                }}
+              >
+                {t('Auto duyệt')}
+              </span>
+              <div
+                style={{
+                  width: 36, height: 20, borderRadius: 10,
+                  background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                  position: 'relative', transition: 'background 0.2s',
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+                }} />
+              </div>
+            </div>
+
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+              {t('Tổng cộng:')} {totalCount} {t('tickets')}
+            </span>
           </div>
-
-          <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
-
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
-            {t('Tổng cộng:')} {totalCount} {t('tickets')}
-          </span>
         </div>
-      </div>
+      )}
 
       {/* ── Table / Held leads list ── */}
       <div className="card mobile-flat-container" style={{ padding: 0, overflow: 'hidden' }}>
