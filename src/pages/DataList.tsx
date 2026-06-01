@@ -318,7 +318,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const navigate = useNavigate();
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
-  const dateFilter = searchParams.get('date') || '7days';
+  const getInitialDateFilter = () => {
+    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+  };
+  const dateFilter = searchParams.get('date') || getInitialDateFilter();
   const consultantFilter = searchParams.get('consultant') || 'all';
   const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
@@ -493,6 +496,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     if (isActive) {
       fetchLeads();
     }
+  }, [searchParams, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      const saved = localStorage.getItem('domation_global_date') || '30 ngày qua';
+      const current = searchParams.get('date');
+      if (saved && saved !== current) {
+        setSearchParams((prev: any) => {
+          const next = new URLSearchParams(prev);
+          next.set('date', saved);
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const handleGlobalDate = (e: any) => {
+      const newDate = e.detail;
+      if (newDate && newDate !== searchParams.get('date')) {
+        setSearchParams((prev: any) => {
+          const next = new URLSearchParams(prev);
+          next.set('date', newDate);
+          return next;
+        }, { replace: true });
+      }
+    };
+    window.addEventListener('global-date-change', handleGlobalDate);
+    return () => window.removeEventListener('global-date-change', handleGlobalDate);
   }, [searchParams, isActive]);
 
   useEffect(() => {
@@ -1409,15 +1442,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           <CustomSelect
             options={[
               { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
-              { value: 'today', label: t('Hôm nay') },
-              { value: 'yesterday', label: t('Hôm qua') },
-              { value: 'this_week', label: t('Tuần này') },
-              { value: 'last_week', label: t('Tuần trước') },
-              { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
-              { value: '7days', label: t('7 ngày qua') },
-              { value: '30days', label: t('30 ngày qua') },
-              { value: 'this_month', label: t('Tháng này') },
-              { value: 'last_month', label: t('Tháng trước') }
+              { value: 'Hôm nay', label: t('Hôm nay') },
+              { value: 'Hôm qua', label: t('Hôm qua') },
+              { value: 'Tuần này', label: t('Tuần này') },
+              { value: 'Tuần trước', label: t('Tuần trước') },
+              { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+              { value: '7 ngày qua', label: t('7 ngày qua') },
+              { value: '30 ngày qua', label: t('30 ngày qua') },
+              { value: 'Tháng này', label: t('Tháng này') },
+              { value: 'Tháng trước', label: t('Tháng trước') }
             ]}
             value={dateFilter}
             onChange={val => updateParams('date', val.toString())}
