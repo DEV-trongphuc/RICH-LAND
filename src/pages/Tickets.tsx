@@ -241,7 +241,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const saleFilter = searchParams.get('consultant') || '';
 
   const getInitialDateFilter = () => {
-    return localStorage.getItem('domation_global_date') || '7 ngày qua';
+    return localStorage.getItem('domation_global_date') || '30 ngày qua';
   };
   const dateFilter = searchParams.get('date') || getInitialDateFilter();
 
@@ -656,6 +656,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   }, [isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       const newDate = e.detail;
       if (newDate && searchParams.get('date') !== newDate) {
@@ -667,7 +668,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [searchParams]);
+  }, [searchParams, isActive]);
 
   useEffect(() => {
     fetchAPI('get_settings')
@@ -952,7 +953,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const filteredReports = reports;
 
   const pendingCount = stats.pending;
-  const hasActiveFilters = saleFilter || (dateFilter !== '7 ngày qua' && dateFilter !== 'all' && dateFilter !== '');
+  const hasActiveFilters = saleFilter || (dateFilter !== '30 ngày qua' && dateFilter !== 'all' && dateFilter !== '');
 
   const FILTER_TABS = [
     { key: 'pending', label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },

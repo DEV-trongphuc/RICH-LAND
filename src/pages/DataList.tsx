@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -323,6 +323,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [searchInput, setSearchInput] = useState(searchTerm);
 
@@ -1191,6 +1192,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Database size={24} color="var(--color-primary)" /> {t('Quản lý Data')}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                marginLeft: '8px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Giải thích ý nghĩa các trạng thái data")}
+            >
+              <Info size={14} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t("Giải thích trạng thái")}</span>
+            </button>
           </h1>
           <p className="page-subtitle">{t('Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.')}</p>
         </div>
@@ -4476,6 +4507,447 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         )}
       </CustomModal>
 
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Ý nghĩa các Trạng thái Data")}
+        width="800px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {t("Hệ thống tự động phân loại dữ liệu khách hàng theo các trạng thái dưới đây nhằm đảm bảo tính tối ưu, minh bạch và công bằng cho đội ngũ Tư vấn viên (TVV).")}
+          </p>
+
+          {/* Group 1: Active & Distributed */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ 
+              fontSize: '0.9rem', 
+              fontWeight: 700, 
+              color: 'var(--color-success)', 
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              paddingBottom: '6px',
+              borderBottom: '1px solid var(--color-border-light)'
+            }}>
+              <CheckCircle2 size={16} /> {t("1. Hoạt động & Phân bổ")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }} className="responsive-grid-1">
+              {/* assigned */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#e6f4ea',
+                  color: theme === 'dark' ? '#34d399' : '#137333',
+                  border: theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #ceead6',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <CheckCircle2 size={12} />
+                  {t("Đã chia (assigned)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data được phân bổ thành công cho TVV thông qua cơ chế xoay vòng (Round-Robin) tự động.")}
+                </span>
+              </div>
+
+              {/* compensation */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff',
+                  color: theme === 'dark' ? '#a78bfa' : '#6b21a8',
+                  border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid #e9d5ff',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Scale size={12} />
+                  {t("Data Bù (compensation)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Lượt đền bù tự động giao cho TVV để trả nợ data lỗi đã được duyệt. Luôn có độ ưu tiên cao nhất hàng đợi.")}
+                </span>
+              </div>
+
+              {/* reminder */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(236, 72, 153, 0.15)' : '#fce7f3',
+                  color: theme === 'dark' ? '#f472b6' : '#9d174d',
+                  border: theme === 'dark' ? '1px solid rgba(236, 72, 153, 0.25)' : '1px solid #fbcfe8',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Bell size={12} />
+                  {t("Nhắc lại (reminder)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Khách hàng cũ đăng ký lại. Hệ thống tự động chuyển thẳng cho TVV đã chăm sóc trước đó để tiếp tục theo dõi.")}
+                </span>
+              </div>
+
+              {/* fallback */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(249, 115, 22, 0.15)' : '#fff7ed',
+                  color: theme === 'dark' ? '#fb923c' : '#c2410c',
+                  border: theme === 'dark' ? '1px solid rgba(249, 115, 22, 0.25)' : '1px solid #ffedd5',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Sparkles size={12} />
+                  {t("Dự phòng (fallback)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Phân bổ khẩn cấp cho TVV được chỉ định làm dự phòng khi vòng không tìm được TVV nào sẵn sàng nhận số.")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Group 2: Queue & Verification */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ 
+              fontSize: '0.9rem', 
+              fontWeight: 700, 
+              color: 'var(--color-warning)', 
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              paddingBottom: '6px',
+              borderBottom: '1px solid var(--color-border-light)'
+            }}>
+              <Clock size={16} /> {t("2. Hàng đợi & Kiểm duyệt")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }} className="responsive-grid-1">
+              {/* pending */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : '#e8f0fe',
+                  color: theme === 'dark' ? '#60a5fa' : '#1a73e8',
+                  border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #d2e3fc',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Clock size={12} />
+                  {t("Chờ chia (pending)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data đang nằm trong hàng đợi phân phối, chờ đến lượt của thuật toán chia số tiếp theo.")}
+                </span>
+              </div>
+
+              {/* pending_work_hours */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(6, 182, 212, 0.15)' : '#ecfeff',
+                  color: theme === 'dark' ? '#22d3ee' : '#0f766e',
+                  border: theme === 'dark' ? '1px solid rgba(6, 182, 212, 0.25)' : '1px solid #cffafe',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Calendar size={12} />
+                  {t("Chờ giờ làm (pending_work_hours)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data đổ về ngoài khung giờ làm việc. Hệ thống sẽ giữ lại và tự động chia khi bắt đầu ca làm việc.")}
+                </span>
+              </div>
+
+              {/* pending_approval */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start',
+                gridColumn: 'span 2'
+              }} className="span-full-mobile">
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fffbeb',
+                  color: theme === 'dark' ? '#fbbf24' : '#b45309',
+                  border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid #fef3c7',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <ShieldAlert size={12} />
+                  {t("Tạm giữ / Chờ AI đánh giá (pending_approval)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data có yếu tố nghi vấn về chất lượng hoặc đang trong hàng đợi xử lý sàng lọc của AI (Gatekeeper). Nếu đạt chuẩn sẽ được chia tiếp, nếu dưới chuẩn sẽ bị từ chối chuyển sang trạng thái Dưới chuẩn.")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Group 3: Filtered & Blocked */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ 
+              fontSize: '0.9rem', 
+              fontWeight: 700, 
+              color: 'var(--color-danger)', 
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              paddingBottom: '6px',
+              borderBottom: '1px solid var(--color-border-light)'
+            }}>
+              <XCircle size={16} /> {t("3. Lọc bỏ & Chặn")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }} className="responsive-grid-1">
+              {/* rejected */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fce8e6',
+                  color: theme === 'dark' ? '#f87171' : '#c5221f',
+                  border: theme === 'dark' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid #fad2cf',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <XCircle size={12} />
+                  {t("Dưới chuẩn (rejected)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data bị hệ thống AI hoặc Admin từ chối do không đủ tiêu chuẩn tối thiểu (sai chuyên ngành, học sinh cấp 3, không nhu cầu thực tế...).")}
+                </span>
+              </div>
+
+              {/* blacklisted */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2',
+                  color: theme === 'dark' ? '#fca5a5' : '#991b1b',
+                  border: theme === 'dark' ? '1px solid rgba(220, 38, 38, 0.25)' : '1px solid #fca5a5',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <AlertTriangle size={12} />
+                  {t("Blacklist (blacklisted)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Số điện thoại rác, spam hoặc quấy phá nằm trong danh sách đen bị chặn vĩnh viễn, không bao giờ được chia.")}
+                </span>
+              </div>
+
+              {/* duplicate */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(100, 116, 139, 0.15)' : '#f1f5f9',
+                  color: theme === 'dark' ? '#94a3b8' : '#475569',
+                  border: theme === 'dark' ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid #e2e8f0',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Copy size={12} />
+                  {t("Trùng lặp (duplicate)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data bị trùng lặp thông tin liên hệ với khách hàng đã tồn tại trong hệ thống.")}
+                </span>
+              </div>
+
+              {/* rule_6_month */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(100, 116, 139, 0.15)' : '#f1f5f9',
+                  color: theme === 'dark' ? '#94a3b8' : '#475569',
+                  border: theme === 'dark' ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid #e2e8f0',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Calendar size={12} />
+                  {t("Quy định 6 tháng (rule_6_month)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Áp dụng quy tắc chặn hoặc điều hướng đặc biệt đối với khách hàng đăng ký lại trong vòng 6 tháng gần nhất.")}
+                </span>
+              </div>
+
+              {/* silent */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start',
+                gridColumn: 'span 2'
+              }} className="span-full-mobile">
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: theme === 'dark' ? 'rgba(100, 116, 139, 0.15)' : '#f1f5f9',
+                  color: theme === 'dark' ? '#94a3b8' : '#475569',
+                  border: theme === 'dark' ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid #e2e8f0',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <RefreshCw size={12} />
+                  {t("Chỉ đồng bộ (silent)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Data được đẩy vào phục vụ mục đích ghi nhận lịch sử, đối soát hoặc thống kê của hệ thống tiếp thị mà không tham gia vào luồng chia số.")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CustomModal>
+
       {selectedLead && (
         <NotificationPreviewModal
           isOpen={previewOpen}
@@ -4951,6 +5423,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       )}
 
       <style>{`
+        @media (max-width: 768px) {
+          .responsive-grid-1 {
+            grid-template-columns: 1fr !important;
+          }
+          .span-full-mobile {
+            grid-column: span 1 !important;
+          }
+        }
         :root {
           --color-calendar-weekend: #f7f8fa81;
         }

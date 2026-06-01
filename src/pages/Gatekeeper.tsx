@@ -533,7 +533,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
   // Search Params
   const getInitialDateFilter = () => {
-    return localStorage.getItem('domation_global_date') || '7 ngày qua';
+    return localStorage.getItem('domation_global_date') || '30 ngày qua';
   };
   const dateFilter = searchParams.get('date') || getInitialDateFilter();
 
@@ -993,6 +993,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   }, [isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       const newDate = e.detail;
       if (newDate && searchParams.get('date') !== newDate) {
@@ -1005,7 +1006,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [searchParams]);
+  }, [searchParams, isActive]);
 
   const fetchSettings = async () => {
     setSettingsLoading(true);

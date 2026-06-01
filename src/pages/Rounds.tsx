@@ -26,7 +26,7 @@ const getColorForName = (name: string) => {
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
-const RoundsInner = () => {
+const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -63,7 +63,7 @@ const RoundsInner = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '7 ngày qua';
+    return localStorage.getItem('domation_global_date') || '30 ngày qua';
   });
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -204,8 +204,10 @@ const RoundsInner = () => {
   };
 
   useEffect(() => {
-    fetchRounds();
-  }, [dateFilter]);
+    if (isActive) {
+      fetchRounds();
+    }
+  }, [dateFilter, isActive]);
 
   useEffect(() => {
     fetchConsultants();
@@ -213,6 +215,16 @@ const RoundsInner = () => {
   }, []);
 
   useEffect(() => {
+    if (isActive) {
+      const saved = localStorage.getItem('domation_global_date');
+      if (saved && saved !== dateFilter) {
+        setDateFilter(saved);
+      }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       if (e.detail && e.detail !== dateFilter) {
         setDateFilter(e.detail);
@@ -220,15 +232,16 @@ const RoundsInner = () => {
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [dateFilter]);
+  }, [dateFilter, isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     const handleLeadAdded = () => {
       fetchRounds();
     };
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
-  }, [dateFilter]);
+  }, [dateFilter, isActive]);
 
   const openAddModal = () => {
     setEditingRound(null);

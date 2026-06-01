@@ -28,7 +28,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '7 ngày qua';
+    return localStorage.getItem('domation_global_date') || '30 ngày qua';
   });
 
   const handleUpdateDateFilter = (val: string) => {
@@ -367,6 +367,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   }, [isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     const handleGlobalDate = (e: any) => {
       const newDate = e.detail;
       if (newDate && newDate !== dateFilter) {
@@ -375,7 +376,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
     };
     window.addEventListener('global-date-change', handleGlobalDate);
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [dateFilter]);
+  }, [dateFilter, isActive]);
 
   const handleCustomDateSubmit = () => {
     if (!startDate || !endDate) return toast.error(t("Vui lòng chọn đầy đủ Từ ngày và Đến ngày"));
