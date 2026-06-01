@@ -4431,8 +4431,8 @@ switch ($action) {
             $conn->begin_transaction();
             try {
                 // 1. Insert report as approved
-                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_by, resolved_at) VALUES (?, ?, ?, ?, 'approved', 'Hệ thống', NOW())");
-                $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
+                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_by, created_at, resolved_at) VALUES (?, ?, ?, ?, 'approved', 'Hệ thống', (SELECT created_at FROM leads WHERE id = ?), (SELECT created_at FROM leads WHERE id = ?))");
+                $stmt->bind_param("iiisii", $lead_id, $sale_id, $round_id, $reason, $lead_id, $lead_id);
                 $stmt->execute();
                 $report_id = $stmt->insert_id;
                 $stmt->close();
@@ -4564,8 +4564,8 @@ switch ($action) {
             }
         }
 
-        $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
+        $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, created_at) VALUES (?, ?, ?, ?, (SELECT created_at FROM leads WHERE id = ?))");
+        $stmt->bind_param("iiisi", $lead_id, $sale_id, $round_id, $reason, $lead_id);
         $success = $stmt->execute();
         $ticketId = $conn->insert_id;
         $stmt->close();
@@ -4970,7 +4970,7 @@ switch ($action) {
             }
 
             // 2. Mark report as approved
-            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
             $updRep->bind_param("ssi", $approval_reason, $adminName, $report_id);
             $updRep->execute();
 
@@ -5276,7 +5276,7 @@ switch ($action) {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý rồi.");
             }
 
-            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
             $stmt->bind_param("ssi", $reject_reason, $adminName, $report_id);
             $stmt->execute();
 
@@ -6518,12 +6518,20 @@ switch ($action) {
                 $upd->close();
 
                 $logMsg = "Từ chối bởi Admin: " . $reason;
-                $delStmt = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval'");
-                $delStmt->bind_param("i", $lead_id);
-                $delStmt->execute();
-                $delStmt->close();
+                $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                $chkLog->bind_param("i", $lead_id);
+                $chkLog->execute();
+                $logRow = $chkLog->get_result()->fetch_assoc();
+                $chkLog->close();
 
-                logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
+                if ($logRow) {
+                    $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'rejected', message = ? WHERE id = ?");
+                    $updLog->bind_param("si", $logMsg, $logRow['id']);
+                    $updLog->execute();
+                    $updLog->close();
+                } else {
+                    logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false, $lead['created_at']);
+                }
 
                 logAdminAction($conn, $decodedUser['id'], 'REJECT_HELD_LEAD', [
                     'lead_id' => $lead_id,
@@ -6620,12 +6628,13 @@ switch ($action) {
             $chkLog->close();
 
             if ($logRow) {
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted', message = ?, received_at = NOW() WHERE id = ?");
+                // Giữ nguyên ngày nhận lead ban đầu (không cập nhật received_at)
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'blacklisted', message = ? WHERE id = ?");
                 $updLog->bind_param("si", $logMsg, $logRow['id']);
                 $updLog->execute();
                 $updLog->close();
             } else {
-                logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'blacklisted', $logMsg, false);
+                logDistribution($conn, $lead_id, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'blacklisted', $logMsg, false, $lead['created_at']);
             }
 
             logAdminAction($conn, $decodedUser['id'], 'BLACKLIST_HELD_LEAD', [
@@ -9124,10 +9133,9 @@ switch ($action) {
             $todayTickets = (int) $row['cnt'];
         }
 
-        // ticket_errors counts only APPROVED tickets in the date range resolved_at (for Dashboard card details)
+        // ticket_errors counts only APPROVED tickets in the date range created_at (for Dashboard card details)
         $ticketErrors = 0;
-        $dateConditionResolved = str_replace('received_at', 'resolved_at', $dateCondition);
-        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $dateConditionResolved");
+        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $dateConditionCreated");
         if ($tktErrRes && $row = $tktErrRes->fetch_assoc()) {
             $ticketErrors = (int) $row['cnt'];
         }
@@ -9138,8 +9146,7 @@ switch ($action) {
 
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
-        $prevDateConditionResolved = str_replace('received_at', 'resolved_at', $prevDateCondition);
-        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $prevDateConditionResolved");
+        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $prevDateConditionCreated");
         if ($prevTktErrRes && $row = $prevTktErrRes->fetch_assoc()) {
             $prevTicketErrors = (int) $row['cnt'];
         }
@@ -9652,11 +9659,11 @@ switch ($action) {
         }
 
         // Query Error Stats by Consultant (Approved tickets)
-        $dateConditionResolved = str_replace('received_at', 'dr.resolved_at', $dateCondition);
+        $dateConditionCreated = str_replace('received_at', 'dr.created_at', $dateCondition);
         $errorSql = "SELECT c.name, COUNT(dr.id) as count 
                      FROM data_reports dr 
                      JOIN consultants c ON dr.consultant_id = c.id
-                     WHERE dr.status = 'approved' AND $dateConditionResolved
+                     WHERE dr.status = 'approved' AND $dateConditionCreated
                      GROUP BY c.id ORDER BY count DESC";
         $errorResRaw = $conn->query($errorSql);
         $errorStats = [];
@@ -9969,10 +9976,9 @@ switch ($action) {
 
         // Query ticket error counts (data_reports approved)
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
-        $dateConditionResolved = str_replace('received_at', 'resolved_at', $dateCondition);
         $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
                             FROM data_reports 
-                            WHERE status = 'approved' AND $dateConditionResolved" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                            WHERE status = 'approved' AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
                             GROUP BY consultant_id";
         $tktRes = $conn->query($ticketCountsSql);
         if ($tktRes) {

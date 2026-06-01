@@ -3452,3 +3452,20 @@ select:focus {
     height: 11px !important;
   }
 }
+
+.modal-body-padding {
+  padding: 0 0 1.5rem 0;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .modal-body-padding {
+    padding: 0 0 0.75rem 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-body-padding {
+    padding: 0 0 0.5rem 0 !important;
+  }
+}

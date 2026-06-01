@@ -93,13 +93,13 @@ foreach ($consultants as $cId => $c) {
         }
     }
 
-    // Query approved tickets from data_reports resolved in this month
+    // Query approved tickets from data_reports created in this month
     $ticketCount = 0;
     $ticketSql = "SELECT COUNT(*) as cnt FROM data_reports 
                   WHERE consultant_id = $cId 
                     AND round_id = $targetRoundId 
                     AND status = 'approved'
-                    AND resolved_at BETWEEN '$startDate' AND '$endDate'";
+                    AND created_at BETWEEN '$startDate' AND '$endDate'";
     $ticketRes = $conn->query($ticketSql);
     if ($ticketRes && $tRow = $ticketRes->fetch_assoc()) {
         $ticketCount = (int) $tRow['cnt'];

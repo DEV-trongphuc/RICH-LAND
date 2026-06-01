@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 145;
+$targetVersion = 146;
 $currentVersion = 0;
 
 // Query current DB version
@@ -185,6 +185,9 @@ if (!$apply) {
 
             // Version 145
             echo "<tr><td>v145</td><td>Tối ưu hóa hiệu năng bằng cách thêm cột ảo log_type và chỉ mục tương ứng cho admin_logs.</td><td>" . ($currentVersion >= 145 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
+
+            // Version 146
+            echo "<tr><td>v146</td><td>Đồng bộ thời gian log phân bổ cũ bị từ chối/blacklist với ngày tạo Lead để thống kê chính xác theo ngày phát sinh Lead.</td><td>" . ($currentVersion >= 146 ? "<span class='badge badge-success'>Đã áp dụng</span>" : "<span class='badge badge-info'>Đang chờ</span>") . "</td></tr>";
 
             echo "</tbody></table>";
             echo "</div>";
@@ -1253,6 +1256,44 @@ try {
         $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '145') ON DUPLICATE KEY UPDATE setting_value = '145'");
         $currentVersion = 145;
         $logMsg("Hoàn thành cập nhật phiên bản 145.", "success");
+    }
+
+    // --------------------------------------------------
+    // Step 17: Version 146 (Migrate historical rejected & blacklisted distribution logs to match lead creation date)
+    // --------------------------------------------------
+    if ($currentVersion < 146) {
+        $logMsg("Đang chạy cập nhật phiên bản 146 (Đồng bộ thời gian log phân bổ cũ bị từ chối/blacklist với ngày tạo Lead)...", "info");
+        
+        $updateQuery = "UPDATE distribution_logs dl
+                        JOIN leads l ON dl.lead_id = l.id
+                        SET dl.received_at = l.created_at
+                        WHERE dl.status IN ('rejected', 'blacklisted') AND dl.received_at > l.created_at";
+        
+        if ($conn->query($updateQuery)) {
+            $affectedRows = $conn->affected_rows;
+            $logMsg("Đã cập nhật ngày nhận của $affectedRows dòng log phân bổ (rejected/blacklisted) cũ về ngày tạo Lead.", "success");
+        } else {
+            throw new Exception("Lỗi khi chạy query cập nhật distribution_logs: " . $conn->error);
+        }
+
+        // Đồng bộ thời gian gửi và thời gian duyệt/từ chối ticket cũ trong data_reports về ngày tạo Lead gốc (từ Sheets)
+        $updateTicketQuery = "UPDATE data_reports dr
+                              JOIN leads l ON dr.lead_id = l.id
+                              SET dr.created_at = l.created_at,
+                                  dr.resolved_at = l.created_at
+                              WHERE dr.status IN ('approved', 'rejected') 
+                                AND (dr.created_at > l.created_at OR dr.resolved_at > l.created_at)";
+
+        if ($conn->query($updateTicketQuery)) {
+            $affectedTickets = $conn->affected_rows;
+            $logMsg("Đã cập nhật ngày gửi và ngày duyệt của $affectedTickets ticket (approved/rejected) cũ về ngày tạo Lead gốc.", "success");
+        } else {
+            throw new Exception("Lỗi khi chạy query cập nhật data_reports: " . $conn->error);
+        }
+        
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '146') ON DUPLICATE KEY UPDATE setting_value = '146'");
+        $currentVersion = 146;
+        $logMsg("Hoàn thành cập nhật phiên bản 146.", "success");
     }
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
   GitBranch, UserPlus, Zap, Calendar, BarChart2, Scale,
-  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle,
+  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle, Cpu
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 import { Avatar } from '../components/ui/Avatar';
+import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 
 const parseServerDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -55,6 +56,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showWarRoom, setShowWarRoom] = useState(false);
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState<boolean>(() => {
     const cached = localStorage.getItem('ai_screener_enabled');
     return cached === null ? true : cached === '1';
@@ -595,6 +597,31 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               width="100%"
             />
           </div>
+          {/* Button to toggle War Room Flight Deck mode */}
+          <button
+            className="btn primary"
+            onClick={() => setShowWarRoom(true)}
+            title={t("Chế độ trình chiếu TV văn phòng")}
+            style={{
+              height: 38,
+              padding: '0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              flexShrink: 0
+            }}
+          >
+            <Cpu size={15} style={{ color: '#fff' }} />
+            <span>AI Core</span>
+          </button>
+
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
           <button
             className="btn primary"
@@ -617,7 +644,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             }}
           >
             <Server size={15} />
-            <span>{t("Tài nguyên sử dụng")}</span>
+            <span>
+              <span className="hide-on-mobile">{t("Tài nguyên sử dụng")}</span>
+              <span className="mobile-only">{t("Tài nguyên")}</span>
+            </span>
           </button>
         </div>
       </div>
@@ -2818,6 +2848,15 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             </div>
           </div>
         </CustomModal>
+      )}
+
+      {showWarRoom && (
+        <WarRoomFlightDeck
+          isOpen={showWarRoom}
+          onClose={() => setShowWarRoom(false)}
+          stats={stats}
+          recentLogs={recentLogs}
+        />
       )}
     </div>
   );

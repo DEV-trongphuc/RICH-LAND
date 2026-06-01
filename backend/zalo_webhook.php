@@ -463,7 +463,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     }
 
                     // 2. Cập nhật status báo cáo thành approved kèm lý do
-                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
                     if (!$updRep) {
                         throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
                     }
@@ -701,7 +701,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $fullRejectReason = htmlspecialchars($rejectReason) . " (Từ chối qua Zalo bởi " . $adminName . ")";
 
                     // 2. Cập nhật status báo cáo thành rejected kèm lý do
-                    $updRep = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
+                    $updRep = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
                     if (!$updRep) {
                         throw new Exception("Lỗi chuẩn bị truy vấn cập nhật.");
                     }
@@ -1311,12 +1311,20 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         $upd->close();
 
                         $logMsg = "Từ chối bởi Admin (qua Zalo): " . $reason;
-                        $delStmt = $conn->prepare("DELETE FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval'");
-                        $delStmt->bind_param("i", $leadId);
-                        $delStmt->execute();
-                        $delStmt->close();
+                        $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
+                        $chkLog->bind_param("i", $leadId);
+                        $chkLog->execute();
+                        $logRow = $chkLog->get_result()->fetch_assoc();
+                        $chkLog->close();
 
-                        logDistribution($conn, $leadId, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false);
+                        if ($logRow) {
+                            $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'rejected', message = ? WHERE id = ?");
+                            $updLog->bind_param("si", $logMsg, $logRow['id']);
+                            $updLog->execute();
+                            $updLog->close();
+                        } else {
+                            logDistribution($conn, $leadId, null, $lead['target_round_id'] ? $lead['target_round_id'] : null, 'rejected', $logMsg, false, $lead['created_at']);
+                        }
 
                         // Log admin action
                         $detailsJson = json_encode([

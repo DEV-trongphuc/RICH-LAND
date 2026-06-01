@@ -853,7 +853,6 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             <span 
                               style={{ 
                                 fontWeight: 700, 
-                                textDecoration: 'underline', 
                                 cursor: 'help' 
                               }} 
                               title={t('Đang được bù ưu tiên tiếp theo')}
@@ -1077,7 +1076,6 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                           <span 
                             style={{ 
                               fontWeight: 700, 
-                              textDecoration: 'underline', 
                               cursor: 'help' 
                             }} 
                             title={t('Đang được bù ưu tiên tiếp theo')}

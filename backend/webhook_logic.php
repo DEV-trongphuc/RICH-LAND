@@ -1273,10 +1273,15 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
-function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true)
+function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true, $customDate = null)
 {
-    $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
+    if ($customDate) {
+        $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message, received_at) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiisss", $leadId, $assignedTo, $roundId, $status, $message, $customDate);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiiss", $leadId, $assignedTo, $roundId, $status, $message);
+    }
     $stmt->execute();
     $stmt->close();
 

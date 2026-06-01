@@ -1994,7 +1994,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         width="850px"
       >
         {selectedLead && (
-          <div style={{ padding: '1.5rem', background: 'transparent' }}>
+          <div className="modal-body-padding">
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
               <div className="sticky-column">
