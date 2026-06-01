@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -248,6 +248,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const currentPage = Number(searchParams.get('page') || '1');
 
   const [showDateModal, setShowDateModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -967,6 +968,36 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
             <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                marginLeft: '8px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem chi tiết quy định duyệt bù")}
+            >
+              <Info size={14} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
           </h1>
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
             {t('Quản lý và xét duyệt các BÁO CÁO DATA từ Tư vấn viên')}
@@ -4610,6 +4641,221 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         </div>,
         document.body
       )}
+
+      <CustomModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} title={t("Quy định duyệt bù & Báo lỗi Data")} width="800px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem' }}>
+          {/* Section 1: Process Workflow */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={18} color="var(--color-primary)" />
+              {t("1. Quy trình báo cáo & duyệt đền bù")}
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t("Quy trình 3 bước khép kín từ khi Tư vấn viên phát hiện số lỗi đến khi nhận data đền bù:")}
+            </p>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              {/* Step 1 */}
+              <div style={{ 
+                flex: 1, minWidth: 160, 
+                background: theme === 'dark' ? 'rgba(124, 58, 237, 0.04)' : 'rgba(124, 58, 237, 0.02)', 
+                border: '1.5px solid rgba(124, 58, 237, 0.15)', borderRadius: 10, padding: '0.75rem',
+                display: 'flex', flexDirection: 'column', gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-primary)', color: 'white', padding: '1px 5px', borderRadius: 4 }}>BƯỚC 1</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t("TVV Báo Lỗi")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Gửi báo cáo kèm lý do cụ thể trong thời gian quy định khi phát hiện data không đạt chất lượng.")}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }} className="hide-on-mobile">
+                <ArrowRight size={14} color="var(--color-text-muted)" />
+              </div>
+
+              {/* Step 2 */}
+              <div style={{ 
+                flex: 1, minWidth: 160, 
+                background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+                border: '1.5px solid rgba(245, 158, 11, 0.15)', borderRadius: 10, padding: '0.75rem',
+                display: 'flex', flexDirection: 'column', gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#f59e0b', color: 'white', padding: '1px 5px', borderRadius: 4 }}>BƯỚC 2</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309' }}>{t("Admin Xét Duyệt")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Admin/AI đối soát thông tin. Nếu duyệt: Giao lại (Reassign) hoặc đưa số vào Blacklist và cộng +1 nợ bù.")}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }} className="hide-on-mobile">
+                <ArrowRight size={14} color="var(--color-text-muted)" />
+              </div>
+
+              {/* Step 3 */}
+              <div style={{ 
+                flex: 1, minWidth: 160, 
+                background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+                border: '1.5px solid rgba(16, 185, 129, 0.15)', borderRadius: 10, padding: '0.75rem',
+                display: 'flex', flexDirection: 'column', gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#10b981', color: 'white', padding: '1px 5px', borderRadius: 4 }}>BƯỚC 3</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#065f46' }}>{t("Tự động Đền bù")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Ở lượt phân bổ tiếp theo, hệ thống ưu tiên giao lead bù cho Sale để trả nợ trước khi xoay vòng tiếp.")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Error Classifications */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={18} color="var(--color-primary)" />
+              {t("2. Phân loại lỗi data được chấp nhận duyệt bù")}
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t("Hệ thống hỗ trợ duyệt bù tự động bằng AI hoặc duyệt thủ công theo 4 nhóm lỗi chuẩn:")}
+            </p>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+              gap: '0.75rem',
+              marginTop: 4
+            }}>
+              {/* Card 1: Sai số */}
+              <div style={{ 
+                background: 'var(--color-surface)', 
+                border: '1px solid var(--color-border-light)', 
+                borderRadius: 12, padding: '1rem',
+                display: 'flex', gap: 12, alignItems: 'flex-start'
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#3b82f6' }}>
+                  <Phone size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Sai số / Thuê bao")}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    {t("Số điện thoại không tồn tại, thuê bao không liên lạc được ngay từ cuộc gọi đầu tiên, gọi sai người đăng ký.")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Trùng lặp */}
+              <div style={{ 
+                background: 'var(--color-surface)', 
+                border: '1px solid var(--color-border-light)', 
+                borderRadius: 12, padding: '1rem',
+                display: 'flex', gap: 12, alignItems: 'flex-start'
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b5cf6' }}>
+                  <Copy size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Trùng lặp (Duplicate)")}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    {t("Lead bị trùng lặp SĐT hoặc Email với lead đã chia cho cùng một tư vấn viên hoặc người khác trong vòng 6 tháng.")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Spam ảo */}
+              <div style={{ 
+                background: 'var(--color-surface)', 
+                border: '1px solid var(--color-border-light)', 
+                borderRadius: 12, padding: '1rem',
+                display: 'flex', gap: 12, alignItems: 'flex-start'
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#f59e0b' }}>
+                  <Trash2 size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Spam ảo / Junk Lead")}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    {t("Khách khai thông tin giả lập, trẻ em bấm nghịch đăng ký, điền lung tung hoặc báo không đăng ký ngay khi gọi.")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Dưới chuẩn */}
+              <div style={{ 
+                background: 'var(--color-surface)', 
+                border: '1px solid var(--color-border-light)', 
+                borderRadius: 12, padding: '1rem',
+                display: 'flex', gap: 12, alignItems: 'flex-start'
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#ef4444' }}>
+                  <ShieldAlert size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Dưới chuẩn / Khác")}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    {t("Khách sai đối tượng chuyên ngành, học sinh cấp 3, không đúng nhu cầu học hoặc không đạt tiêu chuẩn tối thiểu vòng chia.")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Admin Options and Compensation Logic */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Scale size={18} color="var(--color-primary)" />
+              {t("3. Hành động xét duyệt từ Admin")}
+            </h4>
+            
+            <div style={{ 
+              background: 'var(--color-bg)', 
+              border: '1px solid var(--color-border)', 
+              borderRadius: 12, 
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ 
+                  width: 24, height: 24, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800, flexShrink: 0, marginTop: 2
+                }}>✓</div>
+                <div>
+                  <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{t("Duyệt & Đền Bù (Approve)")}</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    {t("Sale được cộng +1 nợ bù. Admin có thể chọn giao lại (Reassign) lead này cho Sale khác (nếu lead vẫn cứu vớt được) hoặc click Chặn Blacklist để hệ thống không bao giờ chia lại số này nữa.")}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ 
+                  width: 24, height: 24, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800, flexShrink: 0, marginTop: 2
+                }}>✗</div>
+                <div>
+                  <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{t("Từ chối (Reject)")}</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    {t("Từ chối báo cáo đền bù của Sale (do gọi muộn quá hạn, không đúng lý do, hoặc thiếu bằng chứng chứng minh). Sale không được đền bù lượt này.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
 
       <style>{`
         .spin { animation: spin 1s linear infinite; }

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Users, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale, Info } from 'lucide-react';
+import { Plus, Users, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale, Info, Layers, HelpCircle, ArrowRight, RefreshCw } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
@@ -113,6 +113,7 @@ const RoundsInner = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingRound, setEditingRound] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -454,6 +455,36 @@ const RoundsInner = () => {
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Zap size={24} color="var(--color-primary)" />
             {t("Vòng Phân Bổ")}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                marginLeft: '8px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem chi tiết cơ chế hoạt động chia số")}
+            >
+              <Info size={14} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
           </h1>
           <p className="page-subtitle">
             {t("Quản lý vòng xoay Round-Robin và điều phối Tư vấn viên")}
@@ -1902,6 +1933,330 @@ const RoundsInner = () => {
             </div>
           </div>
         )}
+      </CustomModal>
+
+      {/* Mechanism Info Help Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Cơ chế & Thuật toán Phân bổ Data")}
+        width="800px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(124, 58, 237, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <HelpCircle size={28} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Hệ thống phân phối data (Lead Routing) hoạt động tự động dựa trên thuật toán Round-Robin nâng cao, kết hợp nhiều lớp quy tắc và độ ưu tiên để đảm bảo tính tối ưu, công bằng và liên tục.")}
+            </p>
+          </div>
+
+          {/* Section 1: Lead Priority Layers */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: '0 0 0.25rem 0', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Layers size={18} color="var(--color-primary)" />
+              {t("1. Độ ưu tiên chia số (Lead Priority)")}
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t("Khi một lead mới được đẩy vào, hệ thống quét danh sách Sale theo thứ tự ưu tiên từ trên xuống dưới:")}
+            </p>
+            
+            {/* Visual Queue Layers */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 4 }}>
+              {/* Layer 1 */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 12, 
+                padding: '0.875rem', 
+                background: theme === 'dark' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(239, 68, 68, 0.02)', 
+                borderLeft: '4px solid #ef4444', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0' 
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#ef4444' }}>
+                  <RefreshCw size={16} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Mức 1: Bù nợ (Compensation)")}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Bù data lỗi/Junk lead (tài khoản nợ bù > 0). Đây là mức có độ ưu tiên tuyệt đối để trả nợ cho Sale.")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 2 */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 12, 
+                padding: '0.875rem', 
+                background: theme === 'dark' ? 'rgba(236, 72, 153, 0.04)' : 'rgba(236, 72, 153, 0.02)', 
+                borderLeft: '4px solid #ec4899', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0' 
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(236, 72, 153, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#ec4899' }}>
+                  <Clock size={16} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Mức 2: Bỏ lỡ (Starvation Prevention)")}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Bù lượt bỏ lỡ ngoài giờ làm việc (nếu tính năng tự động bù lượt bỏ lỡ được bật).")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 3 */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 12, 
+                padding: '0.875rem', 
+                background: theme === 'dark' ? 'rgba(139, 92, 246, 0.04)' : 'rgba(139, 92, 246, 0.02)', 
+                borderLeft: '4px solid #8b5cf6', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0' 
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b5cf6' }}>
+                  <Zap size={16} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Mức 3: Lượt kép (Mid-turn Continuity)")}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Giao nốt lượt dở dang đối với Sale có cấu hình nhận nhiều lead liên tiếp trong một vòng (data_per_turn > 1).")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 4 */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 12, 
+                padding: '0.875rem', 
+                background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+                borderLeft: '4px solid #10b981', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0' 
+              }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#10b981' }}>
+                  <Scale size={16} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t("Mức 4: Xoay vòng (Standard Round-Robin)")}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {t("Chia số tự động luân phiên tiêu chuẩn dựa trên tỷ lệ (receive_ratio) đã thiết lập cho mỗi Sale.")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Alternating Compensation */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: '0 0 0.25rem 0', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Zap size={18} color="#d97706" />
+              {t("2. Cơ chế Đền bù xen kẽ (Tránh dồn dập)")}
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t("Để Sale kịp gọi data cũ trước khi nhận data bù tiếp theo, hệ thống tự động giãn cách lượt bù:")}
+            </p>
+
+            {/* Visual Workflow Steps */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'stretch', 
+              gap: 8, 
+              marginTop: 6,
+              flexWrap: 'wrap'
+            }}>
+              {/* Step 1 */}
+              <div style={{ 
+                flex: 1, 
+                minWidth: 180,
+                background: theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : '#fffbeb', 
+                border: '1px solid rgba(245, 158, 11, 0.2)', 
+                borderRadius: 10,
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#f59e0b', color: 'white', padding: '1px 5px', borderRadius: 4 }}>LEAD 1</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309' }}>{t("GIAO BÙ")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Giao bù cho Sale A.")}
+                </p>
+                <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t("Số nợ bù của A giảm đi 1.")}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }} className="hide-on-mobile">
+                <ArrowRight size={16} color="var(--color-text-muted)" />
+              </div>
+
+              {/* Step 2 */}
+              <div style={{ 
+                flex: 1, 
+                minWidth: 180,
+                background: 'var(--color-bg)', 
+                border: '1px solid var(--color-border)', 
+                borderRadius: 10,
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-text-muted)', color: 'white', padding: '1px 5px', borderRadius: 4 }}>LEAD 2</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("XEN KẼ")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Tạm hoãn bù A ➔ Giao Sale B.")}
+                </p>
+                <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t("A vừa nhận lead nên được giảng cách.")}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }} className="hide-on-mobile">
+                <ArrowRight size={16} color="var(--color-text-muted)" />
+              </div>
+
+              {/* Step 3 */}
+              <div style={{ 
+                flex: 1, 
+                minWidth: 180,
+                background: theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : '#fffbeb', 
+                border: '1px solid rgba(245, 158, 11, 0.2)', 
+                borderRadius: 10,
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, background: '#f59e0b', color: 'white', padding: '1px 5px', borderRadius: 4 }}>LEAD 3</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309' }}>{t("TIẾP TỤC BÙ")}</span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text)', margin: 0, fontWeight: 500 }}>
+                  {t("Giao bù tiếp cho Sale A.")}
+                </p>
+                <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t("Đủ khoảng cách xen kẽ an toàn.")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Double assignment */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 800, margin: '0 0 0.25rem 0', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Scale size={18} color="#10b981" />
+              {t("3. Vì sao Sale nhận được 2 lead liên tiếp?")}
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t("Hiện tượng một Sale nhận 2 data liên tiếp không phải lỗi hệ thống, mà là kết quả của sự giao thoa giữa hàng đợi Bù và hàng đợi Xoay vòng:")}
+            </p>
+
+            {/* Split timeline boxes */}
+            <div style={{ 
+              background: 'var(--color-bg)', 
+              border: '1px solid var(--color-border)', 
+              borderRadius: 12, 
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  background: '#f59e0b', 
+                  color: 'white', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '0.7rem', 
+                  fontWeight: 800,
+                  flexShrink: 0,
+                  marginTop: 2
+                }}>1</div>
+                <div>
+                  <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t("Lượt 1: Nhận data Bù nợ (Ưu tiên Mức 1)")}</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                    {t("Hệ thống thấy Sale A còn nợ bù ➔ kích hoạt đền bù để trả nợ. Giao xong, nợ của A về 0.")}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ 
+                  width: 20, 
+                  height: 20, 
+                  borderRadius: '50%', 
+                  background: '#10b981', 
+                  color: 'white', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '0.7rem', 
+                  fontWeight: 800,
+                  flexShrink: 0,
+                  marginTop: 2
+                }}>2</div>
+                <div>
+                  <strong style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t("Lượt 2: Nhận data Xoay vòng thật (Standard Mức 4)")}</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                    {t("Lượt tiếp theo về, hàng đợi Bù nợ trống. Hệ thống chuyển sang xoay vòng Standard. Vòng xoay tự động tình cờ đang tới lượt của Sale A ➔ tiếp tục giao cho Sale A.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <p style={{ fontSize: '0.725rem', fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '4px 0 0 0', display: 'flex', gap: 4, alignItems: 'center' }}>
+              <AlertCircle size={12} style={{ flexShrink: 0 }} />
+              {t("Lưu ý: Cơ chế bù xen kẽ chỉ chặn \"bù liên tiếp\", không chặn lượt xoay vòng tự nhiên khi vòng xoay đến hàng của Sale.")}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
       </CustomModal>
     </div>
   );

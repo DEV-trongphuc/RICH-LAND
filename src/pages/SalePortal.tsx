@@ -196,7 +196,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [search, setSearch] = useState(getInitialSearch());
   const [searchInput, setSearchInput] = useState(getInitialSearch());
   const [roundId, setRoundId] = useState('');
-  const [saleIdFilter, setSaleIdFilter] = useState('');
+  const [saleIdFilter, setSaleIdFilter] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('sale_id') || '';
+  });
   const [dateMode, setDateMode] = useState('7_days'); // all, today, yesterday, custom
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -570,6 +573,21 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   useEffect(() => {
     loadPortalData();
   }, [token, user, roundId, dateMode, saleIdFilter, search, startDate, endDate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const uId = params.get('sale_id') || '';
+    if (uId !== saleIdFilter) {
+      setSaleIdFilter(uId);
+    }
+  }, [location.search]);
+
+  const handleExitImpersonation = () => {
+    setSaleIdFilter('');
+    const params = new URLSearchParams(location.search);
+    params.delete('sale_id');
+    navigate(`/sale-portal${params.toString() ? '?' + params.toString() : ''}`);
+  };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -3140,8 +3158,30 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   SALE
                 </span>
               </h1>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 {t('Nhân viên: {name}').replace('{name}', displayUser?.name || '')}
+                {user?.role === 'admin' && saleIdFilter && (
+                  <button 
+                    onClick={handleExitImpersonation}
+                    style={{
+                      background: 'var(--color-danger-light)',
+                      color: 'var(--color-danger)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--color-danger-light)'}
+                  >
+                    {t('Thoát đóng vai')}
+                  </button>
+                )}
               </span>
             </div>
           </div>
@@ -3438,7 +3478,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         <main className="no-scrollbar responsive-main portal-main-content" style={{ flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
           <div style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
             {/* Admin Switch Sale View warning/dropdown */}
-            {user?.role === 'admin' && data.consultants && (
+            {user?.role === 'admin' && data.consultants && !saleIdFilter && (
               <div className="portal-filters-row" style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',
