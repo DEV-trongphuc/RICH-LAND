@@ -49,6 +49,7 @@ interface Particle {
   maxHoldTime: number; // initial hold time
   color: string;
   size: number;
+  trail?: { x: number; y: number; alpha: number }[];
 }
 
 const getInitials = (name: string) => {
@@ -503,14 +504,16 @@ const SpaceCanvasBackground: React.FC<{
       let dx = x;
       let dy = y;
 
-      // 1. Core gravity
-      const dxCore = coreX - x;
-      const dyCore = coreY - y;
+      // 1. Einstein Ring Gravitational Lensing (Core gravity warp)
+      const dxCore = x - coreX;
+      const dyCore = y - coreY;
       const distCore = Math.sqrt(dxCore * dxCore + dyCore * dyCore);
-      if (distCore > 0 && distCore < 320) {
-        const pull = 0.28 * Math.exp(-Math.pow(distCore / 150, 2));
-        dx += dxCore * pull;
-        dy += dyCore * pull;
+      if (distCore > 0 && distCore < 360) {
+        const RE = 110; // Einstein Radius
+        const deflection = Math.sqrt(distCore * distCore + RE * RE) - distCore;
+        const strength = Math.pow(1 - distCore / 360, 1.5);
+        dx += (dxCore / distCore) * deflection * strength;
+        dy += (dyCore / distCore) * deflection * strength;
       }
 
       // 2. Mouse gravity & twist wormhole
@@ -610,8 +613,20 @@ const SpaceCanvasBackground: React.FC<{
       const getDistortedStarPos = (sx: number, sy: number) => {
         let displayX = sx;
         let displayY = sy;
+
+        // 1. Einstein Ring Gravitational Lensing (Deflecting background light around the Core)
+        const dxCore = sx - coreX;
+        const dyCore = sy - coreY;
+        const distCore = Math.sqrt(dxCore * dxCore + dyCore * dyCore);
+        if (distCore > 0 && distCore < 360) {
+          const RE = 110; // Einstein Radius
+          const deflection = Math.sqrt(distCore * distCore + RE * RE) - distCore;
+          const strength = Math.pow(1 - distCore / 360, 1.5);
+          displayX += (dxCore / distCore) * deflection * strength;
+          displayY += (dyCore / distCore) * deflection * strength;
+        }
         
-        // 1. Mouse bending
+        // 2. Mouse bending
         if (mouseRef.current.active) {
           const dxM = mouseRef.current.x - sx;
           const dyM = mouseRef.current.y - sy;
@@ -1167,6 +1182,26 @@ const SpaceCanvasBackground: React.FC<{
 
       // 6. Central AI Reactor Rings HUD
       if (coreRef.current) {
+        // Draw Einstein Ring Gravitational Lensing Lens Boundary Halo
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        
+        // Outer glowing refraction ring
+        ctx.beginPath();
+        ctx.arc(coreX, coreY, 110, 0, Math.PI * 2);
+        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.09)' : 'rgba(168, 85, 247, 0.09)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        // Sharp lensing boundary line
+        ctx.beginPath();
+        ctx.arc(coreX, coreY, 110, 0, Math.PI * 2);
+        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        
+        ctx.restore();
+
         ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.35)' : 'rgba(139, 92, 246, 0.12)';
         ctx.lineWidth = 0.8;
         ctx.beginPath();
@@ -1432,10 +1467,22 @@ const SpaceCanvasBackground: React.FC<{
       }
 
       // 9. Particles flow and updates
-      if (isPlaying) {
-        particlesRef.current = particlesRef.current.filter(p => {
-          p.lastX = p.x;
-          p.lastY = p.y;
+      particlesRef.current = particlesRef.current.filter(p => {
+        p.lastX = p.x;
+        p.lastY = p.y;
+
+        // Initialize and update trail for Comet Tail / Plasma Vortex effect
+        if (!p.trail) p.trail = [];
+        p.trail.unshift({ x: p.x, y: p.y, alpha: 1.0 });
+        p.trail = p.trail.map(tp => ({
+          ...tp,
+          alpha: tp.alpha - (p.stage === 1 ? 0.05 : 0.08)
+        })).filter(tp => tp.alpha > 0);
+
+        const maxTrailLen = p.stage === 1 ? 25 : 12;
+        if (p.trail.length > maxTrailLen) {
+          p.trail = p.trail.slice(0, maxTrailLen);
+        }
 
           if (p.stage === 0) {
             p.progress += deltaTime / p.duration;
@@ -1722,6 +1769,110 @@ const SpaceCanvasBackground: React.FC<{
             const subtextFont = isMobileView ? '6px monospace' : '7px monospace';
             const offsetTextX = isMobileView ? 13 : 19;
 
+            // Render Comet Tail / Plasma Vortex Trails
+            const trail = p.trail;
+            if (trail && trail.length > 1) {
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              
+              if (p.stage === 1) {
+                // 1. Plasma Vortex Trail (Vetting stage)
+                // Draw multiple layers of lines for a glowing hot neon vortex path
+                ctx.beginPath();
+                ctx.moveTo(trail[0].x, trail[0].y);
+                for (let i = 1; i < trail.length; i++) {
+                  ctx.lineTo(trail[i].x, trail[i].y);
+                }
+                
+                // Outer glow layer
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = opacity * 0.18;
+                ctx.stroke();
+
+                // Inner glow layer
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = opacity * 0.45;
+                ctx.stroke();
+
+                // Central white core line
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.0;
+                ctx.globalAlpha = opacity * 0.8;
+                ctx.stroke();
+                
+                ctx.globalAlpha = 1.0; // reset
+
+                // Draw glowing plasma blobs along the vortex path
+                trail.forEach((pt, index) => {
+                  const trailOpacity = pt.alpha * opacity;
+                  if (trailOpacity <= 0) return;
+                  
+                  const ratio = 1 - (index / trail.length);
+                  const size = (3.5 + Math.sin(timestamp * 0.01 + index) * 1.5) * ratio;
+                  
+                  // Wobbling effect for plasma look
+                  const offsetAmp = 2.5 * (1 - ratio);
+                  const offsetX = Math.sin(timestamp * 0.02 + index) * offsetAmp;
+                  const offsetY = Math.cos(timestamp * 0.02 + index) * offsetAmp;
+                  
+                  ctx.beginPath();
+                  ctx.arc(pt.x + offsetX, pt.y + offsetY, size, 0, Math.PI * 2);
+                  
+                  const grad = ctx.createRadialGradient(
+                    pt.x + offsetX, pt.y + offsetY, 0,
+                    pt.x + offsetX, pt.y + offsetY, size
+                  );
+                  grad.addColorStop(0, `rgba(255, 255, 255, ${trailOpacity})`);
+                  grad.addColorStop(0.3, p.color + Math.round(trailOpacity * 0.7 * 255).toString(16).padStart(2, '0'));
+                  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                  
+                  ctx.fillStyle = grad;
+                  ctx.fill();
+                });
+              } else {
+                // 2. Comet Tail (Transport stages 0 and 2)
+                // Draw tapered line using segments
+                for (let i = 0; i < trail.length - 1; i++) {
+                  const pt1 = trail[i];
+                  const pt2 = trail[i + 1];
+                  const ratio1 = 1 - (i / trail.length);
+                  
+                  const segmentOpacity = pt1.alpha * opacity * ratio1;
+                  if (segmentOpacity <= 0) continue;
+                  
+                  ctx.beginPath();
+                  ctx.moveTo(pt1.x, pt1.y);
+                  ctx.lineTo(pt2.x, pt2.y);
+                  ctx.lineWidth = 3.0 * ratio1;
+                  ctx.strokeStyle = p.color + Math.round(segmentOpacity * 0.65 * 255).toString(16).padStart(2, '0');
+                  ctx.lineCap = 'round';
+                  ctx.stroke();
+                }
+
+                // Draw tiny trailing dust sparks
+                trail.forEach((pt, index) => {
+                  const trailOpacity = pt.alpha * opacity;
+                  if (trailOpacity <= 0) return;
+                  
+                  const ratio = 1 - (index / trail.length);
+                  if (index % 2 === 0) {
+                    const size = (1.2 + Math.random() * 0.8) * ratio;
+                    const spreadX = (Math.random() - 0.5) * 3 * (1 - ratio);
+                    const spreadY = (Math.random() - 0.5) * 3 * (1 - ratio);
+                    
+                    ctx.beginPath();
+                    ctx.arc(pt.x + spreadX, pt.y + spreadY, size, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color + Math.round(trailOpacity * 0.85 * 255).toString(16).padStart(2, '0');
+                    ctx.fill();
+                  }
+                });
+              }
+              ctx.restore();
+            }
+
             ctx.beginPath();
             ctx.arc(p.x, p.y, bubbleRadius, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
@@ -1762,7 +1913,6 @@ const SpaceCanvasBackground: React.FC<{
 
           return true;
         });
-      }
 
       // 10. Update and draw stardust sparkles (BATCHED FOR 120HZ FEEL)
       const stardustGroups: Record<string, { x: number; y: number; size: number }[]> = {};
@@ -2349,14 +2499,15 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
   const salesList = useMemo(() => {
     const currentStats = todayStats || stats;
-    const rawConsultants = currentStats?.topConsultants;
+    const rawConsultants = currentStats?.topConsultants || [];
+    const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
     let list: any[] = [];
-    if (rawConsultants && rawConsultants.length > 0) {
-      list = rawConsultants.slice(0, 5);
-    } else if (allConsultants && allConsultants.length > 0) {
-      const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-      list = allConsultants.slice(0, 5).map((c, idx) => {
-        const efficiencyVal = 85 + ((idx * 7) % 14);
+    
+    if (allConsultants && allConsultants.length > 0) {
+      list = allConsultants.map((c, idx) => {
+        const statItem = rawConsultants.find((rc: any) => rc.name === c.name || String(rc.id) === String(c.id));
+        const dataCount = statItem ? statItem.data : 0;
+        
         let statusMsg = 'Đang trực';
         if (c.status === 'leave' || c.vacation_mode === 1 || Number(c.vacation_mode) === 1) {
           statusMsg = 'Vắng mặt';
@@ -2365,16 +2516,58 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         } else if (c.status === 'inactive') {
           statusMsg = 'Vắng mặt';
         }
+        
         return {
           id: c.id,
           name: c.name,
           avatar: c.avatar || '',
           status: c.status || 'active',
           vacation_mode: c.vacation_mode || 0,
-          data: 0,
+          data: dataCount,
           percent: 0,
           color: colors[idx % colors.length],
-          efficiency: `${efficiencyVal}%`,
+          efficiency: statItem?.efficiency || `${80 + ((idx * 7) % 18)}%`,
+          statusMsg
+        };
+      });
+
+      // Filter: keep active reps, or those with data today, or those involved in recent logs
+      const currentLogs = todayLogs.length > 0 ? todayLogs : recentLogs;
+      const activeLogNames = new Set(currentLogs?.map((log: any) => log.assigned_to_name) || []);
+      
+      list = list.filter(sale => 
+        sale.status === 'active' || 
+        sale.status === 'pending_work_hours' || 
+        sale.data > 0 || 
+        activeLogNames.has(sale.name)
+      );
+
+      // Sort: Online/active first, then by data count desc
+      list.sort((a, b) => {
+        const aActive = a.status === 'active' || a.status === 'pending_work_hours';
+        const bActive = b.status === 'active' || b.status === 'pending_work_hours';
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        return b.data - a.data;
+      });
+
+      list = list.slice(0, 5);
+    } else if (rawConsultants && rawConsultants.length > 0) {
+      list = rawConsultants.slice(0, 5).map((rc: any, idx: number) => {
+        let statusMsg = 'Đang trực';
+        if (rc.status === 'leave' || rc.vacation_mode === 1 || Number(rc.vacation_mode) === 1) {
+          statusMsg = 'Vắng mặt';
+        }
+        return {
+          id: rc.id,
+          name: rc.name,
+          avatar: rc.avatar || '',
+          status: rc.status || 'active',
+          vacation_mode: rc.vacation_mode || 0,
+          data: rc.data || 0,
+          percent: 0,
+          color: colors[idx % colors.length],
+          efficiency: rc.efficiency || `${85 + (idx * 3)}%`,
           statusMsg
         };
       });
@@ -2386,6 +2579,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         { name: 'Nguyễn Phương Uyên', data: 1, avatar: '', status: 'active', percent: 25, color: '#f59e0b', efficiency: '88%', statusMsg: 'Đang trực' }
       ];
     }
+
     return list.map((sale: any) => {
       const dataCount = isPlaying ? 0 : sale.data;
       return {
@@ -2393,7 +2587,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         data: dataCount
       };
     });
-  }, [todayStats, stats, allConsultants, isPlaying]);
+  }, [todayStats, stats, allConsultants, isPlaying, todayLogs, recentLogs]);
 
   const totalLeadsOfAll = salesList.reduce((sum: number, s: any) => sum + (s.data || 0) + (simulatedLeadsPerSale[s.name] || 0), 0);
 
@@ -2641,7 +2835,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         '[SYNCING GOOGLE SHEETS CHANNELS... OK]',
         '[DECRYPTING DIRECT WEBHOOK API... OK]',
         '[BOOTING PRE-SCREENER AI REACTOR... ONLINE]',
-        '[ESTABLISHING VIRTUAL WAR ROOM... DEPLOYED]'
+        '[ESTABLISHING AI INFINITY VIEW... DEPLOYED]'
       ];
 
       const timer = setInterval(() => {
@@ -3121,7 +3315,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
                   e.currentTarget.style.color = '#ef4444';
                 }}
-                title={t("Đóng War Room")}
+                title={t("Đóng Infinity View")}
               >
                 <X size={14} />
               </button>
@@ -3155,7 +3349,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION VIRTUAL WAR ROOM</h2>
+                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION AI INFINITY VIEW</h2>
                   <p style={{ fontSize: '0.7rem', color: '#c084fc', opacity: 0.85 }}>{t('Đồng bộ luồng dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</p>
                 </div>
               </div>
@@ -3318,7 +3512,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
                     e.currentTarget.style.color = '#ef4444';
                   }}
-                  title={t("Thoát chế độ War Room")}
+                  title={t("Thoát chế độ Infinity View")}
                 >
                   <X size={12} />
                   <span>{t('Đóng')}</span>
@@ -4054,7 +4248,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             marginBottom: 5,
             textAlign: 'center'
           }}>
-            NEURAL WAR ROOM INITIALIZING
+            NEURAL INFINITY VIEW INITIALIZING
           </h1>
           <div className="loader-bar-wrap" style={{ width: 300, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 30, border: '1px solid rgba(168, 85, 247, 0.2)' }}>
             <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #c084fc)', boxShadow: '0 0 8px #c084fc', transition: 'width 0.1s ease-out' }} />
@@ -4219,7 +4413,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             padding: 4px 8px !important;
             font-size: 0.65rem !important;
           }
-          .war-room-container button[title="Đóng War Room"] {
+          .war-room-container button[title="Đóng Infinity View"] {
             width: 24px !important;
             height: 24px !important;
           }

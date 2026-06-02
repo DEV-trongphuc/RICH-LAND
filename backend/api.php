@@ -9666,7 +9666,7 @@ switch ($action) {
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder') 
                               GROUP BY c.id, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
@@ -9685,7 +9685,8 @@ switch ($action) {
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
-                        'error' => 0
+                        'error' => 0,
+                        'reminder' => 0
                     ];
                 }
                 $dl_status = $row['dl_status'];
@@ -9697,7 +9698,7 @@ switch ($action) {
 
         $topConsultantsList = [];
         foreach ($consultantStats as $cId => $cStats) {
-            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + max(0, $cStats['error'] - $cStats['compensation']);
+            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + max(0, $cStats['error'] - $cStats['compensation']);
             $topConsultantsList[] = [
                 'id' => $cStats['id'],
                 'name' => $cStats['name'],
