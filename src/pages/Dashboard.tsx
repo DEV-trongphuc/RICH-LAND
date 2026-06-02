@@ -627,7 +627,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             }}
           >
             <Cpu size={15} style={{ color: '#fff' }} />
-            <span>AI Infinity View</span>
+            <span>AI Infinity</span>
           </button>
 
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}

@@ -2988,7 +2988,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              title={t("AI Infinity View")}
+              title={t("AI Infinity")}
             >
               <Cpu size={20} />
             </button>
@@ -3014,7 +3014,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.4)';
               }}
             >
-              <Cpu size={18} /> {t("AI Infinity View")}
+              <Cpu size={18} /> {t("AI Infinity")}
             </button>
           )}
         </div>

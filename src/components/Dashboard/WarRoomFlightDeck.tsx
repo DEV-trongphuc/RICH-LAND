@@ -265,33 +265,47 @@ const SpaceCanvasBackground: React.FC<{
     if (!canvas) return;
 
     const canvasRect = canvas.getBoundingClientRect();
-    const width = canvasRect.width;
-    const height = canvasRect.height;
+    const isPortrait = window.matchMedia('(max-width: 768px) and (orientation: portrait)').matches;
 
-    const getOffsetPos = (el: HTMLElement) => {
+    const width = isPortrait ? canvasRect.height : canvasRect.width;
+    const height = isPortrait ? canvasRect.width : canvasRect.height;
+
+    const getOffsetCenter = (el: HTMLElement) => {
       const rect = el.getBoundingClientRect();
-      return {
-        x: rect.left - canvasRect.left,
-        y: rect.top - canvasRect.top
-      };
+      const physCenterX = rect.left + rect.width / 2;
+      const physCenterY = rect.top + rect.height / 2;
+
+      if (isPortrait) {
+        return {
+          x: physCenterY - canvasRect.top,
+          y: canvasRect.right - physCenterX
+        };
+      } else {
+        return {
+          x: physCenterX - canvasRect.left,
+          y: physCenterY - canvasRect.top
+        };
+      }
     };
 
     const coreEl = coreRef.current;
     let coreX = width / 2;
     let coreY = height / 2;
     if (coreEl) {
-      const pos = getOffsetPos(coreEl);
-      coreX = pos.x + coreEl.offsetWidth / 2;
-      coreY = pos.y + coreEl.offsetHeight / 2;
+      const pos = getOffsetCenter(coreEl);
+      coreX = pos.x;
+      coreY = pos.y;
     }
 
     const sources = mockSources.map((_, idx) => {
       const srcEl = sourceRefs.current[idx];
       if (srcEl) {
-        const pos = getOffsetPos(srcEl);
+        const rect = srcEl.getBoundingClientRect();
+        const center = getOffsetCenter(srcEl);
+        const localWidth = isPortrait ? rect.height : rect.width;
         return {
-          x: pos.x + srcEl.offsetWidth - 8,
-          y: pos.y + srcEl.offsetHeight / 2
+          x: center.x + localWidth / 2 - 8,
+          y: center.y
         };
       }
       return { x: 220, y: 150 + idx * 160 };
@@ -300,10 +314,12 @@ const SpaceCanvasBackground: React.FC<{
     const sales = salesList.map((_, idx) => {
       const saleEl = saleRefs.current[idx];
       if (saleEl) {
-        const pos = getOffsetPos(saleEl);
+        const rect = saleEl.getBoundingClientRect();
+        const center = getOffsetCenter(saleEl);
+        const localWidth = isPortrait ? rect.height : rect.width;
         return {
-          x: pos.x + 8,
-          y: pos.y + saleEl.offsetHeight / 2
+          x: center.x - localWidth / 2 + 8,
+          y: center.y
         };
       }
       return { x: width - 290, y: 150 + idx * 90 };
@@ -323,7 +339,7 @@ const SpaceCanvasBackground: React.FC<{
       const coords = coordsRef.current;
       const coreX = coords.core.x;
       const coreY = coords.core.y;
-      
+
       // Spawn red matrix binary code columns falling down around the core
       for (let i = 0; i < 28; i++) {
         const spawnX = coreX - 180 + Math.random() * 360;
@@ -368,8 +384,9 @@ const SpaceCanvasBackground: React.FC<{
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const mX = e.clientX - rect.left;
-      const mY = e.clientY - rect.top;
+      const isPortrait = window.matchMedia('(max-width: 768px) and (orientation: portrait)').matches;
+      const mX = isPortrait ? (e.clientY - rect.top) : (e.clientX - rect.left);
+      const mY = isPortrait ? (rect.right - e.clientX) : (e.clientY - rect.top);
 
       const dx = mX - mouseRef.current.x;
       const dy = mY - mouseRef.current.y;
@@ -403,8 +420,9 @@ const SpaceCanvasBackground: React.FC<{
 
     const handleCanvasClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      const isPortrait = window.matchMedia('(max-width: 768px) and (orientation: portrait)').matches;
+      const clickX = isPortrait ? (e.clientY - rect.top) : (e.clientX - rect.left);
+      const clickY = isPortrait ? (rect.right - e.clientX) : (e.clientY - rect.top);
 
       // Register Warp ripple
       gridRipplesRef.current.push({
@@ -485,7 +503,7 @@ const SpaceCanvasBackground: React.FC<{
         const speed = (6.8 / Math.sqrt(orbitRadius)) * (0.85 + Math.random() * 0.3);
         const size = 0.8 + Math.random() * 1.5;
         const color = colors[Math.floor(Math.random() * colors.length)];
-        
+
         diskParticles.push({
           angle: Math.random() * Math.PI * 2,
           orbitRadius,
@@ -626,7 +644,7 @@ const SpaceCanvasBackground: React.FC<{
           displayX += (dxCore / distCore) * deflection * strength;
           displayY += (dyCore / distCore) * deflection * strength;
         }
-        
+
         // 2. Mouse bending
         if (mouseRef.current.active) {
           const dxM = mouseRef.current.x - sx;
@@ -644,7 +662,7 @@ const SpaceCanvasBackground: React.FC<{
           const dx = rip.x - displayX;
           const dy = rip.y - displayY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          
+
           if (dist > 0 && dist < rip.maxRadius) {
             const wavefrontDist = dist - rip.radius;
             const widthLimit = 120;
@@ -655,7 +673,7 @@ const SpaceCanvasBackground: React.FC<{
                 const pull = factor * 0.85;
                 displayX += dx * pull;
                 displayY += dy * pull;
-                
+
                 const twist = factor * 0.9;
                 const cosT = Math.cos(twist);
                 const sinT = Math.sin(twist);
@@ -679,7 +697,7 @@ const SpaceCanvasBackground: React.FC<{
       // Check if shutting down to trigger a massive physical particle blowout
       if (bootPhase === 'shutting_down' && !hasTriggeredShutdownBlastRef.current) {
         hasTriggeredShutdownBlastRef.current = true;
-        
+
         // 1. Spawning 350 high-velocity explosive spark particles from center AI Core
         for (let i = 0; i < 350; i++) {
           const angle = Math.random() * Math.PI * 2;
@@ -758,12 +776,12 @@ const SpaceCanvasBackground: React.FC<{
         // Build up massive screen shake/glitch effect towards exit
         glitchOffsetX += (Math.random() - 0.5) * 35;
         glitchOffsetY += (Math.random() - 0.5) * 20;
-        
+
         // Randomly draw full screen lightning strikes directly on canvas
         if (Math.random() < 0.35) {
           ctx.fillStyle = Math.random() > 0.5 ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.35)';
           ctx.fillRect(0, 0, width, height);
-          
+
           // Random lightning bolts from core to window edge
           for (let bolts = 0; bolts < 3; bolts++) {
             const edgeX = Math.random() * width;
@@ -808,7 +826,7 @@ const SpaceCanvasBackground: React.FC<{
         grad.addColorStop(0, neb.color);
         grad.addColorStop(0.55, neb.color.replace(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/, 'rgba($1, $2, $3, 0.01)'));
         grad.addColorStop(1, 'transparent');
-        
+
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(neb.x * width, neb.y * height, size, 0, Math.PI * 2);
@@ -980,8 +998,8 @@ const SpaceCanvasBackground: React.FC<{
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(139, 92, 246, 0.04)';
         for (let k = 0; k < linesBin1.length; k += 4) {
-          ctx.moveTo(linesBin1[k], linesBin1[k+1]);
-          ctx.lineTo(linesBin1[k+2], linesBin1[k+3]);
+          ctx.moveTo(linesBin1[k], linesBin1[k + 1]);
+          ctx.lineTo(linesBin1[k + 2], linesBin1[k + 3]);
         }
         ctx.stroke();
       }
@@ -989,8 +1007,8 @@ const SpaceCanvasBackground: React.FC<{
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(139, 92, 246, 0.08)';
         for (let k = 0; k < linesBin2.length; k += 4) {
-          ctx.moveTo(linesBin2[k], linesBin2[k+1]);
-          ctx.lineTo(linesBin2[k+2], linesBin2[k+3]);
+          ctx.moveTo(linesBin2[k], linesBin2[k + 1]);
+          ctx.lineTo(linesBin2[k + 2], linesBin2[k + 3]);
         }
         ctx.stroke();
       }
@@ -998,8 +1016,8 @@ const SpaceCanvasBackground: React.FC<{
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(139, 92, 246, 0.12)';
         for (let k = 0; k < linesBin3.length; k += 4) {
-          ctx.moveTo(linesBin3[k], linesBin3[k+1]);
-          ctx.lineTo(linesBin3[k+2], linesBin3[k+3]);
+          ctx.moveTo(linesBin3[k], linesBin3[k + 1]);
+          ctx.lineTo(linesBin3[k + 2], linesBin3[k + 3]);
         }
         ctx.stroke();
       }
@@ -1009,7 +1027,7 @@ const SpaceCanvasBackground: React.FC<{
         ctx.fillStyle = 'rgba(224, 204, 255, 0.25)';
         for (let k = 0; k < packets.length; k += 2) {
           const px = packets[k];
-          const py = packets[k+1];
+          const py = packets[k + 1];
           ctx.moveTo(px + 1.2, py);
           ctx.arc(px, py, 1.2, 0, Math.PI * 2);
         }
@@ -1093,27 +1111,27 @@ const SpaceCanvasBackground: React.FC<{
         if (accretionDiskRef.current.length > 0) {
           const pitch = 0.45; // X-pitch
           const yaw = 0.22;   // Y-yaw
-          
+
           const cosP = Math.cos(pitch);
           const sinP = Math.sin(pitch);
           const cosY = Math.cos(yaw);
           const sinY = Math.sin(yaw);
-          
+
           accretionDiskRef.current.forEach(p => {
             p.angle += p.speed * deltaTime;
             const xo = Math.cos(p.angle) * p.orbitRadius;
             const yo = Math.sin(p.angle) * p.orbitRadius;
-            
+
             // Rotate around X-axis (pitch)
             const x1 = xo;
             const y1 = yo * cosP;
             const z1 = yo * sinP;
-            
+
             // Rotate around Y-axis (yaw)
             const rx = x1 * cosY + z1 * sinY;
             const ry = y1;
             const rz = -x1 * sinY + z1 * cosY;
-            
+
             p.px = coreX + rx;
             p.py = coreY + ry;
             p.z = rz;
@@ -1136,30 +1154,30 @@ const SpaceCanvasBackground: React.FC<{
       // Draw Accretion Disk (Back depth level: z < 0)
       if (coreRef.current && accretionDiskRef.current.length > 0) {
         const backGroups: Record<string, { px: number; py: number; size: number }[]> = {};
-        
+
         accretionDiskRef.current.forEach(p => {
           if (p.z < 0) {
             const maxR = 142;
             const depthScale = 0.7 + (p.z + maxR) / (maxR * 2) * 0.3;
             const alpha = 0.2 + (p.z + maxR) / (maxR * 2) * 0.45;
-            
+
             const color = isRetainedGlowRef.current ? '#ef4444' : p.color;
             const size = p.size * depthScale;
-            
+
             let alphaBin = 0.6;
             if (alpha < 0.3) alphaBin = 0.25;
             else if (alpha < 0.45) alphaBin = 0.45;
-            
+
             const alphaHex = Math.round(alphaBin * 255).toString(16).padStart(2, '0');
             const key = color + alphaHex;
-            
+
             if (!backGroups[key]) {
               backGroups[key] = [];
             }
             backGroups[key].push({ px: p.px, py: p.py, size });
           }
         });
-        
+
         Object.entries(backGroups).forEach(([colorWithAlpha, particles]) => {
           ctx.beginPath();
           ctx.fillStyle = colorWithAlpha;
@@ -1186,7 +1204,7 @@ const SpaceCanvasBackground: React.FC<{
         // Draw Einstein Ring Gravitational Lensing Lens Boundary Halo
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
-        
+
         // Outer glowing refraction ring
         ctx.beginPath();
         ctx.arc(coreX, coreY, 110, 0, Math.PI * 2);
@@ -1200,7 +1218,7 @@ const SpaceCanvasBackground: React.FC<{
         ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
-        
+
         ctx.restore();
 
         ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.35)' : 'rgba(139, 92, 246, 0.12)';
@@ -1254,30 +1272,30 @@ const SpaceCanvasBackground: React.FC<{
       // Draw Accretion Disk (Front depth level: z >= 0)
       if (coreRef.current && accretionDiskRef.current.length > 0) {
         const frontGroups: Record<string, { px: number; py: number; size: number }[]> = {};
-        
+
         accretionDiskRef.current.forEach(p => {
           if (p.z >= 0) {
             const maxR = 142;
             const depthScale = 1.0 + (p.z) / maxR * 0.4;
             const alpha = 0.65 + (p.z) / maxR * 0.35;
-            
+
             const color = isRetainedGlowRef.current ? '#ef4444' : p.color;
             const size = p.size * depthScale;
-            
+
             let alphaBin = 0.95;
             if (alpha < 0.78) alphaBin = 0.7;
             else if (alpha < 0.88) alphaBin = 0.85;
-            
+
             const alphaHex = Math.round(alphaBin * 255).toString(16).padStart(2, '0');
             const key = color + alphaHex;
-            
+
             if (!frontGroups[key]) {
               frontGroups[key] = [];
             }
             frontGroups[key].push({ px: p.px, py: p.py, size });
           }
         });
-        
+
         Object.entries(frontGroups).forEach(([colorWithAlpha, particles]) => {
           ctx.beginPath();
           ctx.fillStyle = colorWithAlpha;
@@ -1286,7 +1304,7 @@ const SpaceCanvasBackground: React.FC<{
             ctx.arc(p.px, p.py, p.size, 0, Math.PI * 2);
           });
           ctx.fill();
-          
+
           // Subtle halo/glow for front particles
           ctx.beginPath();
           const opacityVal = parseInt(colorWithAlpha.substring(7), 16) / 255;
@@ -1485,454 +1503,454 @@ const SpaceCanvasBackground: React.FC<{
           p.trail = p.trail.slice(0, maxTrailLen);
         }
 
-          if (p.stage === 0) {
-            p.progress += deltaTime / p.duration;
-            const t = p.progress;
-            const midX = (p.startX + coreX) / 2;
+        if (p.stage === 0) {
+          p.progress += deltaTime / p.duration;
+          const t = p.progress;
+          const midX = (p.startX + coreX) / 2;
 
-            const x = (1 - t) * (1 - t) * p.startX + 2 * (1 - t) * t * midX + t * t * coreX;
-            const wave = 18 * Math.sin(t * Math.PI * 3.5) * (1 - t);
-            const y = (1 - t) * (1 - t) * p.startY + 2 * (1 - t) * t * p.startY + t * t * coreY + wave;
+          const x = (1 - t) * (1 - t) * p.startX + 2 * (1 - t) * t * midX + t * t * coreX;
+          const wave = 18 * Math.sin(t * Math.PI * 3.5) * (1 - t);
+          const y = (1 - t) * (1 - t) * p.startY + 2 * (1 - t) * t * p.startY + t * t * coreY + wave;
 
-            p.x = x;
-            p.y = y;
+          p.x = x;
+          p.y = y;
 
-            // Emit stardust trail
-            if (Math.random() < 0.45) {
-              const dx = p.x - p.lastX;
-              const dy = p.y - p.lastY;
-              const len = Math.sqrt(dx * dx + dy * dy);
-              const dirX = len > 0 ? dx / len : 0;
-              const dirY = len > 0 ? dy / len : 0;
-              stardustRef.current.push({
-                x: p.x,
-                y: p.y,
-                vx: -dirX * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
-                vy: -dirY * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
-                color: p.color,
-                size: 1.0 + Math.random() * 1.5,
-                alpha: 0.85,
-                decay: 0.9 + Math.random() * 0.9
-              });
+          // Emit stardust trail
+          if (Math.random() < 0.45) {
+            const dx = p.x - p.lastX;
+            const dy = p.y - p.lastY;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const dirX = len > 0 ? dx / len : 0;
+            const dirY = len > 0 ? dy / len : 0;
+            stardustRef.current.push({
+              x: p.x,
+              y: p.y,
+              vx: -dirX * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
+              vy: -dirY * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
+              color: p.color,
+              size: 1.0 + Math.random() * 1.5,
+              alpha: 0.85,
+              decay: 0.9 + Math.random() * 0.9
+            });
+          }
+
+          if (p.progress >= 1.0) {
+            p.progress = 0;
+            p.stage = 1;
+            p.x = coreX;
+            p.y = coreY;
+            if (p.status === 'rejected' || p.status === 'duplicate') {
+              p.color = '#ef4444';
             }
 
-            if (p.progress >= 1.0) {
-              p.progress = 0;
-              p.stage = 1;
-              p.x = coreX;
-              p.y = coreY;
-              if (p.status === 'rejected' || p.status === 'duplicate') {
-                p.color = '#ef4444';
-              }
+            coreGlowIntensityRef.current = 2.0;
+            coreShockwavesRef.current.push({
+              radius: 10,
+              maxRadius: 130,
+              opacity: 1.0,
+              color: p.color,
+              style: 'dashed'
+            });
+          }
+        } else if (p.stage === 1) {
+          p.holdTime -= deltaTime;
+
+          const tHold = 1 - Math.max(0, p.holdTime / p.maxHoldTime);
+          if (p.status === 'assigned' || p.status === 'compensation' || p.status === 'pending_work_hours' || p.status === 'reminder') {
+            const compression = 0.18 * Math.pow(tHold, 2.5);
+            if (compression > maxCompression) {
+              maxCompression = compression;
+            }
+          }
+
+          const spiralAngle = tHold * Math.PI * 6.5;
+          const spiralRadius = 38 * Math.cos(tHold * Math.PI / 2) + 2;
+
+          p.x = coreX + spiralRadius * Math.cos(spiralAngle);
+          p.y = coreY + spiralRadius * Math.sin(spiralAngle);
+
+          if (Math.random() < 0.45) {
+            const speed = 25 + Math.random() * 30;
+            const angle = spiralAngle + Math.PI / 2;
+            const vx = Math.cos(angle) * speed - Math.cos(spiralAngle) * 15;
+            const vy = Math.sin(angle) * speed - Math.sin(spiralAngle) * 15;
+            stardustRef.current.push({
+              x: p.x,
+              y: p.y,
+              vx,
+              vy,
+              color: p.color,
+              size: 0.8 + Math.random() * 1.4,
+              alpha: 0.85,
+              decay: 0.9 + Math.random() * 0.7
+            });
+          }
+
+          if (Math.random() < 0.75) {
+            drawLightning(coreX, coreY, p.x, p.y, p.color);
+          }
+
+          const scanPercent = Math.min(100, Math.round((1 - p.holdTime / p.maxHoldTime) * 100));
+          const boxSize = 21;
+          ctx.strokeStyle = p.color + 'aa';
+          ctx.lineWidth = 1.2;
+
+          ctx.beginPath();
+          ctx.moveTo(p.x - boxSize, p.y - boxSize + 6);
+          ctx.lineTo(p.x - boxSize, p.y - boxSize);
+          ctx.lineTo(p.x - boxSize + 6, p.y - boxSize);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(p.x + boxSize, p.y - boxSize + 6);
+          ctx.lineTo(p.x + boxSize, p.y - boxSize);
+          ctx.lineTo(p.x + boxSize - 6, p.y - boxSize);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(p.x - boxSize, p.y + boxSize - 6);
+          ctx.lineTo(p.x - boxSize, p.y + boxSize);
+          ctx.lineTo(p.x - boxSize + 6, p.y + boxSize);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(p.x + boxSize, p.y + boxSize - 6);
+          ctx.lineTo(p.x + boxSize, p.y + boxSize);
+          ctx.lineTo(p.x + boxSize - 6, p.y + boxSize);
+          ctx.stroke();
+
+          ctx.fillStyle = p.color;
+          ctx.font = 'bold 8px monospace';
+          ctx.textAlign = 'center';
+          let tag = `AI_VETTING: ${scanPercent}%`;
+          if (p.status === 'duplicate') tag = `DUP_CHECK: ${scanPercent}%`;
+          else if (p.status === 'rejected') tag = `ERR_CHECK: ${scanPercent}%`;
+          ctx.fillText(tag, p.x, p.y - boxSize - 6);
+
+          if (p.holdTime <= 0) {
+            if (p.status === 'rejected' || p.status === 'duplicate') {
+              triggerRetainedRipple(p.id, p.status);
 
               coreGlowIntensityRef.current = 2.0;
               coreShockwavesRef.current.push({
-                radius: 10,
-                maxRadius: 130,
-                opacity: 1.0,
-                color: p.color,
+                radius: 12,
+                maxRadius: 110,
+                opacity: 0.95,
+                color: '#ef4444',
                 style: 'dashed'
               });
-            }
-          } else if (p.stage === 1) {
-            p.holdTime -= deltaTime;
 
-            const tHold = 1 - Math.max(0, p.holdTime / p.maxHoldTime);
-            if (p.status === 'assigned' || p.status === 'compensation' || p.status === 'pending_work_hours' || p.status === 'reminder') {
-              const compression = 0.18 * Math.pow(tHold, 2.5);
-              if (compression > maxCompression) {
-                maxCompression = compression;
-              }
-            }
-
-            const spiralAngle = tHold * Math.PI * 6.5;
-            const spiralRadius = 38 * Math.cos(tHold * Math.PI / 2) + 2;
-
-            p.x = coreX + spiralRadius * Math.cos(spiralAngle);
-            p.y = coreY + spiralRadius * Math.sin(spiralAngle);
-
-            if (Math.random() < 0.45) {
-              const speed = 25 + Math.random() * 30;
-              const angle = spiralAngle + Math.PI / 2;
-              const vx = Math.cos(angle) * speed - Math.cos(spiralAngle) * 15;
-              const vy = Math.sin(angle) * speed - Math.sin(spiralAngle) * 15;
-              stardustRef.current.push({
-                x: p.x,
-                y: p.y,
-                vx,
-                vy,
-                color: p.color,
-                size: 0.8 + Math.random() * 1.4,
-                alpha: 0.85,
-                decay: 0.9 + Math.random() * 0.7
-              });
-            }
-
-            if (Math.random() < 0.75) {
-              drawLightning(coreX, coreY, p.x, p.y, p.color);
-            }
-
-            const scanPercent = Math.min(100, Math.round((1 - p.holdTime / p.maxHoldTime) * 100));
-            const boxSize = 21;
-            ctx.strokeStyle = p.color + 'aa';
-            ctx.lineWidth = 1.2;
-
-            ctx.beginPath();
-            ctx.moveTo(p.x - boxSize, p.y - boxSize + 6);
-            ctx.lineTo(p.x - boxSize, p.y - boxSize);
-            ctx.lineTo(p.x - boxSize + 6, p.y - boxSize);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(p.x + boxSize, p.y - boxSize + 6);
-            ctx.lineTo(p.x + boxSize, p.y - boxSize);
-            ctx.lineTo(p.x + boxSize - 6, p.y - boxSize);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(p.x - boxSize, p.y + boxSize - 6);
-            ctx.lineTo(p.x - boxSize, p.y + boxSize);
-            ctx.lineTo(p.x - boxSize + 6, p.y + boxSize);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(p.x + boxSize, p.y + boxSize - 6);
-            ctx.lineTo(p.x + boxSize, p.y + boxSize);
-            ctx.lineTo(p.x + boxSize - 6, p.y + boxSize);
-            ctx.stroke();
-
-            ctx.fillStyle = p.color;
-            ctx.font = 'bold 8px monospace';
-            ctx.textAlign = 'center';
-            let tag = `AI_VETTING: ${scanPercent}%`;
-            if (p.status === 'duplicate') tag = `DUP_CHECK: ${scanPercent}%`;
-            else if (p.status === 'rejected') tag = `ERR_CHECK: ${scanPercent}%`;
-            ctx.fillText(tag, p.x, p.y - boxSize - 6);
-
-            if (p.holdTime <= 0) {
-              if (p.status === 'rejected' || p.status === 'duplicate') {
-                triggerRetainedRipple(p.id, p.status);
-
-                coreGlowIntensityRef.current = 2.0;
-                coreShockwavesRef.current.push({
-                  radius: 12,
-                  maxRadius: 110,
-                  opacity: 0.95,
+              for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 30 + Math.random() * 40;
+                stardustRef.current.push({
+                  x: coreX,
+                  y: coreY,
+                  vx: Math.cos(angle) * speed,
+                  vy: Math.sin(angle) * speed,
                   color: '#ef4444',
-                  style: 'dashed'
+                  size: 1.0 + Math.random() * 1.5,
+                  alpha: 1.0,
+                  decay: 1.2 + Math.random() * 0.8
                 });
-
-                for (let i = 0; i < 12; i++) {
-                  const angle = Math.random() * Math.PI * 2;
-                  const speed = 30 + Math.random() * 40;
-                  stardustRef.current.push({
-                    x: coreX,
-                    y: coreY,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    color: '#ef4444',
-                    size: 1.0 + Math.random() * 1.5,
-                    alpha: 1.0,
-                    decay: 1.2 + Math.random() * 0.8
-                  });
-                }
-
-                return false;
               }
 
-              p.stage = 2;
-              p.progress = 0;
-              p.startX = coreX;
-              p.startY = coreY;
-              if (p.status === 'assigned') {
-                p.color = '#a855f7'; // Purple for APPROVED
-              }
-
-              gridRipplesRef.current.push({
-                x: coreX,
-                y: coreY,
-                radius: 0,
-                maxRadius: 650,
-                strength: 1.6,
-                speed: 750
-              });
-
-              activeLightningsRef.current.push({
-                x1: coreX,
-                y1: coreY,
-                x2: p.targetX,
-                y2: p.targetY,
-                color: p.color,
-                duration: 0.22
-              });
-
-              pushShakeIntensityRef.current = 16.0;
-              coreBlastIntensityRef.current = 1.0;
-
-              laserBeamsRef.current.push({
-                startX: coreX,
-                startY: coreY,
-                targetX: p.targetX,
-                targetY: p.targetY,
-                progress: 0,
-                duration: isPlaying ? 0.45 : 0.65,
-                color: p.color,
-                width: 4.5
-              });
-
-              coreGlowIntensityRef.current = 1.6;
-              coreShockwavesRef.current.push({
-                radius: 12,
-                maxRadius: 100,
-                opacity: 0.95,
-                color: p.color,
-                style: 'sparks'
-              });
-
-              const dxTarget = p.targetX - coreX;
-              const dyTarget = p.targetY - coreY;
-              const distTarget = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
-              if (distTarget > 0) {
-                const dirX = dxTarget / distTarget;
-                const dirY = dyTarget / distTarget;
-                const sparkCount = 16 + Math.floor(Math.random() * 6); // 16 to 21 sparkles
-                
-                for (let i = 0; i < sparkCount; i++) {
-                  // Cone angle centered around the vector towards the target sale
-                  const spreadAngle = (Math.random() - 0.5) * 0.40;
-                  const cosSpread = Math.cos(spreadAngle);
-                  const sinSpread = Math.sin(spreadAngle);
-
-                  const initialSpeed = 240 + Math.random() * 260; // shoot out very fast
-                  const sparkVx = (dirX * cosSpread - dirY * sinSpread) * initialSpeed;
-                  const sparkVy = (dirX * sinSpread + dirY * cosSpread) * initialSpeed;
-
-                  stardustRef.current.push({
-                    x: coreX,
-                    y: coreY,
-                    vx: sparkVx,
-                    vy: sparkVy,
-                    color: p.color,
-                    size: 1.0 + Math.random() * 2.0,
-                    alpha: 1.0,
-                    decay: 0.65 + Math.random() * 0.55, // decays a bit slower to show braking
-                    friction: 0.915 // dynamic braking factor
-                  });
-                }
-              }
-            }
-          } else if (p.stage === 2) {
-            p.progress += deltaTime / p.duration2;
-            const t = p.progress;
-            const midX = (coreX + p.targetX) / 2;
-
-            const x = (1 - t) * (1 - t) * coreX + 2 * (1 - t) * t * midX + t * t * p.targetX;
-            const wave = 18 * Math.sin(t * Math.PI * 3.5) * t;
-            const y = (1 - t) * (1 - t) * coreY + 2 * (1 - t) * t * p.targetY + t * t * p.targetY + wave;
-
-            p.x = x;
-            p.y = y;
-
-            if (Math.random() < 0.45) {
-              const dx = p.x - p.lastX;
-              const dy = p.y - p.lastY;
-              const len = Math.sqrt(dx * dx + dy * dy);
-              const dirX = len > 0 ? dx / len : 0;
-              const dirY = len > 0 ? dy / len : 0;
-              stardustRef.current.push({
-                x: p.x,
-                y: p.y,
-                vx: -dirX * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
-                vy: -dirY * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
-                color: p.color,
-                size: 1.0 + Math.random() * 1.5,
-                alpha: 0.85,
-                decay: 0.9 + Math.random() * 0.9
-              });
-            }
-
-            if (p.progress >= 1.0) {
-              triggerSaleRipple(p.saleIndex, p.sourceType, p.color, p.id, p.status as any);
               return false;
             }
-          }
 
-          let opacity = 1.0;
-          if (p.stage === 1) {
-            const fadeThreshold = Math.min(1.3, p.maxHoldTime * 0.4);
-            const elapsed = p.maxHoldTime - p.holdTime;
-            if (elapsed < fadeThreshold) {
-              opacity = Math.max(0, 1 - (elapsed / fadeThreshold));
-            } else if (p.holdTime < fadeThreshold) {
-              opacity = Math.max(0, 1 - (p.holdTime / fadeThreshold));
-            } else {
-              opacity = 0.0;
+            p.stage = 2;
+            p.progress = 0;
+            p.startX = coreX;
+            p.startY = coreY;
+            if (p.status === 'assigned') {
+              p.color = '#a855f7'; // Purple for APPROVED
             }
-          }
 
-          if (opacity > 0) {
-            const isMobileView = width < 1180;
-            const bubbleRadius = isMobileView ? 9 : 14;
-            const initialsFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
-            const nameFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
-            const subtextFont = isMobileView ? '6px monospace' : '7px monospace';
-            const offsetTextX = isMobileView ? 13 : 19;
+            gridRipplesRef.current.push({
+              x: coreX,
+              y: coreY,
+              radius: 0,
+              maxRadius: 650,
+              strength: 1.6,
+              speed: 750
+            });
 
-            // Render Comet Tail / Plasma Vortex Trails
-            const trail = p.trail;
-            if (trail && trail.length > 1) {
-              ctx.save();
-              ctx.globalCompositeOperation = 'screen';
-              
-              if (p.stage === 1) {
-                // 1. Plasma Vortex Trail (Vetting stage)
-                // Draw multiple layers of lines for a glowing hot neon vortex path
-                ctx.beginPath();
-                ctx.moveTo(trail[0].x, trail[0].y);
-                for (let i = 1; i < trail.length; i++) {
-                  ctx.lineTo(trail[i].x, trail[i].y);
-                }
-                
-                // Outer glow layer
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 6;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.globalAlpha = opacity * 0.18;
-                ctx.stroke();
+            activeLightningsRef.current.push({
+              x1: coreX,
+              y1: coreY,
+              x2: p.targetX,
+              y2: p.targetY,
+              color: p.color,
+              duration: 0.22
+            });
 
-                // Inner glow layer
-                ctx.lineWidth = 3;
-                ctx.globalAlpha = opacity * 0.45;
-                ctx.stroke();
+            pushShakeIntensityRef.current = 16.0;
+            coreBlastIntensityRef.current = 1.0;
 
-                // Central white core line
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1.0;
-                ctx.globalAlpha = opacity * 0.8;
-                ctx.stroke();
-                
-                ctx.globalAlpha = 1.0; // reset
+            laserBeamsRef.current.push({
+              startX: coreX,
+              startY: coreY,
+              targetX: p.targetX,
+              targetY: p.targetY,
+              progress: 0,
+              duration: isPlaying ? 0.45 : 0.65,
+              color: p.color,
+              width: 4.5
+            });
 
-                // Draw glowing plasma blobs along the vortex path
-                trail.forEach((pt, index) => {
-                  const trailOpacity = pt.alpha * opacity;
-                  if (trailOpacity <= 0) return;
-                  
-                  const ratio = 1 - (index / trail.length);
-                  const size = (3.5 + Math.sin(timestamp * 0.01 + index) * 1.5) * ratio;
-                  
-                  // Wobbling effect for plasma look
-                  const offsetAmp = 2.5 * (1 - ratio);
-                  const offsetX = Math.sin(timestamp * 0.02 + index) * offsetAmp;
-                  const offsetY = Math.cos(timestamp * 0.02 + index) * offsetAmp;
-                  
-                  ctx.beginPath();
-                  ctx.arc(pt.x + offsetX, pt.y + offsetY, size, 0, Math.PI * 2);
-                  
-                  const grad = ctx.createRadialGradient(
-                    pt.x + offsetX, pt.y + offsetY, 0,
-                    pt.x + offsetX, pt.y + offsetY, size
-                  );
-                  grad.addColorStop(0, `rgba(255, 255, 255, ${trailOpacity})`);
-                  grad.addColorStop(0.3, p.color + Math.round(trailOpacity * 0.7 * 255).toString(16).padStart(2, '0'));
-                  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                  
-                  ctx.fillStyle = grad;
-                  ctx.fill();
-                });
-              } else {
-                // 2. Comet Tail (Transport stages 0 and 2)
-                // Draw tapered line using segments
-                for (let i = 0; i < trail.length - 1; i++) {
-                  const pt1 = trail[i];
-                  const pt2 = trail[i + 1];
-                  const ratio1 = 1 - (i / trail.length);
-                  
-                  const segmentOpacity = pt1.alpha * opacity * ratio1;
-                  if (segmentOpacity <= 0) continue;
-                  
-                  ctx.beginPath();
-                  ctx.moveTo(pt1.x, pt1.y);
-                  ctx.lineTo(pt2.x, pt2.y);
-                  ctx.lineWidth = 3.0 * ratio1;
-                  ctx.strokeStyle = p.color + Math.round(segmentOpacity * 0.65 * 255).toString(16).padStart(2, '0');
-                  ctx.lineCap = 'round';
-                  ctx.stroke();
-                }
+            coreGlowIntensityRef.current = 1.6;
+            coreShockwavesRef.current.push({
+              radius: 12,
+              maxRadius: 100,
+              opacity: 0.95,
+              color: p.color,
+              style: 'sparks'
+            });
 
-                // Draw tiny trailing dust sparks
-                trail.forEach((pt, index) => {
-                  const trailOpacity = pt.alpha * opacity;
-                  if (trailOpacity <= 0) return;
-                  
-                  const ratio = 1 - (index / trail.length);
-                  if (index % 2 === 0) {
-                    const size = (1.2 + Math.random() * 0.8) * ratio;
-                    const spreadX = (Math.random() - 0.5) * 3 * (1 - ratio);
-                    const spreadY = (Math.random() - 0.5) * 3 * (1 - ratio);
-                    
-                    ctx.beginPath();
-                    ctx.arc(pt.x + spreadX, pt.y + spreadY, size, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color + Math.round(trailOpacity * 0.85 * 255).toString(16).padStart(2, '0');
-                    ctx.fill();
-                  }
+            const dxTarget = p.targetX - coreX;
+            const dyTarget = p.targetY - coreY;
+            const distTarget = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
+            if (distTarget > 0) {
+              const dirX = dxTarget / distTarget;
+              const dirY = dyTarget / distTarget;
+              const sparkCount = 16 + Math.floor(Math.random() * 6); // 16 to 21 sparkles
+
+              for (let i = 0; i < sparkCount; i++) {
+                // Cone angle centered around the vector towards the target sale
+                const spreadAngle = (Math.random() - 0.5) * 0.40;
+                const cosSpread = Math.cos(spreadAngle);
+                const sinSpread = Math.sin(spreadAngle);
+
+                const initialSpeed = 240 + Math.random() * 260; // shoot out very fast
+                const sparkVx = (dirX * cosSpread - dirY * sinSpread) * initialSpeed;
+                const sparkVy = (dirX * sinSpread + dirY * cosSpread) * initialSpeed;
+
+                stardustRef.current.push({
+                  x: coreX,
+                  y: coreY,
+                  vx: sparkVx,
+                  vy: sparkVy,
+                  color: p.color,
+                  size: 1.0 + Math.random() * 2.0,
+                  alpha: 1.0,
+                  decay: 0.65 + Math.random() * 0.55, // decays a bit slower to show braking
+                  friction: 0.915 // dynamic braking factor
                 });
               }
-              ctx.restore();
             }
+          }
+        } else if (p.stage === 2) {
+          p.progress += deltaTime / p.duration2;
+          const t = p.progress;
+          const midX = (coreX + p.targetX) / 2;
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, bubbleRadius, 0, Math.PI * 2);
-            if (p.stage === 2 && p.status === 'assigned') {
-              ctx.shadowColor = '#a855f7';
-              ctx.shadowBlur = 12 * opacity;
-              ctx.fillStyle = `rgba(168, 85, 247, ${0.95 * opacity})`;
-              ctx.strokeStyle = `rgba(168, 85, 247, ${opacity})`;
-            } else {
-              ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
-              ctx.strokeStyle = p.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
-            }
-            ctx.lineWidth = 2.0;
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
+          const x = (1 - t) * (1 - t) * coreX + 2 * (1 - t) * t * midX + t * t * p.targetX;
+          const wave = 18 * Math.sin(t * Math.PI * 3.5) * t;
+          const y = (1 - t) * (1 - t) * coreY + 2 * (1 - t) * t * p.targetY + t * t * p.targetY + wave;
 
-            ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-            ctx.font = initialsFont;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(getInitials(p.leadName), p.x, p.y);
+          p.x = x;
+          p.y = y;
 
-            ctx.textAlign = 'left';
-            ctx.font = nameFont;
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.88 * opacity})`;
-            ctx.fillText(p.leadName, p.x + offsetTextX, p.y + (isMobileView ? 1 : 2));
-
-            ctx.fillStyle = p.color + Math.round(0.8 * opacity * 255).toString(16).padStart(2, '0');
-            ctx.font = subtextFont;
-            ctx.fillText(
-              p.stage < 2 
-                ? 'RECEIVED' 
-                : p.status === 'assigned' 
-                  ? 'APPROVED' 
-                  : p.status === 'compensation' 
-                    ? 'COMPENSATE' 
-                    : p.status === 'pending_work_hours'
-                      ? 'HOLD'
-                      : p.status === 'reminder'
-                        ? 'REMINDER'
-                        : p.status === 'duplicate' 
-                          ? 'DUPLICATED' 
-                          : 'REJECTED', 
-              p.x + offsetTextX, 
-              p.y + (isMobileView ? 8 : 11)
-            );
+          if (Math.random() < 0.45) {
+            const dx = p.x - p.lastX;
+            const dy = p.y - p.lastY;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const dirX = len > 0 ? dx / len : 0;
+            const dirY = len > 0 ? dy / len : 0;
+            stardustRef.current.push({
+              x: p.x,
+              y: p.y,
+              vx: -dirX * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
+              vy: -dirY * (15 + Math.random() * 20) + (Math.random() - 0.5) * 8,
+              color: p.color,
+              size: 1.0 + Math.random() * 1.5,
+              alpha: 0.85,
+              decay: 0.9 + Math.random() * 0.9
+            });
           }
 
-          return true;
-        });
+          if (p.progress >= 1.0) {
+            triggerSaleRipple(p.saleIndex, p.sourceType, p.color, p.id, p.status as any);
+            return false;
+          }
+        }
+
+        let opacity = 1.0;
+        if (p.stage === 1) {
+          const fadeThreshold = Math.min(1.3, p.maxHoldTime * 0.4);
+          const elapsed = p.maxHoldTime - p.holdTime;
+          if (elapsed < fadeThreshold) {
+            opacity = Math.max(0, 1 - (elapsed / fadeThreshold));
+          } else if (p.holdTime < fadeThreshold) {
+            opacity = Math.max(0, 1 - (p.holdTime / fadeThreshold));
+          } else {
+            opacity = 0.0;
+          }
+        }
+
+        if (opacity > 0) {
+          const isMobileView = width < 1180;
+          const bubbleRadius = isMobileView ? 9 : 14;
+          const initialsFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
+          const nameFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
+          const subtextFont = isMobileView ? '6px monospace' : '7px monospace';
+          const offsetTextX = isMobileView ? 13 : 19;
+
+          // Render Comet Tail / Plasma Vortex Trails
+          const trail = p.trail;
+          if (trail && trail.length > 1) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+
+            if (p.stage === 1) {
+              // 1. Plasma Vortex Trail (Vetting stage)
+              // Draw multiple layers of lines for a glowing hot neon vortex path
+              ctx.beginPath();
+              ctx.moveTo(trail[0].x, trail[0].y);
+              for (let i = 1; i < trail.length; i++) {
+                ctx.lineTo(trail[i].x, trail[i].y);
+              }
+
+              // Outer glow layer
+              ctx.strokeStyle = p.color;
+              ctx.lineWidth = 6;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.globalAlpha = opacity * 0.18;
+              ctx.stroke();
+
+              // Inner glow layer
+              ctx.lineWidth = 3;
+              ctx.globalAlpha = opacity * 0.45;
+              ctx.stroke();
+
+              // Central white core line
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.0;
+              ctx.globalAlpha = opacity * 0.8;
+              ctx.stroke();
+
+              ctx.globalAlpha = 1.0; // reset
+
+              // Draw glowing plasma blobs along the vortex path
+              trail.forEach((pt, index) => {
+                const trailOpacity = pt.alpha * opacity;
+                if (trailOpacity <= 0) return;
+
+                const ratio = 1 - (index / trail.length);
+                const size = (3.5 + Math.sin(timestamp * 0.01 + index) * 1.5) * ratio;
+
+                // Wobbling effect for plasma look
+                const offsetAmp = 2.5 * (1 - ratio);
+                const offsetX = Math.sin(timestamp * 0.02 + index) * offsetAmp;
+                const offsetY = Math.cos(timestamp * 0.02 + index) * offsetAmp;
+
+                ctx.beginPath();
+                ctx.arc(pt.x + offsetX, pt.y + offsetY, size, 0, Math.PI * 2);
+
+                const grad = ctx.createRadialGradient(
+                  pt.x + offsetX, pt.y + offsetY, 0,
+                  pt.x + offsetX, pt.y + offsetY, size
+                );
+                grad.addColorStop(0, `rgba(255, 255, 255, ${trailOpacity})`);
+                grad.addColorStop(0.3, p.color + Math.round(trailOpacity * 0.7 * 255).toString(16).padStart(2, '0'));
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.fillStyle = grad;
+                ctx.fill();
+              });
+            } else {
+              // 2. Comet Tail (Transport stages 0 and 2)
+              // Draw tapered line using segments
+              for (let i = 0; i < trail.length - 1; i++) {
+                const pt1 = trail[i];
+                const pt2 = trail[i + 1];
+                const ratio1 = 1 - (i / trail.length);
+
+                const segmentOpacity = pt1.alpha * opacity * ratio1;
+                if (segmentOpacity <= 0) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(pt1.x, pt1.y);
+                ctx.lineTo(pt2.x, pt2.y);
+                ctx.lineWidth = 3.0 * ratio1;
+                ctx.strokeStyle = p.color + Math.round(segmentOpacity * 0.65 * 255).toString(16).padStart(2, '0');
+                ctx.lineCap = 'round';
+                ctx.stroke();
+              }
+
+              // Draw tiny trailing dust sparks
+              trail.forEach((pt, index) => {
+                const trailOpacity = pt.alpha * opacity;
+                if (trailOpacity <= 0) return;
+
+                const ratio = 1 - (index / trail.length);
+                if (index % 2 === 0) {
+                  const size = (1.2 + Math.random() * 0.8) * ratio;
+                  const spreadX = (Math.random() - 0.5) * 3 * (1 - ratio);
+                  const spreadY = (Math.random() - 0.5) * 3 * (1 - ratio);
+
+                  ctx.beginPath();
+                  ctx.arc(pt.x + spreadX, pt.y + spreadY, size, 0, Math.PI * 2);
+                  ctx.fillStyle = p.color + Math.round(trailOpacity * 0.85 * 255).toString(16).padStart(2, '0');
+                  ctx.fill();
+                }
+              });
+            }
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, bubbleRadius, 0, Math.PI * 2);
+          if (p.stage === 2 && p.status === 'assigned') {
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 12 * opacity;
+            ctx.fillStyle = `rgba(168, 85, 247, ${0.95 * opacity})`;
+            ctx.strokeStyle = `rgba(168, 85, 247, ${opacity})`;
+          } else {
+            ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
+            ctx.strokeStyle = p.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
+          }
+          ctx.lineWidth = 2.0;
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.font = initialsFont;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(getInitials(p.leadName), p.x, p.y);
+
+          ctx.textAlign = 'left';
+          ctx.font = nameFont;
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.88 * opacity})`;
+          ctx.fillText(p.leadName, p.x + offsetTextX, p.y + (isMobileView ? 1 : 2));
+
+          ctx.fillStyle = p.color + Math.round(0.8 * opacity * 255).toString(16).padStart(2, '0');
+          ctx.font = subtextFont;
+          ctx.fillText(
+            p.stage < 2
+              ? 'RECEIVED'
+              : p.status === 'assigned'
+                ? 'APPROVED'
+                : p.status === 'compensation'
+                  ? 'COMPENSATE'
+                  : p.status === 'pending_work_hours'
+                    ? 'HOLD'
+                    : p.status === 'reminder'
+                      ? 'REMINDER'
+                      : p.status === 'duplicate'
+                        ? 'DUPLICATED'
+                        : 'REJECTED',
+            p.x + offsetTextX,
+            p.y + (isMobileView ? 8 : 11)
+          );
+        }
+
+        return true;
+      });
 
       // 10. Update and draw stardust sparkles (BATCHED FOR 120HZ FEEL)
       const stardustGroups: Record<string, { x: number; y: number; size: number }[]> = {};
@@ -2498,19 +2516,19 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
   const getSimulationPool = () => {
     if (yesterdayLogs.length > 0) return yesterdayLogs;
-    
+
     // Fallback mock pool if yesterday had no data
     const fallback = [];
     const statuses: ('assigned' | 'rejected' | 'duplicate' | 'compensation' | 'reminder')[] = ['assigned', 'assigned', 'assigned', 'rejected', 'duplicate', 'compensation', 'reminder'];
     const fallbackSources = ['Facebook Ad Lead - TOPUP', 'Facebook Ad Male_30_45', 'Zalo Webhook & Direct API'];
     const fallbackSales = ['Turnio DEV', 'Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C'];
-    
+
     for (let i = 0; i < 15; i++) {
       const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${middleNames[Math.floor(Math.random() * middleNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
       const source = fallbackSources[Math.floor(Math.random() * fallbackSources.length)];
       const sale = fallbackSales[Math.floor(Math.random() * fallbackSales.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      
+
       const randHour = Math.floor(Math.random() * 24);
       const randMin = Math.floor(Math.random() * 60);
       const randSec = Math.floor(Math.random() * 60);
@@ -2537,7 +2555,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         const srcName = log.source || log.type || 'Nhập tay';
         if (srcName) uniqueSources.add(srcName);
       });
-      
+
       const colors = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899'];
       return Array.from(uniqueSources).map((srcName, idx) => {
         const count = simulatedLeadsPerSource[srcName] || 0;
@@ -2576,12 +2594,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const rawConsultants = currentStats?.topConsultants || [];
     const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
     let list: any[] = [];
-    
+
     if (allConsultants && allConsultants.length > 0) {
       list = allConsultants.map((c, idx) => {
         const statItem = rawConsultants.find((rc: any) => rc.name === c.name || String(rc.id) === String(c.id));
         const dataCount = statItem ? statItem.data : 0;
-        
+
         let statusMsg = 'Đang trực';
         if (c.status === 'leave' || c.vacation_mode === 1 || Number(c.vacation_mode) === 1) {
           statusMsg = 'Vắng mặt';
@@ -2590,7 +2608,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         } else if (c.status === 'inactive') {
           statusMsg = 'Vắng mặt';
         }
-        
+
         return {
           id: c.id,
           name: c.name,
@@ -2608,11 +2626,11 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       // Filter: keep active reps, or those with data today, or those involved in recent logs
       const currentLogs = todayLogs.length > 0 ? todayLogs : recentLogs;
       const activeLogNames = new Set(currentLogs?.map((log: any) => log.assigned_to_name) || []);
-      
-      list = list.filter(sale => 
-        sale.status === 'active' || 
-        sale.status === 'pending_work_hours' || 
-        sale.data > 0 || 
+
+      list = list.filter(sale =>
+        sale.status === 'active' ||
+        sale.status === 'pending_work_hours' ||
+        sale.data > 0 ||
         activeLogNames.has(sale.name)
       );
 
@@ -2701,7 +2719,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const targetX = saCoord.x;
     const targetY = saCoord.y;
 
-    const holdTime = isPlaying 
+    const holdTime = isPlaying
       ? (1.8 + Math.random() * 0.6) // Vets at AI core for ~1.8-2.4s in simulation
       : (7.0 + Math.random() * 2.0); // Vets at AI core for ~7-9s in real-time
 
@@ -2721,10 +2739,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       targetX,
       targetY,
       progress: 0,
-      duration: isPlaying 
+      duration: isPlaying
         ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to core in simulation
         : (35.0 + Math.random() * 4.0), // ~35-39s drift to core in real-time (Max 90s total)
-      duration2: isPlaying 
+      duration2: isPlaying
         ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to sale rep in simulation
         : (35.0 + Math.random() * 4.0), // ~35-39s drift to sale rep in real-time (Max 90s total)
       stage: 0,
@@ -2760,7 +2778,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
   const triggerSimulatedLead = (log: any) => {
     let name = log.lead_name || 'Khách hàng';
-    
+
     const logSource = log.source || log.type || 'Nhập tay';
     let sourceIdx = activeSources.findIndex((s: any) => s.name === logSource);
     if (sourceIdx === -1) {
@@ -2901,7 +2919,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         '[SYNCING GOOGLE SHEETS CHANNELS... OK]',
         '[DECRYPTING DIRECT WEBHOOK API... OK]',
         '[BOOTING PRE-SCREENER AI REACTOR... ONLINE]',
-        '[ESTABLISHING AI INFINITY VIEW... DEPLOYED]'
+        '[ESTABLISHING AI INFINITY... DEPLOYED]'
       ];
 
       const timer = setInterval(() => {
@@ -2918,7 +2936,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             }, 350);
             return 100;
           }
-          
+
           const msgIdx = Math.min(allMsgs.length - 1, Math.floor((next / 100) * allMsgs.length));
           setBootMessages(msgs => {
             const nextMsgs = [...msgs];
@@ -2969,7 +2987,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
     if (currentLogs && currentLogs.length > 0) {
       const activeLogs = currentLogs.filter((log: any) => log.status !== 'silent');
-      
+
       const formattedLogs = activeLogs.slice(0, 4).map((log, idx) => ({
         id: log.id || `log-${idx}`,
         lead_name: log.lead_name,
@@ -2984,7 +3002,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       if (latestLog && lastProcessedLogIdRef.current && latestLog.id !== lastProcessedLogIdRef.current) {
         let name = latestLog.lead_name || 'Khách hàng';
         const logSource = latestLog.source || latestLog.type || 'Nhập tay';
-        
+
         let sourceIdx = activeSources.findIndex((s: any) => s.name === logSource);
         if (sourceIdx === -1) sourceIdx = 0;
 
@@ -3039,9 +3057,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         lastProcessedLogIdRef.current = activeLogs[0].id;
 
         // Find the latest successful log to highlight the last active sale rep
-        const successfulLog = activeLogs.find((log: any) => 
-          log.status === 'assigned' || 
-          log.status === 'compensation' || 
+        const successfulLog = activeLogs.find((log: any) =>
+          log.status === 'assigned' ||
+          log.status === 'compensation' ||
           log.status === 'pending_work_hours' ||
           log.status === 'reminder'
         );
@@ -3173,7 +3191,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     if (isPlaying) {
       setSimSharedCount(prev => prev + 1);
     }
-    
+
     const targetSale = salesList[index];
     if (targetSale) {
       setSimulatedLeadsPerSale(prev => ({
@@ -3384,7 +3402,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
                   e.currentTarget.style.color = '#ef4444';
                 }}
-                title={t("Đóng Infinity View")}
+                title={t("Đóng AI Infinity")}
               >
                 <X size={14} />
               </button>
@@ -3410,24 +3428,24 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  width: '38px', 
-                  height: '38px', 
-                  borderRadius: '50%', 
-                  border: '1.8px solid rgba(139, 92, 246, 0.70)', 
-                  overflow: 'hidden', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  border: '1.8px solid rgba(139, 92, 246, 0.70)',
+                  overflow: 'hidden',
                   boxShadow: '0 0 12px rgba(139, 92, 246, 0.50)',
                   background: 'radial-gradient(circle, rgba(168, 85, 247, 0.40) 0%, rgba(5, 7, 18, 0.96) 100%)'
                 }}>
                   <img
                     src="https://crm-domation.vercel.app/LOGO.jpg"
                     alt="DOMATION Logo"
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
+                    style={{
+                      width: '100%',
+                      height: '100%',
                       objectFit: 'cover',
                       maskImage: 'radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
                       WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)'
@@ -3435,7 +3453,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION AI INFINITY VIEW</h2>
+                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION AI INFINITY</h2>
                   <p style={{ fontSize: '0.7rem', color: '#a855f7', display: 'flex', alignItems: 'center', gap: '3px', textShadow: '0 0 8px rgba(168,85,247,0.4)' }}>
                     <span>{t('Dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</span>
                     <span className="cursor-blink" style={{ display: 'inline-block', width: '6px', height: '10px', backgroundColor: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,0.7)' }} />
@@ -3601,7 +3619,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
                     e.currentTarget.style.color = '#ef4444';
                   }}
-                  title={t("Thoát chế độ Infinity View")}
+                  title={t("Thoát chế độ AI Infinity")}
                 >
                   <X size={12} />
                   <span>{t('Đóng')}</span>
@@ -3610,391 +3628,265 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             </div>
           )}
 
-      {/* Main war room panel layout */}
-      <div
-        className="war-room-grid"
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '230px 1fr 250px' : '330px 1fr 370px',
-          padding: isMobile ? '0.5rem' : '1.5rem',
-          gap: isMobile ? '0.75rem' : '1.75rem',
-          zIndex: 5,
-          position: 'relative'
-        }}
-      >
-        {/* Left Console: Data Ingestion Systems */}
-        <div className="war-room-left-col" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1.25rem', paddingTop: isFocusMode ? (isMobile ? '3.5rem' : '5.5rem') : (isMobile ? '0.75rem' : '1.5rem'), transition: 'padding-top 0.35s ease-out' }}>
-          <h3 className="war-room-left-title" style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-            <Server size={15} style={{ color: '#3b82f6' }} /> CONSOLE THU NHẬN SỐ
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
-            {activeSources.map((src: any, idx: number) => {
-              const Icon = src.icon;
-              const isGlow = activeSourcesGlow[idx];
-              const isPermanentGlow = idx === lastActiveSourceIdx;
-              return (
-                <div
-                  key={src.id}
-                  ref={el => { sourceRefs.current[idx] = el; }}
-                  className="war-room-source-card"
-                  style={{
-                    background: isGlow
-                      ? `${src.color}26`
-                      : isPermanentGlow
-                        ? `${src.color}0d`
-                        : 'rgba(8, 12, 28, 0.45)',
-                    backdropFilter: 'blur(25px)',
-                    border: isGlow
-                      ? `1.8px solid ${src.color}`
-                      : isPermanentGlow
-                        ? `1.8px solid ${src.color}66`
-                        : `1.8px solid ${src.color}20`,
-                    borderRadius: isMobile ? '10px' : '14px',
-                    padding: isMobile ? '0.5rem 0.75rem' : '0.8rem 1.1rem',
-                    boxShadow: isGlow
-                      ? `0 0 25px ${src.color}c0, inset 0 0 15px ${src.color}4d`
-                      : isPermanentGlow
-                        ? `0 0 15px ${src.color}40`
-                        : `0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 10px ${src.color}03`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: isMobile ? 8 : 14,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                >
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: src.color }} />
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: isMobile ? '26px' : '32px', height: isMobile ? '26px' : '32px', borderRadius: '6px', background: `${src.color}15`, border: `1px solid ${src.color}30`, flexShrink: 0 }}>
-                      <Icon size={isMobile ? 12 : 16} style={{ color: src.color }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 1 }}>
-                      <span style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.name}</span>
-                      <span style={{ fontSize: isMobile ? '0.65rem' : '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>{src.count} <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>Lead</span></span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <span style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: src.color,
-                      boxShadow: `0 0 8px ${src.color}`,
-                      display: 'inline-block',
-                      animation: 'pulseGlow 2s ease-in-out infinite'
-                    }} />
-                    <span style={{ fontSize: '0.65rem', color: src.color, fontWeight: 700 }}>{src.ping}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Center: Tactical Holomap with core */}
-        <div className="war-room-center-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '15%', left: '10%', fontSize: '0.55rem', color: 'rgba(124, 58, 237, 0.3)', pointerEvents: 'none' }}>SYS_DEC_LOCK: ACTIVE</div>
-          <div style={{ position: 'absolute', bottom: '20%', right: '8%', fontSize: '0.55rem', color: 'rgba(168, 85, 247, 0.3)', pointerEvents: 'none' }}>GATEWAY_PING: OK</div>
-
+          {/* Main war room panel layout */}
           <div
-            ref={coreRef}
-            className="war-room-core-outer"
+            className="war-room-grid"
             style={{
-              width: isMobile ? '130px' : '210px',
-              height: isMobile ? '130px' : '210px',
-              marginTop: isFocusMode ? (isMobile ? '3rem' : '5.5rem') : (isMobile ? '1.5rem' : '3.5rem'),
-              borderRadius: '50%',
-              background: isRetainedGlow
-                ? 'radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.01) 70%)'
-                : 'radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.01) 70%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              zIndex: 3,
-              transition: 'background 0.35s ease, margin-top 0.35s ease-out'
+              flex: 1,
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '230px 1fr 250px' : '330px 1fr 370px',
+              padding: isMobile ? '0.5rem' : '1.5rem',
+              gap: isMobile ? '0.75rem' : '1.75rem',
+              zIndex: 5,
+              position: 'relative'
             }}
           >
-            {/* Outer Concentric Rings centered with core */}
-            <div style={{ position: 'absolute', inset: isMobile ? '-20px' : '-35px', border: isRetainedGlow ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(139, 92, 246, 0.05)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
-            <div style={{ position: 'absolute', inset: isMobile ? '-45px' : '-85px', border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.12)' : '1px dashed rgba(99, 102, 241, 0.03)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
-            {/* Concentric rotating outer rings */}
+            {/* Left Console: Data Ingestion Systems */}
             <div
+              className="war-room-left-col"
               style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '50%',
-                border: isRetainedGlow ? '2px dashed rgba(239, 68, 68, 0.55)' : '2px dashed rgba(139, 92, 246, 0.38)',
-                animation: 'spinCore 30s linear infinite',
-                transition: 'border 0.35s ease'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: isMobile ? '0.75rem' : '1.25rem',
+                paddingTop: isMobile ? '2.6rem' : (isFocusMode ? '5.5rem' : '1.5rem'),
+                transition: 'padding-top 0.35s ease-out'
               }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                inset: isMobile ? '-8px' : '-15px',
-                borderRadius: '50%',
-                border: isRetainedGlow ? '1.2px solid rgba(239, 68, 68, 0.35)' : '1.2px solid rgba(139, 92, 246, 0.2)',
-                animation: 'spinCoreInverse 20s linear infinite',
-                transition: 'border 0.35s ease'
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                inset: isMobile ? '-18px' : '-32px',
-                borderRadius: '50%',
-                border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.25)' : '1px dashed rgba(99, 102, 241, 0.12)',
-                animation: 'spinCore 50s linear infinite',
-                transition: 'border 0.35s ease'
-              }}
-            />
+            >
+              <h3 className="war-room-left-title" style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                <Server size={15} style={{ color: '#3b82f6' }} /> CONSOLE THU NHẬN SỐ
+              </h3>
 
-            {/* Glowing Hologram Center sphere */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
+                {activeSources.map((src: any, idx: number) => {
+                  const Icon = src.icon;
+                  const isGlow = activeSourcesGlow[idx];
+                  const isPermanentGlow = idx === lastActiveSourceIdx;
+                  return (
+                    <div
+                      key={src.id}
+                      ref={el => { sourceRefs.current[idx] = el; }}
+                      className="war-room-source-card"
+                      style={{
+                        background: isGlow
+                          ? `${src.color}26`
+                          : isPermanentGlow
+                            ? `${src.color}0d`
+                            : 'rgba(8, 12, 28, 0.45)',
+                        backdropFilter: 'blur(25px)',
+                        border: isGlow
+                          ? `1.8px solid ${src.color}`
+                          : isPermanentGlow
+                            ? `1.8px solid ${src.color}66`
+                            : `1.8px solid ${src.color}20`,
+                        borderRadius: isMobile ? '10px' : '14px',
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.8rem 1.1rem',
+                        boxShadow: isGlow
+                          ? `0 0 25px ${src.color}c0, inset 0 0 15px ${src.color}4d`
+                          : isPermanentGlow
+                            ? `0 0 15px ${src.color}40`
+                            : `0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 10px ${src.color}03`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: isMobile ? 8 : 14,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                    >
+                      <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: src.color }} />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: isMobile ? '26px' : '32px', height: isMobile ? '26px' : '32px', borderRadius: '6px', background: `${src.color}15`, border: `1px solid ${src.color}30`, flexShrink: 0 }}>
+                          <Icon size={isMobile ? 12 : 16} style={{ color: src.color }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 1 }}>
+                          <span style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.name}</span>
+                          <span style={{ fontSize: isMobile ? '0.65rem' : '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>{src.count} <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>Lead</span></span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          background: src.color,
+                          boxShadow: `0 0 8px ${src.color}`,
+                          display: 'inline-block',
+                          animation: 'pulseGlow 2s ease-in-out infinite'
+                        }} />
+                        <span style={{ fontSize: '0.65rem', color: src.color, fontWeight: 700 }}>{src.ping}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Center: Tactical Holomap with core */}
             <div
-              ref={coreSphereRef}
+              className="war-room-center-col"
               style={{
-                width: isMobile ? '76px' : '120px',
-                height: isMobile ? '76px' : '120px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(124, 58, 237, 0.98) 100%)',
-                boxShadow: isRetainedGlow
-                  ? '0 0 45px rgba(239, 68, 68, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.55)'
-                  : '0 0 35px rgba(124, 58, 237, 0.55), inset 0 0 20px rgba(255,255,255,0.45)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'transform 0.05s ease-out, box-shadow 0.35s ease',
                 position: 'relative',
-                zIndex: 4,
-                overflow: 'hidden'
+                paddingTop: isFocusMode ? (isMobile ? '8.0rem' : '5.5rem') : (isMobile ? '7rem' : '5.2rem'),
+                transition: 'padding-top 0.35s ease-out'
               }}
             >
-              {/* Red warning overlay for hardware-accelerated opacity transition */}
+              <div style={{ position: 'absolute', top: '15%', left: '10%', fontSize: '0.55rem', color: 'rgba(124, 58, 237, 0.3)', pointerEvents: 'none' }}>SYS_DEC_LOCK: ACTIVE</div>
+              <div style={{ position: 'absolute', bottom: '20%', right: '8%', fontSize: '0.55rem', color: 'rgba(168, 85, 247, 0.3)', pointerEvents: 'none' }}>GATEWAY_PING: OK</div>
+
               <div
+                ref={coreRef}
+                className="war-room-core-outer"
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.98) 100%)',
-                  opacity: isRetainedGlow ? 1 : 0,
-                  transition: 'opacity 0.35s ease',
-                  zIndex: 0,
-                  borderRadius: '50%'
+                  width: isMobile ? '130px' : '210px',
+                  height: isMobile ? '130px' : '210px',
+                  marginTop: isFocusMode ? (isMobile ? '5.5rem' : '5.5rem') : (isMobile ? '1.5rem' : '3.5rem'),
+                  borderRadius: '50%',
+                  background: isRetainedGlow
+                    ? 'radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.01) 70%)'
+                    : 'radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.01) 70%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  zIndex: 3,
+                  transition: 'background 0.35s ease, margin-top 0.35s ease-out'
                 }}
-              />
-              <Cpu size={isMobile ? 22 : 36} style={{ color: '#fff', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.85))', zIndex: 1 }} />
-              <div style={{ fontSize: isMobile ? '0.5rem' : '0.6rem', fontWeight: 900, letterSpacing: '0.12em', marginTop: '6px', opacity: 0.95, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.5)', zIndex: 1 }}>DOMATION AI</div>
-            </div>
-          </div>
-
-          {/* Central Live HUD stats under core */}
-          <div
-            className="war-room-hud-stats"
-            style={{
-              marginTop: isMobile ? '3rem' : '7.5rem',
-              background: 'linear-gradient(135deg, rgba(8, 12, 28, 0.65) 0%, rgba(3, 5, 14, 0.85) 100%)',
-              backdropFilter: 'blur(25px)',
-              border: 'none',
-              borderRadius: isMobile ? '12px' : '16px',
-              padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.75rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: isMobile ? '8px' : '12px',
-              textAlign: 'center',
-              width: isMobile ? '300px' : '460px',
-              boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), inset 0 0 20px rgba(139, 92, 246, 0.05)',
-              position: 'relative',
-              overflow: 'visible'
-            }}
-          >
-            {/* Tech Corners */}
-            <div style={{ position: 'absolute', top: -1, left: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderTopLeftRadius: 4 }} />
-            <div style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderTopRightRadius: 4 }} />
-            <div style={{ position: 'absolute', bottom: -1, left: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderBottomLeftRadius: 4 }} />
-            <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderBottomRightRadius: 4 }} />
-
-            {/* Gradient vertical divider lines */}
-            <div style={{ position: 'absolute', left: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
-            <div style={{ position: 'absolute', right: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
-
-            {/* Breathing SVG Throughput Wave background */}
-            <svg viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '55px', pointerEvents: 'none', zIndex: -1, opacity: 0.12, borderRadius: '16px' }}>
-              <path d="M 0 50 Q 80 15, 160 45 T 320 50 T 400 35" fill="none" stroke="#a855f7" strokeWidth="1.5" style={{ animation: 'waveDrift 10s linear infinite' }} />
-              <path d="M 0 60 Q 90 75, 180 55 T 360 65 T 400 50" fill="none" stroke="#3b82f6" strokeWidth="1.0" style={{ animation: 'waveDrift2 14s linear infinite' }} />
-            </svg>
-
-            <div
-              style={{
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                background: isTotalGlow ? 'linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.02) 100%)' : 'transparent',
-                borderRadius: '8px',
-                padding: '8px 0',
-                boxShadow: isTotalGlow ? '0 0 15px rgba(168, 85, 247, 0.25)' : 'none'
-              }}
-            >
-              {/* Floating +1 Total bubble */}
-              {totalRipples.map(r => (
+              >
+                {/* Outer Concentric Rings centered with core */}
+                <div style={{ position: 'absolute', inset: isMobile ? '-20px' : '-35px', border: isRetainedGlow ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(139, 92, 246, 0.05)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
+                <div style={{ position: 'absolute', inset: isMobile ? '-45px' : '-85px', border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.12)' : '1px dashed rgba(99, 102, 241, 0.03)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
+                {/* Concentric rotating outer rings */}
                 <div
-                  key={r.id}
                   style={{
                     position: 'absolute',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    top: isMobile ? '-14px' : '-20px',
-                    background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-                    color: '#fff',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '0.65rem',
-                    fontWeight: 850,
-                    boxShadow: '0 0 12px rgba(168, 85, 247, 0.65)',
-                    animation: 'floatUpAndFade 1.6s ease-out forwards',
-                    zIndex: 20
+                    inset: 0,
+                    borderRadius: '50%',
+                    border: isRetainedGlow ? '2px dashed rgba(239, 68, 68, 0.55)' : '2px dashed rgba(139, 92, 246, 0.38)',
+                    animation: 'spinCore 30s linear infinite',
+                    transition: 'border 0.35s ease'
                   }}
-                >
-                  +1
-                </div>
-              ))}
-              <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>TỔNG QUÉT</div>
-              <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#c084fc', marginTop: 4, letterSpacing: '0.05em', textShadow: isTotalGlow ? '0 0 12px rgba(168, 85, 247, 0.85)' : '0 0 6px rgba(168, 85, 247, 0.3)' }}>{displayTotalCounter}</div>
-            </div>
-            
-            <div
-              style={{
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                background: isSharedGlow ? 'linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0.02) 100%)' : 'transparent',
-                borderRadius: '8px',
-                padding: '8px 0',
-                boxShadow: isSharedGlow ? '0 0 15px rgba(16, 185, 129, 0.25)' : 'none'
-              }}
-            >
-              {/* Floating +1 Shared bubble */}
-              {sharedRipples.map(r => (
+                />
                 <div
-                  key={r.id}
                   style={{
                     position: 'absolute',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    top: isMobile ? '-14px' : '-20px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: '#fff',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '0.65rem',
-                    fontWeight: 850,
-                    boxShadow: '0 0 12px rgba(16,185,129,0.65)',
-                    animation: 'floatUpAndFade 1.6s ease-out forwards',
-                    zIndex: 20
+                    inset: isMobile ? '-8px' : '-15px',
+                    borderRadius: '50%',
+                    border: isRetainedGlow ? '1.2px solid rgba(239, 68, 68, 0.35)' : '1.2px solid rgba(139, 92, 246, 0.2)',
+                    animation: 'spinCoreInverse 20s linear infinite',
+                    transition: 'border 0.35s ease'
                   }}
-                >
-                  +1
-                </div>
-              ))}
-              <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ĐÃ PHÂN PHỐI</div>
-              <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#10b981', marginTop: 4, letterSpacing: '0.05em', textShadow: isSharedGlow ? '0 0 12px rgba(16, 185, 129, 0.85)' : '0 0 6px rgba(16, 185, 129, 0.3)' }}>{displaySharedCounter}</div>
-            </div>
- 
-            <div
-              style={{
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                background: isRetainedGlow ? 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.02) 100%)' : 'transparent',
-                borderRadius: '8px',
-                padding: '8px 0',
-                boxShadow: isRetainedGlow ? '0 0 15px rgba(239, 68, 68, 0.25)' : 'none'
-              }}
-            >
-              {/* Floating +1 Retained bubble */}
-              {retainedRipples.map(r => (
+                />
                 <div
-                  key={r.id}
                   style={{
                     position: 'absolute',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    top: isMobile ? '-14px' : '-20px',
-                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                    color: '#fff',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '0.65rem',
-                    fontWeight: 850,
-                    boxShadow: '0 0 12px rgba(239,68,68,0.65)',
-                    animation: 'floatUpAndFade 1.6s ease-out forwards',
-                    zIndex: 20
+                    inset: isMobile ? '-18px' : '-32px',
+                    borderRadius: '50%',
+                    border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.25)' : '1px dashed rgba(99, 102, 241, 0.12)',
+                    animation: 'spinCore 50s linear infinite',
+                    transition: 'border 0.35s ease'
                   }}
-                >
-                  +1
-                </div>
-              ))}
-              <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>BỊ GIỮ LẠI</div>
-              <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#ef4444', marginTop: 4, letterSpacing: '0.05em', textShadow: isRetainedGlow ? '0 0 12px rgba(239, 68, 68, 0.85)' : '0 0 6px rgba(239, 68, 68, 0.3)' }}>{displayErrorCounter}</div>
-            </div>
-          </div>
-        </div>
+                />
 
-        {/* Right Console: Active Sales Channels */}
-        <div className="war-room-right-col" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1.25rem', paddingTop: isFocusMode ? (isMobile ? '3.5rem' : '5.5rem') : (isMobile ? '0.75rem' : '1.5rem'), transition: 'padding-top 0.35s ease-out' }}>
-          <h3 className="war-room-right-title" style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-            <Users size={isMobile ? 12 : 15} style={{ color: '#a855f7' }} /> KÊNH PHÂN PHỐI SALES
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
-            {salesList.map((sale: any, idx: number) => {
-              const isGlow = activeSalesGlow[idx];
-              const isPermanentGlow = idx === lastActiveSaleIdx;
-              const channel = consultantChannels[idx] || { name: 'Active', color: '#10b981' };
-              const statusInfo = getSaleStatus(sale);
-              return (
+                {/* Glowing Hologram Center sphere */}
                 <div
-                  key={sale.name}
-                  ref={el => { saleRefs.current[idx] = el; }}
-                  className="war-room-sale-card"
+                  ref={coreSphereRef}
                   style={{
-                    background: isGlow
-                      ? `${channel.color}26`
-                      : isPermanentGlow
-                        ? `${channel.color}0d`
-                        : 'rgba(8, 12, 28, 0.45)',
-                    backdropFilter: 'blur(25px)',
-                    border: isGlow
-                      ? `1.8px solid ${channel.color}`
-                      : isPermanentGlow
-                        ? `1.8px solid ${channel.color}66`
-                        : '1.8px solid rgba(255,255,255,0.06)',
-                    borderRadius: isMobile ? '10px' : '16px',
-                    padding: isMobile ? '0.5rem 0.75rem' : '0.85rem 1.15rem',
-                    boxShadow: isGlow
-                      ? `0 0 25px ${channel.color}c0, inset 0 0 15px ${channel.color}4d`
-                      : isPermanentGlow
-                        ? `0 0 15px ${channel.color}40`
-                        : '0 10px 40px 0 rgba(0, 0, 0, 0.5)',
+                    width: isMobile ? '76px' : '120px',
+                    height: isMobile ? '76px' : '120px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(124, 58, 237, 0.98) 100%)',
+                    boxShadow: isRetainedGlow
+                      ? '0 0 45px rgba(239, 68, 68, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.55)'
+                      : '0 0 35px rgba(124, 58, 237, 0.55), inset 0 0 20px rgba(255,255,255,0.45)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: isMobile ? 8 : 12,
+                    justifyContent: 'center',
+                    transition: 'transform 0.05s ease-out, box-shadow 0.35s ease',
                     position: 'relative',
-                    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                    zIndex: 4,
                     overflow: 'hidden'
                   }}
                 >
-                  {/* Floating +1 Lead bubble */}
-                  {isGlow && (
+                  {/* Red warning overlay for hardware-accelerated opacity transition */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.98) 100%)',
+                      opacity: isRetainedGlow ? 1 : 0,
+                      transition: 'opacity 0.35s ease',
+                      zIndex: 0,
+                      borderRadius: '50%'
+                    }}
+                  />
+                  <Cpu size={isMobile ? 22 : 36} style={{ color: '#fff', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.85))', zIndex: 1 }} />
+                  <div style={{ fontSize: isMobile ? '0.5rem' : '0.6rem', fontWeight: 900, letterSpacing: '0.12em', marginTop: '6px', opacity: 0.95, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.5)', zIndex: 1 }}>DOMATION AI</div>
+                </div>
+              </div>
+
+              {/* Central Live HUD stats under core */}
+              <div
+                className="war-room-hud-stats"
+                style={{
+                  marginTop: isMobile ? '3rem' : '7.5rem',
+                  background: 'linear-gradient(135deg, rgba(8, 12, 28, 0.65) 0%, rgba(3, 5, 14, 0.85) 100%)',
+                  backdropFilter: 'blur(25px)',
+                  border: 'none',
+                  borderRadius: isMobile ? '12px' : '16px',
+                  padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.75rem',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: isMobile ? '8px' : '12px',
+                  textAlign: 'center',
+                  width: isMobile ? '300px' : '460px',
+                  boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), inset 0 0 20px rgba(139, 92, 246, 0.05)',
+                  position: 'relative',
+                  overflow: 'visible'
+                }}
+              >
+                {/* Tech Corners */}
+                <div style={{ position: 'absolute', top: -1, left: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderTopLeftRadius: 4 }} />
+                <div style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderTopRightRadius: 4 }} />
+                <div style={{ position: 'absolute', bottom: -1, left: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderBottomLeftRadius: 4 }} />
+                <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderBottomRightRadius: 4 }} />
+
+                {/* Gradient vertical divider lines */}
+                <div style={{ position: 'absolute', left: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
+                <div style={{ position: 'absolute', right: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
+
+                {/* Breathing SVG Throughput Wave background */}
+                <svg viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '55px', pointerEvents: 'none', zIndex: -1, opacity: 0.12, borderRadius: '16px' }}>
+                  <path d="M 0 50 Q 80 15, 160 45 T 320 50 T 400 35" fill="none" stroke="#a855f7" strokeWidth="1.5" style={{ animation: 'waveDrift 10s linear infinite' }} />
+                  <path d="M 0 60 Q 90 75, 180 55 T 360 65 T 400 50" fill="none" stroke="#3b82f6" strokeWidth="1.0" style={{ animation: 'waveDrift2 14s linear infinite' }} />
+                </svg>
+
+                <div
+                  style={{
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    background: isTotalGlow ? 'linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.02) 100%)' : 'transparent',
+                    borderRadius: '8px',
+                    padding: '8px 0',
+                    boxShadow: isTotalGlow ? '0 0 15px rgba(168, 85, 247, 0.25)' : 'none'
+                  }}
+                >
+                  {/* Floating +1 Total bubble */}
+                  {totalRipples.map(r => (
                     <div
+                      key={r.id}
                       style={{
                         position: 'absolute',
-                        right: '18px',
-                        top: '-14px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        top: isMobile ? '-14px' : '-20px',
                         background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                         color: '#fff',
                         padding: '2px 8px',
@@ -4006,258 +3898,418 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         zIndex: 20
                       }}
                     >
-                      +1 LEAD
+                      +1
                     </div>
-                  )}
+                  ))}
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>TỔNG QUÉT</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#c084fc', marginTop: 4, letterSpacing: '0.05em', textShadow: isTotalGlow ? '0 0 12px rgba(168, 85, 247, 0.85)' : '0 0 6px rgba(168, 85, 247, 0.3)' }}>{displayTotalCounter}</div>
+                </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, zIndex: 1 }}>
-                    <div style={{ position: 'relative' }}>
-                      <Avatar
-                        src={sale.avatar}
-                        name={sale.name}
-                        size={isMobile ? 26 : 34}
-                        style={{
-                          border: '1.5px solid rgba(255,255,255,0.2)',
-                          transition: 'all 0.35s ease'
-                        }}
-                      />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          background: statusInfo.dotColor,
-                          border: '1.5px solid #060814',
-                          boxShadow: `0 0 6px ${statusInfo.dotColor}`
-                        }}
-                      />
+                <div
+                  style={{
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    background: isSharedGlow ? 'linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0.02) 100%)' : 'transparent',
+                    borderRadius: '8px',
+                    padding: '8px 0',
+                    boxShadow: isSharedGlow ? '0 0 15px rgba(16, 185, 129, 0.25)' : 'none'
+                  }}
+                >
+                  {/* Floating +1 Shared bubble */}
+                  {sharedRipples.map(r => (
+                    <div
+                      key={r.id}
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        top: isMobile ? '-14px' : '-20px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '0.65rem',
+                        fontWeight: 850,
+                        boxShadow: '0 0 12px rgba(16,185,129,0.65)',
+                        animation: 'floatUpAndFade 1.6s ease-out forwards',
+                        zIndex: 20
+                      }}
+                    >
+                      +1
                     </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div 
-                          style={{ 
-                            fontSize: isMobile ? '0.75rem' : '0.82rem', 
-                            fontWeight: 800, 
+                  ))}
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ĐÃ PHÂN PHỐI</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#10b981', marginTop: 4, letterSpacing: '0.05em', textShadow: isSharedGlow ? '0 0 12px rgba(16, 185, 129, 0.85)' : '0 0 6px rgba(16, 185, 129, 0.3)' }}>{displaySharedCounter}</div>
+                </div>
+
+                <div
+                  style={{
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    background: isRetainedGlow ? 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.02) 100%)' : 'transparent',
+                    borderRadius: '8px',
+                    padding: '8px 0',
+                    boxShadow: isRetainedGlow ? '0 0 15px rgba(239, 68, 68, 0.25)' : 'none'
+                  }}
+                >
+                  {/* Floating +1 Retained bubble */}
+                  {retainedRipples.map(r => (
+                    <div
+                      key={r.id}
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        top: isMobile ? '-14px' : '-20px',
+                        background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                        color: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '0.65rem',
+                        fontWeight: 850,
+                        boxShadow: '0 0 12px rgba(239,68,68,0.65)',
+                        animation: 'floatUpAndFade 1.6s ease-out forwards',
+                        zIndex: 20
+                      }}
+                    >
+                      +1
+                    </div>
+                  ))}
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>BỊ GIỮ LẠI</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#ef4444', marginTop: 4, letterSpacing: '0.05em', textShadow: isRetainedGlow ? '0 0 12px rgba(239, 68, 68, 0.85)' : '0 0 6px rgba(239, 68, 68, 0.3)' }}>{displayErrorCounter}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Console: Active Sales Channels */}
+            <div
+              className="war-room-right-col"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: isMobile ? '0.75rem' : '1.25rem',
+                paddingTop: isMobile ? '2.6rem' : (isFocusMode ? '5.5rem' : '1.5rem'),
+                transition: 'padding-top 0.35s ease-out'
+              }}
+            >
+              <h3 className="war-room-right-title" style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                <Users size={isMobile ? 12 : 15} style={{ color: '#a855f7' }} /> KÊNH PHÂN PHỐI SALES
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
+                {salesList.map((sale: any, idx: number) => {
+                  const isGlow = activeSalesGlow[idx];
+                  const isPermanentGlow = idx === lastActiveSaleIdx;
+                  const channel = consultantChannels[idx] || { name: 'Active', color: '#10b981' };
+                  const statusInfo = getSaleStatus(sale);
+                  return (
+                    <div
+                      key={sale.name}
+                      ref={el => { saleRefs.current[idx] = el; }}
+                      className="war-room-sale-card"
+                      style={{
+                        background: isGlow
+                          ? `${channel.color}26`
+                          : isPermanentGlow
+                            ? `${channel.color}0d`
+                            : 'rgba(8, 12, 28, 0.45)',
+                        backdropFilter: 'blur(25px)',
+                        border: isGlow
+                          ? `1.8px solid ${channel.color}`
+                          : isPermanentGlow
+                            ? `1.8px solid ${channel.color}66`
+                            : '1.8px solid rgba(255,255,255,0.06)',
+                        borderRadius: isMobile ? '10px' : '16px',
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.85rem 1.15rem',
+                        boxShadow: isGlow
+                          ? `0 0 25px ${channel.color}c0, inset 0 0 15px ${channel.color}4d`
+                          : isPermanentGlow
+                            ? `0 0 15px ${channel.color}40`
+                            : '0 10px 40px 0 rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: isMobile ? 8 : 12,
+                        position: 'relative',
+                        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Floating +1 Lead bubble */}
+                      {isGlow && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: '18px',
+                            top: '-14px',
+                            background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                             color: '#fff',
-                            textShadow: isGlow ? `0 0 8px #fff, 0 0 16px ${channel.color}` : 'none',
-                            transition: 'text-shadow 0.3s ease'
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontSize: '0.65rem',
+                            fontWeight: 850,
+                            boxShadow: '0 0 12px rgba(168, 85, 247, 0.65)',
+                            animation: 'floatUpAndFade 1.6s ease-out forwards',
+                            zIndex: 20
                           }}
                         >
-                          {sale.name}
+                          +1 LEAD
                         </div>
-                        {isPermanentGlow && (
-                          <span style={{
-                            width: isMobile ? '6px' : '8px',
-                            height: isMobile ? '6px' : '8px',
-                            borderRadius: '50%',
-                            background: channel.color,
-                            boxShadow: `0 0 8px ${channel.color}`,
-                            display: 'inline-block',
-                            animation: 'vuEqualize 1.4s ease-in-out infinite alternate'
-                          }} />
-                        )}
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, zIndex: 1 }}>
+                        <div style={{ position: 'relative' }}>
+                          <Avatar
+                            src={sale.avatar}
+                            name={sale.name}
+                            size={isMobile ? 26 : 34}
+                            style={{
+                              border: '1.5px solid rgba(255,255,255,0.2)',
+                              transition: 'all 0.35s ease'
+                            }}
+                          />
+                          <span
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 0,
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              background: statusInfo.dotColor,
+                              border: '1.5px solid #060814',
+                              boxShadow: `0 0 6px ${statusInfo.dotColor}`
+                            }}
+                          />
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: isMobile ? '0.75rem' : '0.82rem',
+                                fontWeight: 800,
+                                color: '#fff',
+                                textShadow: isGlow ? `0 0 8px #fff, 0 0 16px ${channel.color}` : 'none',
+                                transition: 'text-shadow 0.3s ease',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                flex: 1,
+                                minWidth: 0
+                              }}
+                            >
+                              {sale.name}
+                            </div>
+                            {isPermanentGlow && (
+                              <span style={{
+                                width: isMobile ? '6px' : '8px',
+                                height: isMobile ? '6px' : '8px',
+                                borderRadius: '50%',
+                                background: channel.color,
+                                boxShadow: `0 0 8px ${channel.color}`,
+                                display: 'inline-block',
+                                animation: 'vuEqualize 1.4s ease-in-out infinite alternate',
+                                flexShrink: 0
+                              }} />
+                            )}
+                          </div>
+                          <div style={{ fontSize: isMobile ? '0.6rem' : '0.65rem', marginTop: 2, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', width: '100%' }}>
+                            <span style={{ color: statusInfo.color, fontWeight: 750, flexShrink: 0 }}>
+                              {statusInfo.text}
+                            </span>
+                            {isPermanentGlow && (
+                              <span style={{ color: channel.color, marginLeft: 6, fontWeight: 700, fontSize: isMobile ? '0.52rem' : '0.58rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                                • {channel.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: isMobile ? '0.6rem' : '0.65rem', marginTop: 2 }}>
-                        <span style={{ color: statusInfo.color, fontWeight: 750 }}>
-                          {statusInfo.text}
+
+                      <div style={{ textAlign: 'right', zIndex: 1 }}>
+                        <div style={{ fontSize: isMobile ? '0.8rem' : '0.92rem', fontWeight: 800, color: '#fff' }}>{(sale.data || 0) + (simulatedLeadsPerSale[sale.name] || 0)} <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Lead</span></div>
+                        {/* Level VU Meter */}
+                        <div style={{ display: 'flex', gap: 2.2, marginTop: 6 }}>
+                          {Array.from({ length: 8 }).map((_, segmentIdx) => {
+                            const currentLeads = (sale.data || 0) + (simulatedLeadsPerSale[sale.name] || 0);
+                            const dynamicPercent = totalLeadsOfAll > 0 ? (currentLeads / totalLeadsOfAll) * 100 : 0;
+                            const filledSegments = Math.ceil((dynamicPercent / 100) * 8);
+                            const isFilled = segmentIdx < filledSegments;
+                            let color = '#3b82f6';
+
+                            // Pulsing equalizer bounce if active/permanent glow
+                            const delay = (segmentIdx * 0.08).toFixed(2) + 's';
+                            const animatedStyle = isPermanentGlow
+                              ? { animation: `vuEqualize 1.4s ease-in-out infinite alternate`, animationDelay: delay }
+                              : {};
+
+                            return (
+                              <div
+                                key={segmentIdx}
+                                style={{
+                                  width: '5px',
+                                  height: '5px',
+                                  borderRadius: '1px',
+                                  background: isFilled ? (isGlow ? '#ffffff' : color) : 'rgba(255,255,255,0.08)',
+                                  boxShadow: isFilled && !isGlow ? `0 0 3px ${color}88` : 'none',
+                                  transition: 'background 0.2s',
+                                  ...animatedStyle
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Cyberpunk System Feed Console (Bottom Terminal) */}
+          {!isFocusMode && !isMobile && (
+            <div
+              className="war-room-bottom-feed"
+              style={{
+                height: isMobile ? '110px' : '158px',
+                borderTop: '1px solid rgba(139, 92, 246, 0.18)',
+                background: 'rgba(3, 5, 14, 0.55)',
+                backdropFilter: 'blur(20px)',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: isMobile ? '0.4rem 1rem' : '0.6rem 2rem 0.8rem 2rem',
+                zIndex: 10,
+                position: 'relative',
+                boxShadow: '0 -6px 30px rgba(0, 0, 0, 0.45)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 3 : 6 }}>
+                <div style={{ fontSize: isMobile ? '0.55rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
+                  <Terminal size={isMobile ? 10 : 12} /> Live Feed: DOMATION AI VIRTUAL DISPATCH CONSOLE
+                </div>
+                <div style={{ fontSize: isMobile ? '0.5rem' : '0.625rem', color: 'rgba(255,255,255,0.3)', display: 'flex', gap: '15px' }}>
+                  <span>SECURE CHANNEL: SSLv3</span>
+                  <span>QUEUE SIZE: 0</span>
+                </div>
+              </div>
+
+              <div
+                className="war-room-bottom-feed-console"
+                style={{
+                  flex: 1,
+                  overflowY: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: isMobile ? '3px' : '6px',
+                  padding: isMobile ? '4px 8px' : '6px 12px',
+                  background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), rgba(2, 4, 10, 0.82)',
+                  backgroundSize: '100% 4px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(168, 85, 247, 0.18)',
+                  boxShadow: 'inset 0 0 10px rgba(168, 85, 247, 0.08)'
+                }}
+              >
+                {localRecentFeed.slice(0, isMobile ? 3 : 4).map((feed) => {
+                  const timeStr = new Date(feed.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                  if (feed.system) {
+                    return (
+                      <div key={feed.id} className="war-room-bottom-feed-line" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: isMobile ? '0.62rem' : '0.72rem', color: '#a78bfa' }}>
+                        <span style={{ color: 'rgba(167, 139, 250, 0.4)' }}>[{timeStr}]</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Cpu size={10} /> [SYSTEM_DAEMON]</span>
+                        <span>{feed.msg}</span>
+                        <span className="cursor-blink" style={{ width: '4px', height: '10px', background: '#a78bfa', marginLeft: 2 }} />
+                      </div>
+                    );
+                  }
+
+                  const isAssigned = feed.status === 'assigned' || feed.status === 'compensation' || feed.status === 'pending_work_hours' || feed.status === 'reminder';
+                  return (
+                    <div
+                      key={feed.id}
+                      className="war-room-bottom-feed-line"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: isMobile ? '0.62rem' : '0.72rem',
+                        padding: isMobile ? '1px 3px' : '2px 4px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ color: 'rgba(255,255,255,0.25)' }}>[{timeStr}]</span>
+                        <span style={{ color: '#3b82f6' }}>&gt; INGESTION:</span>
+                        <span>
+                          Khách hàng <strong style={{ color: '#fff' }}>{feed.lead_name}</strong>
                         </span>
-                        {isPermanentGlow && (
-                          <span style={{ color: channel.color, marginLeft: 6, fontWeight: 700 }}>
-                            • {channel.name}
+                        <span style={{
+                          fontSize: isMobile ? '0.52rem' : '0.6rem',
+                          padding: isMobile ? '1px 3px' : '1.5px 6px',
+                          borderRadius: '4px',
+                          background: feed.status === 'processing'
+                            ? 'rgba(245, 158, 11, 0.15)'
+                            : feed.status === 'reminder'
+                              ? 'rgba(219, 39, 119, 0.15)'
+                              : isAssigned
+                                ? 'rgba(168, 85, 247, 0.15)'
+                                : 'rgba(239, 68, 68, 0.15)',
+                          color: feed.status === 'processing'
+                            ? '#fbbf24'
+                            : feed.status === 'reminder'
+                              ? '#f472b6'
+                              : isAssigned
+                                ? '#c084fc'
+                                : '#ef4444',
+                          fontWeight: 700,
+                          border: `1px solid ${feed.status === 'processing'
+                            ? 'rgba(245, 158, 11, 0.25)'
+                            : feed.status === 'reminder'
+                              ? 'rgba(219, 39, 119, 0.25)'
+                              : isAssigned
+                                ? 'rgba(168, 85, 247, 0.25)'
+                                : 'rgba(239, 68, 68, 0.25)'
+                            }`,
+                          lineHeight: '1.2'
+                        }}>
+                          {feed.status === 'processing'
+                            ? 'ĐANG ĐÁNH GIÁ...'
+                            : feed.status === 'reminder'
+                              ? 'NHẮC LẠI'
+                              : feed.status === 'assigned'
+                                ? 'ĐẠT CHUẨN'
+                                : feed.status === 'compensation'
+                                  ? 'DATA BÙ'
+                                  : feed.status === 'pending_work_hours'
+                                    ? 'CHỜ GIỜ LÀM'
+                                    : feed.status === 'duplicate'
+                                      ? 'TRÙNG LẶP'
+                                      : 'DƯỚI CHUẨN'}
+                        </span>
+                      </div>
+                      <div style={{ color: feed.status === 'processing' ? '#fbbf24' : feed.status === 'reminder' ? '#f472b6' : isAssigned ? '#c084fc' : '#ef4444', fontWeight: 700 }}>
+                        {feed.status === 'processing' ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            [VETTING] {"=>"} AI đang đánh giá dữ liệu...
+                          </span>
+                        ) : isAssigned ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {feed.status === 'reminder' ? '[REMINDER]' : '[OK]'} {"=>"} Phân phối: {feed.assigned_to_name} {feed.status === 'pending_work_hours' && `(${t('Chờ giờ làm')})`}
+                          </span>
+                        ) : (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <ShieldAlert size={10} /> [REJECTED] {"=>"} Hệ thống chặn lọc
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', zIndex: 1 }}>
-                    <div style={{ fontSize: isMobile ? '0.8rem' : '0.92rem', fontWeight: 800, color: '#fff' }}>{(sale.data || 0) + (simulatedLeadsPerSale[sale.name] || 0)} <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Lead</span></div>
-                    {/* Level VU Meter */}
-                    <div style={{ display: 'flex', gap: 2.2, marginTop: 6 }}>
-                      {Array.from({ length: 8 }).map((_, segmentIdx) => {
-                        const currentLeads = (sale.data || 0) + (simulatedLeadsPerSale[sale.name] || 0);
-                        const dynamicPercent = totalLeadsOfAll > 0 ? (currentLeads / totalLeadsOfAll) * 100 : 0;
-                        const filledSegments = Math.ceil((dynamicPercent / 100) * 8);
-                        const isFilled = segmentIdx < filledSegments;
-                        let color = '#3b82f6';
-
-                        // Pulsing equalizer bounce if active/permanent glow
-                        const delay = (segmentIdx * 0.08).toFixed(2) + 's';
-                        const animatedStyle = isPermanentGlow
-                          ? { animation: `vuEqualize 1.4s ease-in-out infinite alternate`, animationDelay: delay }
-                          : {};
-
-                        return (
-                          <div
-                            key={segmentIdx}
-                            style={{
-                              width: '5px',
-                              height: '5px',
-                              borderRadius: '1px',
-                              background: isFilled ? (isGlow ? '#ffffff' : color) : 'rgba(255,255,255,0.08)',
-                              boxShadow: isFilled && !isGlow ? `0 0 3px ${color}88` : 'none',
-                              transition: 'background 0.2s',
-                              ...animatedStyle
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Cyberpunk System Feed Console (Bottom Terminal) */}
-      {!isFocusMode && !isMobile && (
-        <div
-          className="war-room-bottom-feed"
-          style={{
-            height: isMobile ? '110px' : '158px',
-            borderTop: '1px solid rgba(139, 92, 246, 0.18)',
-            background: 'rgba(3, 5, 14, 0.55)',
-            backdropFilter: 'blur(20px)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: isMobile ? '0.4rem 1rem' : '0.6rem 2rem 0.8rem 2rem',
-            zIndex: 10,
-            position: 'relative',
-            boxShadow: '0 -6px 30px rgba(0, 0, 0, 0.45)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 3 : 6 }}>
-            <div style={{ fontSize: isMobile ? '0.55rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
-              <Terminal size={isMobile ? 10 : 12} /> Live Feed: DOMATION AI VIRTUAL DISPATCH CONSOLE
+                  );
+                })}
+              </div>
             </div>
-            <div style={{ fontSize: isMobile ? '0.5rem' : '0.625rem', color: 'rgba(255,255,255,0.3)', display: 'flex', gap: '15px' }}>
-              <span>SECURE CHANNEL: SSLv3</span>
-              <span>QUEUE SIZE: 0</span>
-            </div>
-          </div>
-
-          <div
-            className="war-room-bottom-feed-console"
-            style={{
-              flex: 1,
-              overflowY: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: isMobile ? '3px' : '6px',
-              padding: isMobile ? '4px 8px' : '6px 12px',
-              background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), rgba(2, 4, 10, 0.82)',
-              backgroundSize: '100% 4px',
-              borderRadius: '8px',
-              border: '1px solid rgba(168, 85, 247, 0.18)',
-              boxShadow: 'inset 0 0 10px rgba(168, 85, 247, 0.08)'
-            }}
-          >
-            {localRecentFeed.slice(0, isMobile ? 3 : 4).map((feed) => {
-              const timeStr = new Date(feed.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-              if (feed.system) {
-                return (
-                  <div key={feed.id} className="war-room-bottom-feed-line" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: isMobile ? '0.62rem' : '0.72rem', color: '#a78bfa' }}>
-                    <span style={{ color: 'rgba(167, 139, 250, 0.4)' }}>[{timeStr}]</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Cpu size={10} /> [SYSTEM_DAEMON]</span>
-                    <span>{feed.msg}</span>
-                    <span className="cursor-blink" style={{ width: '4px', height: '10px', background: '#a78bfa', marginLeft: 2 }} />
-                  </div>
-                );
-              }
-
-              const isAssigned = feed.status === 'assigned' || feed.status === 'compensation' || feed.status === 'pending_work_hours' || feed.status === 'reminder';
-              return (
-                <div
-                  key={feed.id}
-                  className="war-room-bottom-feed-line"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: isMobile ? '0.62rem' : '0.72rem',
-                    padding: isMobile ? '1px 3px' : '2px 4px',
-                    borderRadius: '4px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.25)' }}>[{timeStr}]</span>
-                    <span style={{ color: '#3b82f6' }}>&gt; INGESTION:</span>
-                    <span>
-                      Khách hàng <strong style={{ color: '#fff' }}>{feed.lead_name}</strong>
-                    </span>
-                    <span style={{
-                      fontSize: isMobile ? '0.52rem' : '0.6rem',
-                      padding: isMobile ? '1px 3px' : '1.5px 6px',
-                      borderRadius: '4px',
-                      background: feed.status === 'processing'
-                        ? 'rgba(245, 158, 11, 0.15)'
-                        : feed.status === 'reminder'
-                          ? 'rgba(219, 39, 119, 0.15)'
-                          : isAssigned 
-                            ? 'rgba(168, 85, 247, 0.15)' 
-                            : 'rgba(239, 68, 68, 0.15)',
-                      color: feed.status === 'processing'
-                        ? '#fbbf24'
-                        : feed.status === 'reminder'
-                          ? '#f472b6'
-                          : isAssigned 
-                            ? '#c084fc' 
-                            : '#ef4444',
-                      fontWeight: 700,
-                      border: `1px solid ${
-                        feed.status === 'processing'
-                          ? 'rgba(245, 158, 11, 0.25)'
-                          : feed.status === 'reminder'
-                            ? 'rgba(219, 39, 119, 0.25)'
-                            : isAssigned 
-                              ? 'rgba(168, 85, 247, 0.25)' 
-                              : 'rgba(239, 68, 68, 0.25)'
-                      }`,
-                      lineHeight: '1.2'
-                    }}>
-                      {feed.status === 'processing'
-                        ? 'ĐANG ĐÁNH GIÁ...'
-                        : feed.status === 'reminder'
-                          ? 'NHẮC LẠI'
-                          : feed.status === 'assigned'
-                            ? 'ĐẠT CHUẨN'
-                            : feed.status === 'compensation'
-                              ? 'DATA BÙ'
-                              : feed.status === 'pending_work_hours'
-                                ? 'CHỜ GIỜ LÀM'
-                                : feed.status === 'duplicate'
-                                  ? 'TRÙNG LẶP'
-                                  : 'DƯỚI CHUẨN'}
-                    </span>
-                  </div>
-                  <div style={{ color: feed.status === 'processing' ? '#fbbf24' : feed.status === 'reminder' ? '#f472b6' : isAssigned ? '#c084fc' : '#ef4444', fontWeight: 700 }}>
-                    {feed.status === 'processing' ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        [VETTING] {"=>"} AI đang đánh giá dữ liệu...
-                      </span>
-                    ) : isAssigned ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {feed.status === 'reminder' ? '[REMINDER]' : '[OK]'} {"=>"} Phân phối: {feed.assigned_to_name} {feed.status === 'pending_work_hours' && `(${t('Chờ giờ làm')})`}
-                      </span>
-                    ) : (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <ShieldAlert size={10} /> [REJECTED] {"=>"} Hệ thống chặn lọc
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      </>
+          )}
+        </>
       )}
 
       {/* Holographic Boot Loader screen overlay */}
@@ -4337,7 +4389,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             marginBottom: 5,
             textAlign: 'center'
           }}>
-            NEURAL INFINITY VIEW INITIALIZING
+            NEURAL AI INFINITY INITIALIZING
           </h1>
           <div className="loader-bar-wrap" style={{ width: 300, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 30, border: '1px solid rgba(168, 85, 247, 0.2)' }}>
             <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #c084fc)', boxShadow: '0 0 8px #c084fc', transition: 'width 0.1s ease-out' }} />
@@ -4502,7 +4554,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             padding: 4px 8px !important;
             font-size: 0.65rem !important;
           }
-          .war-room-container button[title="Đóng Infinity View"] {
+          .war-room-container button[title="Đóng AI Infinity"] {
             width: 24px !important;
             height: 24px !important;
           }
@@ -4517,7 +4569,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           /* Left Console: Data Ingestion Systems */
           .war-room-left-col {
             gap: 0.35rem !important;
-            padding-top: 2.6rem !important;
+            padding-bottom: 1.5rem !important;
           }
           .war-room-left-title {
             font-size: 0.6rem !important;
@@ -4564,7 +4616,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
           .war-room-center-col {
             justify-content: flex-start !important;
-            padding-top: 5.2rem !important;
+            padding-bottom: 1.5rem !important;
           }
           .war-room-center-col > div:nth-child(1),
           .war-room-center-col > div:nth-child(2) {
@@ -4576,7 +4628,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             margin-bottom: 0px !important;
           }
           .war-room-hud-stats {
-            margin-top: 2.2rem !important;
+            margin-top: 1.2rem !important;
             width: 260px !important;
             padding: 0.35rem 0.5rem !important;
             gap: 6px !important;
@@ -4597,7 +4649,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           /* Right Console: Active Sales Channels */
           .war-room-right-col {
             gap: 0.35rem !important;
-            padding-top: 2.6rem !important;
+            padding-bottom: 1.5rem !important;
           }
           .war-room-right-title {
             font-size: 0.6rem !important;
@@ -4726,7 +4778,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(168, 85, 247, 0.25)', paddingBottom: '10px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 800 }}>{t('CÀI ĐẶT THỜI GIAN MÔ PHỎNG')}</h3>
-              <button 
+              <button
                 onClick={() => setIsDateModalOpen(false)}
                 style={{ background: 'transparent', border: 'none', color: '#c084fc', cursor: 'pointer' }}
               >
