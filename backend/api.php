@@ -268,7 +268,6 @@ if (!in_array($action, $publicActions)) {
     }
 
     $superAdminOnlyActions = [
-        'get_accounts',
         'add_account',
         'edit_account',
         'delete_account',
@@ -278,6 +277,7 @@ if (!in_array($action, $publicActions)) {
     ];
 
     $adminOnlyActions = [
+        'get_accounts',
         'get_admin_logs',
         'save_settings',
         'get_settings',

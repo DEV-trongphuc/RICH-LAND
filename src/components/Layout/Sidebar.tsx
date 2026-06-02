@@ -49,7 +49,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
   // Poll pending ticket count every 60s
   useEffect(() => {
-    if (user?.role !== 'admin') return;
+    if (user?.role !== 'admin' && user?.role !== 'superadmin') return;
     const fetchPending = async () => {
       try {
         const [resReports, resHeld] = await Promise.all([
