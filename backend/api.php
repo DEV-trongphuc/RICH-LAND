@@ -267,13 +267,18 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    $adminOnlyActions = [
+    $superAdminOnlyActions = [
         'get_accounts',
-        'get_admin_logs',
         'add_account',
         'edit_account',
         'delete_account',
         'check_delete_account',
+        'resend_confirm_email',
+        'resend_zalo_verify_account'
+    ];
+
+    $adminOnlyActions = [
+        'get_admin_logs',
         'save_settings',
         'get_settings',
         'add_consultant',
@@ -315,7 +320,14 @@ if (!in_array($action, $publicActions)) {
         'update_lead_fields',
         'send_lead_reminder'
     ];
-    if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin') {
+
+    if (in_array($action, $superAdminOnlyActions) && $decodedUser['role'] !== 'superadmin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Forbidden: Require Super Admin privileges']);
+        exit();
+    }
+
+    if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin') {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
         exit();
@@ -467,7 +479,7 @@ switch ($action) {
         break;
 
     case 'get_import_history':
-        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'assistant')) {
+        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'assistant')) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Forbidden']);
             exit();
@@ -594,7 +606,7 @@ switch ($action) {
         break;
 
     case 'delete_import_history':
-        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'assistant')) {
+        if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'assistant')) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Forbidden']);
             exit();
@@ -1443,7 +1455,7 @@ switch ($action) {
 
         if (!isset($_GET['page'])) {
             $LIMIT = 500;
-            if (isset($_GET['limit']) && $_GET['limit'] === 'all' && isset($decodedUser) && $decodedUser['role'] === 'admin') {
+            if (isset($_GET['limit']) && $_GET['limit'] === 'all' && isset($decodedUser) && ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin')) {
                 $LIMIT = 50000; // Admin full dump limit
             }
             $limitStr = "LIMIT $LIMIT";
@@ -2289,7 +2301,7 @@ switch ($action) {
             $stmtUp->execute();
             $stmtUp->close();
 
-            if ($decodedUser['role'] === 'admin') {
+            if ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin') {
                 logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONSULTANT_VACATION', ['id' => $id, 'name' => $row['name'], 'vacation_mode' => $newVacationMode]);
             }
 
@@ -2310,7 +2322,7 @@ switch ($action) {
                         $saleName = $row['name'];
                         $operatorName = $decodedUser['name'] ?? 'Hệ thống';
                         $operatorRole = $decodedUser['role'] ?? '';
-                        if ($operatorRole === 'admin') {
+                        if ($operatorRole === 'admin' || $operatorRole === 'superadmin') {
                             $zaloMsg = "[ ADMIN TẠM NGƯNG SALE ]\n\n"
                                 . "Admin $operatorName vừa TẠM NGƯNG nhận data cho Tư vấn viên:\n"
                                 . "  • Tên TVV: $saleName\n"
@@ -7746,7 +7758,7 @@ switch ($action) {
         break;
 
     case 'rollback_admin_action':
-        if ($decodedUser['role'] !== 'admin') {
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin') {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện hành động này.']);
             break;
         }
@@ -8711,7 +8723,7 @@ switch ($action) {
         $work_end_time = trim($input['work_end_time'] ?? '23:59');
         
         $isSale = $decodedUser['role'] === 'sale';
-        $isAdmin = $decodedUser['role'] === 'admin';
+        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
         $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
         
         if ($isSale) {

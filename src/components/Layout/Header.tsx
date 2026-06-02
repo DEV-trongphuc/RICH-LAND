@@ -122,6 +122,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
 
   const getRoleLabel = (role?: string) => {
     switch (role) {
+      case 'superadmin': return t('Super Admin');
       case 'admin': return t('Quản trị viên');
       case 'assistant': return t('Trợ lý');
       case 'viewer': return t('Người xem');
@@ -195,7 +196,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  const navItems: Array<{ name: string; path: string; description: string; shortcut: string; adminOnly?: boolean; action?: () => void }> = [
+  const navItems: Array<{ name: string; path: string; description: string; shortcut: string; adminOnly?: boolean; superAdminOnly?: boolean; action?: () => void }> = [
     { name: t('Dashboard'), path: '/', description: t('Trang tổng quan thống kê hệ thống'), shortcut: 'Alt + D' },
     { name: t('Nhật ký Lead (Data Log)'), path: '/data', description: t('Xem logs danh sách lead và trạng thái cuộc gọi'), shortcut: 'Alt + L' },
     { name: t('Bản tin hoạt động hệ thống'), path: '#feed', description: t('Bản tin các hoạt động và phân bổ lead gần đây'), shortcut: 'Alt + H', action: () => window.dispatchEvent(new CustomEvent('open-activity-feed')) },
@@ -206,10 +207,14 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     { name: t('Đối soát công bằng (Fair Share)'), path: '/fair-share', description: t('Đo lường độ lệch phân phối lead'), adminOnly: true, shortcut: 'Alt + S' },
     { name: t('Tích hợp API & Google Sheets'), path: '/integrations', description: t('Kết nối webhook và đồng bộ trang tính'), adminOnly: true, shortcut: 'Alt + I' },
     { name: t('Cài đặt hệ thống'), path: '/settings', description: t('Cài đặt quy chuẩn và dọn dẹp dữ liệu'), adminOnly: true, shortcut: 'Alt + O' },
-    { name: t('Quản lý tài khoản'), path: '/accounts', description: t('Phân quyền tài khoản quản trị và trợ lý'), adminOnly: true, shortcut: 'Alt + A' }
+    { name: t('Quản lý tài khoản'), path: '/accounts', description: t('Phân quyền tài khoản quản trị và trợ lý'), superAdminOnly: true, shortcut: 'Alt + A' }
   ];
 
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || user?.role === 'admin');
+  const visibleNavItems = navItems.filter(item => {
+    if (item.superAdminOnly && user?.role !== 'superadmin') return false;
+    if (item.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false;
+    return true;
+  });
   
   const filteredNavItems = searchQuery.trim()
     ? visibleNavItems.filter(item => 

@@ -32,7 +32,7 @@ const PageLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('admin' | 'assistant' | 'viewer' | 'sale')[] }) => {
+const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('superadmin' | 'admin' | 'assistant' | 'viewer' | 'sale')[] }) => {
   const { user, token } = useAuth();
   if (!token || !user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
@@ -73,9 +73,15 @@ const AppTabs = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Admin route protection check
-  if (isAdminPath && user?.role !== 'admin') {
-    return <Navigate to="/" replace />;
+  // Admin & Superadmin route protection check
+  if (currentPath === '/accounts') {
+    if (user?.role !== 'superadmin') {
+      return <Navigate to="/" replace />;
+    }
+  } else if (isAdminPath) {
+    if (user?.role !== 'admin' && user?.role !== 'superadmin') {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return (
@@ -97,7 +103,7 @@ const AppTabs = () => {
       </div>
 
       {/* Admin Pages */}
-      {user?.role === 'admin' && (
+      {(user?.role === 'admin' || user?.role === 'superadmin') && (
         <>
           <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/consultants') && (
@@ -226,7 +232,7 @@ const KeyboardShortcutsController = () => {
           l: '/data',
         };
 
-        if (user?.role === 'admin') {
+        if (user?.role === 'admin' || user?.role === 'superadmin') {
           shortcuts.s = '/fair-share';
           shortcuts.r = '/rounds';
           shortcuts.c = '/consultants';
@@ -234,8 +240,10 @@ const KeyboardShortcutsController = () => {
           shortcuts.w = '/rules';
           shortcuts.i = '/integrations';
           shortcuts.o = '/settings';
-          shortcuts.a = '/accounts';
           shortcuts.g = '/gatekeeper';
+          if (user?.role === 'superadmin') {
+            shortcuts.a = '/accounts';
+          }
         }
 
         if (shortcuts[key] !== undefined) {
@@ -260,7 +268,7 @@ const KeyboardShortcutsController = () => {
 
   if (!token) return null;
 
-  const isSystemAdmin = user?.role === 'admin';
+  const isSystemAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   return (
     <>
@@ -362,10 +370,12 @@ const KeyboardShortcutsController = () => {
                       <span style={{ color: 'var(--color-text)' }}>{t("Cài đặt Hệ thống")}</span>
                       <kbd className="shortcuts-kbd">Alt + O</kbd>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span style={{ color: 'var(--color-text)' }}>{t("Tài khoản phân quyền")}</span>
-                      <kbd className="shortcuts-kbd">Alt + A</kbd>
-                    </div>
+                    {user?.role === 'superadmin' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                        <span style={{ color: 'var(--color-text)' }}>{t("Tài khoản phân quyền")}</span>
+                        <kbd className="shortcuts-kbd">Alt + A</kbd>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
                       <span style={{ color: 'var(--color-text)' }}>{t("AI Pre-screener")}</span>
                       <kbd className="shortcuts-kbd">Alt + G</kbd>

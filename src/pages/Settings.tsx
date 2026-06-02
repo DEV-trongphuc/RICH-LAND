@@ -2075,7 +2075,7 @@ function doPost(e) {
                     {t('Chọn các tài khoản sẽ nhận báo cáo qua')} <strong>{t('Email')}</strong> {t('và')} <strong>{t('Zalo Bot')}</strong>. {t('Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.')}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map((admin: any) => {
+                    {accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).map((admin: any) => {
                       const isSelected = dailyReportAdmins.includes(Number(admin.id));
                       return (
                         <label
@@ -2126,7 +2126,7 @@ function doPost(e) {
                         </label>
                       );
                     })}
-                    {accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).length === 0 && (
+                    {accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).length === 0 && (
                       <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>{t('Chưa có tài khoản Admin nào trong hệ thống.')}</p>
                     )}
                   </div>
@@ -2269,7 +2269,7 @@ function doPost(e) {
                       <CustomSelect
                         options={[
                           { value: '', label: t('-- Chọn Admin nhận data --') },
-                          ...accounts.filter(a => a.role === 'admin' || Number(a.id) === 1).map(a => ({
+                          ...accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).map(a => ({
                             value: a.id.toString(),
                             label: a.name,
                             sublabel: a.email,

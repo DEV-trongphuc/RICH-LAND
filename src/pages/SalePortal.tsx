@@ -279,7 +279,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Impersonation role calculation for admin viewing sale
-  const impersonatedSale = (user?.role === 'admin' && saleIdFilter)
+  const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
     ? data.consultants?.find((c: any) => String(c.id) === String(saleIdFilter))
     : null;
 
@@ -434,7 +434,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
-    if (!token || !['sale', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
+    if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
@@ -861,7 +861,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Render Login Layout if not authorized
-  if (!token || !['sale', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) {
+  if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -948,7 +948,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   {t('Vào trang Quản trị')} <ArrowUpRight size={14} />
                 </button>
               </div>
-            ) : user && !['sale', 'admin', 'assistant', 'viewer'].includes(user.role) ? (
+            ) : user && !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user.role) ? (
               <div style={{
                 background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
                 padding: '1.25rem', borderRadius: '16px', color: '#b45309', fontSize: '0.9rem',
@@ -3225,7 +3225,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               </h1>
               <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 {t('Nhân viên: {name}').replace('{name}', displayUser?.name || '')}
-                {user?.role === 'admin' && saleIdFilter && (
+                {(user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter && (
                   <button 
                     onClick={handleExitImpersonation}
                     style={{
@@ -3543,7 +3543,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         <main className="no-scrollbar responsive-main portal-main-content" style={{ flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
           <div style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
             {/* Admin Switch Sale View warning/dropdown */}
-            {user?.role === 'admin' && data.consultants && !saleIdFilter && (
+            {(user?.role === 'admin' || user?.role === 'superadmin') && data.consultants && !saleIdFilter && (
               <div className="portal-filters-row" style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',

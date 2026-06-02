@@ -15,7 +15,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
-  { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
+  { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, superAdminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
@@ -82,7 +82,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   }, [user]);
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
-    if (item.adminOnly && user?.role !== 'admin') return false;
+    if (item.superAdminOnly && user?.role !== 'superadmin') return false;
+    if (item.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false;
     return true;
   });
 

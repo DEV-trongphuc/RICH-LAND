@@ -605,7 +605,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   };
 
   const handleCopyFullInfo = (lead: Lead) => {
-    const isUserAdmin = user?.role === 'admin';
+    const isUserAdmin = (user?.role === 'admin' || user?.role === 'superadmin');
     const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
     const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
     const text = [
@@ -4965,7 +4965,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         {copiedType === 'full' ? t('Đã chép') : t('Sao chép')}
                       </button>
                     )}
-                    {user?.role === 'admin' && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && (
                       <>
                         {isAdminEditingLead ? (
                           <>
@@ -5058,7 +5058,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       </>
                     )}
  
-                    {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
                           setSelectedLead(null);
@@ -5101,7 +5101,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   marginBottom: '1rem'
                 }}>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -5179,7 +5179,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
-                          {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                          {(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -5199,7 +5199,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     )}
                   </div>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -5254,7 +5254,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
-                          {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                          {(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -5890,7 +5890,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         </div>
 
                         {/* Manual Reminder Button */}
-                        {user?.role === 'admin' && selectedLead.assigned_to_name !== '-' && (
+                        {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.assigned_to_name !== '-' && (
                           <button
                             onClick={() => {
                               setReminderChannels({ zalo: true, email: true });
@@ -6453,8 +6453,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           onClose={() => setPreviewOpen(false)}
           type={previewType}
           leadName={selectedLead.name}
-          leadPhone={user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
-          leadEmail={user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+          leadPhone={(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone)}
+          leadEmail={(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email)}
           leadSource={selectedLead.source || ''}
           leadType={selectedLead.type || ''}
           leadNote={selectedLead.note || ''}

@@ -362,6 +362,7 @@ const AccountsInner = () => {
 
 
   const getRoleBadge = (role: string) => {
+    if (role === 'superadmin') return <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Super Admin</span>;
     if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
     return <span style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Viewer</span>;
@@ -1060,6 +1061,7 @@ const AccountsInner = () => {
               <label className="form-label">{t('Phân quyền')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <CustomSelect 
                 options={[
+                  { value: 'superadmin', label: t('Super Admin (Quản trị cấp cao)') },
                   { value: 'admin', label: t('Admin (Toàn quyền)') },
                   { value: 'assistant', label: t('Assistant (Trợ lý / Phân bổ Data)') },
                   { value: 'viewer', label: t('Viewer (Chỉ xem Data)') }

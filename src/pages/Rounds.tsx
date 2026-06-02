@@ -310,7 +310,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       ? r.cc_emails.split(',').map((e: string) => e.trim()).filter(Boolean)
       : [];
     const adminEmails = accounts
-      .filter(a => (a.role === 'admin' || Number(a.id) === 1) && a.email)
+      .filter(a => (a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1) && a.email)
       .map(a => a.email.trim().toLowerCase());
     
     const matchedAdmins = emailsList.filter((e: string) => adminEmails.includes(e.toLowerCase()));
@@ -1193,7 +1193,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         <Users size={14} /> {t("Chọn Admin nhận CC khi chia Data")}
                       </label>
                       {(() => {
-                        const admins = accounts.filter(a => (a.role === 'admin' || Number(a.id) === 1) && a.email);
+                        const admins = accounts.filter(a => (a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1) && a.email);
                         if (admins.length === 0) {
                           return (
                             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '4px 0 12px' }}>

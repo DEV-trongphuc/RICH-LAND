@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 type User = {
   username: string;
   name: string;
-  role: 'admin' | 'assistant' | 'viewer' | 'sale';
+  role: 'superadmin' | 'admin' | 'assistant' | 'viewer' | 'sale';
   email?: string;
   consultant_id?: number;
   avatar?: string;

@@ -430,7 +430,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   };
 
   const handleCopyFullInfo = (lead: Lead) => {
-    const isUserAdmin = user?.role === 'admin';
+    const isUserAdmin = (user?.role === 'admin' || user?.role === 'superadmin');
     const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
     const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
     const text = [
@@ -2113,7 +2113,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {copiedType === 'full' ? t('Đã chép') : t('Sao chép')}
                       </button>
                     )}
-                    {user?.role === 'admin' && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && (
                       <>
                         {isAdminEditingLead ? (
                           <>
@@ -2205,7 +2205,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         )}
                       </>
                     )}
-                    {user?.role === 'admin' && selectedLead.report_status === 'approved_no_comp' && !isAdminEditingLead && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.report_status === 'approved_no_comp' && !isAdminEditingLead && (
                       <button
                         onClick={() => handleCompensateNoComp(selectedLead.report_id || 0)}
                         disabled={isCompensatingNoComp}
@@ -2231,7 +2231,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {isCompensatingNoComp ? t('Đang xử lý...') : t('Bù lỗi')}
                       </button>
                     )}
-                    {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
                           const isTicket = selectedLead.status === 'error' || selectedLead.report_status === 'approved' || selectedLead.report_status === 'pending';
@@ -2273,7 +2273,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   marginBottom: '1rem'
                 }}>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -2351,7 +2351,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
-                          {user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                          {(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -2371,7 +2371,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     )}
                   </div>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText(user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -2426,7 +2426,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
-                          {user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+                          {(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -3436,7 +3436,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       )}
 
                       {/* Manual Reminder Button */}
-                      {user?.role === 'admin' && selectedLead.assigned_to_name !== '-' && (
+                      {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.assigned_to_name !== '-' && (
                         <button
                           onClick={() => {
                             setReminderChannels({ zalo: true, email: true });
@@ -3485,7 +3485,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 )}
 
                 {/* Giao lại Tư vấn viên */}
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || user?.role === 'superadmin') && (
                   <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <User size={16} color="var(--color-primary)" /> {t("Giao lại Tư vấn viên")}
@@ -4253,8 +4253,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           onClose={() => setPreviewOpen(false)}
           type={previewType}
           leadName={selectedLead.name}
-          leadPhone={user?.role === 'admin' ? selectedLead.phone : maskPhone(selectedLead.phone)}
-          leadEmail={user?.role === 'admin' ? selectedLead.email : maskEmail(selectedLead.email)}
+          leadPhone={(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.phone : maskPhone(selectedLead.phone)}
+          leadEmail={(user?.role === 'admin' || user?.role === 'superadmin') ? selectedLead.email : maskEmail(selectedLead.email)}
           leadSource={selectedLead.source || ''}
           leadType={selectedLead.type || ''}
           leadNote={selectedLead.note || ''}
@@ -5006,7 +5006,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
-                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').map((acc: any) => {
+                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'superadmin' || a.role === 'assistant').map((acc: any) => {
                   const isSelected = selectedIds.includes(Number(acc.id));
                   const noEmail = !acc.email;
                   return (
@@ -5041,10 +5041,10 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       {/* Role badge */}
                       <span style={{
                         fontSize: '0.7rem', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius-md)', flexShrink: 0,
-                        background: acc.role === 'admin' ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
-                        color: acc.role === 'admin' ? 'var(--color-primary)' : '#10b981'
+                        background: (acc.role === 'admin' || acc.role === 'superadmin') ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
+                        color: (acc.role === 'admin' || acc.role === 'superadmin') ? 'var(--color-primary)' : '#10b981'
                       }}>
-                        {acc.role === 'admin' ? t('Admin') : t('Assistant')}
+                        {(acc.role === 'admin' || acc.role === 'superadmin') ? t('Admin') : t('Assistant')}
                       </span>
                       {/* Toggle switch */}
                       <div style={{
@@ -5061,7 +5061,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                     </div>
                   );
                 })}
-                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'assistant').length === 0 && (
+                {accounts.filter((a: any) => a.role === 'admin' || a.role === 'superadmin' || a.role === 'assistant').length === 0 && (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Chưa có admin nào trong hệ thống")}</div>
                 )}
               </div>
