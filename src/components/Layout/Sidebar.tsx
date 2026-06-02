@@ -8,11 +8,11 @@ import { fetchAPI } from '../../utils/api';
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
-  { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
+  { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
   { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
+  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
   { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, superAdminOnly: true },
@@ -275,7 +275,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         {/* Nav */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
           <div ref={navContainerRef} style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
-            
+
             {/* Sliding Active Indicator */}
             {sliderStyle.height > 0 && (
               <div style={{
@@ -303,7 +303,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
             {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
               const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
-              const isSettingsGroupStart = href === '/integrations';
+              const isSettingsGroupStart = href === '/rules';
               return (
                 <Fragment key={href}>
                   {isSettingsGroupStart && !isCollapsed && (
