@@ -30,7 +30,7 @@ interface Particle {
   id: string;
   leadName: string;
   sourceType: string;
-  status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours';
+  status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' | 'reminder';
   saleName: string;
   saleIndex: number;
   x: number;
@@ -58,39 +58,6 @@ const getInitials = (name: string) => {
   return (parts[0][0] + (parts[parts.length - 1]?.[0] || '')).toUpperCase();
 };
 
-const GlitchText: React.FC<{ text: string; active: boolean }> = ({ text, active }) => {
-  const [displayText, setDisplayText] = useState(text);
-
-  useEffect(() => {
-    if (active) {
-      let count = 0;
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
-      const interval = setInterval(() => {
-        setDisplayText(
-          text
-            .split('')
-            .map((c) => {
-              if (c === ' ') return ' ';
-              if (Math.random() < 0.35) return chars[Math.floor(Math.random() * chars.length)];
-              return c;
-            })
-            .join('')
-        );
-        count++;
-        if (count > 6) {
-          clearInterval(interval);
-          setDisplayText(text);
-        }
-      }, 70);
-      return () => clearInterval(interval);
-    } else {
-      setDisplayText(text);
-    }
-  }, [active, text]);
-
-  return <span>{displayText}</span>;
-};
-
 // ============================================================================
 // SPACE CANVAS BACKGROUND (100% Isolated Canvas Loop, Framerate Independent)
 // ============================================================================
@@ -103,7 +70,7 @@ const SpaceCanvasBackground: React.FC<{
   sourceRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
   saleRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
   particlesRef: React.MutableRefObject<Particle[]>;
-  triggerSaleRipple: (idx: number, sourceName: string, sourceColor: string, particleId: string, status: 'assigned' | 'compensation' | 'pending_work_hours') => void;
+  triggerSaleRipple: (idx: number, sourceName: string, sourceColor: string, particleId: string, status: 'assigned' | 'compensation' | 'pending_work_hours' | 'reminder') => void;
   triggerRetainedRipple: (particleId: string, status: 'rejected' | 'duplicate') => void;
   mockSources: any[];
   salesList: any[];
@@ -134,6 +101,8 @@ const SpaceCanvasBackground: React.FC<{
   isRetainedGlow
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Reference containerRef to satisfy TS6133 unused variable compiler rule
+  if (containerRef) { /* no-op */ }
 
   // Stars with Parallax
   const starsRef = useRef<{
@@ -145,6 +114,8 @@ const SpaceCanvasBackground: React.FC<{
     opacity: number;
     fadeSpeed: number;
     layer: number;
+    twinkleSpeed?: number;
+    phase?: number;
   }[]>([]);
 
   // Subset of stars for Dynamic Constellation Links
@@ -197,6 +168,18 @@ const SpaceCanvasBackground: React.FC<{
     size: number;
     color: string;
     z: number;
+  }[]>([]);
+
+  // 3D Accretion Disk particles
+  const accretionDiskRef = useRef<{
+    angle: number;
+    orbitRadius: number;
+    speed: number;
+    size: number;
+    color: string;
+    z: number;
+    px: number;
+    py: number;
   }[]>([]);
 
   // Screen glitch states
@@ -279,22 +262,21 @@ const SpaceCanvasBackground: React.FC<{
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const canvasRect = canvas.getBoundingClientRect();
+    const width = canvasRect.width;
+    const height = canvasRect.height;
+
     const getOffsetPos = (el: HTMLElement) => {
-      const container = containerRef.current;
-      let x = 0;
-      let y = 0;
-      let curr: HTMLElement | null = el;
-      while (curr && curr !== container) {
-        x += curr.offsetLeft || 0;
-        y += curr.offsetTop || 0;
-        curr = curr.offsetParent as HTMLElement | null;
-      }
-      return { x, y };
+      const rect = el.getBoundingClientRect();
+      return {
+        x: rect.left - canvasRect.left,
+        y: rect.top - canvasRect.top
+      };
     };
 
     const coreEl = coreRef.current;
-    let coreX = canvas.width / 2;
-    let coreY = canvas.height / 2;
+    let coreX = width / 2;
+    let coreY = height / 2;
     if (coreEl) {
       const pos = getOffsetPos(coreEl);
       coreX = pos.x + coreEl.offsetWidth / 2;
@@ -322,7 +304,7 @@ const SpaceCanvasBackground: React.FC<{
           y: pos.y + saleEl.offsetHeight / 2
         };
       }
-      return { x: canvas.width - 290, y: 150 + idx * 90 };
+      return { x: width - 290, y: 150 + idx * 90 };
     });
 
     coordsRef.current = { sources, core: { x: coreX, y: coreY }, sales };
@@ -366,10 +348,17 @@ const SpaceCanvasBackground: React.FC<{
 
     let animationId: number;
     let lastTime = performance.now();
+    let frameCount = 0;
 
     const handleResize = () => {
-      canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = canvas.parentElement?.clientWidth || window.innerWidth;
+      const cssHeight = canvas.parentElement?.clientHeight || window.innerHeight;
+      canvas.width = cssWidth * dpr;
+      canvas.height = cssHeight * dpr;
+      canvas.style.width = cssWidth + 'px';
+      canvas.style.height = cssHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       recalculateCoordinates();
     };
     handleResize();
@@ -442,8 +431,8 @@ const SpaceCanvasBackground: React.FC<{
     // Initialize stars - SLOW space journey
     if (starsRef.current.length === 0) {
       const tempStars = [];
-      const width = canvas.width;
-      const height = canvas.height;
+      const width = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth;
+      const height = canvas.clientHeight || canvas.parentElement?.clientHeight || window.innerHeight;
       for (let i = 0; i < 220; i++) {
         const layer = Math.floor(Math.random() * 3);
         let size = 0.4 + Math.random() * 0.4;
@@ -456,15 +445,19 @@ const SpaceCanvasBackground: React.FC<{
           speedX = -0.09 - Math.random() * 0.06;
         }
 
+        const phase = Math.random() * Math.PI * 2;
+        const twinkleSpeed = 0.3 + Math.random() * 0.6;
         tempStars.push({
           x: Math.random() * width,
           y: Math.random() * height,
           size,
           speedX,
           speedY: (Math.random() - 0.5) * 0.015,
-          opacity: 0.15 + Math.random() * 0.85,
-          fadeSpeed: (0.05 + Math.random() * 0.15) * (Math.random() > 0.5 ? 1 : -1),
-          layer
+          opacity: 0.15 + (Math.sin(phase) * 0.5 + 0.5) * 0.8,
+          fadeSpeed: 0,
+          layer,
+          twinkleSpeed,
+          phase
         });
       }
       starsRef.current = tempStars;
@@ -477,6 +470,32 @@ const SpaceCanvasBackground: React.FC<{
       constellationStarsIdxRef.current = constellationCandidateIndices
         .sort(() => 0.5 - Math.random())
         .slice(0, 55);
+    }
+
+    // Initialize Accretion Disk particles
+    if (accretionDiskRef.current.length === 0) {
+      const diskParticles = [];
+      const colors = ['#c084fc', '#ffffff', '#a855f7', '#8b5cf6', '#e9d5ff'];
+      for (let i = 0; i < 120; i++) {
+        // Varying orbit radius from 58px to 142px
+        const orbitRadius = 58 + Math.random() * 84;
+        // Keplerian speed: speed is inversely proportional to square root of radius
+        const speed = (6.8 / Math.sqrt(orbitRadius)) * (0.85 + Math.random() * 0.3);
+        const size = 0.8 + Math.random() * 1.5;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        diskParticles.push({
+          angle: Math.random() * Math.PI * 2,
+          orbitRadius,
+          speed,
+          size,
+          color,
+          z: 0,
+          px: 0,
+          py: 0
+        });
+      }
+      accretionDiskRef.current = diskParticles;
     }
 
     // Space-Time Gravity Warp Grid & Click Ripples calculation
@@ -571,13 +590,75 @@ const SpaceCanvasBackground: React.FC<{
       const deltaTime = Math.min(0.08, (timestamp - lastTime) / 1000);
       lastTime = timestamp;
 
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        recalculateCoordinates();
+      }
+
       let maxCompression = 0;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const width = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth;
+      const height = canvas.clientHeight || canvas.parentElement?.clientHeight || window.innerHeight;
+
+      ctx.clearRect(0, 0, width, height);
 
       const coords = coordsRef.current;
       const coreX = coords.core.x;
       const coreY = coords.core.y;
+
+      // Calculate gravitational vortex distortion for a star/particle
+      const getDistortedStarPos = (sx: number, sy: number) => {
+        let displayX = sx;
+        let displayY = sy;
+        
+        // 1. Mouse bending
+        if (mouseRef.current.active) {
+          const dxM = mouseRef.current.x - sx;
+          const dyM = mouseRef.current.y - sy;
+          const distM = Math.sqrt(dxM * dxM + dyM * dyM);
+          if (distM < 160) {
+            const pull = 0.16 * (1 - distM / 160);
+            displayX += dxM * pull;
+            displayY += dyM * pull;
+          }
+        }
+
+        // 2. Gravitational Vortex (Click Ripples)
+        gridRipplesRef.current.forEach(rip => {
+          const dx = rip.x - displayX;
+          const dy = rip.y - displayY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist > 0 && dist < rip.maxRadius) {
+            const wavefrontDist = dist - rip.radius;
+            const widthLimit = 120;
+            if (Math.abs(wavefrontDist) < widthLimit) {
+              const factor = (1 - Math.abs(wavefrontDist) / widthLimit) * (1 - rip.radius / rip.maxRadius) * rip.strength;
+              if (wavefrontDist > 0) {
+                // Pull phase (spiral pull)
+                const pull = factor * 0.85;
+                displayX += dx * pull;
+                displayY += dy * pull;
+                
+                const twist = factor * 0.9;
+                const cosT = Math.cos(twist);
+                const sinT = Math.sin(twist);
+                const rx = displayX - rip.x;
+                const ry = displayY - rip.y;
+                displayX = rip.x + (rx * cosT - ry * sinT);
+                displayY = rip.y + (rx * sinT + ry * cosT);
+              } else {
+                // Release/Burst phase (flung outwards)
+                const push = factor * 1.6;
+                displayX -= (dx / dist) * 110 * push;
+                displayY -= (dy / dist) * 110 * push;
+              }
+            }
+          }
+        });
+
+        return { x: displayX, y: displayY };
+      };
 
       // Check if shutting down to trigger a massive physical particle blowout
       if (bootPhase === 'shutting_down' && !hasTriggeredShutdownBlastRef.current) {
@@ -665,12 +746,12 @@ const SpaceCanvasBackground: React.FC<{
         // Randomly draw full screen lightning strikes directly on canvas
         if (Math.random() < 0.35) {
           ctx.fillStyle = Math.random() > 0.5 ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.35)';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, width, height);
           
           // Random lightning bolts from core to window edge
           for (let bolts = 0; bolts < 3; bolts++) {
-            const edgeX = Math.random() * canvas.width;
-            const edgeY = Math.random() > 0.5 ? 0 : canvas.height;
+            const edgeX = Math.random() * width;
+            const edgeY = Math.random() > 0.5 ? 0 : height;
             drawLightning(coreX, coreY, edgeX, edgeY, '#a855f7');
           }
         }
@@ -693,7 +774,7 @@ const SpaceCanvasBackground: React.FC<{
       // Draw red screen glitch flash occasionally during retained state
       if (isRetainedGlowRef.current && Math.random() < 0.12) {
         ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, width, height);
       }
 
       // 1. Glowing Space Nebula Background
@@ -703,31 +784,30 @@ const SpaceCanvasBackground: React.FC<{
         if (neb.x < 0.02 || neb.x > 0.98) neb.vx *= -1;
         if (neb.y < 0.02 || neb.y > 0.98) neb.vy *= -1;
 
-        const size = neb.r * Math.max(canvas.width, canvas.height);
+        const size = neb.r * Math.max(width, height);
         const grad = ctx.createRadialGradient(
-          neb.x * canvas.width, neb.y * canvas.height, 0,
-          neb.x * canvas.width, neb.y * canvas.height, size
+          neb.x * width, neb.y * height, 0,
+          neb.x * width, neb.y * height, size
         );
         grad.addColorStop(0, neb.color);
         grad.addColorStop(0.55, neb.color.replace(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/, 'rgba($1, $2, $3, 0.01)'));
         grad.addColorStop(1, 'transparent');
         
-        // Performance Optimization: Only draw radial gradient bounds instead of filling entire canvas 3 times
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(neb.x * canvas.width, neb.y * canvas.height, size, 0, Math.PI * 2);
+        ctx.arc(neb.x * width, neb.y * height, size, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // 2. Tactical Warped Grid
+      // 2. Tactical Warped Grid (BATCHED FOR 120HZ FEEL)
       ctx.strokeStyle = 'rgba(139, 92, 246, 0.03)';
       ctx.lineWidth = 0.8;
-      const gridSize = 90; // Increased size to reduce grid rendering complexity
+      const gridSize = 90;
 
-      for (let x = 0; x < canvas.width + gridSize; x += gridSize) {
-        ctx.beginPath();
+      ctx.beginPath();
+      for (let x = 0; x < width + gridSize; x += gridSize) {
         let first = true;
-        for (let y = 0; y <= canvas.height + 50; y += 50) { // Increased step to 50 for smoother calculations
+        for (let y = 0; y <= height + 50; y += 50) {
           const pt = distortPoint(x, y, coreX, coreY);
           if (first) {
             ctx.moveTo(pt.x, pt.y);
@@ -736,13 +816,10 @@ const SpaceCanvasBackground: React.FC<{
             ctx.lineTo(pt.x, pt.y);
           }
         }
-        ctx.stroke();
       }
-
-      for (let y = 0; y < canvas.height + gridSize; y += gridSize) {
-        ctx.beginPath();
+      for (let y = 0; y < height + gridSize; y += gridSize) {
         let first = true;
-        for (let x = 0; x <= canvas.width + 50; x += 50) { // Increased step to 50 for smoother calculations
+        for (let x = 0; x <= width + 50; x += 50) {
           const pt = distortPoint(x, y, coreX, coreY);
           if (first) {
             ctx.moveTo(pt.x, pt.y);
@@ -751,93 +828,112 @@ const SpaceCanvasBackground: React.FC<{
             ctx.lineTo(pt.x, pt.y);
           }
         }
-        ctx.stroke();
       }
+      ctx.stroke();
 
-      // 3. Drifting background stars with mouse bending
+      // 3. Drifting background stars with mouse bending (BATCHED FOR 120HZ FEEL)
+      const starsBin1: { x: number; y: number; r: number }[] = [];
+      const starsBin2: { x: number; y: number; r: number }[] = [];
+      const starsBin3: { x: number; y: number; r: number }[] = [];
+      const layer2Stars: { x: number; y: number; size: number; opacity: number }[] = [];
+
       starsRef.current.forEach(star => {
-        let starX = star.x + star.speedX * deltaTime * 60;
-        let starY = star.y + star.speedY * deltaTime * 60;
+        if (star.phase === undefined) star.phase = Math.random() * Math.PI * 2;
+        if (star.twinkleSpeed === undefined) star.twinkleSpeed = 0.3 + Math.random() * 0.6;
 
-        if (starX < 0) starX = canvas.width;
-        if (starX > canvas.width) starX = 0;
-        if (starY < 0) starY = canvas.height;
-        if (starY > canvas.height) starY = 0;
+        // Smooth wave-based twinkling
+        star.phase += star.twinkleSpeed * deltaTime;
+        star.opacity = 0.15 + (Math.sin(star.phase) * 0.5 + 0.5) * 0.8;
+
+        // Smooth cosmic drift (adding slow vertical waving ocean-like motion)
+        let starX = star.x + star.speedX * deltaTime * 60;
+        let starY = star.y + (star.speedY + Math.sin(star.phase * 0.4) * 0.04) * deltaTime * 60;
+
+        if (starX < 0) starX = width;
+        if (starX > width) starX = 0;
+        if (starY < 0) starY = height;
+        if (starY > height) starY = 0;
 
         star.x = starX;
         star.y = starY;
 
-        star.opacity += star.fadeSpeed * deltaTime;
-        if (star.opacity > 1 || star.opacity < 0.15) {
-          star.fadeSpeed = -star.fadeSpeed;
-          star.opacity = Math.max(0.15, Math.min(1, star.opacity));
-        }
+        const distorted = getDistortedStarPos(star.x, star.y);
+        const displayX = distorted.x;
+        const displayY = distorted.y;
 
-        // Bending stars slightly towards mouse
-        let displayX = star.x;
-        let displayY = star.y;
-        if (mouseRef.current.active) {
-          const dxM = mouseRef.current.x - star.x;
-          const dyM = mouseRef.current.y - star.y;
-          const distM = Math.sqrt(dxM * dxM + dyM * dyM);
-          if (distM < 160) {
-            const pull = 0.16 * (1 - distM / 160);
-            displayX += dxM * pull;
-            displayY += dyM * pull;
-          }
-        }
-
-        ctx.beginPath();
-        ctx.arc(displayX, displayY, star.size, 0, Math.PI * 2);
         if (star.layer === 2) {
-          ctx.fillStyle = `rgba(228, 208, 255, ${star.opacity})`;
-          ctx.fill();
-          // soft aura glow
-          ctx.beginPath();
-          ctx.arc(displayX, displayY, star.size * 2.3, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(168, 85, 247, ${star.opacity * 0.16})`;
-          ctx.fill();
+          layer2Stars.push({ x: displayX, y: displayY, size: star.size, opacity: star.opacity });
         } else {
-          ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-          ctx.fill();
+          if (star.opacity < 0.45) {
+            starsBin1.push({ x: displayX, y: displayY, r: star.size });
+          } else if (star.opacity < 0.75) {
+            starsBin2.push({ x: displayX, y: displayY, r: star.size });
+          } else {
+            starsBin3.push({ x: displayX, y: displayY, r: star.size });
+          }
         }
       });
 
-      // 4. Dynamic Constellations Connections & Neural data packet pulses
+      if (starsBin1.length > 0) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        starsBin1.forEach(s => {
+          ctx.moveTo(s.x + s.r, s.y);
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        });
+        ctx.fill();
+      }
+      if (starsBin2.length > 0) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        starsBin2.forEach(s => {
+          ctx.moveTo(s.x + s.r, s.y);
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        });
+        ctx.fill();
+      }
+      if (starsBin3.length > 0) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        starsBin3.forEach(s => {
+          ctx.moveTo(s.x + s.r, s.y);
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        });
+        ctx.fill();
+      }
+      layer2Stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(228, 208, 255, ${s.opacity})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size * 2.3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(168, 85, 247, ${s.opacity * 0.16})`;
+        ctx.fill();
+      });
+
+      // 4. Dynamic Constellations Connections & Neural data packet pulses (BATCHED FOR 120HZ FEEL)
       const cStarsIdx = constellationStarsIdxRef.current;
+      const linesBin1: number[] = [];
+      const linesBin2: number[] = [];
+      const linesBin3: number[] = [];
+      const packets: number[] = [];
+
       cStarsIdx.forEach((idx1, i) => {
         const s1 = starsRef.current[idx1];
         if (!s1) return;
 
-        let s1x = s1.x;
-        let s1y = s1.y;
-        if (mouseRef.current.active) {
-          const dxM = mouseRef.current.x - s1.x;
-          const dyM = mouseRef.current.y - s1.y;
-          const distM = Math.sqrt(dxM * dxM + dyM * dyM);
-          if (distM < 160) {
-            const pull = 0.16 * (1 - distM / 160);
-            s1x += dxM * pull;
-            s1y += dyM * pull;
-          }
-        }
+        const distortedS1 = getDistortedStarPos(s1.x, s1.y);
+        const s1x = distortedS1.x;
+        const s1y = distortedS1.y;
 
         for (let j = i + 1; j < cStarsIdx.length; j++) {
           const s2 = starsRef.current[cStarsIdx[j]];
           if (!s2 || s1.layer !== s2.layer) continue;
 
-          let s2x = s2.x;
-          let s2y = s2.y;
-          if (mouseRef.current.active) {
-            const dxM = mouseRef.current.x - s2.x;
-            const dyM = mouseRef.current.y - s2.y;
-            const distM = Math.sqrt(dxM * dxM + dyM * dyM);
-            if (distM < 160) {
-              const pull = 0.16 * (1 - distM / 160);
-              s2x += dxM * pull;
-              s2y += dyM * pull;
-            }
-          }
+          const distortedS2 = getDistortedStarPos(s2.x, s2.y);
+          const s2x = distortedS2.x;
+          const s2y = distortedS2.y;
 
           const dx = s1x - s2x;
           const dy = s1y - s2y;
@@ -845,27 +941,64 @@ const SpaceCanvasBackground: React.FC<{
 
           if (dist < 90) {
             const alpha = (1 - dist / 90) * 0.15 * Math.min(s1.opacity, s2.opacity);
-            ctx.beginPath();
-            ctx.moveTo(s1x, s1y);
-            ctx.lineTo(s2x, s2y);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
-            ctx.lineWidth = 0.65;
-            ctx.stroke();
+            if (alpha >= 0.10) {
+              linesBin3.push(s1x, s1y, s2x, s2y);
+            } else if (alpha >= 0.05) {
+              linesBin2.push(s1x, s1y, s2x, s2y);
+            } else if (alpha >= 0.02) {
+              linesBin1.push(s1x, s1y, s2x, s2y);
+            }
 
-            // Traveling stellar data packet pulse (sliding along neural net)
             if ((i + j) % 3 === 0) {
               const tPack = (timestamp * 0.0004 + (i * 0.15)) % 1.0;
               const px = s1x + (s2x - s1x) * tPack;
               const py = s1y + (s2y - s1y) * tPack;
-
-              ctx.beginPath();
-              ctx.arc(px, py, 1.2, 0, Math.PI * 2);
-              ctx.fillStyle = `rgba(224, 204, 255, ${alpha * 2.3})`;
-              ctx.fill();
+              packets.push(px, py);
             }
           }
         }
       });
+
+      ctx.lineWidth = 0.65;
+      if (linesBin1.length > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.04)';
+        for (let k = 0; k < linesBin1.length; k += 4) {
+          ctx.moveTo(linesBin1[k], linesBin1[k+1]);
+          ctx.lineTo(linesBin1[k+2], linesBin1[k+3]);
+        }
+        ctx.stroke();
+      }
+      if (linesBin2.length > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.08)';
+        for (let k = 0; k < linesBin2.length; k += 4) {
+          ctx.moveTo(linesBin2[k], linesBin2[k+1]);
+          ctx.lineTo(linesBin2[k+2], linesBin2[k+3]);
+        }
+        ctx.stroke();
+      }
+      if (linesBin3.length > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.12)';
+        for (let k = 0; k < linesBin3.length; k += 4) {
+          ctx.moveTo(linesBin3[k], linesBin3[k+1]);
+          ctx.lineTo(linesBin3[k+2], linesBin3[k+3]);
+        }
+        ctx.stroke();
+      }
+
+      if (packets.length > 0) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(224, 204, 255, 0.25)';
+        for (let k = 0; k < packets.length; k += 2) {
+          const px = packets[k];
+          const py = packets[k+1];
+          ctx.moveTo(px + 1.2, py);
+          ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+        }
+        ctx.fill();
+      }
 
       // 4b. Draw and update mouse trail particles
       mouseTrailRef.current = mouseTrailRef.current.filter(mt => {
@@ -939,6 +1072,37 @@ const SpaceCanvasBackground: React.FC<{
           (p as any).px = coreX + rx;
           (p as any).py = coreY + ry;
         });
+
+        // Update 3D Accretion Disk particles
+        if (accretionDiskRef.current.length > 0) {
+          const pitch = 0.45; // X-pitch
+          const yaw = 0.22;   // Y-yaw
+          
+          const cosP = Math.cos(pitch);
+          const sinP = Math.sin(pitch);
+          const cosY = Math.cos(yaw);
+          const sinY = Math.sin(yaw);
+          
+          accretionDiskRef.current.forEach(p => {
+            p.angle += p.speed * deltaTime;
+            const xo = Math.cos(p.angle) * p.orbitRadius;
+            const yo = Math.sin(p.angle) * p.orbitRadius;
+            
+            // Rotate around X-axis (pitch)
+            const x1 = xo;
+            const y1 = yo * cosP;
+            const z1 = yo * sinP;
+            
+            // Rotate around Y-axis (yaw)
+            const rx = x1 * cosY + z1 * sinY;
+            const ry = y1;
+            const rz = -x1 * sinY + z1 * cosY;
+            
+            p.px = coreX + rx;
+            p.py = coreY + ry;
+            p.z = rz;
+          });
+        }
       }
 
       // Draw 3D Core Particles (Back depth level)
@@ -953,6 +1117,44 @@ const SpaceCanvasBackground: React.FC<{
         }
       });
 
+      // Draw Accretion Disk (Back depth level: z < 0)
+      if (coreRef.current && accretionDiskRef.current.length > 0) {
+        const backGroups: Record<string, { px: number; py: number; size: number }[]> = {};
+        
+        accretionDiskRef.current.forEach(p => {
+          if (p.z < 0) {
+            const maxR = 142;
+            const depthScale = 0.7 + (p.z + maxR) / (maxR * 2) * 0.3;
+            const alpha = 0.2 + (p.z + maxR) / (maxR * 2) * 0.45;
+            
+            const color = isRetainedGlowRef.current ? '#ef4444' : p.color;
+            const size = p.size * depthScale;
+            
+            let alphaBin = 0.6;
+            if (alpha < 0.3) alphaBin = 0.25;
+            else if (alpha < 0.45) alphaBin = 0.45;
+            
+            const alphaHex = Math.round(alphaBin * 255).toString(16).padStart(2, '0');
+            const key = color + alphaHex;
+            
+            if (!backGroups[key]) {
+              backGroups[key] = [];
+            }
+            backGroups[key].push({ px: p.px, py: p.py, size });
+          }
+        });
+        
+        Object.entries(backGroups).forEach(([colorWithAlpha, particles]) => {
+          ctx.beginPath();
+          ctx.fillStyle = colorWithAlpha;
+          particles.forEach(p => {
+            ctx.moveTo(p.px + p.size, p.py);
+            ctx.arc(p.px, p.py, p.size, 0, Math.PI * 2);
+          });
+          ctx.fill();
+        });
+      }
+
       // Draw active lightning bolts triggered on successful distribution
       activeLightningsRef.current = activeLightningsRef.current.filter(lightning => {
         lightning.duration -= deltaTime;
@@ -965,7 +1167,6 @@ const SpaceCanvasBackground: React.FC<{
 
       // 6. Central AI Reactor Rings HUD
       if (coreRef.current) {
-
         ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.35)' : 'rgba(139, 92, 246, 0.12)';
         ctx.lineWidth = 0.8;
         ctx.beginPath();
@@ -1013,6 +1214,55 @@ const SpaceCanvasBackground: React.FC<{
           ctx.fill();
         }
       });
+
+      // Draw Accretion Disk (Front depth level: z >= 0)
+      if (coreRef.current && accretionDiskRef.current.length > 0) {
+        const frontGroups: Record<string, { px: number; py: number; size: number }[]> = {};
+        
+        accretionDiskRef.current.forEach(p => {
+          if (p.z >= 0) {
+            const maxR = 142;
+            const depthScale = 1.0 + (p.z) / maxR * 0.4;
+            const alpha = 0.65 + (p.z) / maxR * 0.35;
+            
+            const color = isRetainedGlowRef.current ? '#ef4444' : p.color;
+            const size = p.size * depthScale;
+            
+            let alphaBin = 0.95;
+            if (alpha < 0.78) alphaBin = 0.7;
+            else if (alpha < 0.88) alphaBin = 0.85;
+            
+            const alphaHex = Math.round(alphaBin * 255).toString(16).padStart(2, '0');
+            const key = color + alphaHex;
+            
+            if (!frontGroups[key]) {
+              frontGroups[key] = [];
+            }
+            frontGroups[key].push({ px: p.px, py: p.py, size });
+          }
+        });
+        
+        Object.entries(frontGroups).forEach(([colorWithAlpha, particles]) => {
+          ctx.beginPath();
+          ctx.fillStyle = colorWithAlpha;
+          particles.forEach(p => {
+            ctx.moveTo(p.px + p.size, p.py);
+            ctx.arc(p.px, p.py, p.size, 0, Math.PI * 2);
+          });
+          ctx.fill();
+          
+          // Subtle halo/glow for front particles
+          ctx.beginPath();
+          const opacityVal = parseInt(colorWithAlpha.substring(7), 16) / 255;
+          const haloColor = colorWithAlpha.substring(0, 7) + Math.round(opacityVal * 0.25 * 255).toString(16).padStart(2, '0');
+          ctx.fillStyle = haloColor;
+          particles.forEach(p => {
+            ctx.moveTo(p.px + p.size * 2.2, p.py);
+            ctx.arc(p.px, p.py, p.size * 2.2, 0, Math.PI * 2);
+          });
+          ctx.fill();
+        });
+      }
 
       // 6b. Update and draw Laser Railgun beams
       laserBeamsRef.current = laserBeamsRef.current.filter(laser => {
@@ -1070,7 +1320,7 @@ const SpaceCanvasBackground: React.FC<{
       // 7. Shooting Stars
       if (Math.random() < 0.0022 && shootingStarsRef.current.length < 2) {
         shootingStarsRef.current.push({
-          x: Math.random() * canvas.width * 0.7,
+          x: Math.random() * width * 0.7,
           y: 0,
           speedX: 300 + Math.random() * 250,
           speedY: 250 + Math.random() * 200,
@@ -1084,7 +1334,7 @@ const SpaceCanvasBackground: React.FC<{
         ss.y += ss.speedY * deltaTime;
         ss.opacity -= 0.85 * deltaTime;
 
-        if (ss.opacity > 0 && ss.x < canvas.width && ss.y < canvas.height) {
+        if (ss.opacity > 0 && ss.x < width && ss.y < height) {
           ctx.beginPath();
           const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - ss.speedX * 0.02, ss.y - ss.speedY * 0.02);
           grad.addColorStop(0, `rgba(255, 255, 255, ${ss.opacity})`);
@@ -1104,7 +1354,7 @@ const SpaceCanvasBackground: React.FC<{
         drop.y += drop.speed * deltaTime;
         drop.opacity -= 0.65 * deltaTime; // decay within 1.5s
 
-        if (drop.opacity > 0 && drop.y < canvas.height) {
+        if (drop.opacity > 0 && drop.y < height) {
           ctx.save();
           ctx.font = 'bold 9px monospace';
           ctx.textAlign = 'center';
@@ -1223,7 +1473,6 @@ const SpaceCanvasBackground: React.FC<{
               p.stage = 1;
               p.x = coreX;
               p.y = coreY;
-              // If lead is rejected or duplicate, turn the particle color to RED at the AI core
               if (p.status === 'rejected' || p.status === 'duplicate') {
                 p.color = '#ef4444';
               }
@@ -1241,25 +1490,22 @@ const SpaceCanvasBackground: React.FC<{
             p.holdTime -= deltaTime;
 
             const tHold = 1 - Math.max(0, p.holdTime / p.maxHoldTime);
-            // Compression curve: rises as it approaches release
-            if (p.status === 'assigned' || p.status === 'compensation' || p.status === 'pending_work_hours') {
+            if (p.status === 'assigned' || p.status === 'compensation' || p.status === 'pending_work_hours' || p.status === 'reminder') {
               const compression = 0.18 * Math.pow(tHold, 2.5);
               if (compression > maxCompression) {
                 maxCompression = compression;
               }
             }
 
-            // Accretion Disk Spiral vortex calculation
-            const spiralAngle = tHold * Math.PI * 6.5; // spiral spins 3.25 rotations
-            const spiralRadius = 38 * Math.cos(tHold * Math.PI / 2) + 2; // slow spiral shrink to center
+            const spiralAngle = tHold * Math.PI * 6.5;
+            const spiralRadius = 38 * Math.cos(tHold * Math.PI / 2) + 2;
 
             p.x = coreX + spiralRadius * Math.cos(spiralAngle);
             p.y = coreY + spiralRadius * Math.sin(spiralAngle);
 
-            // Emit swirling stardust vortex particles at core with tangential orbital velocity
             if (Math.random() < 0.45) {
               const speed = 25 + Math.random() * 30;
-              const angle = spiralAngle + Math.PI / 2; // tangent rotation angle
+              const angle = spiralAngle + Math.PI / 2;
               const vx = Math.cos(angle) * speed - Math.cos(spiralAngle) * 15;
               const vy = Math.sin(angle) * speed - Math.sin(spiralAngle) * 15;
               stardustRef.current.push({
@@ -1274,12 +1520,10 @@ const SpaceCanvasBackground: React.FC<{
               });
             }
 
-            // Draw plasma energy lightning
             if (Math.random() < 0.75) {
               drawLightning(coreX, coreY, p.x, p.y, p.color);
             }
 
-            // Draw hologram target bounding box brackets
             const scanPercent = Math.min(100, Math.round((1 - p.holdTime / p.maxHoldTime) * 100));
             const boxSize = 21;
             ctx.strokeStyle = p.color + 'aa';
@@ -1319,10 +1563,8 @@ const SpaceCanvasBackground: React.FC<{
 
             if (p.holdTime <= 0) {
               if (p.status === 'rejected' || p.status === 'duplicate') {
-                // Trigger BỊ GIỮ LẠI glow and +1 indicator
                 triggerRetainedRipple(p.id, p.status);
 
-                // Core shockwave in red
                 coreGlowIntensityRef.current = 2.0;
                 coreShockwavesRef.current.push({
                   radius: 12,
@@ -1332,7 +1574,6 @@ const SpaceCanvasBackground: React.FC<{
                   style: 'dashed'
                 });
 
-                // Spawn some red stardust sparks at the core
                 for (let i = 0; i < 12; i++) {
                   const angle = Math.random() * Math.PI * 2;
                   const speed = 30 + Math.random() * 40;
@@ -1348,7 +1589,7 @@ const SpaceCanvasBackground: React.FC<{
                   });
                 }
 
-                return false; // Remove this lead particle, do not go to Sales
+                return false;
               }
 
               p.stage = 2;
@@ -1356,7 +1597,6 @@ const SpaceCanvasBackground: React.FC<{
               p.startX = coreX;
               p.startY = coreY;
 
-              // Trigger a Space-Time Liquid Grid Warp Ripple expanding from core
               gridRipplesRef.current.push({
                 x: coreX,
                 y: coreY,
@@ -1366,7 +1606,6 @@ const SpaceCanvasBackground: React.FC<{
                 speed: 750
               });
 
-              // Trigger sét đánh: strike a lightning bolt from core to target sale rep card
               activeLightningsRef.current.push({
                 x1: coreX,
                 y1: coreY,
@@ -1376,13 +1615,9 @@ const SpaceCanvasBackground: React.FC<{
                 duration: 0.22
               });
 
-              // Trigger rung phản lực: jet propulsion screen shake
               pushShakeIntensityRef.current = 16.0;
-
-              // Trigger core blast expansion
               coreBlastIntensityRef.current = 1.0;
 
-              // Add a laser railgun beam!
               laserBeamsRef.current.push({
                 startX: coreX,
                 startY: coreY,
@@ -1403,7 +1638,6 @@ const SpaceCanvasBackground: React.FC<{
                 style: 'sparks'
               });
 
-              // Directional thruster stardust blast to sale rep card
               const dxTarget = p.targetX - coreX;
               const dyTarget = p.targetY - coreY;
               const distTarget = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
@@ -1462,28 +1696,26 @@ const SpaceCanvasBackground: React.FC<{
             }
 
             if (p.progress >= 1.0) {
-              triggerSaleRipple(p.saleIndex, p.sourceType, p.color, p.id, p.status as 'assigned' | 'compensation');
+              triggerSaleRipple(p.saleIndex, p.sourceType, p.color, p.id, p.status as any);
               return false;
             }
           }
 
-          // Calculate opacity for vetting fade-out ("Cục lead chạy tới AI sáng lên và mất khi nào xử lý xong mới thả hiện ra..")
           let opacity = 1.0;
           if (p.stage === 1) {
             const fadeThreshold = Math.min(1.3, p.maxHoldTime * 0.4);
             const elapsed = p.maxHoldTime - p.holdTime;
             if (elapsed < fadeThreshold) {
-              opacity = Math.max(0, 1 - (elapsed / fadeThreshold)); // Fade out immediately inside core
+              opacity = Math.max(0, 1 - (elapsed / fadeThreshold));
             } else if (p.holdTime < fadeThreshold) {
-              opacity = Math.max(0, 1 - (p.holdTime / fadeThreshold)); // Fade back in just before release
+              opacity = Math.max(0, 1 - (p.holdTime / fadeThreshold));
             } else {
-              opacity = 0.0; // Completely invisible inside core while vetting
+              opacity = 0.0;
             }
           }
 
-          // Only draw lead bubble if visible
           if (opacity > 0) {
-            const isMobileView = canvas.width < 1180;
+            const isMobileView = width < 1180;
             const bubbleRadius = isMobileView ? 9 : 14;
             const initialsFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
             const nameFont = isMobileView ? 'bold 7px monospace' : 'bold 9px monospace';
@@ -1498,20 +1730,17 @@ const SpaceCanvasBackground: React.FC<{
             ctx.fill();
             ctx.stroke();
 
-            // Initials
             ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
             ctx.font = initialsFont;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(getInitials(p.leadName), p.x, p.y);
 
-            // Full Name tag next to avatar
             ctx.textAlign = 'left';
             ctx.font = nameFont;
             ctx.fillStyle = `rgba(255, 255, 255, ${0.88 * opacity})`;
             ctx.fillText(p.leadName, p.x + offsetTextX, p.y + (isMobileView ? 1 : 2));
 
-            // Subtext
             ctx.fillStyle = p.color + Math.round(0.8 * opacity * 255).toString(16).padStart(2, '0');
             ctx.font = subtextFont;
             ctx.fillText(
@@ -1521,9 +1750,11 @@ const SpaceCanvasBackground: React.FC<{
                   ? 'COMPENSATE' 
                   : p.status === 'pending_work_hours'
                     ? 'HOLD'
-                    : p.status === 'duplicate' 
-                      ? 'DUPLICATED' 
-                      : 'REJECTED', 
+                    : p.status === 'reminder'
+                      ? 'REMINDER'
+                      : p.status === 'duplicate' 
+                        ? 'DUPLICATED' 
+                        : 'REJECTED', 
               p.x + offsetTextX, 
               p.y + (isMobileView ? 8 : 11)
             );
@@ -1533,20 +1764,44 @@ const SpaceCanvasBackground: React.FC<{
         });
       }
 
-      // 10. Update and draw stardust sparkles
+      // 10. Update and draw stardust sparkles (BATCHED FOR 120HZ FEEL)
+      const stardustGroups: Record<string, { x: number; y: number; size: number }[]> = {};
+
       stardustRef.current = stardustRef.current.filter(s => {
         s.x += s.vx * deltaTime;
         s.y += s.vy * deltaTime;
         s.alpha -= s.decay * deltaTime;
 
         if (s.alpha > 0) {
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-          ctx.fillStyle = s.color + Math.round(s.alpha * 255).toString(16).padStart(2, '0');
-          ctx.fill();
+          const distorted = getDistortedStarPos(s.x, s.y);
+          const displayX = distorted.x;
+          const displayY = distorted.y;
+
+          let alphaBin = 0.95;
+          if (s.alpha < 0.3) alphaBin = 0.2;
+          else if (s.alpha < 0.6) alphaBin = 0.5;
+          else if (s.alpha < 0.85) alphaBin = 0.75;
+
+          const alphaHex = Math.round(alphaBin * 255).toString(16).padStart(2, '0');
+          const key = s.color + alphaHex;
+
+          if (!stardustGroups[key]) {
+            stardustGroups[key] = [];
+          }
+          stardustGroups[key].push({ x: displayX, y: displayY, size: s.size });
           return true;
         }
         return false;
+      });
+
+      Object.entries(stardustGroups).forEach(([colorWithAlpha, particles]) => {
+        ctx.beginPath();
+        ctx.fillStyle = colorWithAlpha;
+        particles.forEach(p => {
+          ctx.moveTo(p.x + p.size, p.y);
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        });
+        ctx.fill();
       });
 
       // 11. Update and draw core shockwaves
@@ -1606,6 +1861,7 @@ const SpaceCanvasBackground: React.FC<{
         ctx.stroke();
       }
 
+
       // Restore canvas state after glitch translation
       ctx.restore();
 
@@ -1616,7 +1872,7 @@ const SpaceCanvasBackground: React.FC<{
         const intensity = coreGlowIntensityRef.current;
         const blast = coreBlastIntensityRef.current;
         const baseScale = 1.0 + 0.03 * Math.sin(timestamp / 240);
-        const scale = baseScale - maxCompression + blast * 0.35 + intensity * 0.05;
+        const scale = baseScale - maxCompression + blast * 0.12 + intensity * 0.05;
         const shadowSpread = 35 + intensity * 48 + blast * 20;
         const opacity = 0.8 + intensity * 0.2 + blast * 0.15;
 
@@ -1650,6 +1906,8 @@ const SpaceCanvasBackground: React.FC<{
       style={{
         position: 'absolute',
         inset: 0,
+        width: '100%',
+        height: '100%',
         pointerEvents: 'auto', // Enable pointer events for background click ripples
         zIndex: 1
       }}
@@ -2003,7 +2261,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     
     // Fallback mock pool if yesterday had no data
     const fallback = [];
-    const statuses: ('assigned' | 'rejected' | 'duplicate' | 'compensation')[] = ['assigned', 'assigned', 'assigned', 'rejected', 'duplicate', 'compensation'];
+    const statuses: ('assigned' | 'rejected' | 'duplicate' | 'compensation' | 'reminder')[] = ['assigned', 'assigned', 'assigned', 'rejected', 'duplicate', 'compensation', 'reminder'];
     const fallbackSources = ['Facebook Ad Lead - TOPUP', 'Facebook Ad Male_30_45', 'Zalo Webhook & Direct API'];
     const fallbackSales = ['Turnio DEV', 'Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C'];
     
@@ -2143,7 +2401,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     }, 1600);
   };
 
-  const spawnParticle = (leadName: string, sourceIdx: number, saleIdx: number, status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours', particleId: string) => {
+  const spawnParticle = (leadName: string, sourceIdx: number, saleIdx: number, status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' | 'reminder', particleId: string) => {
     const coords = coordsRef.current;
     const sCoord = coords.sources[sourceIdx];
     const cCoord = coords.core;
@@ -2230,9 +2488,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       saleIdx = Math.floor(Math.random() * salesList.length);
     }
 
-    let status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' = 'assigned';
+    let status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' | 'reminder' = 'assigned';
     const rawStatus = log.status;
-    if (rawStatus === 'assigned' || rawStatus === 'rejected' || rawStatus === 'duplicate' || rawStatus === 'compensation' || rawStatus === 'pending_work_hours') {
+    if (rawStatus === 'assigned' || rawStatus === 'rejected' || rawStatus === 'duplicate' || rawStatus === 'compensation' || rawStatus === 'pending_work_hours' || rawStatus === 'reminder') {
       status = rawStatus;
     } else if (rawStatus === 'rule_6_month') {
       status = 'assigned';
@@ -2453,9 +2711,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         let saleIdx = salesList.findIndex((sale: any) => sale.name === assignedTVV);
         if (saleIdx === -1) saleIdx = 0;
 
-        let status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' = 'assigned';
+        let status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' | 'reminder' = 'assigned';
         const rawStatus = latestLog.status;
-        if (rawStatus === 'assigned' || rawStatus === 'rejected' || rawStatus === 'duplicate' || rawStatus === 'compensation' || rawStatus === 'pending_work_hours') {
+        if (rawStatus === 'assigned' || rawStatus === 'rejected' || rawStatus === 'duplicate' || rawStatus === 'compensation' || rawStatus === 'pending_work_hours' || rawStatus === 'reminder') {
           status = rawStatus;
         }
 
@@ -2502,7 +2760,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         const successfulLog = activeLogs.find((log: any) => 
           log.status === 'assigned' || 
           log.status === 'compensation' || 
-          log.status === 'pending_work_hours'
+          log.status === 'pending_work_hours' ||
+          log.status === 'reminder'
         );
         if (successfulLog) {
           const saleIdx = salesList.findIndex((sale: any) => sale.name === successfulLog.assigned_to_name);
@@ -2621,7 +2880,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     }
   }, [isPlaying, simElapsedTime, simCurrentIndex, sortedPool, summaryDate]);
 
-  const triggerSaleRipple = (index: number, sourceName: string, sourceColor: string, particleId: string, status: 'assigned' | 'compensation' | 'pending_work_hours') => {
+  const triggerSaleRipple = (index: number, sourceName: string, sourceColor: string, particleId: string, status: 'assigned' | 'compensation' | 'pending_work_hours' | 'reminder') => {
     setLastActiveSaleIdx(index); // Keep glowing border active forever until a new sale receives data
     setActiveSalesGlow(prev => ({ ...prev, [index]: true }));
     setConsultantChannels(prev => ({ ...prev, [index]: { name: sourceName, color: sourceColor } }));
@@ -3081,8 +3340,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     border: isGlow
                       ? `1.8px solid ${src.color}`
                       : isPermanentGlow
-                        ? `1.2px solid ${src.color}66`
-                        : `1px solid ${src.color}20`,
+                        ? `1.8px solid ${src.color}66`
+                        : `1.8px solid ${src.color}20`,
                     borderRadius: isMobile ? '10px' : '14px',
                     padding: isMobile ? '0.5rem 0.75rem' : '0.8rem 1.1rem',
                     boxShadow: isGlow
@@ -3402,8 +3661,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     border: isGlow
                       ? `1.8px solid ${channel.color}`
                       : isPermanentGlow
-                        ? `1.2px solid ${channel.color}66`
-                        : '1px solid rgba(255,255,255,0.06)',
+                        ? `1.8px solid ${channel.color}66`
+                        : '1.8px solid rgba(255,255,255,0.06)',
                     borderRadius: isMobile ? '10px' : '16px',
                     padding: isMobile ? '0.5rem 0.75rem' : '0.85rem 1.15rem',
                     boxShadow: isGlow
@@ -3469,8 +3728,16 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ fontSize: isMobile ? '0.75rem' : '0.82rem', fontWeight: 800, color: '#fff' }}>
-                          <GlitchText text={sale.name} active={isGlow} />
+                        <div 
+                          style={{ 
+                            fontSize: isMobile ? '0.75rem' : '0.82rem', 
+                            fontWeight: 800, 
+                            color: '#fff',
+                            textShadow: isGlow ? `0 0 8px #fff, 0 0 16px ${channel.color}` : 'none',
+                            transition: 'text-shadow 0.3s ease'
+                          }}
+                        >
+                          {sale.name}
                         </div>
                         {isPermanentGlow && (
                           <span style={{
@@ -3595,7 +3862,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 );
               }
 
-              const isAssigned = feed.status === 'assigned' || feed.status === 'compensation' || feed.status === 'pending_work_hours';
+              const isAssigned = feed.status === 'assigned' || feed.status === 'compensation' || feed.status === 'pending_work_hours' || feed.status === 'reminder';
               return (
                 <div
                   key={feed.id}
@@ -3621,45 +3888,53 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       borderRadius: '4px',
                       background: feed.status === 'processing'
                         ? 'rgba(245, 158, 11, 0.15)'
-                        : isAssigned 
-                          ? 'rgba(168, 85, 247, 0.15)' 
-                          : 'rgba(239, 68, 68, 0.15)',
+                        : feed.status === 'reminder'
+                          ? 'rgba(219, 39, 119, 0.15)'
+                          : isAssigned 
+                            ? 'rgba(168, 85, 247, 0.15)' 
+                            : 'rgba(239, 68, 68, 0.15)',
                       color: feed.status === 'processing'
                         ? '#fbbf24'
-                        : isAssigned 
-                          ? '#c084fc' 
-                          : '#ef4444',
+                        : feed.status === 'reminder'
+                          ? '#f472b6'
+                          : isAssigned 
+                            ? '#c084fc' 
+                            : '#ef4444',
                       fontWeight: 700,
                       border: `1px solid ${
                         feed.status === 'processing'
                           ? 'rgba(245, 158, 11, 0.25)'
-                          : isAssigned 
-                            ? 'rgba(168, 85, 247, 0.25)' 
-                            : 'rgba(239, 68, 68, 0.25)'
+                          : feed.status === 'reminder'
+                            ? 'rgba(219, 39, 119, 0.25)'
+                            : isAssigned 
+                              ? 'rgba(168, 85, 247, 0.25)' 
+                              : 'rgba(239, 68, 68, 0.25)'
                       }`,
                       lineHeight: '1.2'
                     }}>
                       {feed.status === 'processing'
                         ? 'ĐANG ĐÁNH GIÁ...'
-                        : feed.status === 'assigned'
-                          ? 'ĐẠT CHUẨN'
-                          : feed.status === 'compensation'
-                            ? 'DATA BÙ'
-                            : feed.status === 'pending_work_hours'
-                              ? 'CHỜ GIỜ LÀM'
-                              : feed.status === 'duplicate'
-                                ? 'TRÙNG LẶP'
-                                : 'DƯỚI CHUẨN'}
+                        : feed.status === 'reminder'
+                          ? 'NHẮC LẠI'
+                          : feed.status === 'assigned'
+                            ? 'ĐẠT CHUẨN'
+                            : feed.status === 'compensation'
+                              ? 'DATA BÙ'
+                              : feed.status === 'pending_work_hours'
+                                ? 'CHỜ GIỜ LÀM'
+                                : feed.status === 'duplicate'
+                                  ? 'TRÙNG LẶP'
+                                  : 'DƯỚI CHUẨN'}
                     </span>
                   </div>
-                  <div style={{ color: feed.status === 'processing' ? '#fbbf24' : isAssigned ? '#c084fc' : '#ef4444', fontWeight: 700 }}>
+                  <div style={{ color: feed.status === 'processing' ? '#fbbf24' : feed.status === 'reminder' ? '#f472b6' : isAssigned ? '#c084fc' : '#ef4444', fontWeight: 700 }}>
                     {feed.status === 'processing' ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         [VETTING] {"=>"} AI đang đánh giá dữ liệu...
                       </span>
                     ) : isAssigned ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        [OK] {"=>"} Phân phối: {feed.assigned_to_name} {feed.status === 'pending_work_hours' && `(${t('Chờ giờ làm')})`}
+                        {feed.status === 'reminder' ? '[REMINDER]' : '[OK]'} {"=>"} Phân phối: {feed.assigned_to_name} {feed.status === 'pending_work_hours' && `(${t('Chờ giờ làm')})`}
                       </span>
                     ) : (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

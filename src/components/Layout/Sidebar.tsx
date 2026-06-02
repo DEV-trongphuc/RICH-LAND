@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -162,48 +162,94 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         {/* Quick Action Button */}
         <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {isCollapsed ? (
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                if (onMobileClose) onMobileClose();
-              }}
-              style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              title={t("Thêm Data Nhanh")}
-            >
-              <Plus size={20} />
-            </button>
+          {user?.role === 'sale' ? (
+            isCollapsed ? (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-ai-infinity-view'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                title={t("AI Infinity View")}
+              >
+                <Cpu size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-ai-infinity-view'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                style={{
+                  width: '100%', height: 44, borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(168, 85, 247, 0.5)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.4)';
+                }}
+              >
+                <Cpu size={18} /> {t("AI Infinity View")}
+              </button>
+            )
           ) : (
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                if (onMobileClose) onMobileClose();
-              }}
-              style={{
-                width: '100%', height: 44, borderRadius: '12px',
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.5)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.4)';
-              }}
-            >
-              <Plus size={18} /> {t("Thêm Data Nhanh")}
-            </button>
+            isCollapsed ? (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                title={t("Thêm Data Nhanh")}
+              >
+                <Plus size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                style={{
+                  width: '100%', height: 44, borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.5)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.4)';
+                }}
+              >
+                <Plus size={18} /> {t("Thêm Data Nhanh")}
+              </button>
+            )
           )}
         </div>
 

@@ -297,6 +297,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [dateFilter, chartMode, isActive]);
 
+  useEffect(() => {
+    const handleOpenWarRoom = () => {
+      setShowWarRoom(true);
+    };
+    window.addEventListener('open-ai-infinity-view', handleOpenWarRoom);
+    return () => window.removeEventListener('open-ai-infinity-view', handleOpenWarRoom);
+  }, []);
+
   const syncDateFilterToModal = (filter: string) => {
     let mode = 'this_month';
     let start = '';
@@ -619,7 +627,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             }}
           >
             <Cpu size={15} style={{ color: '#fff' }} />
-            <span>AI Core</span>
+            <span>AI Infinity View</span>
           </button>
 
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}

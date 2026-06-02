@@ -7,8 +7,9 @@ import {
   XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
-  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info
+  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu
 } from 'lucide-react';
+import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
@@ -218,6 +219,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [reportReasonType, setReportReasonType] = useState('Số điện thoại không đúng / Thuê bao');
   const [reportDetails, setReportDetails] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [showWarRoom, setShowWarRoom] = useState(false);
 
   // Detail Modal
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -2970,6 +2972,53 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           )}
         </div>
 
+        {/* Quick Action Button */}
+        <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          {isCollapsed ? (
+            <button
+              onClick={() => {
+                setShowWarRoom(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              title={t("AI Infinity View")}
+            >
+              <Cpu size={20} />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setShowWarRoom(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              style={{
+                width: '100%', height: 44, borderRadius: '12px',
+                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(168, 85, 247, 0.5)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.4)';
+              }}
+            >
+              <Cpu size={18} /> {t("AI Infinity View")}
+            </button>
+          )}
+        </div>
+
         {/* Collapse Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -4278,6 +4327,16 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           ) : null}
         </CustomModal>
       )}
+
+      {showWarRoom && (
+        <WarRoomFlightDeck
+          isOpen={showWarRoom}
+          onClose={() => setShowWarRoom(false)}
+          stats={null}
+          recentLogs={[]}
+        />
+      )}
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
