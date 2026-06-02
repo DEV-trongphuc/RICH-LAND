@@ -392,42 +392,83 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                         }
                     }
 
-                    // Gửi email & zalo (mặc định sync = false để chèn vào hàng đợi)
-                    try {
-                        sendLeadAssignedEmailToSale(
-                            $c['email'],
-                            $c['name'],
-                            $leadData['name'],
-                            $leadData['phone'],
-                            $leadData['note'],
-                            $leadData['source'],
-                            $ccEmails,
-                            $roundName,
-                            $leadId,
-                            $assignedConsultantId,
-                            $targetRoundId
-                        );
-                    } catch (Exception $mailEx) {
-                        error_log("Error sending post-AI email: " . $mailEx->getMessage());
-                    }
+                    if ($status === 'reminder') {
+                        // Gửi email & zalo nhắc lại
+                        try {
+                            $timeline = getLeadHistoryTimeline($conn, $leadId, true);
+                            sendLeadReminderEmailToSale(
+                                $c['email'],
+                                $c['name'],
+                                $leadData['name'],
+                                $leadData['phone'],
+                                $leadData['note'],
+                                $leadData['source'],
+                                $ccEmails,
+                                $roundName,
+                                $timeline,
+                                $leadId
+                            );
+                        } catch (Exception $mailEx) {
+                            error_log("Error sending post-AI reminder email: " . $mailEx->getMessage());
+                        }
 
-                    try {
-                        sendLeadAssignedZaloMessageToSale(
-                            $assignedConsultantId,
-                            $c['name'],
-                            $leadData['name'],
-                            $leadData['phone'],
-                            $leadData['note'],
-                            $leadData['source'],
-                            $roundName,
-                            $leadId,
-                            $targetRoundId,
-                            $leadData['email'],
-                            $leadData['type'],
-                            false // sync = false to queue it!
-                        );
-                    } catch (Exception $zaloEx) {
-                        error_log("Error sending post-AI Zalo: " . $zaloEx->getMessage());
+                        try {
+                            $timeline = getLeadHistoryTimeline($conn, $leadId, true);
+                            sendLeadReminderZaloMessageToSale(
+                                $assignedConsultantId,
+                                $c['name'],
+                                $leadData['name'],
+                                $leadData['phone'],
+                                $leadData['note'],
+                                $leadData['source'],
+                                $roundName,
+                                $timeline,
+                                $leadId,
+                                $leadData['email'],
+                                $leadData['type'],
+                                false // sync = false to queue it!
+                            );
+                        } catch (Exception $zaloEx) {
+                            error_log("Error sending post-AI reminder Zalo: " . $zaloEx->getMessage());
+                        }
+                    } else {
+                        // Gửi email & zalo (mặc định sync = false để chèn vào hàng đợi)
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $c['email'],
+                                $c['name'],
+                                $leadData['name'],
+                                $leadData['phone'],
+                                $leadData['note'],
+                                $leadData['source'],
+                                $ccEmails,
+                                $roundName,
+                                $leadId,
+                                $assignedConsultantId,
+                                $targetRoundId
+                            );
+                        } catch (Exception $mailEx) {
+                            error_log("Error sending post-AI email: " . $mailEx->getMessage());
+                        }
+
+                        try {
+                            sendLeadAssignedZaloMessageToSale(
+                                $assignedConsultantId,
+                                $c['name'],
+                                $leadData['name'],
+                                $leadData['phone'],
+                                $leadData['note'],
+                                $leadData['source'],
+                                $roundName,
+                                $leadId,
+                                $targetRoundId,
+                                $leadData['email'],
+                                $leadData['type'],
+                                false // sync = false to queue it!
+                            );
+                        } catch (Exception $zaloEx) {
+                            error_log("Error sending post-AI Zalo: " . $zaloEx->getMessage());
+                        }
                     }
                 }
                 $stmt->close();

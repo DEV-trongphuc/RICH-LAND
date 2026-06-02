@@ -1104,20 +1104,19 @@ function getNextConsultantInRound($conn, $roundId)
     return ['id' => $nextId, 'is_compensation' => false];
 }
 
-function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null)
+function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null, $preserveInteractionDate = false)
 {
     $phone = normalizePhone($phone);
     if ($phone === '')
         $phone = null;
     $email = trim($email) === '' ? null : trim($email);
 
-    $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
-
     // Check if duplicate to track original source if source changes
     $oldSource = null;
     $dupId = null;
+    $oldInteractionDate = null;
     if (!empty($phone)) {
-        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE phone = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source, last_interaction_date FROM leads WHERE phone = ? LIMIT 1");
         $sStmt->bind_param("s", $phone);
         $sStmt->execute();
         $res = $sStmt->get_result();
@@ -1125,11 +1124,12 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
             $row = $res->fetch_assoc();
             $dupId = $row['id'];
             $oldSource = $row['source'];
+            $oldInteractionDate = $row['last_interaction_date'];
         }
         $sStmt->close();
     }
     if (!$dupId && !empty($email)) {
-        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE email = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source, last_interaction_date FROM leads WHERE email = ? LIMIT 1");
         $sStmt->bind_param("s", $email);
         $sStmt->execute();
         $res = $sStmt->get_result();
@@ -1137,9 +1137,12 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
             $row = $res->fetch_assoc();
             $dupId = $row['id'];
             $oldSource = $row['source'];
+            $oldInteractionDate = $row['last_interaction_date'];
         }
         $sStmt->close();
     }
+
+    $dateVal = ($preserveInteractionDate && !empty($oldInteractionDate)) ? $oldInteractionDate : ($customDate ? $customDate : date('Y-m-d H:i:s'));
 
     if ($dupId && !empty($oldSource) && !empty($source) && strcasecmp(trim($oldSource), trim($source)) !== 0) {
         $sourceUpdateNote = "[Cập nhật nguồn: Nguồn trước đó là " . $oldSource . "]";
@@ -1182,7 +1185,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     return $id;
 }
 
-function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false)
+function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false, $preserveInteractionDate = false)
 {
     $phone = normalizePhone($phone);
     if (empty($phone) && empty($email))
@@ -1205,8 +1208,9 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
 
     $id = null;
     $oldSource = null;
+    $oldInteractionDate = null;
     if (!empty($phone)) {
-        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE phone = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source, last_interaction_date FROM leads WHERE phone = ? LIMIT 1");
         $sStmt->bind_param("s", $phone);
         $sStmt->execute();
         $res = $sStmt->get_result();
@@ -1214,11 +1218,12 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
             $row = $res->fetch_assoc();
             $id = $row['id'];
             $oldSource = $row['source'];
+            $oldInteractionDate = $row['last_interaction_date'];
         }
         $sStmt->close();
     }
     if (!$id && !empty($email)) {
-        $sStmt = $conn->prepare("SELECT id, source FROM leads WHERE email = ? LIMIT 1");
+        $sStmt = $conn->prepare("SELECT id, source, last_interaction_date FROM leads WHERE email = ? LIMIT 1");
         $sStmt->bind_param("s", $email);
         $sStmt->execute();
         $res = $sStmt->get_result();
@@ -1226,6 +1231,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
             $row = $res->fetch_assoc();
             $id = $row['id'];
             $oldSource = $row['source'];
+            $oldInteractionDate = $row['last_interaction_date'];
         }
         $sStmt->close();
     }
@@ -1235,7 +1241,7 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
             $sourceUpdateNote = "[Cập nhật nguồn: Nguồn trước đó là " . $oldSource . "]";
             $note = empty(trim($note ?? '')) ? $sourceUpdateNote : $note . "\n" . $sourceUpdateNote;
         }
-        $dateVal = $customDate ? $customDate : date('Y-m-d H:i:s');
+        $dateVal = ($preserveInteractionDate && !empty($oldInteractionDate)) ? $oldInteractionDate : ($customDate ? $customDate : date('Y-m-d H:i:s'));
         if ($onlyUpdateDate) {
             $uStmt = $conn->prepare("UPDATE leads SET last_interaction_date = ? WHERE id = ?");
             $uStmt->bind_param("si", $dateVal, $id);

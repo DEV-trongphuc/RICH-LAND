@@ -417,9 +417,9 @@ if ($isSilent == 1) {
     try {
         if ($crmCheckResult['leadExists']) {
             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
-            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId, null, $name);
+            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId, null, $name, false, true);
         } else {
-            $leadId = insertLead($conn, $data, $assignedToId, $phone, $email, $name, $source, $type, $note, $connectionId);
+            $leadId = insertLead($conn, $data, $assignedToId, $phone, $email, $name, $source, $type, $note, $connectionId, null, true);
         }
         $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
         logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);

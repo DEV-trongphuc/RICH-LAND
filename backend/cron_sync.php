@@ -1238,9 +1238,9 @@ foreach ($connections as $connItem) {
                     try {
                         if ($crmCheckResult['leadExists']) {
                             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
-                            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name);
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name, false, true);
                         } else {
-                            $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                            $leadId = insertLead($conn, $rowData, $assignedToId, $phone, $email, $name, $source, $type, $note, $connItem['id'], null, true);
                         }
                         $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
                         logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);

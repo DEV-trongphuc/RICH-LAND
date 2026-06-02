@@ -6477,13 +6477,49 @@ switch ($action) {
                     $c = $stmtC->get_result()->fetch_assoc();
                     $stmtC->close();
                     if ($c) {
-                        try {
-                            sendLeadAssignedEmailToSale($c['email'], $c['name'], $lead['name'], $lead['phone'], $lead['note'], $lead['source'], $ccEmails, $roundName, $lead_id, $assignedConsultantId, $targetRoundId);
-                        } catch (Exception $e) {
-                        }
-                        try {
-                            sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $lead['name'], $lead['phone'], $lead['note'], $lead['source'], $roundName, $lead_id, $targetRoundId, $lead['email'], $lead['type']);
-                        } catch (Exception $e) {
+                        if ($status === 'reminder') {
+                            try {
+                                $timeline = getLeadHistoryTimeline($conn, $lead_id, true);
+                                sendLeadReminderEmailToSale(
+                                    $c['email'],
+                                    $c['name'],
+                                    $lead['name'],
+                                    $lead['phone'],
+                                    $lead['note'],
+                                    $lead['source'],
+                                    $ccEmails,
+                                    $roundName,
+                                    $timeline,
+                                    $lead_id
+                                );
+                            } catch (Exception $e) {
+                            }
+                            try {
+                                $timeline = getLeadHistoryTimeline($conn, $lead_id, true);
+                                sendLeadReminderZaloMessageToSale(
+                                    $assignedConsultantId,
+                                    $c['name'],
+                                    $lead['name'],
+                                    $lead['phone'],
+                                    $lead['note'],
+                                    $lead['source'],
+                                    $roundName,
+                                    $timeline,
+                                    $lead_id,
+                                    $lead['email'],
+                                    $lead['type']
+                                );
+                            } catch (Exception $e) {
+                            }
+                        } else {
+                            try {
+                                sendLeadAssignedEmailToSale($c['email'], $c['name'], $lead['name'], $lead['phone'], $lead['note'], $lead['source'], $ccEmails, $roundName, $lead_id, $assignedConsultantId, $targetRoundId);
+                            } catch (Exception $e) {
+                            }
+                            try {
+                                sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $lead['name'], $lead['phone'], $lead['note'], $lead['source'], $roundName, $lead_id, $targetRoundId, $lead['email'], $lead['type']);
+                            } catch (Exception $e) {
+                            }
                         }
                     }
                 }
