@@ -261,7 +261,7 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();

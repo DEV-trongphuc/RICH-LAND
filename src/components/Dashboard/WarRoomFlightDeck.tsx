@@ -2043,14 +2043,16 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         localStorage.setItem('domation_theme', 'dark');
         window.dispatchEvent(new Event('theme-change'));
       }
-    } else {
+    }
+
+    return () => {
       if (prevThemeRef.current === 'light') {
         document.documentElement.setAttribute('data-theme', 'light');
         localStorage.setItem('domation_theme', 'light');
         window.dispatchEvent(new Event('theme-change'));
         prevThemeRef.current = null;
       }
-    }
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -2087,21 +2089,35 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     setSimErrorCount(0);
     setSimulatedLeadsPerSale({});
     setSimulatedLeadsPerSource({});
+  }, [isPlaying]);
 
-    if (!isPlaying) {
-      // Fetch fresh today's stats to reset diagnostic counters immediately
-      fetchAPI('get_dashboard_stats&date=Hôm nay')
-        .then(res => {
-          if (res.success && res.data) {
-            setTodayStats(res.data);
-            setTotalCounter(res.data.total_today || 0);
-            setSharedCounter(res.data.distributed_today || 0);
-            setErrorCounter(res.data.errors || 0);
+  // Polling today's stats and logs periodically in Real-time mode
+  useEffect(() => {
+    if (!isOpen || isPlaying) return;
+
+    const pollData = () => {
+      Promise.all([
+        fetchAPI('get_dashboard_stats&date=Hôm nay'),
+        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100')
+      ])
+        .then(([statsRes, logsRes]) => {
+          if (statsRes.success && statsRes.data) {
+            setTodayStats(statsRes.data);
+          }
+          if (logsRes.success && Array.isArray(logsRes.data)) {
+            const filtered = logsRes.data.filter((log: any) => log.status !== 'silent');
+            setTodayLogs(filtered);
           }
         })
-        .catch(err => console.error('Lỗi refresh stats realtime:', err));
-    }
-  }, [isPlaying]);
+        .catch(err => console.error('Lỗi poll realtime stats/logs:', err));
+    };
+
+    // Poll immediately on transition to real-time mode
+    pollData();
+
+    const interval = setInterval(pollData, 5000);
+    return () => clearInterval(interval);
+  }, [isOpen, isPlaying]);
 
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [tempDateMode, setTempDateMode] = useState('preset'); // 'preset' | 'single' | 'range'
@@ -2332,7 +2348,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   }, [isPlaying, yesterdayLogs, stats, todayStats, simulatedLeadsPerSource, simElapsedTime]);
 
   const salesList = useMemo(() => {
-    const rawConsultants = (todayStats || stats)?.topConsultants;
+    const currentStats = todayStats || stats;
+    const rawConsultants = currentStats?.topConsultants;
     let list: any[] = [];
     if (rawConsultants && rawConsultants.length > 0) {
       list = rawConsultants.slice(0, 5);
@@ -2524,6 +2541,14 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   };
 
   const handleClose = () => {
+    // Restore theme immediately when closing starts
+    if (prevThemeRef.current === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('domation_theme', 'light');
+      window.dispatchEvent(new Event('theme-change'));
+      prevThemeRef.current = null;
+    }
+
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.warn("Fullscreen exit failed on close", err));
     }
@@ -2591,16 +2616,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
       let dataLoaded = false;
 
-      // Fetch today's stats, logs and all consultants
+      // Fetch today's logs and all consultants
       Promise.all([
-        fetchAPI('get_dashboard_stats&date=Hôm nay'),
         fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100'),
         fetchAPI('get_consultants')
       ])
-        .then(([statsRes, logsRes, consultantsRes]) => {
-          if (statsRes.success) {
-            setTodayStats(statsRes.data);
-          }
+        .then(([logsRes, consultantsRes]) => {
           if (logsRes.success && Array.isArray(logsRes.data)) {
             const filtered = logsRes.data.filter((log: any) => log.status !== 'silent');
             setTodayLogs(filtered);
@@ -2611,7 +2632,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           dataLoaded = true;
         })
         .catch(err => {
-          console.error('Lỗi tải dữ liệu Hôm nay:', err);
+          console.error('Lỗi tải dữ liệu:', err);
           dataLoaded = true; // Proceed anyway on error
         });
 
@@ -2665,7 +2686,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       setSharedCounter(currentStats.distributed_today || 0);
       setErrorCounter(currentStats.errors || 0);
     }
-  }, [stats, todayStats]);
+  }, [stats, todayStats, isPlaying]);
 
   // Digital Clock
   useEffect(() => {
@@ -2682,7 +2703,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
   // Sync logs feed (sliced to 4 items for V2 compact design)
   useEffect(() => {
-    if (isPlaying) return;
+    if (isPlaying) return; // Do not sync logs feed from actual logs if simulation is active!
 
     const currentLogs = todayLogs.length > 0 ? todayLogs : recentLogs;
 
@@ -2750,8 +2771,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
   // Reset/Initialize the lastProcessedLogIdRef when toggling to Real-time
   useEffect(() => {
+    if (isPlaying) return;
     const currentLogs = todayLogs.length > 0 ? todayLogs : recentLogs;
-    if (!isPlaying && currentLogs && currentLogs.length > 0) {
+    if (currentLogs && currentLogs.length > 0) {
       const activeLogs = currentLogs.filter((log: any) => log.status !== 'silent');
       if (activeLogs.length > 0) {
         lastProcessedLogIdRef.current = activeLogs[0].id;
@@ -3211,7 +3233,11 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <button
                   onClick={() => {
-                    setIsPlaying(!isPlaying);
+                    const nextPlaying = !isPlaying;
+                    setIsPlaying(nextPlaying);
+                    if (!nextPlaying) {
+                      setSummaryDate('Hôm nay');
+                    }
                   }}
                   style={{
                     padding: '6px 14px',
