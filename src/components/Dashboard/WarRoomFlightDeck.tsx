@@ -24,6 +24,7 @@ interface Stardust {
   size: number;
   alpha: number;
   decay: number;
+  friction?: number;
 }
 
 interface Particle {
@@ -1643,6 +1644,9 @@ const SpaceCanvasBackground: React.FC<{
               p.progress = 0;
               p.startX = coreX;
               p.startY = coreY;
+              if (p.status === 'assigned') {
+                p.color = '#a855f7'; // Purple for APPROVED
+              }
 
               gridRipplesRef.current.push({
                 x: coreX,
@@ -1691,13 +1695,17 @@ const SpaceCanvasBackground: React.FC<{
               if (distTarget > 0) {
                 const dirX = dxTarget / distTarget;
                 const dirY = dyTarget / distTarget;
-                for (let i = 0; i < 18; i++) {
-                  const spreadAngle = (Math.random() - 0.5) * 0.35;
+                const sparkCount = 16 + Math.floor(Math.random() * 6); // 16 to 21 sparkles
+                
+                for (let i = 0; i < sparkCount; i++) {
+                  // Cone angle centered around the vector towards the target sale
+                  const spreadAngle = (Math.random() - 0.5) * 0.40;
                   const cosSpread = Math.cos(spreadAngle);
                   const sinSpread = Math.sin(spreadAngle);
 
-                  const sparkVx = (dirX * cosSpread - dirY * sinSpread) * (80 + Math.random() * 110);
-                  const sparkVy = (dirX * sinSpread + dirY * cosSpread) * (80 + Math.random() * 110);
+                  const initialSpeed = 240 + Math.random() * 260; // shoot out very fast
+                  const sparkVx = (dirX * cosSpread - dirY * sinSpread) * initialSpeed;
+                  const sparkVy = (dirX * sinSpread + dirY * cosSpread) * initialSpeed;
 
                   stardustRef.current.push({
                     x: coreX,
@@ -1705,9 +1713,10 @@ const SpaceCanvasBackground: React.FC<{
                     vx: sparkVx,
                     vy: sparkVy,
                     color: p.color,
-                    size: 1.0 + Math.random() * 1.8,
+                    size: 1.0 + Math.random() * 2.0,
                     alpha: 1.0,
-                    decay: 0.85 + Math.random() * 0.6
+                    decay: 0.65 + Math.random() * 0.55, // decays a bit slower to show braking
+                    friction: 0.915 // dynamic braking factor
                   });
                 }
               }
@@ -1873,13 +1882,22 @@ const SpaceCanvasBackground: React.FC<{
               ctx.restore();
             }
 
+            ctx.save();
             ctx.beginPath();
             ctx.arc(p.x, p.y, bubbleRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
-            ctx.strokeStyle = p.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
+            if (p.stage === 2 && p.status === 'assigned') {
+              ctx.shadowColor = '#a855f7';
+              ctx.shadowBlur = 12 * opacity;
+              ctx.fillStyle = `rgba(168, 85, 247, ${0.95 * opacity})`;
+              ctx.strokeStyle = `rgba(168, 85, 247, ${opacity})`;
+            } else {
+              ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
+              ctx.strokeStyle = p.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
+            }
             ctx.lineWidth = 2.0;
             ctx.fill();
             ctx.stroke();
+            ctx.restore();
 
             ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
             ctx.font = initialsFont;
@@ -1895,17 +1913,19 @@ const SpaceCanvasBackground: React.FC<{
             ctx.fillStyle = p.color + Math.round(0.8 * opacity * 255).toString(16).padStart(2, '0');
             ctx.font = subtextFont;
             ctx.fillText(
-              p.status === 'assigned' 
-                ? 'APPROVED' 
-                : p.status === 'compensation' 
-                  ? 'COMPENSATE' 
-                  : p.status === 'pending_work_hours'
-                    ? 'HOLD'
-                    : p.status === 'reminder'
-                      ? 'REMINDER'
-                      : p.status === 'duplicate' 
-                        ? 'DUPLICATED' 
-                        : 'REJECTED', 
+              p.stage < 2 
+                ? 'RECEIVED' 
+                : p.status === 'assigned' 
+                  ? 'APPROVED' 
+                  : p.status === 'compensation' 
+                    ? 'COMPENSATE' 
+                    : p.status === 'pending_work_hours'
+                      ? 'HOLD'
+                      : p.status === 'reminder'
+                        ? 'REMINDER'
+                        : p.status === 'duplicate' 
+                          ? 'DUPLICATED' 
+                          : 'REJECTED', 
               p.x + offsetTextX, 
               p.y + (isMobileView ? 8 : 11)
             );
@@ -1918,6 +1938,10 @@ const SpaceCanvasBackground: React.FC<{
       const stardustGroups: Record<string, { x: number; y: number; size: number }[]> = {};
 
       stardustRef.current = stardustRef.current.filter(s => {
+        if (s.friction) {
+          s.vx *= Math.pow(s.friction, deltaTime * 60);
+          s.vy *= Math.pow(s.friction, deltaTime * 60);
+        }
         s.x += s.vx * deltaTime;
         s.y += s.vy * deltaTime;
         s.alpha -= s.decay * deltaTime;
@@ -2208,9 +2232,47 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       }
 
       (window as any).__themeTimeout__ = setTimeout(() => {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('domation_theme', 'light');
-        window.dispatchEvent(new Event('theme-change'));
+        const nextTheme = 'light';
+        const triggerThemeChange = () => {
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          localStorage.setItem('domation_theme', nextTheme);
+          window.dispatchEvent(new Event('theme-change'));
+        };
+
+        // Check if View Transition is supported and user does not prefer reduced motion
+        if (!(document as any).startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          triggerThemeChange();
+          prevThemeRef.current = null;
+          (window as any).__themeTimeout__ = null;
+          return;
+        }
+
+        // Use center of viewport as origin for circle transition
+        const x = window.innerWidth / 2;
+        const y = window.innerHeight / 2;
+        const endRadius = Math.hypot(x, y);
+
+        const transition = (document as any).startViewTransition(() => {
+          triggerThemeChange();
+        });
+
+        transition.ready.then(() => {
+          const clipPath = [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`
+          ];
+          document.documentElement.animate(
+            {
+              clipPath: clipPath,
+            },
+            {
+              duration: 600,
+              easing: 'ease-in-out',
+              pseudoElement: '::view-transition-new(root)',
+            }
+          );
+        });
+
         prevThemeRef.current = null;
         (window as any).__themeTimeout__ = null;
       }, 1000); // 1s delay before returning to light theme
@@ -2747,14 +2809,6 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   };
 
   const handleClose = () => {
-    // Restore theme immediately when closing starts
-    if (prevThemeRef.current === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem('domation_theme', 'light');
-      window.dispatchEvent(new Event('theme-change'));
-      prevThemeRef.current = null;
-    }
-
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.warn("Fullscreen exit failed on close", err));
     }
@@ -3109,9 +3163,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   }, [isPlaying, simElapsedTime, simCurrentIndex, sortedPool, summaryDate]);
 
   const triggerSaleRipple = (index: number, sourceName: string, sourceColor: string, particleId: string, status: 'assigned' | 'compensation' | 'pending_work_hours' | 'reminder') => {
+    const matchedSource = activeSources.find((s: any) => s.name === sourceName);
+    const resolvedColor = matchedSource?.color || sourceColor;
+
     setLastActiveSaleIdx(index); // Keep glowing border active forever until a new sale receives data
     setActiveSalesGlow(prev => ({ ...prev, [index]: true }));
-    setConsultantChannels(prev => ({ ...prev, [index]: { name: sourceName, color: sourceColor } }));
+    setConsultantChannels(prev => ({ ...prev, [index]: { name: sourceName, color: resolvedColor } }));
     triggerSharedRipple(); // Glow green and float +1 for "ĐÃ PHÂN PHỐI"
     if (isPlaying) {
       setSimSharedCount(prev => prev + 1);
@@ -3353,16 +3410,36 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '50%', border: '1.8px solid rgba(139, 92, 246, 0.55)', overflow: 'hidden', boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  width: '38px', 
+                  height: '38px', 
+                  borderRadius: '50%', 
+                  border: '1.8px solid rgba(139, 92, 246, 0.70)', 
+                  overflow: 'hidden', 
+                  boxShadow: '0 0 12px rgba(139, 92, 246, 0.50)',
+                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.40) 0%, rgba(5, 7, 18, 0.96) 100%)'
+                }}>
                   <img
                     src="https://crm-domation.vercel.app/LOGO.jpg"
                     alt="DOMATION Logo"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover',
+                      maskImage: 'radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
+                      WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)'
+                    }}
                   />
                 </div>
                 <div>
                   <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION AI INFINITY VIEW</h2>
-                  <p style={{ fontSize: '0.7rem', color: '#c084fc', opacity: 0.85 }}>{t('Đồng bộ luồng dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#a855f7', display: 'flex', alignItems: 'center', gap: '3px', textShadow: '0 0 8px rgba(168,85,247,0.4)' }}>
+                    <span>{t('Dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</span>
+                    <span className="cursor-blink" style={{ display: 'inline-block', width: '6px', height: '10px', backgroundColor: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,0.7)' }} />
+                  </p>
                 </div>
               </div>
 
