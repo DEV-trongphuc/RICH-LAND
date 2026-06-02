@@ -441,7 +441,7 @@ if (!function_exists('getTicketNotifyAdmins')) {
             $adminStmt->close();
         } else {
             // Fallback: role = 'admin' OR id = 1
-            $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+            $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
             if ($adminRes) {
                 while ($r = $adminRes->fetch_assoc()) {
                     $admins[] = $r;
@@ -5731,7 +5731,7 @@ switch ($action) {
         $stmtRecords->close();
 
         $adminAvatars = [];
-        $avatarQuery = $conn->query("SELECT name, avatar FROM accounts WHERE role = 'admin' OR role = 'superadmin'");
+        $avatarQuery = $conn->query("SELECT name, avatar FROM accounts WHERE (role = 'admin' OR role = 'superadmin') OR role = 'superadmin'");
         if ($avatarQuery) {
             while ($row = $avatarQuery->fetch_assoc()) {
                 if (!empty($row['avatar'])) {
@@ -6373,7 +6373,7 @@ switch ($action) {
                 if ($fbType === 'admin') {
                     $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
                     if ($fbAdminId > 0) {
-                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                         if ($admStmt) {
                             $admStmt->bind_param("i", $fbAdminId);
                             $admStmt->execute();
@@ -8851,7 +8851,7 @@ switch ($action) {
 
         // 3. Fetch other admins (role = 'admin' and id != $id)
         $otherAdmins = [];
-        $stmtOther = $conn->prepare("SELECT id, name, username, email FROM accounts WHERE role = 'admin' AND id != ?");
+        $stmtOther = $conn->prepare("SELECT id, name, username, email FROM accounts WHERE (role = 'admin' OR role = 'superadmin') AND id != ?");
         $stmtOther->bind_param("i", $id);
         $stmtOther->execute();
         $resOther = $stmtOther->get_result();
@@ -8920,7 +8920,7 @@ switch ($action) {
         try {
             if ($replacementId > 0) {
                 // Verify replacement is admin
-                $stmtVerify = $conn->prepare("SELECT id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                $stmtVerify = $conn->prepare("SELECT id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                 $stmtVerify->bind_param("i", $replacementId);
                 $stmtVerify->execute();
                 if ($stmtVerify->get_result()->num_rows === 0) {
@@ -11892,7 +11892,7 @@ switch ($action) {
             if ($fbType === 'admin') {
                 $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
                 if ($fbAdminId > 0) {
-                    $admStmt = $conn->prepare("SELECT name FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                    $admStmt = $conn->prepare("SELECT name FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                     $admStmt->bind_param("i", $fbAdminId);
                     $admStmt->execute();
                     $admRes = $admStmt->get_result();
@@ -12489,7 +12489,7 @@ switch ($action) {
             if ($fbType === 'admin') {
                 $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
                 if ($fbAdminId > 0) {
-                    $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                    $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                     $admStmt->bind_param("i", $fbAdminId);
                     $admStmt->execute();
                     $admRes = $admStmt->get_result();

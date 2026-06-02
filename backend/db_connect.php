@@ -193,7 +193,7 @@ if (!function_exists('getTicketNotifyAdmins')) {
             }
         } else {
             // Fallback: role = 'admin' OR id = 1
-            $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+            $adminRes = $conn->query("SELECT id, name, email, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
             if ($adminRes) {
                 while ($r = $adminRes->fetch_assoc()) {
                     $admins[] = $r;

@@ -218,7 +218,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
       fetchAPI('get_reports&status=pending&date=all&pageSize=1')
         .then(res => {
           if (res.success) {

@@ -356,7 +356,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         $fbCc = $fbSettings['fallback_cc_email'] ?? '';
                         
                         if ($fbAdminId > 0) {
-                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                             $admStmt->bind_param("i", $fbAdminId);
                             $admStmt->execute();
                             $admRes = $admStmt->get_result();
@@ -723,7 +723,7 @@ if (!function_exists('recallInactiveLeads')) {
                     $fbCc = $fbSettings['fallback_cc_email'] ?? '';
                     
                     if ($fbAdminId > 0) {
-                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                         $admStmt->bind_param("i", $fbAdminId);
                         $admStmt->execute();
                         $admRes = $admStmt->get_result();
@@ -1164,7 +1164,7 @@ foreach ($connections as $connItem) {
                         if ($fbAdminId > 0) {
                             static $fallbackAdminCache = [];
                             if (!isset($fallbackAdminCache[$fbAdminId])) {
-                                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                                 $admStmt->bind_param("i", $fbAdminId);
                                 $admStmt->execute();
                                 $admRes = $admStmt->get_result();

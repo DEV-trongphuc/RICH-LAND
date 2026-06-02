@@ -154,7 +154,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 $resCheck = $stmtCheck->get_result();
                 if ($resCheck && $rowCheck = $resCheck->fetch_assoc()) {
                     $adminRole = $rowCheck['role'];
-                    if ($adminRole === 'admin' || $adminRole === 'assistant') {
+                    if ($adminRole === 'admin' || $adminRole === 'superadmin' || $adminRole === 'assistant') {
                         $isAdmin = true;
                         $adminName = $rowCheck['name'] ?: 'Quản trị viên';
                         $adminAccountId = (int) $rowCheck['id'];
@@ -414,7 +414,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             if (strpos($textLower, '/accept') === 0) {
-                if ($adminRole !== 'admin') {
+                if ($adminRole !== 'admin' && $adminRole !== 'superadmin') {
                     sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh duyệt ticket lỗi này yêu cầu quyền tối cao (Admin). Tài khoản Trợ lý của bạn không đủ đặc quyền.");
                     exit;
                 }
@@ -656,7 +656,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             if (strpos($textLower, '/reject') === 0) {
-                if ($adminRole !== 'admin') {
+                if ($adminRole !== 'admin' && $adminRole !== 'superadmin') {
                     sendZaloMessage($botToken, $chatId, "⚠️ Lỗi: Câu lệnh từ chối ticket lỗi này yêu cầu quyền tối cao (Admin). Tài khoản Trợ lý của bạn không đủ đặc quyền.");
                     exit;
                 }
@@ -958,7 +958,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         if ($fbType === 'admin') {
                             $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
                             if ($fbAdminId > 0) {
-                                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+                                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
                                 if ($admStmt) {
                                     $admStmt->bind_param("i", $fbAdminId);
                                     $admStmt->execute();

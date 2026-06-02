@@ -246,7 +246,7 @@ function runDailyReportCron($conn)
             $adminRes = $adminStmt->get_result();
         } else {
             // Fallback: gửi tất cả Admin như trước
-            $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR id = 1");
+            $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
         }
 
         $admins = [];

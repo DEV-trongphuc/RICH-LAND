@@ -328,7 +328,7 @@ if (!$targetRoundId) {
     if ($fbType === 'admin') {
         $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
         if ($fbAdminId > 0) {
-            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND role = 'admin' LIMIT 1");
+            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
             if ($admStmt) {
                 $admStmt->bind_param("i", $fbAdminId);
                 $admStmt->execute();
