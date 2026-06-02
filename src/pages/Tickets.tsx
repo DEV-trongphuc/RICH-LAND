@@ -739,7 +739,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
   // Quick Message State
   const [quickMessageOpen, setQuickMessageOpen] = useState(false);
-  const [quickMessageTarget, setQuickMessageTarget] = useState<any>(null);
+  const [quickMessageTarget] = useState<any>(null);
   const [quickMessageText, setQuickMessageText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
