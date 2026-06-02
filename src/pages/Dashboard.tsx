@@ -609,13 +609,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           <button
             className="btn primary"
             onClick={() => setShowWarRoom(true)}
-            title={t("Chế độ trình chiếu TV văn phòng")}
+            title={t("AI Infinity")}
             style={{
+              width: 38,
               height: 38,
-              padding: '0 16px',
+              padding: 0,
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              justifyContent: 'center',
               borderRadius: 'var(--radius-md)',
               background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
               color: '#fff',
@@ -626,8 +627,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               flexShrink: 0
             }}
           >
-            <Cpu size={15} style={{ color: '#fff' }} />
-            <span>AI Infinity</span>
+            <Cpu size={18} style={{ color: '#fff' }} />
           </button>
 
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}

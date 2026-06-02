@@ -4319,104 +4319,346 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(circle at center, #0a0b1e 0%, #010206 100%)',
+            background: 'radial-gradient(circle at center, #090918 0%, #010103 100%)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 99999,
             fontFamily: 'monospace',
-            color: '#c084fc'
+            color: '#c084fc',
+            overflow: 'hidden'
           }}
         >
           {/* Futuristic grid lines */}
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(168, 85, 247, 0.02) 1px, transparent 1px), linear-gradient(rgba(168, 85, 247, 0.02) 1px, transparent 1px)',
+            background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(168, 85, 247, 0.02) 1px, transparent 1px), linear-gradient(rgba(168, 85, 247, 0.02) 1px, transparent 1px)',
             backgroundSize: '100% 4px, 40px 40px, 40px 40px',
+            pointerEvents: 'none',
+            zIndex: 1
+          }} />
+
+          {/* Scanning light line */}
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            width: '100%',
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.3), #ffffff, rgba(168, 85, 247, 0.3), transparent)',
+            boxShadow: '0 0 15px 4px rgba(168, 85, 247, 0.5)',
+            top: 0,
+            animation: 'globalScanLine 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+            zIndex: 10,
             pointerEvents: 'none'
           }} />
 
           {/* Animated Tech Reactor */}
-          <div className="loader-reactor" style={{ position: 'relative', width: 220, height: 220, marginBottom: 40 }}>
-            {/* Outer spinning dash ring */}
+          <div className="loader-reactor" style={{ position: 'relative', width: 260, height: 260, marginBottom: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+            
+            {/* Ambient Background Aura */}
             <div style={{
               position: 'absolute',
-              inset: 0,
+              width: 320,
+              height: 320,
+              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)',
               borderRadius: '50%',
-              border: '3px dashed rgba(168, 85, 247, 0.65)',
-              animation: 'spinCore 4s linear infinite',
-              boxShadow: '0 0 20px rgba(168, 85, 247, 0.3)'
+              animation: 'pulseAura 3s ease-in-out infinite',
+              pointerEvents: 'none',
+              zIndex: 0
             }} />
-            {/* Inner scanning ring */}
+
+            {/* Orbiting HUD rings (decorations) */}
             <div style={{
               position: 'absolute',
-              inset: 15,
+              width: 250,
+              height: 250,
               borderRadius: '50%',
-              border: '1.5px solid rgba(96, 165, 250, 0.4)',
-              borderTopColor: '#c084fc',
-              borderBottomColor: '#c084fc',
-              animation: 'spinCoreInverse 2s linear infinite'
+              border: '1px dashed rgba(168, 85, 247, 0.2)',
+              animation: 'spinCore 25s linear infinite'
             }} />
-            {/* Glow core with reactor CPU icon */}
             <div style={{
               position: 'absolute',
-              inset: 35,
+              width: 230,
+              height: 230,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%)',
+              border: '1px solid rgba(96, 165, 250, 0.15)',
+              animation: 'spinCoreInverse 40s linear infinite'
+            }} />
+
+            {/* Hexagonal decorative corner lines or notches */}
+            <div className="reactor-dots" style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              animation: 'spinCore 12s linear infinite',
+              pointerEvents: 'none'
+            }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  width: 6,
+                  height: 6,
+                  background: '#c084fc',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 8px #c084fc',
+                  top: i % 2 === 0 ? 0 : 'auto',
+                  bottom: i % 2 !== 0 ? 0 : 'auto',
+                  left: i < 2 ? 0 : 'auto',
+                  right: i >= 2 ? 0 : 'auto',
+                  transform: 'translate(-50%, -50%)',
+                  margin: '50%'
+                }} />
+              ))}
+            </div>
+
+            {/* Main Progress SVG Circle */}
+            <svg style={{ position: 'absolute', width: 220, height: 220, transform: 'rotate(-90deg)', zIndex: 2 }}>
+              {/* Outer Track Ring */}
+              <circle
+                cx="110"
+                cy="110"
+                r="95"
+                fill="transparent"
+                stroke="rgba(168, 85, 247, 0.1)"
+                strokeWidth="4"
+              />
+              {/* Main Progress Circle */}
+              <circle
+                cx="110"
+                cy="110"
+                r="95"
+                fill="transparent"
+                stroke="url(#reactorGrad)"
+                strokeWidth="6"
+                strokeDasharray={2 * Math.PI * 95}
+                strokeDashoffset={2 * Math.PI * 95 * (1 - bootPercent / 100)}
+                strokeLinecap="round"
+                style={{
+                  transition: 'stroke-dashoffset 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: 'drop-shadow(0 0 6px rgba(192, 132, 252, 0.8))'
+                }}
+              />
+              {/* Tech details: ticks on the ring */}
+              <circle
+                cx="110"
+                cy="110"
+                r="82"
+                fill="transparent"
+                stroke="rgba(96, 165, 250, 0.2)"
+                strokeWidth="2"
+                strokeDasharray="4, 8"
+                style={{ animation: 'spinCoreInverse 15s linear infinite' }}
+              />
+              
+              {/* Gradients definition */}
+              <defs>
+                <linearGradient id="reactorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#60a5fa" />
+                  <stop offset="50%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#ec4899" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            {/* Center Core HUD Panel */}
+            <div style={{
+              position: 'absolute',
+              width: 140,
+              height: 140,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(10, 11, 30, 0.95) 0%, rgba(2, 4, 12, 0.98) 100%)',
+              border: '1.5px solid rgba(168, 85, 247, 0.4)',
+              boxShadow: 'inset 0 0 20px rgba(168, 85, 247, 0.3), 0 0 25px rgba(0, 0, 0, 0.6)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              boxShadow: 'inset 0 0 15px rgba(168, 85, 247, 0.2)'
+              zIndex: 3
             }}>
-              <Cpu size={32} style={{ color: '#fff', animation: 'pulseGlow 2s ease-in-out infinite' }} />
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#ffffff', marginTop: 10, textShadow: '0 0 10px rgba(168, 85, 247, 0.8)' }}>
+              {/* Animated scanning bar overlay */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                pointerEvents: 'none'
+              }}>
+                <div style={{
+                  width: '100%',
+                  height: '4px',
+                  background: 'linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.8), transparent)',
+                  boxShadow: '0 0 10px rgba(96, 165, 250, 0.8)',
+                  position: 'absolute',
+                  top: '0%',
+                  animation: 'sweepScanner 2.5s ease-in-out infinite'
+                }} />
+              </div>
+
+              <Cpu size={36} style={{ color: '#fff', filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.8))', animation: 'pulseGlow 1.8s ease-in-out infinite' }} />
+              
+              <div style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', marginTop: 8, fontFamily: 'monospace', textShadow: '0 0 12px rgba(168, 85, 247, 0.9)' }}>
                 {bootPercent}%
               </div>
+              <div style={{ fontSize: '0.52rem', letterSpacing: '0.15em', color: '#c084fc', textTransform: 'uppercase', marginTop: 2, fontWeight: 700 }}>
+                System Boot
+              </div>
+            </div>
+
+            {/* Left audio VU meter blocks flanking the core */}
+            <div style={{
+              position: 'absolute',
+              left: -50,
+              height: 80,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 4,
+              opacity: 0.75
+            }}>
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} style={{
+                  width: 12,
+                  height: 6,
+                  borderRadius: 1,
+                  background: bootPercent > idx * 16 ? '#60a5fa' : 'rgba(255,255,255,0.05)',
+                  boxShadow: bootPercent > idx * 16 ? '0 0 4px #60a5fa' : 'none',
+                  animation: `vuEqualize ${0.6 + idx * 0.15}s ease-in-out infinite alternate`
+                }} />
+              ))}
+            </div>
+
+            {/* Right audio VU meter blocks flanking the core */}
+            <div style={{
+              position: 'absolute',
+              right: -50,
+              height: 80,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 4,
+              opacity: 0.75
+            }}>
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} style={{
+                  width: 12,
+                  height: 6,
+                  borderRadius: 1,
+                  background: bootPercent > idx * 16 ? '#ec4899' : 'rgba(255,255,255,0.05)',
+                  boxShadow: bootPercent > idx * 16 ? '0 0 4px #ec4899' : 'none',
+                  animation: `vuEqualize ${0.7 + (5 - idx) * 0.12}s ease-in-out infinite alternate`
+                }} />
+              ))}
             </div>
           </div>
 
           {/* Title & Loading bar */}
-          <h1 className="loader-title" style={{
-            fontSize: '1.5rem',
-            fontWeight: 900,
-            letterSpacing: '0.2em',
-            color: '#ffffff',
-            textShadow: '0 0 15px rgba(168, 85, 247, 0.7)',
-            marginBottom: 5,
-            textAlign: 'center'
-          }}>
-            NEURAL AI INFINITY INITIALIZING
-          </h1>
-          <div className="loader-bar-wrap" style={{ width: 300, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 30, border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-            <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #c084fc)', boxShadow: '0 0 8px #c084fc', transition: 'width 0.1s ease-out' }} />
+          <div style={{ textAlign: 'center', marginBottom: 15, zIndex: 2 }}>
+            <h1 className="loader-title" style={{
+              fontSize: '1.4rem',
+              fontWeight: 900,
+              letterSpacing: '0.25em',
+              color: '#ffffff',
+              textShadow: '0 0 15px rgba(168, 85, 247, 0.8), 0 0 2px rgba(168, 85, 247, 0.4)',
+              margin: 0,
+              fontFamily: 'monospace',
+              animation: 'glitchText 3s infinite'
+            }}>
+              NEURAL AI INFINITY INITIALIZING
+            </h1>
+            <div style={{ fontSize: '0.55rem', letterSpacing: '0.4em', color: 'rgba(96, 165, 250, 0.85)', textTransform: 'uppercase', marginTop: 6, fontWeight: 700, fontFamily: 'monospace' }}>
+              COGNITIVE CORE INTEL v4.8.2 // SECURE CONNECTION ESTABLISHED
+            </div>
+          </div>
+
+          <div className="loader-bar-wrap" style={{ width: 340, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden', marginBottom: 35, border: '1px solid rgba(168, 85, 247, 0.18)', position: 'relative', zIndex: 2 }}>
+            <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #60a5fa, #8b5cf6, #ec4899)', boxShadow: '0 0 12px #c084fc', transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
           </div>
 
           {/* Loading logs console */}
-          <div className="loader-console" style={{
-            width: 480,
-            height: 175,
-            background: 'rgba(5, 6, 15, 0.75)',
-            border: '1px solid rgba(168, 85, 247, 0.25)',
-            borderRadius: 10,
-            padding: '15px 20px',
-            boxShadow: 'inset 0 0 15px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            textAlign: 'left',
-            overflow: 'hidden'
+          <div style={{
+            width: 500,
+            background: 'rgba(6, 8, 20, 0.85)',
+            border: '1.5px solid rgba(168, 85, 247, 0.35)',
+            borderRadius: '12px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.7), inset 0 0 25px rgba(168, 85, 247, 0.08)',
+            backdropFilter: 'blur(20px)',
+            overflow: 'hidden',
+            zIndex: 2
           }}>
-            {bootMessages.map((msg, i) => (
-              <div key={i} style={{ fontSize: '0.72rem', color: i === bootMessages.length - 1 ? '#10b981' : '#c084fc', opacity: i === bootMessages.length - 1 ? 1 : 0.6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: i === bootMessages.length - 1 ? '#10b981' : '#8b5cf6' }}>&gt;</span>
-                <span>{msg}</span>
-                {i === bootMessages.length - 1 && <span className="cursor-blink" style={{ width: 4, height: 10, background: '#10b981' }} />}
+            {/* Console Window Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '10px 18px',
+              background: 'rgba(168, 85, 247, 0.06)',
+              borderBottom: '1px solid rgba(168, 85, 247, 0.18)',
+              position: 'relative'
+            }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', opacity: 0.7 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24', opacity: 0.7 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', opacity: 0.7 }} />
               </div>
-            ))}
+              <div style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '0.62rem',
+                fontWeight: 800,
+                letterSpacing: '0.15em',
+                color: '#c084fc',
+                textTransform: 'uppercase',
+                fontFamily: 'monospace'
+              }}>
+                TERMINAL: SYSTEM_BOOT_SEQUENCE
+              </div>
+              <div style={{ marginLeft: 'auto', fontSize: '0.55rem', color: 'rgba(255, 255, 255, 0.25)', fontFamily: 'monospace' }}>
+                T-MINUS {Math.max(0, Math.ceil((100 - bootPercent) / 25))}s
+              </div>
+            </div>
+
+            {/* Logs area */}
+            <div className="loader-console" style={{
+              height: 180,
+              padding: '18px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              textAlign: 'left',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {bootMessages.map((msg, i) => {
+                const isLast = i === bootMessages.length - 1;
+                const color = isLast ? '#10b981' : '#c084fc';
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      fontSize: '0.72rem',
+                      color: color,
+                      opacity: isLast ? 1 : 0.65,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontFamily: 'monospace',
+                      textShadow: isLast ? `0 0 8px ${color}` : 'none',
+                      transform: isLast ? 'translateX(2px)' : 'none',
+                      transition: 'transform 0.2s ease-out'
+                    }}
+                  >
+                    <span style={{ color: isLast ? '#10b981' : '#8b5cf6', fontWeight: 'bold' }}>&gt;</span>
+                    <span>{msg}</span>
+                    {isLast && <span className="cursor-blink" style={{ width: 6, height: 12, background: '#10b981', display: 'inline-block' }} />}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -4430,6 +4672,27 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         @keyframes spinCoreInverse {
           from { transform: rotate(360deg); }
           to { transform: rotate(0deg); }
+        }
+        @keyframes sweepScanner {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes pulseAura {
+          0%, 100% { transform: scale(0.95); opacity: 0.15; }
+          50% { transform: scale(1.05); opacity: 0.3; }
+        }
+        @keyframes globalScanLine {
+          0% { top: -5%; }
+          100% { top: 105%; }
+        }
+        @keyframes glitchText {
+          0%, 95%, 100% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(0deg); }
+          96% { text-shadow: -2px 0 red, 2px 0 blue, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(-1deg); }
+          97% { text-shadow: 2px 0 red, -2px 0 blue, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(2deg); }
+          98% { text-shadow: -3px 0 green, 3px 0 purple, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(-2deg); }
+          99% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(0deg); }
         }
         .cursor-blink {
           animation: blink 1.2s steps(2, start) infinite;

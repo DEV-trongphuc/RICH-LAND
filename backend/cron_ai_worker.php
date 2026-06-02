@@ -5,7 +5,8 @@
 require_once __DIR__ . '/db_connect.php';
 require_once __DIR__ . '/webhook_logic.php';
 
-function runAIScreenerWorker($conn) {
+function runAIScreenerWorker($conn)
+{
     // Ngăn chặn chạy trùng lặp tiến trình bằng file lock
     $lockFile = sys_get_temp_dir() . '/cron_ai_worker_' . md5(__DIR__) . '.lock';
     $fp = @fopen($lockFile, 'c+');
@@ -41,7 +42,7 @@ function runAIScreenerWorker($conn) {
     $ids = [];
     while ($row = $res->fetch_assoc()) {
         $leads[] = $row;
-        $ids[] = (int)$row['id'];
+        $ids[] = (int) $row['id'];
     }
 
     if (empty($leads)) {
@@ -61,9 +62,9 @@ function runAIScreenerWorker($conn) {
 
     // 2. Xử lý từng Lead
     foreach ($leads as $lead) {
-        $leadId = (int)$lead['id'];
-        $targetRoundId = (int)$lead['target_round_id'];
-        $attempts = (int)$lead['ai_attempts'] + 1;
+        $leadId = (int) $lead['id'];
+        $targetRoundId = (int) $lead['target_round_id'];
+        $attempts = (int) $lead['ai_attempts'] + 1;
 
         echo "[" . date('Y-m-d H:i:s') . "] Processing Lead ID: $leadId (Attempt $attempts/3)...\n";
 
@@ -91,7 +92,7 @@ function runAIScreenerWorker($conn) {
                     $aiRules = $config['ai_rules'] ?? null;
                     $belowStandardFallbackEnabled = !empty($config['below_standard_fallback_enabled']) ? 1 : 0;
                     $belowStandardAutoApprove = !empty($config['below_standard_auto_approve']) ? 1 : 0;
-                    $belowStandardFallbackRoundId = !empty($config['below_standard_fallback_round_id']) ? (int)$config['below_standard_fallback_round_id'] : 0;
+                    $belowStandardFallbackRoundId = !empty($config['below_standard_fallback_round_id']) ? (int) $config['below_standard_fallback_round_id'] : 0;
                     break;
                 }
             }
@@ -100,9 +101,9 @@ function runAIScreenerWorker($conn) {
         // Fallback cấu hình cũ
         if ($aiRules === null) {
             $aiRules = get_system_setting($conn, 'ai_screener_rules');
-            $belowStandardFallbackEnabled = (int)get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
-            $belowStandardFallbackRoundId = (int)get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
-            $belowStandardAutoApprove = (int)get_system_setting($conn, 'ai_screener_below_standard_auto_approve');
+            $belowStandardFallbackEnabled = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_enabled');
+            $belowStandardFallbackRoundId = (int) get_system_setting($conn, 'ai_screener_below_standard_fallback_round_id');
+            $belowStandardAutoApprove = (int) get_system_setting($conn, 'ai_screener_below_standard_auto_approve');
         }
 
         // Tạo tham số leadData
@@ -136,9 +137,9 @@ function runAIScreenerWorker($conn) {
                 $conn->begin_transaction();
                 try {
                     $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', ai_screener_status = 'failed', ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
-                    $promptT = isset($aiResult['prompt_tokens']) ? (int)$aiResult['prompt_tokens'] : 0;
-                    $completionT = isset($aiResult['completion_tokens']) ? (int)$aiResult['completion_tokens'] : 0;
-                    $totalT = isset($aiResult['total_tokens']) ? (int)$aiResult['total_tokens'] : 0;
+                    $promptT = isset($aiResult['prompt_tokens']) ? (int) $aiResult['prompt_tokens'] : 0;
+                    $completionT = isset($aiResult['completion_tokens']) ? (int) $aiResult['completion_tokens'] : 0;
+                    $totalT = isset($aiResult['total_tokens']) ? (int) $aiResult['total_tokens'] : 0;
                     $updHeld->bind_param("siiii", $aiResult['reason'], $promptT, $completionT, $totalT, $leadId);
                     $updHeld->execute();
                     $updHeld->close();
@@ -180,15 +181,15 @@ function runAIScreenerWorker($conn) {
                         }
                     }
                     sendHeldLeadNotifications(
-                        $conn, 
-                        $leadId, 
-                        $leadData['name'], 
-                        $leadData['phone'], 
-                        $aiResult['reason'], 
-                        $roundName, 
-                        $leadData['email'], 
-                        $leadData['source'], 
-                        $leadData['type'], 
+                        $conn,
+                        $leadId,
+                        $leadData['name'],
+                        $leadData['phone'],
+                        $aiResult['reason'],
+                        $roundName,
+                        $leadData['email'],
+                        $leadData['source'],
+                        $leadData['type'],
                         $leadData['note']
                     );
                 } catch (Exception $ex) {
@@ -200,9 +201,9 @@ function runAIScreenerWorker($conn) {
             $conn->begin_transaction();
             try {
                 $updHeld = $conn->prepare("UPDATE leads SET ai_screener_status = 'error', ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
-                $promptT = isset($aiResult['prompt_tokens']) ? (int)$aiResult['prompt_tokens'] : 0;
-                $completionT = isset($aiResult['completion_tokens']) ? (int)$aiResult['completion_tokens'] : 0;
-                $totalT = isset($aiResult['total_tokens']) ? (int)$aiResult['total_tokens'] : 0;
+                $promptT = isset($aiResult['prompt_tokens']) ? (int) $aiResult['prompt_tokens'] : 0;
+                $completionT = isset($aiResult['completion_tokens']) ? (int) $aiResult['completion_tokens'] : 0;
+                $totalT = isset($aiResult['total_tokens']) ? (int) $aiResult['total_tokens'] : 0;
                 $updHeld->bind_param("siiii", $aiResult['reason'], $promptT, $completionT, $totalT, $leadId);
                 $updHeld->execute();
                 $updHeld->close();
@@ -240,7 +241,8 @@ function runAIScreenerWorker($conn) {
     @fclose($fp);
 }
 
-function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult, $leadData) {
+function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult, $leadData)
+{
     // Phân bổ Round-Robin
     $assignedConsultantId = null;
     $status = 'pending';
@@ -252,7 +254,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
     $crmCheckResult = checkCRMInteraction($conn, $phone, $email, false, $leadId);
 
     // Load dynamic duplicate check threshold
-    $dupCheckMonths = (int)get_system_setting($conn, 'duplicate_check_months');
+    $dupCheckMonths = (int) get_system_setting($conn, 'duplicate_check_months');
     if ($dupCheckMonths <= 0) {
         $dupCheckMonths = 6;
     }
@@ -279,9 +281,9 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
         if ($assignResult) {
             $assignedConsultantId = $assignResult['id'];
             $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-            $message = $assignResult['is_compensation'] 
-                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (Chạy ngầm).' : 'Được phân bổ đền bù lượt lỗi (Chạy ngầm).') 
-                : 'Được phân bổ tự động qua vòng xoay (Chạy ngầm).';
+            $message = $assignResult['is_compensation']
+                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (Chạy ngầm).' : 'Được phân bổ đền bù lượt lỗi (Chạy ngầm).')
+                : 'Được phân bổ tự động.';
             $message .= $dupSuffix;
 
             // Check working hours
@@ -318,9 +320,9 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
         $updLead = $conn->prepare("UPDATE leads SET status = ?, assigned_to = ?, ai_screener_status = ?, ai_evaluation = ?, ai_prompt_tokens = ?, ai_completion_tokens = ?, ai_total_tokens = ? WHERE id = ?");
         $aiStatus = $aiScreenerResult['status'];
         $aiEval = $aiScreenerResult['reason'];
-        $promptT = isset($aiScreenerResult['prompt_tokens']) ? (int)$aiScreenerResult['prompt_tokens'] : 0;
-        $completionT = isset($aiScreenerResult['completion_tokens']) ? (int)$aiScreenerResult['completion_tokens'] : 0;
-        $totalT = isset($aiScreenerResult['total_tokens']) ? (int)$aiScreenerResult['total_tokens'] : 0;
+        $promptT = isset($aiScreenerResult['prompt_tokens']) ? (int) $aiScreenerResult['prompt_tokens'] : 0;
+        $completionT = isset($aiScreenerResult['completion_tokens']) ? (int) $aiScreenerResult['completion_tokens'] : 0;
+        $totalT = isset($aiScreenerResult['total_tokens']) ? (int) $aiScreenerResult['total_tokens'] : 0;
         $updLead->bind_param("sisssiii", $leadStatus, $assignedConsultantId, $aiStatus, $aiEval, $promptT, $completionT, $totalT, $leadId);
         $updLead->execute();
         $updLead->close();
@@ -331,8 +333,8 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
             $prevDate = !empty($crmCheckResult['lastInteractionDate']) ? date('d/m/Y', strtotime($crmCheckResult['lastInteractionDate'])) : 'Không rõ';
             $dupMonths = $crmCheckResult['monthsSinceLastInteraction'] ?? $dupCheckMonths;
             $noteAppend = "\n[Lưu ý: Trùng số của $prevName trên $dupMonths tháng. Cập nhật lần cuối: $prevDate]";
-            
-            $conn->query("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '" . $conn->real_escape_string($noteAppend) . "') WHERE id = " . (int)$leadId);
+
+            $conn->query("UPDATE leads SET note = CONCAT(IFNULL(note, ''), '" . $conn->real_escape_string($noteAppend) . "') WHERE id = " . (int) $leadId);
         }
 
         $chkLog = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? AND status = 'pending_approval' LIMIT 1");
@@ -370,7 +372,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                 $cRes = $stmt->get_result();
                 if ($cRes->num_rows > 0) {
                     $c = $cRes->fetch_assoc();
-                    
+
                     require_once __DIR__ . '/mailer.php';
                     require_once __DIR__ . '/zalo_bot.php';
 
@@ -393,34 +395,34 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                     // Gửi email & zalo (mặc định sync = false để chèn vào hàng đợi)
                     try {
                         sendLeadAssignedEmailToSale(
-                            $c['email'], 
-                            $c['name'], 
-                            $leadData['name'], 
-                            $leadData['phone'], 
-                            $leadData['note'], 
-                            $leadData['source'], 
-                            $ccEmails, 
-                            $roundName, 
-                            $leadId, 
-                            $assignedConsultantId, 
+                            $c['email'],
+                            $c['name'],
+                            $leadData['name'],
+                            $leadData['phone'],
+                            $leadData['note'],
+                            $leadData['source'],
+                            $ccEmails,
+                            $roundName,
+                            $leadId,
+                            $assignedConsultantId,
                             $targetRoundId
                         );
                     } catch (Exception $mailEx) {
                         error_log("Error sending post-AI email: " . $mailEx->getMessage());
                     }
-                    
+
                     try {
                         sendLeadAssignedZaloMessageToSale(
-                            $assignedConsultantId, 
-                            $c['name'], 
-                            $leadData['name'], 
-                            $leadData['phone'], 
-                            $leadData['note'], 
-                            $leadData['source'], 
-                            $roundName, 
-                            $leadId, 
-                            $targetRoundId, 
-                            $leadData['email'], 
+                            $assignedConsultantId,
+                            $c['name'],
+                            $leadData['name'],
+                            $leadData['phone'],
+                            $leadData['note'],
+                            $leadData['source'],
+                            $roundName,
+                            $leadId,
+                            $targetRoundId,
+                            $leadData['email'],
                             $leadData['type'],
                             false // sync = false to queue it!
                         );
