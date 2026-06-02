@@ -2186,6 +2186,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   // Sync theme when War Room is open
   useEffect(() => {
     if (isOpen) {
+      // Clear any pending theme reversion timeouts
+      if ((window as any).__themeTimeout__) {
+        clearTimeout((window as any).__themeTimeout__);
+        (window as any).__themeTimeout__ = null;
+      }
+
       const currentTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
       prevThemeRef.current = currentTheme;
       if (currentTheme === 'light') {
@@ -2196,12 +2202,18 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     }
 
     return () => {
-      if (prevThemeRef.current === 'light') {
+      // Clear existing just in case
+      if ((window as any).__themeTimeout__) {
+        clearTimeout((window as any).__themeTimeout__);
+      }
+
+      (window as any).__themeTimeout__ = setTimeout(() => {
         document.documentElement.setAttribute('data-theme', 'light');
         localStorage.setItem('domation_theme', 'light');
         window.dispatchEvent(new Event('theme-change'));
         prevThemeRef.current = null;
-      }
+        (window as any).__themeTimeout__ = null;
+      }, 1000); // 1s delay before returning to light theme
     };
   }, [isOpen]);
 
